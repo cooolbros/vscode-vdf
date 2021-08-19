@@ -1,0 +1,32 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Valve KeyValues",
+	"patterns": [
+		{
+			"name": "comment",
+			"match": "//.*\n"
+		},
+		{
+			"name": "constant.character",
+			"match": "\\[.*\\]"
+		},
+		{
+			"name": "variable",
+			"match": "(\".*\")\\s*(\".*\")",
+			"captures": {
+				"1": {
+					"name": "variable"
+				},
+				"2": {
+					"name": "string.quoted.double"
+				}
+			}
+		},
+		{
+			"name": "variable",
+			"match": "(\".*\")"
+		}
+	],
+	"repository": {},
+	"scopeName": "source.vdf"
+}
