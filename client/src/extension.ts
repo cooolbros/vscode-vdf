@@ -1,11 +1,12 @@
 import * as path from "path";
-import { ExtensionContext } from "vscode";
+import { commands, EndOfLine, ExtensionContext, languages, Range } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
+import { VDF } from "./vdf";
 
 let client: LanguageClient
 
@@ -13,8 +14,30 @@ export function activate(context: ExtensionContext): void {
 
 	// Commands
 
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.vdf-to-json", (editor, edit) => {
+		const { document } = editor
+		const indentation = !editor.options.insertSpaces ? "\t" : "    "
+		if (!editor.selection.isEmpty) {
+			edit.replace(editor.selection, JSON.stringify(VDF.parse(document.getText(editor.selection)), null, indentation))
+		}
+		else {
+			edit.replace(new Range(0, 0, document.lineCount, 0), JSON.stringify(VDF.parse(document.getText()), null, indentation))
+			languages.setTextDocumentLanguage(document, "json");
+		}
+	}))
 
-
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.json-to-vdf", (editor, edit) => {
+		const { document } = editor
+		const indentation = !editor.options.insertSpaces ? "Tabs" : "Spaces"
+		const eol = document.eol == EndOfLine.CRLF ? "CRLF" : "LF"
+		if (!editor.selection.isEmpty) {
+			edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), indentation, eol))
+		}
+		else {
+			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), indentation, eol))
+			languages.setTextDocumentLanguage(document, "vdf");
+		}
+	}))
 
 	// Language Server
 	const serverModule = context.asAbsolutePath(path.join("server", "dist", "server.js"))
@@ -35,11 +58,11 @@ export function activate(context: ExtensionContext): void {
 
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [
-			"vdf"
-		],
-		// synchronize: {
-		// 	fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
-		// }
+			{
+				scheme: "file",
+				language: "vdf"
+			}
+		]
 	}
 
 	client = new LanguageClient(

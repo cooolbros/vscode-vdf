@@ -3,11 +3,12 @@ import {
 	CompletionItem,
 	CompletionItemKind, createConnection, Diagnostic, DiagnosticSeverity, InitializeParams,
 	InitializeResult,
-	ProposedFeatures, TextDocumentChangeEvent, TextDocumentPositionParams,
+	Position,
+	ProposedFeatures, Range, TextDocumentChangeEvent, TextDocumentPositionParams,
 	TextDocuments,
 	TextDocumentSyncKind, _Connection
 } from "vscode-languageserver/node";
-import { VDF } from './vdf';
+import { VDF } from "./vdf";
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -24,7 +25,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	}
 })
 
-documents.onDidChangeContent(async (change: TextDocumentChangeEvent<TextDocument>): Promise<void> => {
+documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): void => {
 	connection.sendDiagnostics({
 		uri: change.document.uri,
 		diagnostics: ((): Diagnostic[] => {
@@ -35,18 +36,12 @@ documents.onDidChangeContent(async (change: TextDocumentChangeEvent<TextDocument
 			catch (e: any) {
 				return [
 					{
-						range: {
-							start: {
-								line: 0,
-								character: 0
-							},
-							end: {
-								line: 0,
-								character: 1
-							}
-						},
 						severity: DiagnosticSeverity.Error,
-						message: e.message
+						message: e.message,
+						range: Range.create(
+							Position.create(e.line, e.character),
+							Position.create(e.line, e.character)
+						)
 					}
 				]
 				// if (e instanceof VDFError) {
