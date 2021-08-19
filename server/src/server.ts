@@ -1,13 +1,13 @@
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
 	CompletionItem,
-	CompletionItemKind, createConnection,
-	Diagnostic, DiagnosticSeverity, InitializeParams,
+	CompletionItemKind, createConnection, Diagnostic, DiagnosticSeverity, InitializeParams,
 	InitializeResult,
-	ProposedFeatures, TextDocumentPositionParams,
+	ProposedFeatures, TextDocumentChangeEvent, TextDocumentPositionParams,
 	TextDocuments,
 	TextDocumentSyncKind, _Connection
 } from "vscode-languageserver/node";
+import { VDF } from './vdf';
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -22,6 +22,48 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			textDocumentSync: TextDocumentSyncKind.Incremental
 		}
 	}
+})
+
+documents.onDidChangeContent(async (change: TextDocumentChangeEvent<TextDocument>): Promise<void> => {
+	connection.sendDiagnostics({
+		uri: change.document.uri,
+		diagnostics: ((): Diagnostic[] => {
+			try {
+				VDF.parse(change.document.getText())
+				return []
+			}
+			catch (e: any) {
+				return [
+					{
+						range: {
+							start: {
+								line: 0,
+								character: 0
+							},
+							end: {
+								line: 0,
+								character: 1
+							}
+						},
+						severity: DiagnosticSeverity.Error,
+						message: e.message
+					}
+				]
+				// if (e instanceof VDFError) {
+				// 	return [
+				// 		{
+				// 			range: {
+				// 				start: change.document.positionAt(e.position),
+				// 				end: change.document.positionAt(e.position)
+				// 			},
+				// 			severity: DiagnosticSeverity.Error,
+				// 			message: e.message
+				// 		}
+				// 	]
+				// }
+			}
+		})()
+	})
 })
 
 
@@ -50,7 +92,7 @@ connection.onDidChangeConfiguration(change => {
 	}
 
 	// Revalidate all open text documents
-	documents.all().forEach(validateTextDocument);
+	// documents.all().forEach(validateTextDocument);
 });
 
 function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
@@ -75,56 +117,9 @@ documents.onDidClose(e => {
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
-documents.onDidChangeContent(change => {
-	validateTextDocument(change.document);
-});
-
-async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-	// In this simple example we get the settings for every validate run.
-	const settings = await getDocumentSettings(textDocument.uri);
-
-	// The validator creates diagnostics for all uppercase words length 2 and more
-	const text = textDocument.getText();
-	const pattern = /\b[A-Z]{2,}\b/g;
-	let m: RegExpExecArray | null;
-
-	let problems = 0;
-	const diagnostics: Diagnostic[] = [];
-	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-		problems++;
-		const diagnostic: Diagnostic = {
-			severity: DiagnosticSeverity.Warning,
-			range: {
-				start: textDocument.positionAt(m.index),
-				end: textDocument.positionAt(m.index + m[0].length)
-			},
-			message: `${m[0]} is all uppercase.`,
-			source: 'ex'
-		};
-		if (hasDiagnosticRelatedInformationCapability) {
-			diagnostic.relatedInformation = [
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Spelling matters'
-				},
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Particularly for names'
-				}
-			];
-		}
-		diagnostics.push(diagnostic);
-	}
-
-	// Send the computed diagnostics to VSCode.
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-}
+// documents.onDidChangeContent(change => {
+// 	// validateTextDocument(change.document);
+// });
 
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
