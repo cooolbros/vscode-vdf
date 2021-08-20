@@ -1,5 +1,5 @@
 import * as path from "path";
-import { commands, EndOfLine, ExtensionContext, languages, Range } from "vscode";
+import { commands, EndOfLine, ExtensionContext, languages, Range, TextEditor, TextEditorEdit } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
@@ -14,7 +14,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Commands
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.vdf-to-json", (editor, edit) => {
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.vdf-to-json", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
 		const indentation = !editor.options.insertSpaces ? "\t" : "    "
 		if (!editor.selection.isEmpty) {

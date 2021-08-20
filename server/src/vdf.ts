@@ -22,15 +22,18 @@ export class VDF {
 					_character++;
 				}
 				if (str[j] == '/') {
-					if (str[j + 1] == "/") {
+					if (str[j + 1] == '/') {
 						while (str[j] != '\n') {
 							j++;
+							// _character++;
 						}
 						_line++;
+						_character = 0;
 					}
 				}
 				else {
 					j++;
+					// _character++
 				}
 				if (j >= str.length) {
 					return "EOF";
@@ -38,7 +41,8 @@ export class VDF {
 			}
 			if (str[j] == '"') {
 				// Read until next quote (ignore opening quote)
-				j++;
+				j++; // Skip over opening double quote
+				_character++; // Skip over opening double quote
 				while (str[j] != '"' && j < str.length) {
 					if (str[j] == '\n') {
 						throw {
@@ -52,13 +56,14 @@ export class VDF {
 					_character++;
 				}
 				j++; // Skip over closing quote
+				_character++; // Skip over closing quote
 			}
 			else {
 				// Read until whitespace (or end of file)
 				while (!whiteSpaceIgnore.includes(str[j]) && j < str.length - 1) {
 					if (str[j] == '"') {
 						throw {
-							message: `Unexpected '"' at position ${j} (line ${line}, position ${character})! Are you missing terminating whitespace?`,
+							message: `Unexpected " at position ${j} (line ${line}, position ${character})! Are you missing terminating whitespace?`,
 							line: _line,
 							character: _character
 						}
