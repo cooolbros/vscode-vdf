@@ -6,11 +6,10 @@ import {
 	CompletionItem,
 	CompletionItemKind,
 	CompletionParams,
-	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, Hover, HoverParams, InitializeParams,
+	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DidCloseTextDocumentParams, DocumentColorParams, DocumentFormattingParams, Hover, HoverParams, InitializeParams,
 	InitializeResult,
-	Position,
-	ProposedFeatures, Range, TextDocumentChangeEvent, TextDocuments,
-	TextDocumentSyncKind, TextEdit, _Connection
+	Position, PrepareRenameParams, ProposedFeatures, Range, RenameParams, TextDocumentChangeEvent, TextDocuments,
+	TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection
 } from "vscode-languageserver/node";
 import { VDF } from "./vdf";
 import { VDFExtended } from "./vdf_extended";
@@ -21,8 +20,11 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
 	return {
+		serverInfo: {
+			name: "VDF Language Server"
+		},
 		capabilities: {
-			textDocumentSync: TextDocumentSyncKind.Incremental,
+			textDocumentSync: TextDocumentSyncKind.Full,
 			completionProvider: {
 				resolveProvider: false,
 				triggerCharacters: [
@@ -33,7 +35,8 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			hoverProvider: true,
 			definitionProvider: true,
 			colorProvider: true,
-			documentFormattingProvider: true
+			documentFormattingProvider: true,
+			renameProvider: true,
 		}
 	}
 })
@@ -62,6 +65,14 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 	})
 })
 
+connection.onDidCloseTextDocument((params: DidCloseTextDocumentParams) => {
+	connection.console.log(`Close ${params.textDocument.uri}`)
+	connection.sendDiagnostics({
+		uri: params.textDocument.uri,
+		diagnostics: []
+	})
+})
+
 connection.onCompletion((params: CompletionParams): CompletionItem[] => {
 	return [
 		{
@@ -78,15 +89,20 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 			start: { line: params.position.line, character: 0 },
 			end: { line: params.position.line, character: Infinity },
 		})
-		const entries = Object.entries(VDF.parse(line))
-		if (entries.length) {
-			const [key, value] = entries[0]
-			return {
-				contents: [
-					`${key}`,
-					`${value}`
-				]
+		try {
+			const entries = Object.entries(VDF.parse(line))
+			if (entries.length) {
+				const [key, value] = entries[0]
+				return {
+					contents: [
+						`${key}`,
+						`${value}`
+					]
+				}
 			}
+		}
+		catch (e: any) {
+			return undefined
 		}
 	}
 })
@@ -98,33 +114,89 @@ connection.onDefinition((params: DefinitionParams): Definition => {
 connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
-		return VDFExtended.getColours(document.getText())
+		try {
+			return VDFExtended.getColours(document.getText())
+		}
+		catch (e: any) {
+			return []
+		}
 	}
 	return []
 })
 
 connection.onColorPresentation((params: ColorPresentationParams): ColorPresentation[] => {
+	const { uri } = params.textDocument
 	const { color } = params
-	return [
-		{
-			label: `${color.red * 255} ${color.green * 255} ${color.blue * 255} ${color.alpha * 255}`,
-		}
-	]
+	switch (uri.split('.').pop()) {
+		case "res": return [{ label: `${Math.round(color.red * 255)} ${Math.round(color.green * 255)} ${Math.round(color.blue * 255)} ${Math.round(color.alpha * 255)}` }]
+		default: return [{ label: `rgba(${Math.round(color.red * 255)}, ${Math.round(color.green * 255)}, ${Math.round(color.blue * 255)}, ${Math.round(color.alpha)})` }]
+	}
 })
 
 connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] | undefined => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
-		return [
-			{
-				range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
-				newText: VDF.stringify(VDF.parse(document.getText()))
-			}
-		]
+		try {
+			return [
+				{
+					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
+					newText: (() => {
+						connection.console.log('[VDF] Running formatter...')
+						const text = VDF.stringify(VDF.parse(document.getText()))
+						connection.console.log('[VDF] Finishined Running formatter')
+						return text
+					})()
+				}
+			]
+		}
+		catch (e: any) {
+			return []
+		}
 	}
 	else {
 		return []
 	}
+})
+
+connection.onPrepareRename((params: PrepareRenameParams): Range | undefined => {
+	params.position
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		return {
+
+			start: {
+				line: params.position.line,
+				character: params.position.character - 2
+			},
+			end: {
+				line: params.position.line,
+				character: params.position.character + 2
+			}
+		}
+	}
+})
+
+connection.onRenameRequest((params: RenameParams): WorkspaceEdit | undefined => {
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		const line = document.getText({
+			start: {
+				line: params.position.line,
+				character: 0
+			},
+			end: {
+				line: params.position.line,
+				character: Infinity
+			}
+		})
+		connection.console.log(line)
+		connection.console.log(params.newName)
+
+		return {
+			changes: VDFExtended.renameToken(document.getText(), "", params.newName, params.textDocument.uri)
+		}
+	}
+	return undefined
 })
 
 documents.listen(connection)

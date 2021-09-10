@@ -1,99 +1,24 @@
+import { VDFTokeniser } from "./vdf_tokeniser";
+
 export class VDF {
 	static OSTagDelimeter: string = "^"
 	static parse(str: string): any {
-		const whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
-		let i: number = 0;
-		let line: number = 0;
-		let character: number = 0;
-		const next = (lookAhead: boolean = false): string => {
-			let currentToken: string = ""
-			let j: number = i
-			let _line: number = line
-			let _character: number = character
-			if (j >= str.length - 1) {
-				return "EOF"
-			}
-			while ((whiteSpaceIgnore.includes(str[j]) || str[j] == "/") && j <= str.length - 1) {
-				if (str[j] == '\n') {
-					_line++;
-					_character = 0;
-				}
-				else {
-					_character++;
-				}
-				if (str[j] == '/') {
-					if (str[j + 1] == '/') {
-						while (str[j] != '\n') {
-							j++;
-							// _character++;
-						}
-						_line++;
-						_character = 0;
-					}
-				}
-				else {
-					j++;
-					// _character++
-				}
-				if (j >= str.length) {
-					return "EOF";
-				}
-			}
-			if (str[j] == '"') {
-				// Read until next quote (ignore opening quote)
-				j++; // Skip over opening double quote
-				_character++; // Skip over opening double quote
-				while (str[j] != '"' && j < str.length) {
-					if (str[j] == '\n') {
-						throw {
-							message: `Unexpected EOL at position ${j} (line ${_line + 1}, position ${_character + 1})! Are you missing a closing double quote?`,
-							line: _line,
-							character: _character
-						}
-					}
-					currentToken += str[j];
-					j++;
-					_character++;
-				}
-				j++; // Skip over closing quote
-				_character++; // Skip over closing quote
-			}
-			else {
-				// Read until whitespace (or end of file)
-				while (!whiteSpaceIgnore.includes(str[j]) && j < str.length - 1) {
-					if (str[j] == '"') {
-						throw {
-							message: `Unexpected " at position ${j} (line ${line}, position ${character})! Are you missing terminating whitespace?`,
-							line: _line,
-							character: _character
-						}
-					}
-					currentToken += str[j];
-					j++;
-				}
-			}
-			if (!lookAhead) {
-				i = j;
-				line = _line;
-				character = _character;
-			}
-			return currentToken
-		}
+		const tokeniser = new VDFTokeniser(str)
 		const parseObject = (): { [key: string]: any } => {
 			const obj: { [key: string]: any } = {}
-			let currentToken = next();
-			let nextToken = next(true);
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
 			while (currentToken != "}" && nextToken != "EOF") {
-				const lookahead: string = next(true)
+				const lookahead: string = tokeniser.next(true)
 				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
 					// Object with OS Tag
-					currentToken += `${VDF.OSTagDelimeter}${next()}`;
-					next(); // Skip over opening brace
+					currentToken += `${VDF.OSTagDelimeter}${tokeniser.next()}`;
+					tokeniser.next(); // Skip over opening brace
 					obj[currentToken] = parseObject();
 				}
 				else if (nextToken == "{") {
 					// Object
-					next(); // Skip over opening brace
+					tokeniser.next(); // Skip over opening brace
 					if (obj.hasOwnProperty(currentToken)) {
 						const value = obj[currentToken]
 						if (Array.isArray(value)) {
@@ -112,11 +37,11 @@ export class VDF {
 				}
 				else {
 					// Primitive
-					next(); // Skip over value
+					tokeniser.next(); // Skip over value
 					// Check primitive os tag
-					const lookahead: string = next(true)
+					const lookahead: string = tokeniser.next(true)
 					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-						currentToken += `${VDF.OSTagDelimeter}${next()}`;
+						currentToken += `${VDF.OSTagDelimeter}${tokeniser.next()}`;
 					}
 					if (obj.hasOwnProperty(currentToken)) {
 						const value = obj[currentToken]
@@ -135,8 +60,8 @@ export class VDF {
 						obj[currentToken] = nextToken;
 					}
 				}
-				currentToken = next();
-				nextToken = next(true);
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
 			}
 			return obj;
 		}

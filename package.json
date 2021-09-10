@@ -38,6 +38,11 @@
 				"language": "vdf",
 				"scopeName": "source.vdf",
 				"path": "./syntaxes/vdf.tmLanguage.json"
+			},
+			{
+				"language": "hudanimations",
+				"scopeName": "source.hudanimations",
+				"path": "./syntaxes/hudanimations.tmLanguage.json"
 			}
 		],
 		"languages": [
@@ -51,6 +56,16 @@
 					".res",
 					".vdf",
 					".vmt"
+				]
+			},
+			{
+				"id": "hudanimations",
+				"aliases": [
+					"Valve HUD Animations",
+					"hudanimations"
+				],
+				"extensions": [
+					".hudanimations"
 				]
 			}
 		]

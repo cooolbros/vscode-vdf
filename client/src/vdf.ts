@@ -27,8 +27,6 @@ export class VDF {
 							j++;
 							// _character++;
 						}
-						_line++;
-						_character = 0;
 					}
 				}
 				else {

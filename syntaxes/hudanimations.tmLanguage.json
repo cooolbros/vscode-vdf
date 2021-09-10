@@ -1,0 +1,75 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Valve HUD Animations",
+	"patterns": [
+		{
+			"match": "//.*",
+			"name": "comment"
+		},
+		{
+			"name": "keyword",
+			"match": "(event)\\s*(\\w+)",
+			"captures": {
+				"0": {
+					"name": "entity.name.function"
+				},
+				"1": {
+					"name": "keyword"
+				}
+			}
+		},
+		{
+			"match": "(?i)(RunEvent|StopEvent)\\s*\\w+",
+			"captures": {
+				"0": {
+					"name": "entity.name.function"
+				},
+				"1": {
+					"name": "keyword"
+				}
+			}
+		},
+		{
+			"match": "(?i)(Animate)\\s+(\\w+)\\s+(\\w+)\\s+(\".*\"|\\w+)\\s+(\\w+)",
+			"captures": {
+				"0": {},
+				"1": {
+					"name": "keyword"
+				},
+				"2": {
+					"name": "variable"
+				},
+				"3": {
+					"name": "keyword.control"
+				},
+				"4": {
+					"name": "string"
+				},
+				"5": {
+					"name": "keyword.control"
+				},
+				"6": {
+					"name": "constant.numeric"
+				}
+			}
+		},
+		{
+			"match": "(?i)(SetVisible)\\s+(\\w+)",
+			"captures": {
+				"0": {},
+				"1": {
+					"name": "keyword"
+				},
+				"2": {
+					"name": "entity.name.function"
+				}
+			}
+		},
+		{
+			"match": "\\d+",
+			"name": "constant.numeric"
+		}
+	],
+	"repository": {},
+	"scopeName": "source.hudanimations"
+}

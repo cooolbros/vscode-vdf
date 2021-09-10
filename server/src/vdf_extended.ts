@@ -1,104 +1,28 @@
-import { ColorInformation } from "vscode-languageserver/node";
+import { ColorInformation, TextEdit } from "vscode-languageserver/node";
+import { VDFTokeniser } from './vdf_tokeniser';
 
 export class VDFExtended {
 	static OSTagDelimeter: string = "^"
 
 	static getColours(str: string): ColorInformation[] {
-		const whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
-		let i: number = 0;
-		let line: number = 0;
-		let character: number = 0;
-		const next = (lookAhead: boolean = false): string => {
-			let currentToken: string = ""
-			let j: number = i
-			let _line: number = line
-			let _character: number = character
-			if (j >= str.length - 1) {
-				return "EOF"
-			}
-			while ((whiteSpaceIgnore.includes(str[j]) || str[j] == "/") && j <= str.length - 1) {
-				if (str[j] == '\n') {
-					_line++;
-					_character = 0;
-				}
-				else {
-					_character++;
-				}
-				if (str[j] == '/') {
-					if (str[j + 1] == '/') {
-						while (str[j] != '\n') {
-							j++;
-							// _character++;
-						}
-						_line++;
-						_character = 0;
-					}
-				}
-				else {
-					j++;
-					// _character++
-				}
-				if (j >= str.length) {
-					return "EOF";
-				}
-			}
-			if (str[j] == '"') {
-				// Read until next quote (ignore opening quote)
-				j++; // Skip over opening double quote
-				_character++; // Skip over opening double quote
-				while (str[j] != '"' && j < str.length) {
-					if (str[j] == '\n') {
-						throw {
-							message: `Unexpected EOL at position ${j} (line ${_line + 1}, position ${_character + 1})! Are you missing a closing double quote?`,
-							line: _line,
-							character: _character
-						}
-					}
-					currentToken += str[j];
-					j++;
-					_character++;
-				}
-				j++; // Skip over closing quote
-				_character++; // Skip over closing quote
-			}
-			else {
-				// Read until whitespace (or end of file)
-				while (!whiteSpaceIgnore.includes(str[j]) && j < str.length - 1) {
-					if (str[j] == '"') {
-						throw {
-							message: `Unexpected " at position ${j} (line ${line}, position ${character})! Are you missing terminating whitespace?`,
-							line: _line,
-							character: _character
-						}
-					}
-					currentToken += str[j];
-					j++;
-				}
-			}
-			if (!lookAhead) {
-				i = j;
-				line = _line;
-				character = _character;
-			}
-			return currentToken
-		}
+		const tokeniser = new VDFTokeniser(str)
 		const parseObject = (): ColorInformation[] => {
 			const obj: { [key: string]: any } = {}
 			const colours: ColorInformation[] = []
-			let currentToken = next();
-			let nextToken = next(true);
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
 			while (currentToken != "}" && nextToken != "EOF") {
-				const lookahead: string = next(true)
+				const lookahead: string = tokeniser.next(true)
 				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
 					// Object with OS Tag
-					currentToken += `${VDFExtended.OSTagDelimeter}${next()}`;
-					next(); // Skip over opening brace
+					currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
+					tokeniser.next(); // Skip over opening brace
 					// obj[currentToken] = parseObject();
 					colours.push(...parseObject())
 				}
 				else if (nextToken == "{") {
 					// Object
-					next(); // Skip over opening brace
+					tokeniser.next(); // Skip over opening brace
 					if (obj.hasOwnProperty(currentToken)) {
 						const value = obj[currentToken]
 						if (Array.isArray(value)) {
@@ -120,11 +44,11 @@ export class VDFExtended {
 				}
 				else {
 					// Primitive
-					next(); // Skip over value
+					tokeniser.next(); // Skip over value
 					// Check primitive os tag
-					const lookahead: string = next(true)
+					const lookahead: string = tokeniser.next(true)
 					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-						currentToken += `${VDFExtended.OSTagDelimeter}${next()}`;
+						currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
 					}
 
 					if (/\d+\s+\d+\s+\d+\s+\d+/.test(nextToken)) {
@@ -139,17 +63,16 @@ export class VDFExtended {
 							range: {
 								// The tokeniser skips over the last closing brace, subtract 1 to stay inside
 								start: {
-									line: line,
-									character: character - nextToken.length - 1
+									line: tokeniser.line,
+									character: tokeniser.character - nextToken.length - 1
 								},
 								end: {
-									line: line,
-									character: character - 1
+									line: tokeniser.line,
+									character: tokeniser.character - 1
 								}
 							}
 						})
 					}
-
 
 					// if (obj.hasOwnProperty(currentToken)) {
 					// 	const value = obj[currentToken]
@@ -168,11 +91,78 @@ export class VDFExtended {
 					// 	obj[currentToken] = nextToken;
 					// }
 				}
-				currentToken = next();
-				nextToken = next(true);
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
 			}
 			return colours;
 		}
 		return parseObject();
+	}
+	static renameToken(str: string, oldName: string, newName: string, uri?: string): { [uri: string]: TextEdit[] } {
+		const tokeniser = new VDFTokeniser(str)
+		const result: { [uri: string]: TextEdit[] } = {}
+		const parseObject = (): { [key: string]: any } => {
+			const obj: { [key: string]: any } = {}
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
+			while (currentToken != "}" && nextToken != "EOF") {
+				const lookahead: string = tokeniser.next(true)
+				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+					// Object with OS Tag
+					currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
+					tokeniser.next(); // Skip over opening brace
+					obj[currentToken] = parseObject();
+				}
+				else if (nextToken == "{") {
+					// Object
+					tokeniser.next(); // Skip over opening brace
+					if (obj.hasOwnProperty(currentToken)) {
+						const value = obj[currentToken]
+						if (Array.isArray(value)) {
+							// Object list exists
+							obj[currentToken].push(parseObject());
+						}
+						else {
+							// Object already exists
+							obj[currentToken] = [value, parseObject()]
+						}
+					}
+					else {
+						// Object doesnt exist
+						obj[currentToken] = parseObject();
+					}
+				}
+				else {
+					// Primitive
+					tokeniser.next(); // Skip over value
+					// Check primitive os tag
+					const lookahead: string = tokeniser.next(true)
+					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+						currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
+					}
+					if (obj.hasOwnProperty(currentToken)) {
+						const value = obj[currentToken]
+						// dynamic property exists
+						if (Array.isArray(value)) {
+							// Array already exists
+							obj[currentToken].push(nextToken);
+						}
+						else {
+							// Primitive type already exists
+							obj[currentToken] = [value, nextToken]
+						}
+					}
+					else {
+						// Property doesn't exist
+						obj[currentToken] = nextToken;
+					}
+				}
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
+			}
+			return obj;
+		}
+		parseObject();
+		return result
 	}
 }

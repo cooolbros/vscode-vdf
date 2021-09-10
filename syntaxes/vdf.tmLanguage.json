@@ -3,6 +3,10 @@
 	"name": "Valve KeyValues",
 	"patterns": [
 		{
+			"name": "keyword.control",
+			"match": "(#base)"
+		},
+		{
 			"name": "comment",
 			"match": "//.*\n"
 		},
