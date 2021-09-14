@@ -8,7 +8,7 @@
 		},
 		{
 			"name": "keyword",
-			"match": "(event)\\s*(\\w+)",
+			"match": "(event)\\s+(\\w+)",
 			"captures": {
 				"0": {
 					"name": "entity.name.function"
@@ -19,7 +19,21 @@
 			}
 		},
 		{
-			"match": "(?i)(RunEvent|StopEvent)\\s*\\w+",
+			"match": "(?i)(RunEventChild)\\s+(\\w+)\\s+(\\w+)",
+			"captures": {
+				"0": {
+					"name": "entity.name.function"
+				},
+				"1": {
+					"name": "keyword"
+				},
+				"2": {
+					"name": "variable"
+				}
+			}
+		},
+		{
+			"match": "(?i)(RunEvent|StopEvent)\\s+\\w+",
 			"captures": {
 				"0": {
 					"name": "entity.name.function"
@@ -30,7 +44,18 @@
 			}
 		},
 		{
-			"match": "(?i)(Animate)\\s+(\\w+)\\s+(\\w+)\\s+(\".*\"|\\w+)\\s+(\\w+)",
+			"match": "(?i)(StopPanelAnimations)\\s+\\w+",
+			"captures": {
+				"0": {
+					"name": "variable"
+				},
+				"1": {
+					"name": "keyword"
+				}
+			}
+		},
+		{
+			"match": "(?i)(Animate)\\s+(\\w+)\\s+(\\w+)\\s+(\".*\"|\\S+)\\s+(\\w+)",
 			"captures": {
 				"0": {},
 				"1": {
@@ -66,8 +91,39 @@
 			}
 		},
 		{
+			"match": "(?i)(FireCommand|PlaySound)\\s+([\\d.]+)\\s+(\".*\"|\\S+)",
+			"captures": {
+				"0": {},
+				"1": {
+					"name": "keyword"
+				},
+				"2": {
+					"name": "constant.numeric"
+				},
+				"3": {
+					"name": "string"
+				}
+			}
+		},
+		{
+			"match": "(?i)(SetInputEnabled)\\s+(\\w+)",
+			"captures": {
+				"0": {},
+				"1": {
+					"name": "keyword"
+				},
+				"2": {
+					"name": "variable"
+				}
+			}
+		},
+		{
 			"match": "\\d+",
 			"name": "constant.numeric"
+		},
+		{
+			"match": "\\[.*\\]",
+			"name": "constant.character"
 		}
 	],
 	"repository": {},

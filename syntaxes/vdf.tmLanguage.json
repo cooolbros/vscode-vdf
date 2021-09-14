@@ -4,11 +4,11 @@
 	"patterns": [
 		{
 			"name": "keyword.control",
-			"match": "(#base)"
+			"match": "(\"?#base\"?)"
 		},
 		{
 			"name": "comment",
-			"match": "//.*\n"
+			"match": "//.*"
 		},
 		{
 			"name": "constant.character",
@@ -16,7 +16,7 @@
 		},
 		{
 			"name": "variable",
-			"match": "(\".*\")\\s*(\".*\")",
+			"match": "(\"?[\\w.]+\"?)\\s*(\".*\")",
 			"captures": {
 				"1": {
 					"name": "variable"
