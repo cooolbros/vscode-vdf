@@ -209,11 +209,20 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 								if (clientscheme[section].includes(property)) {
 									const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri), connection)
 									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
+									let detailsGenerator: (data: any) => string = (() => {
+										switch (section) {
+											case "Colors": return (data: any): string => data;
+											case "Borders": return (data: any): string => "";
+											case "Fonts": return (data: any): string => `${data["1"]?.name ?? ""} ${data["1"]?.tall ?? ""}`;
+										}
+									})()
+
 									if (fs.existsSync(clientschemePath)) {
 										const hudclientscheme = HUDTools.loadControls(clientschemePath)
 										return Object.keys(hudclientscheme["Scheme"][section]).map((i) => ({
 											label: i,
-											kind: sectionIcons[section]
+											kind: sectionIcons[section],
+											detail: detailsGenerator(hudclientscheme["Scheme"][section][i])
 										}))
 									}
 								}
