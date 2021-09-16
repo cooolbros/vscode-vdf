@@ -56,7 +56,8 @@
 					".res",
 					".vdf",
 					".vmt"
-				]
+				],
+				"configuration": "./vdf-language-configuration.json"
 			},
 			{
 				"id": "hudanimations",

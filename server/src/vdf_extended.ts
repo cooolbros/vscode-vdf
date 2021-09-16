@@ -1,8 +1,87 @@
-import { ColorInformation, TextEdit } from "vscode-languageserver/node";
-import { VDFTokeniser } from './vdf_tokeniser';
+
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath, pathToFileURL, URL } from "url";
+import { ColorInformation, Location, Position, Range, TextEdit, _Connection } from "vscode-languageserver/node";
+import { VDFTokeniser } from "./vdf_tokeniser";
+
+export type VDFDocument = Array<[number, number, string, string | VDFDocument]>
+
+export function VDFSearch(uri: URL, document: VDFDocument, query: string, connection: _Connection): Location | undefined {
+
+	const search = (uri: URL, document: VDFDocument): Location | undefined => {
+		// connection.console.log(`[VDFSearch] Searching ${uri.pathname}`)
+		for (const [line, character, key, value] of document) {
+			// connection.console.log(`${key}: ${value}`)
+			if (key.toLowerCase() == "#base") {
+				const baseFileUri: URL = pathToFileURL(`${path.dirname(fileURLToPath(uri))}/${value}`)
+				// connection.console.log(`going to search ${baseFileUri}`)
+				const result = search(baseFileUri, VDFExtended.getDocumentObjects(fs.readFileSync(baseFileUri, "utf-8")))
+				if (result) {
+					return result
+				}
+			}
+			if (key.toLowerCase() == query.toLowerCase()) {
+				// connection.console.log(`Found matching item for ${query}, Checking type`)
+				return Location.create(uri.href, Range.create(Position.create(line, character - 1), Position.create(line, character + key.length - 1)))
+			}
+			if (Array.isArray(value)) {
+				// connection.console.log(`Iterating ${key}`)
+				const range: Location | undefined = search(uri, value)
+				if (range) {
+					return range
+				}
+			}
+		}
+	}
+
+	return search(uri, document)
+}
 
 export class VDFExtended {
 	static OSTagDelimeter: string = "^"
+
+	static getDocumentObjects(str: string): VDFDocument {
+		const tokeniser = new VDFTokeniser(str)
+		const parseObject = (): VDFDocument => {
+			const obj: VDFDocument = []
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
+			while (currentToken != "}" && nextToken != "EOF") {
+				const lookahead: string = tokeniser.next(true)
+				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+					// Object with OS Tag
+					currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
+					tokeniser.next(); // Skip over opening brace
+					obj.push([tokeniser.line, tokeniser.character, currentToken, parseObject()]);
+				}
+				else if (nextToken == "{") {
+					// Object
+					const line = tokeniser.line
+					const character = tokeniser.character
+					tokeniser.next(); // Skip over opening brace
+					obj.push([line, character - currentToken.length, currentToken, parseObject()]);
+				}
+				else {
+					// Primitive
+					const line = tokeniser.line
+					const character = tokeniser.character
+					tokeniser.next(); // Skip over value
+					// Check primitive os tag
+					const lookahead: string = tokeniser.next(true)
+					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+						currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
+					}
+					obj.push([line, character - currentToken.length, currentToken, nextToken]);
+				}
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
+			}
+			return obj;
+		}
+		return parseObject();
+	}
+
 
 	static getColours(str: string): ColorInformation[] {
 		const tokeniser = new VDFTokeniser(str)
