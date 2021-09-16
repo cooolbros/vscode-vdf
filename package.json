@@ -20,12 +20,13 @@
 		"commands": [
 			{
 				"category": "VDF",
+				"title": "Sort VDF",
+				"command": "vscode-vdf.sort-vdf"
+			},
+			{
+				"category": "VDF",
 				"title": "Convert VDF to JSON",
-				"command": "vscode-vdf.vdf-to-json",
-				"icon": {
-					"light": "$(zap)",
-					"dark": "$(zap)"
-				}
+				"command": "vscode-vdf.vdf-to-json"
 			},
 			{
 				"category": "VDF",

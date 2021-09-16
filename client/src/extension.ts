@@ -6,13 +6,25 @@ import {
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
+import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
 import { VDF } from "./vdf";
+import { VDFExtended } from "./vdf_extended";
 
 let client: LanguageClient
 
 export function activate(context: ExtensionContext): void {
 
 	// Commands
+
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sort-vdf", (editor: TextEditor, edit: TextEditorEdit) => {
+		const { document } = editor
+		const ext = document.fileName.split('.').pop()
+		if (((ext): ext is keyof typeof sortKeysOrders => sortKeysOrders.hasOwnProperty(ext))(ext)) {
+			const order = sortKeysOrders[ext]
+			const result: string = VDFExtended.sort(VDF.parse(document.getText()), order)
+			edit.replace(new Range(0, 0, document.lineCount, 0), result)
+		}
+	}))
 
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.vdf-to-json", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
