@@ -6,17 +6,19 @@ import {
 	ColorInformation,
 	ColorPresentation,
 	ColorPresentationParams,
-	CompletionItem,
-	CompletionItemKind,
-	CompletionParams,
+	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
 	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DidCloseTextDocumentParams, DocumentColorParams, DocumentFormattingParams, Hover, HoverParams, InitializeParams,
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection
 } from "vscode-languageserver/node";
+import { genericHudTypes, hudTypes } from "./HUD/keys";
+import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import { HUDTools } from "./hud_tools";
 import * as clientscheme from "./JSON/clientscheme.json";
 import { VDF } from "./vdf";
 import { VDFDocument, VDFExtended, VDFSearch } from "./vdf_extended";
+
+
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -35,8 +37,10 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 				resolveProvider: false,
 				triggerCharacters: [
 					".",
-					"\""
-				]
+					"\"",
+					"/"
+				],
+				workDoneProgress: true
 			},
 			hoverProvider: true,
 			definitionProvider: true,
@@ -53,7 +57,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 		uri: change.document.uri,
 		diagnostics: ((): Diagnostic[] => {
 			try {
-				objects[change.document.uri] = VDFExtended.getDocumentObjects(change.document.getText())
+				objects[change.document.uri] = VDFExtended.getDocumentObjects(change.document.getText(), connection)
 				return []
 			}
 			catch (e: any) {
@@ -80,13 +84,157 @@ connection.onDidCloseTextDocument((params: DidCloseTextDocumentParams) => {
 	})
 })
 
-connection.onCompletion((params: CompletionParams): CompletionItem[] => {
-	return [
-		{
-			label: "bgcolor_override",
-			kind: CompletionItemKind.Text
+connection.onCompletion((params: CompletionParams): CompletionItem[] | CompletionList => {
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		const line = document.getText({
+			start: Position.create(params.position.line, 0),
+			end: Position.create(params.position.line, Infinity),
+		})
+		const tokens = line.split(/\s+/).filter((i) => i != "")
+		// connection.console.log(`${JSON.stringify(tokens)} ${tokens.length}`)
+		if (tokens.length == 1) {
+			// Suggest key
+			const vdfDoc = VDFExtended.getObjectAtOffset(objects[document.uri], params.position, connection)
+			if (vdfDoc) {
+				let controlName: string = ""
+				const properties: string[] = []
+				for (const [line, character, property, value] of vdfDoc) {
+
+					properties.push(property)
+					if (property.toLowerCase() == "controlname" && typeof value == "string") {
+						controlName = value.toLowerCase()
+					}
+				}
+				if (controlName != "") {
+					if (((t: string): t is keyof typeof hudTypes => hudTypes.hasOwnProperty(t))(controlName)) {
+						return [...hudTypes[controlName], ...genericHudTypes].filter((i) => !properties.includes(i.label))
+					}
+					return genericHudTypes
+				}
+			}
 		}
-	]
+		else {
+			// Suggest value
+			// connection.console.log(JSON.stringify(line.split(/[\s"]+/)))
+			let property = line.split(/[\s"]+/).find((i) => i != "")
+			if (property) {
+				property = property.toLowerCase()
+				switch (property.toLowerCase()) {
+					case "#base":
+						{
+							const items: CompletionItem[] = []
+							let basePath: string = ""
+							const _path = tokens.pop()
+							if (_path) {
+								basePath = _path.split(/[\s\r\n"]+/).join("")
+							}
+							const absoluteBasePath = `${path.dirname(fileURLToPath(document.uri))}/${basePath}/`
+							connection.console.log(absoluteBasePath)
+							if (fs.existsSync(absoluteBasePath)) {
+								for (const item of fs.readdirSync(absoluteBasePath)) {
+									items.push({
+										label: item,
+										kind: fs.statSync(`${absoluteBasePath}/${item}`).isFile() ? CompletionItemKind.File : CompletionItemKind.Folder,
+										commitCharacters: [
+											"/"
+										]
+										// detail: "some detaul :-)"
+									})
+								}
+								return {
+									isIncomplete: true,
+									items: items,
+								}
+							}
+							break;
+						}
+
+					case "image":
+						{
+							const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri), connection)
+							const images: Set<string> = new Set()
+							const iterateDir = (relativeFolderPath: string) => {
+								for (const item of fs.readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
+									if (!fs.statSync(`${hudRoot}/${relativeFolderPath}/${item}`).isFile()) {
+										iterateDir(`${relativeFolderPath}/${item}`)
+									}
+									else {
+										images.add(`${path.relative(`${hudRoot}/materials/vgui`, `${hudRoot}/${relativeFolderPath}`)}\\${path.parse(item).name}`.split('\\').join('/'))
+									}
+								}
+							}
+							iterateDir(`materials`)
+							return Array.from(images).map((i) => ({
+								label: i,
+								kind: CompletionItemKind.Field
+							}))
+
+						}
+					case "pin_to_sibling":
+						{
+							try {
+								const obj = VDF.parse(document.getText())
+								const keys: CompletionItem[] = []
+								const addKeys = (obj: any) => {
+									for (let property in obj) {
+										if (typeof obj[property] == "object") {
+											keys.push({
+												label: property,
+												kind: CompletionItemKind.Variable
+											})
+											addKeys(obj[property])
+										}
+									}
+								}
+								addKeys(obj)
+								return keys
+							}
+							catch (e: any) {
+								connection.console.error(e)
+								return []
+							}
+							break
+						}
+					default:
+						{
+							const sectionIcons: Record<keyof typeof clientscheme, CompletionItemKind> = {
+								"Colors": CompletionItemKind.Color,
+								"Borders": CompletionItemKind.Snippet,
+								"Fonts": CompletionItemKind.Text,
+							}
+
+							let section: keyof typeof clientscheme
+							for (section in clientscheme) {
+								if (clientscheme[section].includes(property)) {
+									const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri), connection)
+									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
+									if (fs.existsSync(clientschemePath)) {
+										const hudclientscheme = HUDTools.loadControls(clientschemePath)
+										return Object.keys(hudclientscheme["Scheme"][section]).map((i) => ({
+											label: i,
+											kind: sectionIcons[section]
+										}))
+									}
+								}
+							}
+
+							if (statichudKeyBitValues.includes(property)) {
+								return [
+									{ label: "1", kind: CompletionItemKind.Enum },
+									{ label: "0", kind: CompletionItemKind.Enum }
+								]
+							}
+							if (statichudKeyValues.hasOwnProperty(property)) {
+								return statichudKeyValues[property]
+							}
+						}
+				}
+
+			}
+		}
+	}
+	return []
 })
 
 connection.onHover((params: HoverParams): Hover | undefined => {
@@ -101,10 +249,11 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 			if (entries.length) {
 				const [key, value] = entries[0]
 				return {
-					contents: [
-						`${key}`,
-						`${value}`
-					]
+					contents: {
+						kind: "markdown",
+						language: "vdf",
+						value: `"${key}"\t\t"${value}"`
+					}
 				}
 			}
 		}
@@ -139,16 +288,15 @@ connection.onDefinition((params: DefinitionParams): Definition => {
 									// connection.console.log(clientschemePath)
 									if (fs.existsSync(clientschemePath)) {
 										const clientschemeUri = pathToFileURL(clientschemePath);
-										const documentObjects = VDFExtended.getDocumentObjects(fs.readFileSync(clientschemePath, "utf-8"));
+										const documentObjects = VDFExtended.getDocumentObjects(fs.readFileSync(clientschemePath, "utf-8"), connection);
 										const result = VDFSearch(clientschemeUri, documentObjects, <string>value, connection)
 										if (result) {
-											connection.console.log(JSON.stringify(result))
+											// connection.console.log(JSON.stringify(result))
 											return result
 										}
 									}
 								}
 							}
-
 						}
 						return []
 					}

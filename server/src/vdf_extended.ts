@@ -16,7 +16,7 @@ export function VDFSearch(uri: URL, document: VDFDocument, query: string, connec
 			if (key.toLowerCase() == "#base") {
 				const baseFileUri: URL = pathToFileURL(`${path.dirname(fileURLToPath(uri))}/${value}`)
 				// connection.console.log(`going to search ${baseFileUri}`)
-				const result = search(baseFileUri, VDFExtended.getDocumentObjects(fs.readFileSync(baseFileUri, "utf-8")))
+				const result = search(baseFileUri, VDFExtended.getDocumentObjects(fs.readFileSync(baseFileUri, "utf-8"), connection))
 				if (result) {
 					return result
 				}
@@ -41,7 +41,8 @@ export function VDFSearch(uri: URL, document: VDFDocument, query: string, connec
 export class VDFExtended {
 	static OSTagDelimeter: string = "^"
 
-	static getDocumentObjects(str: string): VDFDocument {
+	static getDocumentObjects(str: string, connection: _Connection): VDFDocument {
+		// connection.console.log(str)
 		const tokeniser = new VDFTokeniser(str)
 		const parseObject = (): VDFDocument => {
 			const obj: VDFDocument = []
@@ -72,6 +73,15 @@ export class VDFExtended {
 					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
 						currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
 					}
+
+					if (nextToken == "}") {
+						throw {
+							message: `Missing value for "${currentToken}"`,
+							line: tokeniser.line,
+							character: tokeniser.character
+						}
+					}
+
 					obj.push([line, character - currentToken.length, currentToken, nextToken]);
 				}
 				currentToken = tokeniser.next();
@@ -243,5 +253,22 @@ export class VDFExtended {
 		}
 		parseObject();
 		return result
+	}
+
+	static getObjectAtOffset(document: VDFDocument, position: Position, connection: _Connection): VDFDocument | undefined {
+		const search = (doc: VDFDocument): VDFDocument | undefined => {
+			for (const [line, character, key, value] of doc) {
+				if (line >= position.line - 1) {
+					return doc
+				}
+				if (Array.isArray(value)) {
+					const doc = search(value)
+					if (doc) {
+						return doc
+					}
+				}
+			}
+		}
+		return search(document)
 	}
 }
