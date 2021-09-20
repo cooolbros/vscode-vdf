@@ -7,7 +7,7 @@ import {
 	ColorPresentation,
 	ColorPresentationParams,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
-	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DidCloseTextDocumentParams, DocumentColorParams, DocumentFormattingParams, Hover, HoverParams, InitializeParams,
+	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DidCloseTextDocumentParams, DocumentColorParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection
 } from "vscode-languageserver/node";
@@ -47,6 +47,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			colorProvider: true,
 			documentFormattingProvider: true,
 			renameProvider: true,
+			documentSymbolProvider: true
 		}
 	}
 })
@@ -401,6 +402,13 @@ connection.onRenameRequest((params: RenameParams): WorkspaceEdit | undefined => 
 		}
 	}
 	return undefined
+})
+
+connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | undefined => {
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		return VDFExtended.getDocumentSymbols(document.getText())
+	}
 })
 
 documents.listen(connection)

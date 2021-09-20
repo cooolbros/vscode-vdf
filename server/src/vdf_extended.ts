@@ -2,7 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL, URL } from "url";
-import { ColorInformation, Location, Position, Range, TextEdit, _Connection } from "vscode-languageserver/node";
+import { ColorInformation, DocumentSymbol, Location, Position, Range, TextEdit, _Connection } from "vscode-languageserver/node";
 import { VDFTokeniser } from "./vdf_tokeniser";
 
 export type VDFDocument = Array<[number, number, string, string | VDFDocument]>
@@ -270,5 +270,79 @@ export class VDFExtended {
 			}
 		}
 		return search(document)
+	}
+
+	static getDocumentSymbols(str: string): DocumentSymbol[] {
+		const tokeniser = new VDFTokeniser(str)
+		const parseObject = (): DocumentSymbol[] => {
+			const locations: DocumentSymbol[] = []
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
+			while (currentToken != "}" && nextToken != "EOF") {
+				const lookahead: string = tokeniser.next(true)
+				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+					// Object with OS Tag
+					const line = tokeniser.line
+					const character = tokeniser.character
+
+					currentToken += ` ${tokeniser.next()}`; // Skip over OS Tag
+					tokeniser.next(); // Skip over opening brace
+
+					const range: Range = {
+						start: Position.create(line, character),
+						end: Position.create(line, character + currentToken.length)
+					}
+
+					locations.push({
+						name: currentToken,
+						kind: 19,
+						range: range,
+						selectionRange: range,
+						children: parseObject()
+					})
+				}
+				else if (nextToken == "{") {
+					// Object
+					const line = tokeniser.line
+					const character = tokeniser.character
+					tokeniser.next(); // Skip over opening brace
+
+					const range: Range = {
+						start: Position.create(line, character - currentToken.length),
+						end: Position.create(line, character)
+					}
+
+					locations.push({
+						name: currentToken,
+						kind: 19,
+						range: range,
+						selectionRange: range,
+						children: parseObject()
+					});
+				}
+				else {
+					// Primitive
+
+					tokeniser.next(); // Skip over value
+					// Check primitive os tag
+					const lookahead: string = tokeniser.next(true)
+					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+						tokeniser.next()
+					}
+
+					if (nextToken == "}") {
+						throw {
+							message: `Missing value for "${currentToken}"`,
+							line: tokeniser.line,
+							character: tokeniser.character
+						}
+					}
+				}
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
+			}
+			return locations;
+		}
+		return parseObject();
 	}
 }
