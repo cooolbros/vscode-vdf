@@ -32,6 +32,11 @@
 				"category": "VDF",
 				"title": "Convert JSON to VDF",
 				"command": "vscode-vdf.json-to-vdf"
+			},
+			{
+				"category": "VDF",
+				"title": "Show References",
+				"command": "vscode-vdf.show-references"
 			}
 		],
 		"grammars": [

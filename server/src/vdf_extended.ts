@@ -1,8 +1,7 @@
-
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL, URL } from "url";
-import { ColorInformation, DocumentSymbol, Location, Position, Range, TextEdit, _Connection } from "vscode-languageserver/node";
+import { CodeLens, ColorInformation, DocumentSymbol, Location, Position, Range, TextEdit, _Connection } from "vscode-languageserver/node";
 import { VDFTokeniser } from "./vdf_tokeniser";
 
 export type VDFDocument = Array<[number, number, string, string | VDFDocument]>
@@ -344,5 +343,196 @@ export class VDFExtended {
 			return locations;
 		}
 		return parseObject();
+	}
+
+	static getCodeLens(uri: string, str: string, connection: _Connection): CodeLens[] {
+		const elementReferences: Record<string, [CodeLens[], Range?]> = {}
+		const tokeniser = new VDFTokeniser(str)
+
+		const parseObject = () => {
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
+			while (currentToken != "}" && nextToken != "EOF") {
+				const lookahead: string = tokeniser.next(true)
+				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+					// Object with OS Tag
+
+					if (!elementReferences.hasOwnProperty(currentToken)) {
+						elementReferences[currentToken] = [[], {
+							start: Position.create(tokeniser.line, tokeniser.character),
+							end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
+						}]
+					}
+					elementReferences[currentToken][1] = {
+						start: Position.create(tokeniser.line, tokeniser.character),
+						end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
+					}
+
+					tokeniser.next(); // Skip over OS Tag
+					tokeniser.next(); // Skip over opening brace
+				}
+				else if (nextToken == "{") {
+					// Object
+
+
+					if (!elementReferences.hasOwnProperty(currentToken)) {
+						elementReferences[currentToken] = [[], {
+							start: Position.create(tokeniser.line, tokeniser.character),
+							end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
+						}]
+					}
+					elementReferences[currentToken][1] = {
+						start: Position.create(tokeniser.line, tokeniser.character),
+						end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
+					}
+
+					tokeniser.next(); // Skip over opening brace
+
+					parseObject()
+				}
+				else {
+					// Primitive
+
+					tokeniser.next(); // Skip over value
+					// Check primitive os tag
+					const lookahead: string = tokeniser.next(true)
+					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+						tokeniser.next()
+					}
+
+					if (currentToken.toLowerCase() == "pin_to_sibling") {
+						if (!elementReferences.hasOwnProperty(nextToken)) {
+							elementReferences[nextToken] = [[], undefined]
+						}
+
+						elementReferences[nextToken][0].push({
+							range: {
+								start: Position.create(tokeniser.line, tokeniser.character - nextToken.length),
+								end: Position.create(tokeniser.line, tokeniser.character)
+							}
+						})
+					}
+
+					if (nextToken == "}") {
+						throw {
+							message: `Missing value for "${currentToken}"`,
+							line: tokeniser.line,
+							character: tokeniser.character
+						}
+					}
+				}
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
+			}
+		}
+
+		parseObject()
+
+		const codelenss: CodeLens[] = []
+		for (const property in elementReferences) {
+
+			const [references, range] = elementReferences[property]
+			if (references.length > 0) {
+				if (range != undefined) {
+					codelenss.push({
+						range: range,
+						command: {
+							title: `${references.length} references`,
+							command: "vscode-vdf.show-references",
+							arguments: [
+								uri,
+								range.start
+							]
+						}
+					})
+				}
+				// else {
+				// 	connection.sendDiagnostics({
+				// 		uri: uri,
+				// 		diagnostics: [
+				// 			{
+				// 				message: `Cannot find name ${property}`,
+				// 				range: {
+				// 					start: Position.create(0, 0),
+				// 					end: Position.create(0, 10)
+				// 				}
+				// 			}
+				// 		]
+				// 	})
+				// }
+			}
+			else {
+				// connection.console.log(`${property} has no references`)
+			}
+		}
+
+		return codelenss
+	}
+
+	static getElementReferences(uri: string, str: string, elementName: string): Location[] {
+		elementName = elementName.toLowerCase()
+		const locations: Location[] = []
+		const tokeniser = new VDFTokeniser(str)
+		const parseObject = () => {
+			let currentToken = tokeniser.next();
+			let nextToken = tokeniser.next(true);
+			while (currentToken != "}" && nextToken != "EOF") {
+				const lookahead: string = tokeniser.next(true)
+				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+					// Object with OS Tag
+					const line = tokeniser.line
+					const character = tokeniser.character
+
+					currentToken += ` ${tokeniser.next()}`; // Skip over OS Tag
+					tokeniser.next(); // Skip over opening brace
+
+					const range: Range = {
+						start: Position.create(line, character),
+						end: Position.create(line, character + currentToken.length)
+					}
+
+
+				}
+				else if (nextToken == "{") {
+					// Object
+					tokeniser.next(); // Skip over opening brace
+					parseObject()
+				}
+				else {
+					// Primitive
+
+					tokeniser.next(); // Skip over value
+					// Check primitive os tag
+					const lookahead: string = tokeniser.next(true)
+					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+						tokeniser.next()
+					}
+
+					if (currentToken.toLowerCase() == "pin_to_sibling" && nextToken.toLowerCase() == elementName) {
+						locations.push({
+							uri: uri,
+							range: {
+								start: Position.create(tokeniser.line, tokeniser.character - nextToken.length - 1),
+								end: Position.create(tokeniser.line, tokeniser.character - 1)
+							}
+						})
+					}
+
+					if (nextToken == "}") {
+						throw {
+							message: `Missing value for "${currentToken}"`,
+							line: tokeniser.line,
+							character: tokeniser.character
+						}
+					}
+				}
+				currentToken = tokeniser.next();
+				nextToken = tokeniser.next(true);
+			}
+		}
+		parseObject()
+
+
+		return locations
 	}
 }

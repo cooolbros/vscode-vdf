@@ -16,6 +16,8 @@ export const genericHudTypes: CompletionItem[] = [
 ]
 
 const labelProperties: CompletionItem[] = [
+	{ label: "auto_wide_tocontents", kind: CompletionItemKind.Field },
+	{ label: "auto_tall_tocontents", kind: CompletionItemKind.Field },
 	{ label: "labelText", kind: CompletionItemKind.Field },
 	{ label: "font", kind: CompletionItemKind.Field },
 	{ label: "textAlignment", kind: CompletionItemKind.Field },

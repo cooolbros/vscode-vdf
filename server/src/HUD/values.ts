@@ -1,6 +1,8 @@
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver-types"
 
 export const statichudKeyBitValues = [
+	"auto_wide_tocontents",
+	"auto_tall_tocontents",
 	"visible",
 	"enabled",
 	"paintbackground",

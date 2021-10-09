@@ -8,7 +8,7 @@ import {
 	ColorPresentationParams,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
 	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DidCloseTextDocumentParams, DocumentColorParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
-	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, RenameParams, TextDocumentChangeEvent, TextDocuments,
+	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection
 } from "vscode-languageserver/node";
 import { genericHudTypes, hudTypes } from "./HUD/keys";
@@ -47,7 +47,11 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			colorProvider: true,
 			documentFormattingProvider: true,
 			renameProvider: true,
-			documentSymbolProvider: true
+			documentSymbolProvider: true,
+			// codeLensProvider: {
+			// 	resolveProvider: false
+			// },
+			referencesProvider: true
 		}
 	}
 })
@@ -407,7 +411,53 @@ connection.onRenameRequest((params: RenameParams): WorkspaceEdit | undefined => 
 connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | undefined => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
-		return VDFExtended.getDocumentSymbols(document.getText())
+		try {
+			return VDFExtended.getDocumentSymbols(document.getText())
+		}
+		catch (e: any) {
+			connection.console.error(e)
+		}
+	}
+})
+
+// connection.onCodeLens((params: CodeLensParams): CodeLens[] | undefined => {
+// 	try {
+// 		const document = documents.get(params.textDocument.uri)
+// 		if (document) {
+// 			return VDFExtended.getCodeLens(document.uri, document.getText(), connection)
+// 		}
+// 	}
+// 	catch (e: any) {
+// 		connection.console.error(e)
+// 	}
+// })
+
+// connection.onCodeLensResolve((params: CodeLens): CodeLens => {
+// 	connection.console.log(JSON.stringify(params))
+// 	return {
+// 		command: {
+// 			title: `${params.data.references.length} references`,
+// 			command: "editor.action.goToReferences",
+// 			arguments: [
+// 				params.data.uri,
+// 				params.range.start,
+// 				params.range.end,
+// 			]
+// 		},
+// 		range: params.range
+// 	}
+// })
+
+connection.onReferences((params: ReferenceParams): Location[] | undefined => {
+	connection.console.log("connection.onReferences")
+	connection.console.log(JSON.stringify(params, null, 4))
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		const line = document.getText({
+			start: Position.create(params.position.line, 0),
+			end: Position.create(params.position.line, Infinity)
+		}).trim().split('"').join("")
+		return VDFExtended.getElementReferences(document.uri, document.getText(), line)
 	}
 })
 
