@@ -2,9 +2,11 @@
 
 VDF/Valve KeyValues language support for VSCode
 
+***This extension is still in development***
+
 ### Features
  - Syntax highlighting
- - Document formatting (somewhat)
+ - Document formatting (currently removes comments, see TODO)
  - Convert `VDF` to `JSON`
  - Convert `JSON` to `VDF`
  - Jump/Peek definition for #base files
@@ -22,3 +24,11 @@ VDF/Valve KeyValues language support for VSCode
  - Autocomplete for image paths
  - Autocomplete for pin_to_sibling elements
  - Syntax highlighting for HUD Animations
+
+
+### TODO
+
+ - Document formatting for HUD animations
+ - Code lens for element and clientscheme references
+ - Better VDF formatting
+ - Unify behaviour for #base and image path autocomplete
