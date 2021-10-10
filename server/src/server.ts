@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { fileURLToPath, pathToFileURL, URL } from "url";
+import { fileURLToPath } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
 	ColorInformation,
@@ -8,22 +8,22 @@ import {
 	ColorPresentationParams,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
 	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DidCloseTextDocumentParams, DocumentColorParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
-	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
-	TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection
+	InitializeResult, Position, ProposedFeatures, Range, TextDocumentChangeEvent, TextDocuments,
+	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
 import { genericHudTypes, hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import { HUDTools } from "./hud_tools";
 import * as clientscheme from "./JSON/clientscheme.json";
 import { VDF } from "./vdf";
-import { VDFDocument, VDFExtended, VDFSearch } from "./vdf_extended";
-
+import { VDFExtended } from "./vdf_extended";
+import { VDFOSTags } from "./vdf_tokeniser";
 
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 
-const objects: Record<string, VDFDocument> = {}
+const objects: Record<string, DocumentSymbol[]> = {}
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
@@ -46,12 +46,12 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			definitionProvider: true,
 			colorProvider: true,
 			documentFormattingProvider: true,
-			renameProvider: true,
+			// renameProvider: true,
 			documentSymbolProvider: true,
 			// codeLensProvider: {
 			// 	resolveProvider: false
 			// },
-			referencesProvider: true
+			// referencesProvider: true
 		}
 	}
 })
@@ -62,7 +62,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 		uri: change.document.uri,
 		diagnostics: ((): Diagnostic[] => {
 			try {
-				objects[change.document.uri] = VDFExtended.getDocumentObjects(change.document.getText(), connection)
+				objects[change.document.uri] = VDFExtended.getDocumentSymbols(change.document.getText())
 				return []
 			}
 			catch (e: any) {
@@ -97,26 +97,26 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 			end: Position.create(params.position.line, Infinity),
 		})
 		const tokens = line.split(/\s+/).filter((i) => i != "")
-		// connection.console.log(`${JSON.stringify(tokens)} ${tokens.length}`)
 		if (tokens.length == 1) {
 			// Suggest key
-			const vdfDoc = VDFExtended.getObjectAtOffset(objects[document.uri], params.position, connection)
-			if (vdfDoc) {
+			const documentSymbols = VDFExtended.Searcher.getObjectAtLocation(objects[document.uri], params.position)
+			if (documentSymbols) {
 				let controlName: string = ""
 				const properties: string[] = []
-				for (const [line, character, property, value] of vdfDoc) {
-
-					properties.push(property)
-					if (property.toLowerCase() == "controlname" && typeof value == "string") {
-						controlName = value.toLowerCase()
+				for (const documentSymbol of documentSymbols) {
+					properties.push(documentSymbol.name)
+					if (documentSymbol.name.toLowerCase() == "controlname" && documentSymbol.detail) {
+						controlName = documentSymbol.detail.toLowerCase()
 					}
 				}
+
 				if (controlName != "") {
-					if (((t: string): t is keyof typeof hudTypes => hudTypes.hasOwnProperty(t))(controlName)) {
+					if (((controlName): controlName is keyof typeof hudTypes => hudTypes.hasOwnProperty(controlName))(controlName)) {
 						return [...hudTypes[controlName], ...genericHudTypes].filter((i) => !properties.includes(i.label))
 					}
 					return genericHudTypes
 				}
+				return genericHudTypes
 			}
 		}
 		else {
@@ -157,7 +157,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 
 					case "image":
 						{
-							const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri), connection)
+							const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
 							const images: Set<string> = new Set()
 							const iterateDir = (relativeFolderPath: string) => {
 								for (const item of fs.readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
@@ -179,20 +179,19 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 					case "pin_to_sibling":
 						{
 							try {
-								const obj = VDF.parse(document.getText())
 								const keys: CompletionItem[] = []
-								const addKeys = (obj: any) => {
-									for (let property in obj) {
-										if (typeof obj[property] == "object") {
+								const addKeys = (documentSymbols: DocumentSymbol[]) => {
+									for (let documentSymbol of documentSymbols) {
+										if (documentSymbol.children) {
 											keys.push({
-												label: property,
+												label: documentSymbol.name,
 												kind: CompletionItemKind.Variable
 											})
-											addKeys(obj[property])
+											addKeys(documentSymbol.children)
 										}
 									}
 								}
-								addKeys(obj)
+								addKeys(objects[params.textDocument.uri])
 								return keys
 							}
 							catch (e: any) {
@@ -212,7 +211,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							let section: keyof typeof clientscheme
 							for (section in clientscheme) {
 								if (clientscheme[section].includes(property)) {
-									const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri), connection)
+									const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
 									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
 									let detailsGenerator: (data: any) => string = (() => {
 										switch (section) {
@@ -277,43 +276,56 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 	}
 })
 
-connection.onDefinition((params: DefinitionParams): Definition => {
+connection.onDefinition((params: DefinitionParams): Definition | null => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
+		connection.console.log(params.textDocument.uri)
+		connection.console.log(document.uri)
 		const entries = Object.entries(VDF.parse(document.getText({ start: { line: params.position.line, character: 0 }, end: { line: params.position.line, character: Infinity }, })))
 		if (entries.length) {
 			const [key, value] = entries[0]
 			switch (key.toLowerCase()) {
 				case "#base": return { uri: `${path.dirname(document.uri)}/${(<string>value).toLowerCase()}`, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
-				case "pin_to_sibling": {
-					const location: Location | undefined = VDFSearch(new URL(document.uri), objects[document.uri], <string>value, connection)
-					if (location) {
-						return location
+				case "pin_to_sibling": return VDFExtended.Searcher.getLocationOfKey(document.uri, objects[document.uri], <string>value)
+				case "labeltext": {
+
+					const searchLocalizationFile = (filePath: string): Definition | null => {
+						const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(filePath, "utf16le").substr(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings });
+						const result = VDFExtended.Searcher.getLocationOfKey(filePath, documentSymbols, (<string>value).substr(1))
+						connection.console.log(JSON.stringify(result, null, 4))
+						return result
+					}
+
+					const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+					if (hudRoot) {
+						const chat_englishPath = `${hudRoot}/resource/chat_english.txt`
+						const tf_englishPath = `${hudRoot}/../../resource/tf_english.txt`
+						return fs.existsSync(chat_englishPath)
+							? (searchLocalizationFile(chat_englishPath) ?? searchLocalizationFile(tf_englishPath))
+							: fs.existsSync(tf_englishPath) ? searchLocalizationFile(tf_englishPath) : null
+					}
+					else {
+						return searchLocalizationFile("C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2/tf/resource/tf_english.txt")
 					}
 				}
-				default:
-					{
-						// connection.console.log(`Looking for ${value}`)
-						let section: keyof typeof clientscheme
-						for (section in clientscheme) {
-							for (const property of clientscheme[section]) {
-								if (key == property) {
-									const clientschemePath = `${HUDTools.GetRoot(fileURLToPath(document.uri), connection)}/resource/clientscheme.res`
-									// connection.console.log(clientschemePath)
-									if (fs.existsSync(clientschemePath)) {
-										const clientschemeUri = pathToFileURL(clientschemePath);
-										const documentObjects = VDFExtended.getDocumentObjects(fs.readFileSync(clientschemePath, "utf-8"), connection);
-										const result = VDFSearch(clientschemeUri, documentObjects, <string>value, connection)
-										if (result) {
-											// connection.console.log(JSON.stringify(result))
-											return result
-										}
+				default: {
+					let section: keyof typeof clientscheme
+					for (section in clientscheme) {
+						for (const property of clientscheme[section]) {
+							if (key == property) {
+								const clientschemePath = `${HUDTools.GetRoot(fileURLToPath(document.uri))}/resource/clientscheme.res`
+								if (fs.existsSync(clientschemePath)) {
+									const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(clientschemePath, "utf-8"), { osTags: VDFOSTags.All });
+									const result = VDFExtended.Searcher.getLocationOfKey(clientschemePath, documentSymbols, <string>value)
+									if (result) {
+										return result
 									}
 								}
 							}
 						}
-						return []
 					}
+					return []
+				}
 			}
 		}
 	}
@@ -367,46 +379,46 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 	}
 })
 
-connection.onPrepareRename((params: PrepareRenameParams): Range | undefined => {
-	params.position
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		return {
+// connection.onPrepareRename((params: PrepareRenameParams): Range | undefined => {
+// 	params.position
+// 	const document = documents.get(params.textDocument.uri)
+// 	if (document) {
+// 		return {
 
-			start: {
-				line: params.position.line,
-				character: params.position.character - 2
-			},
-			end: {
-				line: params.position.line,
-				character: params.position.character + 2
-			}
-		}
-	}
-})
+// 			start: {
+// 				line: params.position.line,
+// 				character: params.position.character - 2
+// 			},
+// 			end: {
+// 				line: params.position.line,
+// 				character: params.position.character + 2
+// 			}
+// 		}
+// 	}
+// })
 
-connection.onRenameRequest((params: RenameParams): WorkspaceEdit | undefined => {
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		const line = document.getText({
-			start: {
-				line: params.position.line,
-				character: 0
-			},
-			end: {
-				line: params.position.line,
-				character: Infinity
-			}
-		})
-		connection.console.log(line)
-		connection.console.log(params.newName)
+// connection.onRenameRequest((params: RenameParams): WorkspaceEdit | undefined => {
+// 	const document = documents.get(params.textDocument.uri)
+// 	if (document) {
+// 		const line = document.getText({
+// 			start: {
+// 				line: params.position.line,
+// 				character: 0
+// 			},
+// 			end: {
+// 				line: params.position.line,
+// 				character: Infinity
+// 			}
+// 		})
+// 		connection.console.log(line)
+// 		connection.console.log(params.newName)
 
-		return {
-			changes: VDFExtended.renameToken(document.getText(), "", params.newName, params.textDocument.uri)
-		}
-	}
-	return undefined
-})
+// 		return {
+// 			changes: VDFExtended.renameToken(document.getText(), "", params.newName, params.textDocument.uri)
+// 		}
+// 	}
+// 	return undefined
+// })
 
 connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | undefined => {
 	const document = documents.get(params.textDocument.uri)
@@ -448,18 +460,16 @@ connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | u
 // 	}
 // })
 
-connection.onReferences((params: ReferenceParams): Location[] | undefined => {
-	connection.console.log("connection.onReferences")
-	connection.console.log(JSON.stringify(params, null, 4))
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		const line = document.getText({
-			start: Position.create(params.position.line, 0),
-			end: Position.create(params.position.line, Infinity)
-		}).trim().split('"').join("")
-		return VDFExtended.getElementReferences(document.uri, document.getText(), line)
-	}
-})
+// connection.onReferences((params: ReferenceParams): Location[] | undefined => {
+// 	const document = documents.get(params.textDocument.uri)
+// 	if (document) {
+// 		const line = document.getText({
+// 			start: Position.create(params.position.line, 0),
+// 			end: Position.create(params.position.line, Infinity)
+// 		}).trim().split('"').join("")
+// 		return VDFExtended.getElementReferences(document.uri, document.getText(), line)
+// 	}
+// })
 
 documents.listen(connection)
 connection.listen()

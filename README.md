@@ -7,19 +7,21 @@ VDF/Valve KeyValues language support for VSCode
 ### Features
  - Syntax highlighting
  - Document formatting (currently removes comments, see TODO)
- - Convert `VDF` to `JSON`
- - Convert `JSON` to `VDF`
+ - Convert VDF to JSON
+ - Convert JSON to VDF
  - Jump/Peek definition for #base files
 
- ### Features (HUD Specific)
-  - Jump/Peek definition for clientscheme
-  - Jump/Peek definition for `pin_to_sibling`
+### Features (HUD Specific)
+ - Definition Provider
+    - All Clientscheme properties
+    - labelText
+    - pin_to_sibling
  - Autocomplete for element properties:
-    - `ImagePanel` => `image`, `scaleImage`, etc...
-    - `CExLabel` => `labelText`, `font`, `textAlignment`, `fgcolor`, etc...
+    - ImagePanel => image, scaleImage, etc...
+    - CExLabel => labelText, font, textAlignment, fgcolor, etc...
  - Autocomplete for property values
-    - `font` => Will suggest from clientscheme
-    - `textAlignment` => `center`, `north`, `east`, `south`, `west`
+    - font => Will suggest from clientscheme
+    - textAlignment => center, north, east, south, west
  - Autocomplete for #base paths
  - Autocomplete for image paths
  - Autocomplete for pin_to_sibling elements
@@ -28,7 +30,11 @@ VDF/Valve KeyValues language support for VSCode
 
 ### TODO
 
- - Document formatting for HUD animations
- - Code lens for element and clientscheme references
+ - Add definition provider for custom font file definitions
+ - Add definitions for images
+ - Add rename provider
+ - Add settings for formatting preference
  - Better VDF formatting
+ - Code lens for element and clientscheme references
+ - Document formatting for HUD animations
  - Unify behaviour for #base and image path autocomplete

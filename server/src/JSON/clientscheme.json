@@ -11,6 +11,7 @@
 		"color_notready",
 		"color_outline",
 		"color_ready",
+		"color",
 		"defaultbgcolor_override",
 		"defaultfgcolor_override",
 		"defaultselectionbg2color_override",
