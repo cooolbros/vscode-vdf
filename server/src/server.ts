@@ -1,4 +1,6 @@
+import { execSync } from "child_process";
 import * as fs from "fs";
+import { tmpdir } from "os";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -121,127 +123,121 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 		}
 		else {
 			// Suggest value
-			// connection.console.log(JSON.stringify(line.split(/[\s"]+/)))
-			let property = line.split(/[\s"]+/).find((i) => i != "")
-			if (property) {
-				property = property.toLowerCase()
-				switch (property.toLowerCase()) {
-					case "#base":
-						{
-							const items: CompletionItem[] = []
-							let basePath: string = ""
-							const _path = tokens.pop()
-							if (_path) {
-								basePath = _path.split(/[\s\r\n"]+/).join("")
-							}
-							const absoluteBasePath = `${path.dirname(fileURLToPath(document.uri))}/${basePath}/`
-							connection.console.log(absoluteBasePath)
-							if (fs.existsSync(absoluteBasePath)) {
-								for (const item of fs.readdirSync(absoluteBasePath)) {
-									items.push({
-										label: item,
-										kind: fs.statSync(`${absoluteBasePath}/${item}`).isFile() ? CompletionItemKind.File : CompletionItemKind.Folder,
-										commitCharacters: [
-											"/"
-										]
-										// detail: "some detaul :-)"
-									})
-								}
-								return {
-									isIncomplete: true,
-									items: items,
-								}
-							}
-							break;
+			let key = line.split(/[\s"]+/).find((i) => i != "")
+			if (key) {
+				key = key.replace("_minmode", "").toLowerCase()
+				// connection.console.log(`Switching "${key}"`)
+				switch (key.toLowerCase()) {
+					case "#base": {
+						const items: CompletionItem[] = []
+						let basePath: string = ""
+						const _path = tokens.pop()
+						if (_path) {
+							basePath = _path.split(/[\s\r\n"]+/).join("")
 						}
-
-					case "image":
-						{
-							const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
-							const images: Set<string> = new Set()
-							const iterateDir = (relativeFolderPath: string) => {
-								for (const item of fs.readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
-									if (!fs.statSync(`${hudRoot}/${relativeFolderPath}/${item}`).isFile()) {
-										iterateDir(`${relativeFolderPath}/${item}`)
-									}
-									else {
-										images.add(`${path.relative(`${hudRoot}/materials/vgui`, `${hudRoot}/${relativeFolderPath}`)}\\${path.parse(item).name}`.split('\\').join('/'))
-									}
+						const absoluteBasePath = `${path.dirname(fileURLToPath(document.uri))}/${basePath}/`
+						// connection.console.log(absoluteBasePath)
+						if (fs.existsSync(absoluteBasePath)) {
+							for (const item of fs.readdirSync(absoluteBasePath)) {
+								items.push({
+									label: item,
+									kind: fs.statSync(`${absoluteBasePath}/${item}`).isFile() ? CompletionItemKind.File : CompletionItemKind.Folder,
+									commitCharacters: [
+										"/"
+									],
+									detail: "some detaul :-)"
+								})
+							}
+							return {
+								isIncomplete: true,
+								items: items,
+							}
+						}
+						break;
+					}
+					case "image": {
+						const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+						const images: Set<string> = new Set()
+						const iterateDir = (relativeFolderPath: string) => {
+							for (const item of fs.readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
+								if (!fs.statSync(`${hudRoot}/${relativeFolderPath}/${item}`).isFile()) {
+									iterateDir(`${relativeFolderPath}/${item}`)
+								}
+								else {
+									images.add(`${path.relative(`${hudRoot}/materials/vgui`, `${hudRoot}/${relativeFolderPath}`)}\\${path.parse(item).name}`.split('\\').join('/'))
 								}
 							}
-							iterateDir(`materials`)
-							return Array.from(images).map((i) => ({
-								label: i,
-								kind: CompletionItemKind.Field
-							}))
-
 						}
-					case "pin_to_sibling":
-						{
-							try {
-								const keys: CompletionItem[] = []
-								const addKeys = (documentSymbols: DocumentSymbol[]) => {
-									for (let documentSymbol of documentSymbols) {
-										if (documentSymbol.children) {
-											keys.push({
-												label: documentSymbol.name,
-												kind: CompletionItemKind.Variable
-											})
-											addKeys(documentSymbol.children)
-										}
-									}
-								}
-								addKeys(objects[params.textDocument.uri])
-								return keys
-							}
-							catch (e: any) {
-								connection.console.error(e)
-								return []
-							}
-							break
-						}
-					default:
-						{
-							const sectionIcons: Record<keyof typeof clientscheme, CompletionItemKind> = {
-								"Colors": CompletionItemKind.Color,
-								"Borders": CompletionItemKind.Snippet,
-								"Fonts": CompletionItemKind.Text,
-							}
+						iterateDir(`materials`)
+						return Array.from(images).map((i) => ({
+							label: i,
+							kind: CompletionItemKind.Field
+						}))
 
-							let section: keyof typeof clientscheme
-							for (section in clientscheme) {
-								if (clientscheme[section].includes(property)) {
-									const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
-									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-									let detailsGenerator: (data: any) => string = (() => {
-										switch (section) {
-											case "Colors": return (data: any): string => data;
-											case "Borders": return (data: any): string => "";
-											case "Fonts": return (data: any): string => `${data["1"]?.name ?? ""} ${data["1"]?.tall ?? ""}`;
-										}
-									})()
-
-									if (fs.existsSync(clientschemePath)) {
-										const hudclientscheme = HUDTools.loadControls(clientschemePath)
-										return Object.keys(hudclientscheme["Scheme"][section]).map((i) => ({
-											label: i,
-											kind: sectionIcons[section],
-											detail: detailsGenerator(hudclientscheme["Scheme"][section][i])
-										}))
+					}
+					case "pin_to_sibling": {
+						try {
+							const keys: CompletionItem[] = []
+							const addKeys = (documentSymbols: DocumentSymbol[]) => {
+								for (let documentSymbol of documentSymbols) {
+									if (documentSymbol.children) {
+										keys.push({
+											label: documentSymbol.name,
+											kind: CompletionItemKind.Variable
+										})
+										addKeys(documentSymbol.children)
 									}
 								}
 							}
+							addKeys(objects[params.textDocument.uri])
+							return keys
+						}
+						catch (e: any) {
+							connection.console.error(e)
+							return []
+						}
+					}
+					default: {
+						const sectionIcons: Record<keyof typeof clientscheme, CompletionItemKind> = {
+							"Colors": CompletionItemKind.Color,
+							"Borders": CompletionItemKind.Snippet,
+							"Fonts": CompletionItemKind.Text,
+						}
 
-							if (statichudKeyBitValues.includes(property)) {
-								return [
-									{ label: "1", kind: CompletionItemKind.Enum },
-									{ label: "0", kind: CompletionItemKind.Enum }
-								]
-							}
-							if (statichudKeyValues.hasOwnProperty(property)) {
-								return statichudKeyValues[property]
+						let section: keyof typeof clientscheme
+						for (section in clientscheme) {
+							if (clientscheme[section].includes(key)) {
+								const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+								const clientschemePath = `${hudRoot}/resource/clientscheme.res`
+								let detailsGenerator: (data: any) => string = (() => {
+									switch (section) {
+										case "Colors": return (data: any): string => data;
+										case "Borders": return (data: any): string => "";
+										case "Fonts": return (data: any): string => `${data["1"]?.name ?? ""} ${data["1"]?.tall ?? ""}`;
+									}
+								})()
+
+								if (fs.existsSync(clientschemePath)) {
+									const hudclientscheme = HUDTools.loadControls(clientschemePath)
+									return Object.keys(hudclientscheme["Scheme"][section]).map((i) => ({
+										label: i,
+										kind: sectionIcons[section],
+										detail: detailsGenerator(hudclientscheme["Scheme"][section][i])
+									}))
+								}
 							}
 						}
+
+						if (statichudKeyBitValues.includes(key)) {
+							return [
+								{ label: "1", kind: CompletionItemKind.Enum },
+								{ label: "0", kind: CompletionItemKind.Enum }
+							]
+						}
+						if (statichudKeyValues.hasOwnProperty(key)) {
+							return statichudKeyValues[key]
+						}
+					}
 				}
 
 			}
@@ -279,12 +275,13 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 connection.onDefinition((params: DefinitionParams): Definition | null => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
-		connection.console.log(params.textDocument.uri)
-		connection.console.log(document.uri)
+		// connection.console.log(params.textDocument.uri)
+		// connection.console.log(document.uri)
 		const entries = Object.entries(VDF.parse(document.getText({ start: { line: params.position.line, character: 0 }, end: { line: params.position.line, character: Infinity }, })))
 		if (entries.length) {
-			const [key, value] = entries[0]
-			switch (key.toLowerCase()) {
+			let [key, value] = entries[0]
+			key = key.replace("_minmode", "").toLowerCase()
+			switch (key) {
 				case "#base": return { uri: `${path.dirname(document.uri)}/${(<string>value).toLowerCase()}`, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
 				case "pin_to_sibling": return VDFExtended.Searcher.getLocationOfKey(document.uri, objects[document.uri], <string>value)
 				case "labeltext": {
@@ -306,6 +303,36 @@ connection.onDefinition((params: DefinitionParams): Definition | null => {
 					}
 					else {
 						return searchLocalizationFile("C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2/tf/resource/tf_english.txt")
+					}
+				}
+				case "image": {
+					let vmtPath: string
+					const hudvmtPath = path.normalize(`${HUDTools.GetRoot(fileURLToPath(document.uri))}/materials/vgui/${value}.vmt`)
+					if (fs.existsSync(hudvmtPath)) {
+						vmtPath = hudvmtPath
+					}
+					else {
+						const teamFortress2Folder = "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+						const tempDirectory: string = tmpdir()
+						const relativeImagePath = path.normalize(`materials/vgui/${value}.vmt`)
+						fs.mkdirSync(`${tempDirectory}/${relativeImagePath}`, { recursive: true })
+						execSync([
+							`"${teamFortress2Folder}/bin/vpk.exe"`,
+							"x",
+							`"${teamFortress2Folder}/tf/tf2_misc_dir.vpk"`,
+							`"${relativeImagePath}"`
+						].join(" "), {
+							cwd: tempDirectory
+						})
+
+						vmtPath = `${tempDirectory}/${relativeImagePath}`
+					}
+					return {
+						uri: `file:///${vmtPath}`,
+						range: {
+							start: Position.create(0, Infinity),
+							end: Position.create(Infinity, Infinity)
+						}
 					}
 				}
 				default: {

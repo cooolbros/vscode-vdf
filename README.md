@@ -16,6 +16,7 @@ VDF/Valve KeyValues language support for VSCode
     - All Clientscheme properties
     - labelText
     - pin_to_sibling
+    - image
  - Autocomplete for element properties:
     - ImagePanel => image, scaleImage, etc...
     - CExLabel => labelText, font, textAlignment, fgcolor, etc...
@@ -29,9 +30,7 @@ VDF/Valve KeyValues language support for VSCode
 
 
 ### TODO
-
  - Add definition provider for custom font file definitions
- - Add definitions for images
  - Add rename provider
  - Add settings for formatting preference
  - Better VDF formatting
