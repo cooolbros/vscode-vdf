@@ -1,96 +1,99 @@
 {
-	"name": "vscode-vdf",
-	"displayName": "VDF Language Support",
-	"description": "VDF language support for VSCode",
-	"version": "0.0.1",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/cooolbros/vscode-vdf"
-	},
-	"engines": {
-		"vscode": "^1.43.0"
-	},
-	"activationEvents": [
-		"onLanguage:vdf",
-		"onCommand:vscode-vdf.vdf-to-json",
-		"onCommand:vscode-vdf.json-to-vdf"
-	],
-	"main": "./client/dist/extension.js",
-	"contributes": {
-		"commands": [
-			{
-				"category": "VDF",
-				"title": "Sort VDF",
-				"command": "vscode-vdf.sort-vdf"
-			},
-			{
-				"category": "VDF",
-				"title": "Convert VDF to JSON",
-				"command": "vscode-vdf.vdf-to-json"
-			},
-			{
-				"category": "VDF",
-				"title": "Convert JSON to VDF",
-				"command": "vscode-vdf.json-to-vdf"
-			},
-			{
-				"category": "VDF",
-				"title": "Show References",
-				"command": "vscode-vdf.show-references"
-			}
-		],
-		"grammars": [
-			{
-				"language": "vdf",
-				"scopeName": "source.vdf",
-				"path": "./syntaxes/vdf.tmLanguage.json"
-			},
-			{
-				"language": "hudanimations",
-				"scopeName": "source.hudanimations",
-				"path": "./syntaxes/hudanimations.tmLanguage.json"
-			}
-		],
-		"languages": [
-			{
-				"id": "vdf",
-				"aliases": [
-					"Valve KeyValues",
-					"vdf"
-				],
-				"extensions": [
-					".res",
-					".vdf",
-					".vmt"
-				],
-				"configuration": "./vdf-language-configuration.json"
-			},
-			{
-				"id": "hudanimations",
-				"aliases": [
-					"Valve HUD Animations",
-					"hudanimations"
-				],
-				"extensions": [
-					".hudanimations"
-				]
-			}
-		]
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -b",
-		"watch": "tsc -b -w",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test": "sh ./scripts/e2e.sh"
-	},
-	"devDependencies": {
-		"@types/mocha": "^8.2.2",
-		"@types/node": "^12.12.0",
-		"@typescript-eslint/eslint-plugin": "^4.23.0",
-		"@typescript-eslint/parser": "^4.23.0",
-		"eslint": "^7.26.0",
-		"mocha": "^8.3.2",
-		"typescript": "^4.4.3"
-	}
+  "name": "vscode-vdf",
+  "displayName": "VSCode VDF",
+  "description": "VDF language support for VSCode",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cooolbros/vscode-vdf"
+  },
+  "engines": {
+    "vscode": "^1.6.0"
+  },
+  "activationEvents": [
+    "onLanguage:vdf",
+    "onCommand:vscode-vdf.format-vdf",
+    "onCommand:vscode-vdf.json-to-vdf",
+    "onCommand:vscode-vdf.show-references",
+    "onCommand:vscode-vdf.sort-vdf",
+    "onCommand:vscode-vdf.vdf-to-json"
+  ],
+  "main": "./client/dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "category": "VDF",
+        "title": "Convert JSON to VDF",
+        "command": "vscode-vdf.json-to-vdf"
+      },
+      {
+        "category": "VDF",
+        "title": "Show References",
+        "command": "vscode-vdf.show-references"
+      },
+      {
+        "category": "VDF",
+        "title": "Sort VDF",
+        "command": "vscode-vdf.sort-vdf"
+      },
+      {
+        "category": "VDF",
+        "title": "Convert VDF to JSON",
+        "command": "vscode-vdf.vdf-to-json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "vdf",
+        "scopeName": "source.vdf",
+        "path": "./syntaxes/vdf.tmLanguage.json"
+      },
+      {
+        "language": "hudanimations",
+        "scopeName": "source.hudanimations",
+        "path": "./syntaxes/hudanimations.tmLanguage.json"
+      }
+    ],
+    "languages": [
+      {
+        "id": "vdf",
+        "aliases": [
+          "Valve KeyValues",
+          "vdf"
+        ],
+        "extensions": [
+          ".res",
+          ".vdf",
+          ".vmt"
+        ],
+        "configuration": "./vdf-language-configuration.json"
+      },
+      {
+        "id": "hudanimations",
+        "aliases": [
+          "Valve HUD Animations",
+          "hudanimations"
+        ],
+        "extensions": [
+          ".hudanimations"
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+    "test": "sh ./scripts/e2e.sh"
+  },
+  "devDependencies": {
+    "@types/mocha": "^8.2.2",
+    "@types/node": "^12.12.0",
+    "@typescript-eslint/eslint-plugin": "^4.23.0",
+    "@typescript-eslint/parser": "^4.23.0",
+    "eslint": "^7.26.0",
+    "mocha": "^8.3.2",
+    "typescript": "^4.4.3"
+  }
 }

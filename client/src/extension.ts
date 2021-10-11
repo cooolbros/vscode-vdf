@@ -7,7 +7,7 @@ import {
 	TransportKind
 } from "vscode-languageclient/node";
 import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
-import { VDF } from "./vdf";
+import { VDF, VDFIndentation, VDFNewLine } from "./vdf";
 import { VDFExtended } from "./vdf_extended";
 
 let client: LanguageClient
@@ -15,6 +15,31 @@ let client: LanguageClient
 export function activate(context: ExtensionContext): void {
 
 	// Commands
+
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.format-vdf", (editor: TextEditor, edit: TextEditorEdit) => {
+		const { document } = editor
+		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
+		if (!editor.selection.isEmpty) {
+			edit.replace(editor.selection, VDF.stringify(VDF.parse(document.getText(editor.selection)), indentation))
+		}
+		else {
+			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(VDF.parse(document.getText()), indentation))
+			languages.setTextDocumentLanguage(document, "json");
+		}
+	}))
+
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.json-to-vdf", (editor: TextEditor, edit: TextEditorEdit): void => {
+		const { document } = editor
+		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
+		const eol = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
+		if (!editor.selection.isEmpty) {
+			edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), indentation, eol))
+		}
+		else {
+			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), indentation, eol))
+			languages.setTextDocumentLanguage(document, "vdf");
+		}
+	}))
 
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sort-vdf", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
@@ -35,19 +60,6 @@ export function activate(context: ExtensionContext): void {
 		else {
 			edit.replace(new Range(0, 0, document.lineCount, 0), JSON.stringify(VDF.parse(document.getText()), null, indentation))
 			languages.setTextDocumentLanguage(document, "json");
-		}
-	}))
-
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.json-to-vdf", (editor, edit) => {
-		const { document } = editor
-		const indentation = !editor.options.insertSpaces ? "Tabs" : "Spaces"
-		const eol = document.eol == EndOfLine.CRLF ? "CRLF" : "LF"
-		if (!editor.selection.isEmpty) {
-			edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), indentation, eol))
-		}
-		else {
-			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), indentation, eol))
-			languages.setTextDocumentLanguage(document, "vdf");
 		}
 	}))
 

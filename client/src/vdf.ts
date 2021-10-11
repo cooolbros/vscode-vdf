@@ -1,5 +1,23 @@
+// VDF
+
+export interface VDFStringifyOptions {
+	indentation?: VDFIndentation
+	newLine: VDFNewLine
+}
+
+export enum VDFIndentation {
+	Tabs,
+	Spaces
+}
+
+export enum VDFNewLine {
+	LF = 1,
+	CRLF = 2
+}
+
 export class VDF {
 	static OSTagDelimeter: string = "^"
+
 	static parse(str: string): any {
 		const whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
 		let i: number = 0;
@@ -140,11 +158,11 @@ export class VDF {
 		}
 		return parseObject();
 	}
-	static stringify(obj: any, indentation: "Tabs" | "Spaces" = "Tabs", newLine: "CRLF" | "LF" = "CRLF"): string {
+	static stringify(obj: any, indentation: VDFIndentation = VDFIndentation.Tabs, newLine: VDFNewLine = VDFNewLine.CRLF): string {
 		const tab: string = "\t"
 		const space: string = " "
-		const eol: string = newLine == "CRLF" ? "\r\n" : "\n"
-		const tabIndentation: boolean = indentation == "Tabs"
+		const eol: string = newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
+		const tabIndentation: boolean = indentation == VDFIndentation.Tabs
 		const getIndentation: (level: number) => string = tabIndentation
 			? (level: number) => tab.repeat(level)
 			: (level: number) => space.repeat(level * 4)
