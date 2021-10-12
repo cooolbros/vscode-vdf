@@ -78,7 +78,17 @@
           ".hudanimations"
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "VSCode VDF",
+      "properties": {
+        "vscode-vdf.teamFortess2Folder": {
+          "description": "Path to Team Fortress 2 Folder",
+          "type": "string",
+          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
