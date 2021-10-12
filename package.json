@@ -3,6 +3,7 @@
   "displayName": "VSCode VDF",
   "description": "VDF language support for VSCode",
   "version": "0.0.1",
+  "publisher": "pfwobcke",
   "repository": {
     "type": "git",
     "url": "https://github.com/cooolbros/vscode-vdf"
