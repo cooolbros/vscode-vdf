@@ -301,8 +301,7 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | null> => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
-		// connection.console.log(params.textDocument.uri)
-		// connection.console.log(document.uri)
+		let hudRoot: string | undefined | null = undefined
 		const entries = Object.entries(VDF.parse(document.getText({ start: { line: params.position.line, character: 0 }, end: { line: params.position.line, character: Infinity }, })))
 		if (entries.length) {
 			let [key, value] = entries[0]
@@ -319,7 +318,10 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 						return result
 					}
 
-					const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+					if (hudRoot == undefined) {
+						hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+					}
+
 					if (hudRoot) {
 						const chat_englishPath = `${hudRoot}/resource/chat_english.txt`
 						const tf_englishPath = `${hudRoot}/../../resource/tf_english.txt`
@@ -365,12 +367,50 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 						}
 					}
 				}
+				case "name": {
+					if (hudRoot == undefined) {
+						hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+					}
+
+					if (hudRoot == null) {
+						return []
+					}
+					const clientschemePath = `${hudRoot}/resource/clientscheme.res`
+					if (fs.existsSync(clientschemePath)) {
+						return VDFExtended.Searcher.getLocationOfKey(clientschemePath, fs.readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles")
+					}
+					return []
+				}
+				case "font": {
+					if (hudRoot == undefined) {
+						hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+					}
+					if (hudRoot == null) {
+						return null
+					}
+					if (fs.existsSync(`${hudRoot}/${value}`)) {
+						return {
+							uri: `file:///${hudRoot}/${value}`,
+							range: {
+								start: Position.create(0, 0),
+								end: Position.create(0, 1)
+							}
+						}
+					}
+					// Dont break
+				}
 				default: {
 					let section: keyof typeof clientscheme
 					for (section in clientscheme) {
 						for (const property of clientscheme[section]) {
 							if (key == property) {
-								const clientschemePath = `${HUDTools.GetRoot(fileURLToPath(document.uri))}/resource/clientscheme.res`
+								if (hudRoot == undefined) {
+									hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+								}
+								if (hudRoot == null) {
+									return null
+								}
+								const clientschemePath = `${hudRoot}/resource/clientscheme.res`
 								if (fs.existsSync(clientschemePath)) {
 									const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(clientschemePath, "utf-8"), { osTags: VDFOSTags.All });
 									const result = VDFExtended.Searcher.getLocationOfKey(clientschemePath, documentSymbols, <string>value)
@@ -381,12 +421,12 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 							}
 						}
 					}
-					return []
+					return null
 				}
 			}
 		}
 	}
-	return []
+	return null
 })
 
 connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] => {

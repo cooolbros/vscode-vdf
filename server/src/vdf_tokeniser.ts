@@ -92,8 +92,12 @@ export class VDFTokeniser {
 					}
 				}
 				if (this.str[j] == "\\") {
+					// Add backslash
+					currentToken += "\\"
 					j++
 					_character++
+
+					// Add character
 					currentToken += this.str[j]
 					j++
 					_character++
@@ -115,8 +119,12 @@ export class VDFTokeniser {
 					throw new VDFSyntaxError(`Unexpected " at position ${j} (line ${this.line}, position ${this.character})! Are you missing terminating whitespace?`, _line, _character)
 				}
 				if (this.str[j] == "\\") {
+					// Add backslash
+					currentToken += "\\"
 					j++
 					_character++
+
+					// Add character
 					currentToken += this.str[j]
 					j++
 					_character++

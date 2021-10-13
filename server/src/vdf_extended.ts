@@ -164,10 +164,12 @@ export class VDFExtended {
 			str = typeof str == "string" ? VDFExtended.getDocumentSymbols(str) : str
 			return search(str)
 		},
-		getLocationOfKey: (filePath: string, str: string | DocumentSymbol[], key: string): Definition | null => {
+		getLocationOfKey: (filePath: string, str: string | DocumentSymbol[], key: string, value?: string, parentKeyConstraint?: string): Definition | null => {
 			const searchFile = (filePath: string, documentSymbols: DocumentSymbol[]) => {
+				const objectPath: string[] = []
 				const search = (documentSymbols: DocumentSymbol[]): Definition | null => {
 					for (const documentSymbol of documentSymbols) {
+						objectPath.push(documentSymbol.name.toLowerCase())
 						const currentKey: string = documentSymbol.name.toLowerCase()
 						if (currentKey == "#base") {
 							const baseFileURL = `${path.dirname(filePath)}/${documentSymbol.detail}`
@@ -178,7 +180,7 @@ export class VDFExtended {
 								}
 							}
 						}
-						if (currentKey == key) {
+						if (currentKey == key && (value ? documentSymbol.detail == value : true) && (parentKeyConstraint ? objectPath.includes(parentKeyConstraint.toLowerCase()) : true)) {
 							return {
 								uri: `file:///${filePath}`,
 								range: documentSymbol.range
@@ -190,6 +192,7 @@ export class VDFExtended {
 								return result
 							}
 						}
+						objectPath.pop()
 					}
 					return null
 				}
