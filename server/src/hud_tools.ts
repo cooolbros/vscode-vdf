@@ -1,18 +1,23 @@
 import * as fs from "fs"
 import * as path from "path"
+import { fileURLToPath, URL } from "url"
 import { merge } from "./merge"
 import { VDF } from "./vdf"
 
 export class HUDTools {
-	static GetRoot(filePath: string): string | null {
-		const folders = filePath.split(/[/\\]+/)
-		let i: number = folders.length
-		while (i >= 0) {
-			const folderPath = folders.slice(0, i).join('/')
+
+	/**
+	 * Resolve root folder of an absolute HUD file path
+	 * @param uri File uri containing object.
+	 * @returns The root of the HUD folder as a file path string (`C:/...`)
+	 */
+	static GetRoot({ uri }: { uri: string }): string | null {
+		let folderPath = fileURLToPath(uri)
+		while (folderPath != `${new URL(folderPath).protocol}\\`) {
 			if (fs.existsSync(`${folderPath}/info.vdf`)) {
 				return folderPath
 			}
-			i--;
+			folderPath = path.dirname(folderPath)
 		}
 		return null
 	}

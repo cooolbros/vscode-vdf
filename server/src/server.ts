@@ -2,7 +2,7 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
 	ColorInformation,
@@ -33,6 +33,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			name: "VDF Language Server"
 		},
 		capabilities: {
+			// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
 			textDocumentSync: TextDocumentSyncKind.Full,
 			completionProvider: {
 				resolveProvider: false,
@@ -163,7 +164,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							break;
 						}
 						case "image": {
-							const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+							const hudRoot = HUDTools.GetRoot(document)
 							const images: Set<string> = new Set()
 							const iterateDir = (relativeFolderPath: string) => {
 								for (const item of fs.readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
@@ -208,7 +209,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							let section: keyof typeof clientscheme
 							for (section in clientscheme) {
 								if (clientscheme[section].includes(key)) {
-									const hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
+									const hudRoot = HUDTools.GetRoot(document)
 									if (hudRoot == null) {
 										return []
 									}
@@ -301,10 +302,15 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | null> => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
+		const line: string = document.getText({ start: { line: params.position.line, character: 0 }, end: { line: params.position.line, character: Infinity }, })
 		let hudRoot: string | undefined | null = undefined
-		const entries = Object.entries(VDF.parse(document.getText({ start: { line: params.position.line, character: 0 }, end: { line: params.position.line, character: Infinity }, })))
+		const entries = Object.entries(VDF.parse(line))
 		if (entries.length) {
 			let [key, value] = entries[0]
+			if (params.position.character < line.indexOf(<string>value)) {
+				return null
+			}
+
 			key = key.replace("_minmode", "").toLowerCase()
 			switch (key) {
 				case "#base": return { uri: `${path.dirname(document.uri)}/${(<string>value).toLowerCase()}`, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
@@ -318,9 +324,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 						return result
 					}
 
-					if (hudRoot == undefined) {
-						hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
-					}
+					hudRoot ??= HUDTools.GetRoot(document)
 
 					if (hudRoot) {
 						const chat_englishPath = `${hudRoot}/resource/chat_english.txt`
@@ -337,30 +341,42 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 						return searchLocalizationFile(`${teamFortress2Folder}/tf/resource/tf_english.txt`)
 					}
 				}
-				case "image": {
+				case "image":
+				case "teambg_1":
+				case "teambg_2":
+				case "teambg_3": {
+					hudRoot ??= HUDTools.GetRoot(document)
 					let vmtPath: string
-					const hudvmtPath = path.normalize(`${HUDTools.GetRoot(fileURLToPath(document.uri))}/materials/vgui/${value}.vmt`)
+					const hudvmtPath = path.normalize(`${hudRoot}/materials/vgui/${value}.vmt`)
 					if (fs.existsSync(hudvmtPath)) {
 						vmtPath = hudvmtPath
 					}
 					else {
 						const teamFortress2Folder = "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
 						const tempDirectory: string = tmpdir()
-						const relativeImagePath = path.normalize(`materials/vgui/${value}.vmt`)
-						fs.mkdirSync(`${tempDirectory}/${relativeImagePath}`, { recursive: true })
-						execSync([
-							`"${teamFortress2Folder}/bin/vpk.exe"`,
-							"x",
-							`"${teamFortress2Folder}/tf/tf2_misc_dir.vpk"`,
-							`"${relativeImagePath}"`
-						].join(" "), {
-							cwd: tempDirectory
-						})
 
-						vmtPath = `${tempDirectory}/${relativeImagePath}`
+						const relativeImagePath = path.posix.normalize(`materials/vgui/${value}.vmt`)
+
+						if (fs.existsSync(relativeImagePath)) {
+							vmtPath = `${tempDirectory}/${relativeImagePath}`
+						}
+						else {
+							fs.mkdirSync(path.dirname(`${tempDirectory}/${relativeImagePath}`), { recursive: true })
+
+							execSync([
+								`"${teamFortress2Folder}/bin/vpk.exe"`,
+								"x",
+								`"${teamFortress2Folder}/tf/tf2_misc_dir.vpk"`,
+								`"${relativeImagePath}"`
+							].join(" "), {
+								cwd: tempDirectory
+							})
+
+							vmtPath = `${tempDirectory}/${relativeImagePath}`
+						}
 					}
 					return {
-						uri: path.normalize(`file:///${vmtPath}`),
+						uri: pathToFileURL(vmtPath).href,
 						range: {
 							start: Position.create(0, Infinity),
 							end: Position.create(Infinity, Infinity)
@@ -368,27 +384,13 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 					}
 				}
 				case "name": {
-					if (hudRoot == undefined) {
-						hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
-					}
-
-					if (hudRoot == null) {
-						return []
-					}
+					hudRoot ??= HUDTools.GetRoot(document)
 					const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-					if (fs.existsSync(clientschemePath)) {
-						return VDFExtended.Searcher.getLocationOfKey(clientschemePath, fs.readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles")
-					}
-					return []
+					return hudRoot && fs.existsSync(clientschemePath) ? VDFExtended.Searcher.getLocationOfKey(clientschemePath, fs.readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles") : null
 				}
 				case "font": {
-					if (hudRoot == undefined) {
-						hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
-					}
-					if (hudRoot == null) {
-						return null
-					}
-					if (fs.existsSync(`${hudRoot}/${value}`)) {
+					hudRoot ??= HUDTools.GetRoot(document)
+					if (hudRoot && fs.existsSync(`${hudRoot}/${value}`)) {
 						return {
 							uri: `file:///${hudRoot}/${value}`,
 							range: {
@@ -397,27 +399,19 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 							}
 						}
 					}
-					// Dont break
+					// Dont break ("font" is also a clientscheme property and will be evaluated in the default: section)
 				}
 				default: {
 					let section: keyof typeof clientscheme
 					for (section in clientscheme) {
 						for (const property of clientscheme[section]) {
 							if (key == property) {
-								if (hudRoot == undefined) {
-									hudRoot = HUDTools.GetRoot(fileURLToPath(document.uri))
-								}
-								if (hudRoot == null) {
-									return null
-								}
+								hudRoot ??= HUDTools.GetRoot(document)
 								const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-								if (fs.existsSync(clientschemePath)) {
-									const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(clientschemePath, "utf-8"), { osTags: VDFOSTags.All });
-									const result = VDFExtended.Searcher.getLocationOfKey(clientschemePath, documentSymbols, <string>value)
-									if (result) {
-										return result
-									}
-								}
+								return hudRoot && fs.existsSync(clientschemePath) ? ((): Definition | null => {
+									const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(clientschemePath, "utf-8"));
+									return VDFExtended.Searcher.getLocationOfKey(clientschemePath, documentSymbols, <string>value)
+								})() : null
 							}
 						}
 					}

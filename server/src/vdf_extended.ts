@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 import { ColorInformation, Definition, DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver/node";
 import { VDFOSTags, VDFSyntaxError, VDFTokeniser, VDFTokeniserOptions } from "./vdf_tokeniser";
 
@@ -12,8 +13,8 @@ export class VDFExtended {
 			const locations: DocumentSymbol[] = []
 			let currentToken = tokeniser.next();
 			let currentTokenRange: Range = {
-				start: Position.create(tokeniser.line, tokeniser.character - currentToken.length),
-				end: Position.create(tokeniser.line, tokeniser.character),
+				start: Position.create(tokeniser.line, tokeniser.character - currentToken.length - tokeniser.quoted),
+				end: Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted),
 			}
 			let nextToken = tokeniser.next(true);
 			while (currentToken != "}" && nextToken != "EOF") {
@@ -164,7 +165,16 @@ export class VDFExtended {
 			str = typeof str == "string" ? VDFExtended.getDocumentSymbols(str) : str
 			return search(str)
 		},
-		getLocationOfKey: (filePath: string, str: string | DocumentSymbol[], key: string, value?: string, parentKeyConstraint?: string): Definition | null => {
+		/**
+		 * Search a HUD file for a specified key/value pair
+		 * @param uri Uri path to file
+		 * @param str fileContents or file DocumentSymbol[]
+		 * @param key key name to search for.
+		 * @param value value to search for (Optional)
+		 * @param parentKeyConstraint
+		 * @returns The file uri (starting with file:///), line and character of the specified key (or null if the key is not found)
+		 */
+		getLocationOfKey: (uri: string, str: string | DocumentSymbol[], key: string, value?: string, parentKeyConstraint?: string): Definition | null => {
 			const searchFile = (filePath: string, documentSymbols: DocumentSymbol[]) => {
 				const objectPath: string[] = []
 				const search = (documentSymbols: DocumentSymbol[]): Definition | null => {
@@ -172,9 +182,9 @@ export class VDFExtended {
 						objectPath.push(documentSymbol.name.toLowerCase())
 						const currentKey: string = documentSymbol.name.toLowerCase()
 						if (currentKey == "#base") {
-							const baseFileURL = `${path.dirname(filePath)}/${documentSymbol.detail}`
-							if (fs.existsSync(baseFileURL)) {
-								const result = searchFile(baseFileURL, VDFExtended.getDocumentSymbols(fs.readFileSync(baseFileURL, "utf-8")))
+							const baseFilePath = `${path.dirname(filePath)}/${documentSymbol.detail}`
+							if (fs.existsSync(baseFilePath)) {
+								const result = searchFile(baseFilePath, VDFExtended.getDocumentSymbols(fs.readFileSync(baseFilePath, "utf-8")))
 								if (result) {
 									return result
 								}
@@ -182,7 +192,7 @@ export class VDFExtended {
 						}
 						if (currentKey == key && (value ? documentSymbol.detail == value : true) && (parentKeyConstraint ? objectPath.includes(parentKeyConstraint.toLowerCase()) : true)) {
 							return {
-								uri: `file:///${filePath}`,
+								uri: pathToFileURL(filePath).href,
 								range: documentSymbol.range
 							}
 						}
@@ -199,9 +209,11 @@ export class VDFExtended {
 				return search(documentSymbols)
 			}
 
+			uri = uri.startsWith("file:///") ? fileURLToPath(uri) : uri
 			str = typeof str == "string" ? VDFExtended.getDocumentSymbols(str) : str
 			key = key.toLowerCase()
-			return searchFile(filePath, str)
+
+			return searchFile(uri, str)
 		}
 	}
 
