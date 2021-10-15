@@ -95,8 +95,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
-    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-    "test": "sh ./scripts/e2e.sh"
+    "postinstall": "cd client && npm install && cd ../servers/vdf && npm install && cd ../.."
   },
   "devDependencies": {
     "@types/mocha": "^8.2.2",

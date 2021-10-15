@@ -64,7 +64,7 @@ export function activate(context: ExtensionContext): void {
 	}))
 
 	// Language Server
-	const serverModule = context.asAbsolutePath(path.join("server", "dist", "server.js"))
+	const serverModule = context.asAbsolutePath(path.join("servers", "vdf", "dist", "server.js"))
 
 	const serverOptions: ServerOptions = {
 		run: { module: serverModule, transport: TransportKind.ipc },
