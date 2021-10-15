@@ -78,7 +78,8 @@
         ],
         "extensions": [
           ".hudanimations"
-        ]
+        ],
+        "configuration": "./hudanimations-language-configuration.json"
       }
     ],
     "configuration": {
