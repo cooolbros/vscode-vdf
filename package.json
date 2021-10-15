@@ -13,6 +13,7 @@
   },
   "activationEvents": [
     "onLanguage:vdf",
+    "onLanguage:hudanimations",
     "onCommand:vscode-vdf.format-vdf",
     "onCommand:vscode-vdf.json-to-vdf",
     "onCommand:vscode-vdf.show-references",

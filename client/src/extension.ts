@@ -1,5 +1,5 @@
 import * as path from "path";
-import { commands, EndOfLine, ExtensionContext, languages, Range, TextEditor, TextEditorEdit } from "vscode";
+import { commands, EndOfLine, ExtensionContext, languages, Range, TextDocument, TextEditor, TextEditorEdit, workspace } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
@@ -10,7 +10,18 @@ import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
 import { VDF, VDFIndentation, VDFNewLine } from "./vdf";
 import { VDFExtended } from "./vdf_extended";
 
-let client: LanguageClient
+const clientsInfo = {
+	vdf: {
+		id: "vdf-language-server",
+		name: "VDF Language Server",
+	},
+	hudanimations: {
+		id: "hudanimations-language-server",
+		name: "HUD Animations Language Server",
+	}
+}
+
+const clients: Record<string, LanguageClient | undefined> = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -63,42 +74,56 @@ export function activate(context: ExtensionContext): void {
 		}
 	}))
 
-	// Language Server
-	const serverModule = context.asAbsolutePath(path.join("servers", "vdf", "dist", "server.js"))
+	const onDidOpenTextDocument = (e: TextDocument) => {
+		const languageId: string = e.languageId
+		if (((languageId): languageId is keyof typeof clientsInfo => clientsInfo.hasOwnProperty(languageId))(languageId)) {
+			if (clients[languageId] == undefined) {
 
-	const serverOptions: ServerOptions = {
-		run: { module: serverModule, transport: TransportKind.ipc },
-		debug: {
-			module: serverModule,
-			transport: TransportKind.ipc,
-			options: {
-				execArgv: [
-					"--nolazy",
-					"--inspect=6009"
-				]
+				const serverModule = context.asAbsolutePath(path.join("servers", languageId, "dist", "server.js"))
+
+				const serverOptions: ServerOptions = {
+					run: {
+						module: serverModule,
+						transport: TransportKind.ipc
+					},
+					debug: {
+						module: serverModule,
+						transport: TransportKind.ipc,
+						options: {
+							execArgv: [
+								"--nolazy",
+								"--inspect=6009"
+							]
+						}
+					}
+				}
+
+				const clientOptions: LanguageClientOptions = {
+					documentSelector: [
+						languageId
+					]
+				}
+
+				clients[languageId] = new LanguageClient(
+					clientsInfo[languageId].id,
+					clientsInfo[languageId].name,
+					serverOptions,
+					clientOptions
+				)
+
+				clients[languageId].start();
 			}
 		}
 	}
 
-	const clientOptions: LanguageClientOptions = {
-		documentSelector: [
-			{
-				scheme: "file",
-				language: "vdf"
-			}
-		]
-	}
-
-	client = new LanguageClient(
-		"vdf-language-server",
-		"VDF Language Server",
-		serverOptions,
-		clientOptions
-	)
-
-	client.start();
+	workspace.textDocuments.forEach(onDidOpenTextDocument);
+	workspace.onDidOpenTextDocument(onDidOpenTextDocument)
 }
 
-export function deactivate(): Thenable<void> | undefined {
-	return client?.stop();
+export function deactivate() {
+	const promises: Promise<void>[] = []
+	for (const scheme in clients) {
+		promises.push(clients[scheme]?.stop())
+	}
+	return Promise.all(promises)
 }
