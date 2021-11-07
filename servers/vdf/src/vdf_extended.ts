@@ -29,10 +29,7 @@ export class VDFExtended {
 					// Primitive
 					tokeniser.next(); // Skip over value
 					// Check primitive os tag
-					const lookahead: string = tokeniser.next(true)
-					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-						currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
-					}
+
 
 					if (/\d+\s+\d+\s+\d+\s+\d+/.test(nextToken)) {
 						const colour = nextToken.split(/\s+/)
@@ -49,6 +46,11 @@ export class VDFExtended {
 								Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted)
 							)
 						})
+					}
+
+					const lookahead: string = tokeniser.next(true)
+					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
+						currentToken += `${VDFExtended.OSTagDelimeter}${tokeniser.next()}`;
 					}
 				}
 				currentToken = tokeniser.next();

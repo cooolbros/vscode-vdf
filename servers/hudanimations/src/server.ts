@@ -280,7 +280,6 @@ connection.onDefinition((params: DefinitionParams) => {
 							documentSymbols ??= getDocumentInfo(document.getText()).symbols
 							connection.console.log(JSON.stringify(documentSymbols))
 							for (const documentSymbol of documentSymbols) {
-								connection.console.log(`${documentSymbol.name} + ${documentSymbol.range.end.line}`)
 								if (documentSymbol.range.end.line > params.position.line) {
 									const eventName = documentSymbol.name.toLowerCase()
 									if (((eventName): eventName is keyof typeof eventFiles => eventFiles.hasOwnProperty(eventName))(eventName)) {
