@@ -31,6 +31,8 @@ VDF/Valve KeyValues language support for VSCode
 
 
 ### TODO
+ - Add autocomplete for "particleName" property
+ - Add autocomplete for "vcd" property
  - Add code actions for non-normalized file paths
  - Add rename provider
  - Add settings for formatting preference

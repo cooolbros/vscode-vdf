@@ -1,30 +1,34 @@
 import { execSync } from "child_process";
-import * as fs from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
+	CodeLens,
+	CodeLensParams,
 	ColorInformation,
 	ColorPresentation,
 	ColorPresentationParams,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
 	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
-	InitializeResult, Position, ProposedFeatures, Range, TextDocumentChangeEvent, TextDocuments,
+	InitializeResult, Location, Position, ProposedFeatures, Range, ReferenceParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { genericHudTypes, hudTypes } from "./HUD/keys";
+import { getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, loadControls, VDFDocumentSymbol } from "../../../shared/tools";
+import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
+import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
-import { HUDTools } from "./hud_tools";
-import * as clientscheme from "./JSON/clientscheme.json";
-import { VDF } from "./vdf";
+import clientscheme from "./JSON/clientscheme.json";
 import { VDFExtended } from "./vdf_extended";
-import { VDFOSTags, VDFSyntaxError } from "./vdf_tokeniser";
+
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 
-const documentsSymbols: Record<string, DocumentSymbol[]> = {}
+
+
+const documentsSymbols: Record<string, VDFDocumentSymbol[]> = {}
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
@@ -46,19 +50,13 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			},
 			hoverProvider: true,
 			definitionProvider: true,
+			referencesProvider: true,
+			documentSymbolProvider: true,
+			codeLensProvider: {
+				resolveProvider: false
+			},
 			colorProvider: true,
 			documentFormattingProvider: true,
-			// renameProvider: true,
-			documentSymbolProvider: true,
-			// codeLensProvider: {
-			// 	resolveProvider: false
-			// },
-			// referencesProvider: true
-			workspace: {
-				workspaceFolders: {
-					supported: true
-				}
-			}
 		}
 	}
 })
@@ -68,7 +66,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 		uri: change.document.uri,
 		diagnostics: ((): Diagnostic[] => {
 			try {
-				documentsSymbols[change.document.uri] = VDFExtended.getDocumentSymbols(change.document.getText())
+				documentsSymbols[change.document.uri] = getVDFDocumentSymbols(change.document.getText())
 				return []
 			}
 			catch (e: unknown) {
@@ -98,7 +96,7 @@ documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
 	})
 })
 
-connection.onCompletion((params: CompletionParams): CompletionItem[] | CompletionList => {
+connection.onCompletion((params: CompletionParams): CompletionItem[] | CompletionList | null => {
 	try {
 		const document = documents.get(params.textDocument.uri)
 		if (document) {
@@ -122,13 +120,15 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 
 					if (controlName != "") {
 						if (((controlName): controlName is keyof typeof hudTypes => hudTypes.hasOwnProperty(controlName))(controlName)) {
-							return [...hudTypes[controlName], ...genericHudTypes].filter((i) => !properties.includes(i.label))
+							return [...hudTypes[controlName], ...hudTypes.genericHudTypes].filter((i) => !properties.includes(i.label))
 						}
-						return genericHudTypes
+						return null
+						// return hudTypes.genericHudTypes.filter((i) => !properties.includes(i.label))
 					}
-					return genericHudTypes
+					// return hudTypes.genericHudTypes.filter((i) => !properties.includes(i.label))
+					return null
 				}
-				return genericHudTypes
+				return null
 			}
 			else {
 				// Suggest value
@@ -146,11 +146,11 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							}
 							const absoluteBasePath = `${path.dirname(fileURLToPath(document.uri))}/${basePath}/`
 							// connection.console.log(absoluteBasePath)
-							if (fs.existsSync(absoluteBasePath)) {
-								for (const item of fs.readdirSync(absoluteBasePath)) {
+							if (existsSync(absoluteBasePath)) {
+								for (const item of readdirSync(absoluteBasePath)) {
 									items.push({
 										label: item,
-										kind: fs.statSync(`${absoluteBasePath}/${item}`).isFile() ? CompletionItemKind.File : CompletionItemKind.Folder,
+										kind: statSync(`${absoluteBasePath}/${item}`).isFile() ? CompletionItemKind.File : CompletionItemKind.Folder,
 										commitCharacters: [
 											"/"
 										]
@@ -164,11 +164,11 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							break;
 						}
 						case "image": {
-							const hudRoot = HUDTools.GetRoot(document)
+							const hudRoot = getHUDRoot(document)
 							const images: Set<string> = new Set()
 							const iterateDir = (relativeFolderPath: string) => {
-								for (const item of fs.readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
-									if (!fs.statSync(`${hudRoot}/${relativeFolderPath}/${item}`).isFile()) {
+								for (const item of readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
+									if (!statSync(`${hudRoot}/${relativeFolderPath}/${item}`).isFile()) {
 										iterateDir(`${relativeFolderPath}/${item}`)
 									}
 									else {
@@ -209,42 +209,68 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							let section: keyof typeof clientscheme
 							for (section in clientscheme) {
 								if (clientscheme[section].includes(key)) {
-									const hudRoot = HUDTools.GetRoot(document)
+									const hudRoot = getHUDRoot(document)
 									if (hudRoot == null) {
 										return []
 									}
 									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-									let detailsGenerator: (data: any) => string = (() => {
-										switch (section) {
-											case "Colors": return (data: any): string => data;
-											case "Borders": return (data: any): string => data.bordertype == "scalable_image"
-												? `[Image] ${data.image ?? ""}${data.image && data.color ? " " : ""}${data.color ?? ""}`
-												: ((data): string => {
-													// connection.console.log('here')
-													// connection.console.log(JSON.stringify(data))
-													const firstBorderSideKey = Object.keys(data).find(i => typeof data[i] == "object")
+									let hudclientscheme: any
+
+									const detailsGenerator: (key: string, value: any) => Partial<CompletionItem> = ({
+										"Colors": (key: string, value: any) => ({
+											detail: <string>value,
+											documentation: (() => {
+												try {
+													let colourValue: string
+													if (/[^\s\d]/.test(value)) {
+														// connection.console.log(`Looking up ${value}`)
+														colourValue = <string>hudclientscheme["Scheme"]["Colors"][value]
+														// connection.console.log(`colourValue is ${colourValue}`)
+													}
+													else {
+														colourValue = value
+													}
+
+													const colours: number[] = colourValue.split(/\s+/).map(parseFloat)
+
+													const r = colours[0].toString(16)
+													const g = colours[1].toString(16)
+													const b = colours[2].toString(16)
+													// const a = (colours[3] * 255).toString(16)
+													const hex = `#${r.length == 1 ? `0${r}` : r}${g.length == 1 ? `0${g}` : g}${b.length == 1 ? `0${b}` : b}`
+
+													// connection.console.log(hex)
+													return hex
+												}
+												catch (e: any) {
+													connection.console.log(e.message)
+													return "#00ff00"
+												}
+											})()
+										}),
+										"Borders": (key: string, value: any) => ({
+											detail: value.bordertype == "scalable_image"
+												? `[Image] ${value.image ?? ""}${value.image && value.color ? " " : ""}${value.color ?? ""} `
+												: ((): string => {
+													const firstBorderSideKey = Object.keys(value).find(i => typeof value[i] == "object")
 													if (firstBorderSideKey) {
-														// connection.console.log(firstBorderSideKey)
-														const firstBorderSide = data[firstBorderSideKey]
+														const firstBorderSide = value[firstBorderSideKey]
 														const thickness = Object.keys(firstBorderSide).length
 														const colour: string = firstBorderSide[Object.keys(firstBorderSide)[0]].color
-														return `[Line] ${thickness}px ${/\s/.test(colour) ? `"${colour}"` : colour}`
+														return `[Line] ${thickness}px ${/\s/.test(colour) ? `"${colour}"` : colour} `
 													}
 													return ""
-												})(data)
-											case "Fonts": return (data: any): string => `${data["1"]?.name ?? ""}${data?.["1"]?.name && data?.["1"]?.tall ? " " : ""}${data["1"]?.tall ?? ""}`;
-										}
-									})()
+												})()
+										}),
+										"Fonts": (key: string, value: any) => ({ detail: `${value["1"]?.name ?? ""}${value?.["1"]?.name && value?.["1"]?.tall ? " " : ""}${value["1"]?.tall ?? ""} ` })
+									}[section])
 
-									// connection.console.log(clientschemePath)
-
-									if (fs.existsSync(clientschemePath)) {
-										const hudclientscheme = HUDTools.loadControls(clientschemePath)
-										// connection.console.log(JSON.stringify(hudclientscheme))
+									if (existsSync(clientschemePath)) {
+										hudclientscheme = loadControls(clientschemePath)
 										return Object.keys(hudclientscheme["Scheme"][section]).map((i) => ({
 											label: i,
 											kind: sectionIcons[section],
-											detail: detailsGenerator(hudclientscheme["Scheme"][section][i])
+											...detailsGenerator(i, hudclientscheme["Scheme"][section][i]),
 										}))
 									}
 								}
@@ -252,8 +278,8 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 
 							if (statichudKeyBitValues.includes(key)) {
 								return [
-									{ label: "1", kind: CompletionItemKind.Enum },
-									{ label: "0", kind: CompletionItemKind.Enum }
+									{ label: "1", kind: CompletionItemKind.Value },
+									{ label: "0", kind: CompletionItemKind.Value }
 								]
 							}
 							if (statichudKeyValues.hasOwnProperty(key)) {
@@ -268,7 +294,8 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 		return []
 	}
 	catch (e: any) {
-		connection.console.log(JSON.stringify(e, null, "\t"))
+		connection.console.log(e.message)
+		// connection.console.log(JSON.stringify(e, null, "\t"))
 		return []
 	}
 })
@@ -313,25 +340,24 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 
 			key = key.replace("_minmode", "").toLowerCase()
 			switch (key) {
-				case "#base": return { uri: `${path.dirname(document.uri)}/${(<string>value).toLowerCase()}`, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
-				case "pin_to_sibling": return VDFExtended.Searcher.getLocationOfKey(document.uri, documentsSymbols[document.uri], <string>value)
+				case "#base": return { uri: pathToFileURL(path.resolve(path.dirname(fileURLToPath(document.uri)), (<string>value).toLowerCase())).href, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
+				case "pin_to_sibling": return getLocationOfKey(document.uri, documentsSymbols[document.uri], <string>value)
 				case "labeltext": {
 
 					const searchLocalizationFile = (filePath: string): Definition | null => {
-						const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(filePath, "utf16le").substr(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings });
-						const result = VDFExtended.Searcher.getLocationOfKey(filePath, documentSymbols, (<string>value).substr(1))
-						// connection.console.log(JSON.stringify(result, null, 4))
+						const documentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf16le").substr(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings });
+						const result = getLocationOfKey(filePath, documentSymbols, (<string>value).substr(1))
 						return result
 					}
 
-					hudRoot ??= HUDTools.GetRoot(document)
+					hudRoot ??= getHUDRoot(document)
 
 					if (hudRoot) {
 						const chat_englishPath = `${hudRoot}/resource/chat_english.txt`
 						const tf_englishPath = `${hudRoot}/../../resource/tf_english.txt`
-						return fs.existsSync(chat_englishPath)
+						return existsSync(chat_englishPath)
 							? (searchLocalizationFile(chat_englishPath) ?? searchLocalizationFile(tf_englishPath))
-							: fs.existsSync(tf_englishPath) ? searchLocalizationFile(tf_englishPath) : null
+							: existsSync(tf_englishPath) ? searchLocalizationFile(tf_englishPath) : null
 					}
 					else {
 						const teamFortress2Folder = (await connection.workspace.getConfiguration({
@@ -345,10 +371,10 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 				case "teambg_1":
 				case "teambg_2":
 				case "teambg_3": {
-					hudRoot ??= HUDTools.GetRoot(document)
+					hudRoot ??= getHUDRoot(document)
 					let vmtPath: string
 					const hudvmtPath = path.normalize(`${hudRoot}/materials/vgui/${value}.vmt`)
-					if (fs.existsSync(hudvmtPath)) {
+					if (existsSync(hudvmtPath)) {
 						vmtPath = hudvmtPath
 					}
 					else {
@@ -357,11 +383,11 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 
 						const relativeImagePath = path.posix.normalize(`materials/vgui/${value}.vmt`)
 
-						if (fs.existsSync(relativeImagePath)) {
+						if (existsSync(relativeImagePath)) {
 							vmtPath = `${tempDirectory}/${relativeImagePath}`
 						}
 						else {
-							fs.mkdirSync(path.dirname(`${tempDirectory}/${relativeImagePath}`), { recursive: true })
+							mkdirSync(path.dirname(`${tempDirectory}/${relativeImagePath}`), { recursive: true })
 
 							execSync([
 								`"${teamFortress2Folder}/bin/vpk.exe"`,
@@ -384,13 +410,13 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 					}
 				}
 				case "name": {
-					hudRoot ??= HUDTools.GetRoot(document)
+					hudRoot ??= getHUDRoot(document)
 					const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-					return hudRoot && fs.existsSync(clientschemePath) ? VDFExtended.Searcher.getLocationOfKey(clientschemePath, fs.readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles") : null
+					return hudRoot && existsSync(clientschemePath) ? getLocationOfKey(clientschemePath, readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles") : null
 				}
 				case "font": {
-					hudRoot ??= HUDTools.GetRoot(document)
-					if (hudRoot && fs.existsSync(`${hudRoot}/${value}`)) {
+					hudRoot ??= getHUDRoot(document)
+					if (hudRoot && existsSync(`${hudRoot}/${value}`)) {
 						return {
 							uri: `file:///${hudRoot}/${value}`,
 							range: {
@@ -406,11 +432,11 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 					for (section in clientscheme) {
 						for (const property of clientscheme[section]) {
 							if (key == property) {
-								hudRoot ??= HUDTools.GetRoot(document)
+								hudRoot ??= getHUDRoot(document)
 								const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-								return hudRoot && fs.existsSync(clientschemePath) ? ((): Definition | null => {
-									const documentSymbols = VDFExtended.getDocumentSymbols(fs.readFileSync(clientschemePath, "utf-8"));
-									return VDFExtended.Searcher.getLocationOfKey(clientschemePath, documentSymbols, <string>value)
+								return hudRoot && existsSync(clientschemePath) ? ((): Definition | null => {
+									const documentSymbols = getVDFDocumentSymbols(readFileSync(clientschemePath, "utf-8"));
+									return getLocationOfKey(clientschemePath, documentSymbols, <string>value)
 								})() : null
 							}
 						}
@@ -418,6 +444,70 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 					return null
 				}
 			}
+		}
+	}
+	return null
+})
+
+connection.onReferences((params: ReferenceParams): Location[] | null => {
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		const filePath = `${tmpdir()}/vscode-vdf-show-reference-position.json`
+		if (existsSync(filePath)) {
+			connection.console.log(`Found ${filePath}`)
+			params.position = JSON.parse(readFileSync(filePath, "utf-8"))
+		}
+
+		const line = document.getText({ start: Position.create(params.position.line, 0), end: Position.create(params.position.line, Infinity) })
+
+		// Assume there is only one token in the element declaration line
+		const token = new VDFTokeniser(line).next().toLowerCase()
+
+		const locations: Location[] = []
+
+		const addSymbols = (documentSymbols: VDFDocumentSymbol[]) => {
+			for (const documentSymbol of documentSymbols) {
+				if (documentSymbol.name == "pin_to_sibling" && documentSymbol.detail?.toLowerCase() == token && documentSymbol.valueRange) {
+					locations.push({
+						uri: params.textDocument.uri,
+						range: documentSymbol.valueRange
+					})
+				}
+				else if (documentSymbol.children) {
+					addSymbols(documentSymbol.children)
+				}
+			}
+		}
+
+		addSymbols(documentsSymbols[params.textDocument.uri])
+
+		return locations
+
+	}
+	return null
+})
+
+connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | undefined => {
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		try {
+			return getVDFDocumentSymbols(document.getText())
+		}
+		catch (e: any) {
+			connection.console.error(e)
+		}
+	}
+})
+
+connection.onCodeLens((params: CodeLensParams): CodeLens[] | null => {
+	const document = documents.get(params.textDocument.uri)
+	if (document) {
+		try {
+			return VDFExtended.getCodeLens(params.textDocument.uri, document.getText(), connection)
+		}
+		catch (e: any) {
+			connection.console.log(e.message)
+			return null
 		}
 	}
 	return null
@@ -452,12 +542,7 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 			return [
 				{
 					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
-					newText: (() => {
-						// connection.console.log('[VDF] Running formatter...')
-						const text = VDF.stringify(VDF.parse(document.getText()))
-						// connection.console.log('[VDF] Finishined Running formatter')
-						return text
-					})()
+					newText: VDF.stringify(VDF.parse(document.getText()))
 				}
 			]
 		}
@@ -469,98 +554,6 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 		return []
 	}
 })
-
-// connection.onPrepareRename((params: PrepareRenameParams): Range | undefined => {
-// 	params.position
-// 	const document = documents.get(params.textDocument.uri)
-// 	if (document) {
-// 		return {
-
-// 			start: {
-// 				line: params.position.line,
-// 				character: params.position.character - 2
-// 			},
-// 			end: {
-// 				line: params.position.line,
-// 				character: params.position.character + 2
-// 			}
-// 		}
-// 	}
-// })
-
-// connection.onRenameRequest((params: RenameParams): WorkspaceEdit | undefined => {
-// 	const document = documents.get(params.textDocument.uri)
-// 	if (document) {
-// 		const line = document.getText({
-// 			start: {
-// 				line: params.position.line,
-// 				character: 0
-// 			},
-// 			end: {
-// 				line: params.position.line,
-// 				character: Infinity
-// 			}
-// 		})
-// 		connection.console.log(line)
-// 		connection.console.log(params.newName)
-
-// 		return {
-// 			changes: VDFExtended.renameToken(document.getText(), "", params.newName, params.textDocument.uri)
-// 		}
-// 	}
-// 	return undefined
-// })
-
-connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | undefined => {
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		try {
-			return VDFExtended.getDocumentSymbols(document.getText())
-		}
-		catch (e: any) {
-			connection.console.error(e)
-		}
-	}
-})
-
-// connection.onCodeLens((params: CodeLensParams): CodeLens[] | undefined => {
-// 	try {
-// 		const document = documents.get(params.textDocument.uri)
-// 		if (document) {
-// 			return VDFExtended.getCodeLens(document.uri, document.getText(), connection)
-// 		}
-// 	}
-// 	catch (e: any) {
-// 		connection.console.error(e)
-// 	}
-// })
-
-// connection.onCodeLensResolve((params: CodeLens): CodeLens => {
-// 	connection.console.log(JSON.stringify(params))
-// 	return {
-// 		command: {
-// 			title: `${params.data.references.length} references`,
-// 			command: "editor.action.goToReferences",
-// 			arguments: [
-// 				params.data.uri,
-// 				params.range.start,
-// 				params.range.end,
-// 			]
-// 		},
-// 		range: params.range
-// 	}
-// })
-
-// connection.onReferences((params: ReferenceParams): Location[] | undefined => {
-// 	const document = documents.get(params.textDocument.uri)
-// 	if (document) {
-// 		const line = document.getText({
-// 			start: Position.create(params.position.line, 0),
-// 			end: Position.create(params.position.line, Infinity)
-// 		}).trim().split('"').join("")
-// 		return VDFExtended.getElementReferences(document.uri, document.getText(), line)
-// 	}
-// })
 
 documents.listen(connection)
 connection.listen()

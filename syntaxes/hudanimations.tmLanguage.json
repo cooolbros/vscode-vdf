@@ -86,7 +86,7 @@
 					"name": "keyword"
 				},
 				"2": {
-					"name": "entity.name.function"
+					"name": "variable"
 				}
 			}
 		},
@@ -118,7 +118,7 @@
 			}
 		},
 		{
-			"match": "\\d+",
+			"match": "[\\d\\.]+",
 			"name": "constant.numeric"
 		},
 		{

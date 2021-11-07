@@ -1,0 +1,30 @@
+{
+	"animate": {
+		"2": "elements",
+		"3": "commonProperties",
+		"4": "values",
+		"5": "interpolators"
+	},
+	"runevent": {
+		"2": "events",
+		"3": "events"
+	},
+	"stopevent": {
+		"2": "events",
+		"3": "events"
+	},
+	"setvisible": {
+		"3": "elements"
+	},
+	"firecommand": {},
+	"runeventchild": {
+		"3": "elements"
+	},
+	"setinputenabled": {
+		"3": "elements"
+	},
+	"playsound": {},
+	"stoppanelanimations": {
+		"3": "elements"
+	}
+}

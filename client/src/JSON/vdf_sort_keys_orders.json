@@ -15,6 +15,7 @@
 		"tall",
 		"tall_lodef",
 		"tall_hidef",
+		"tall_minmode",
 		"auto_tall_tocontents",
 		"autoResize",
 		"pinCorner",

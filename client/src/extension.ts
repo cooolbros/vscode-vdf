@@ -1,3 +1,5 @@
+import { unlinkSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
 import * as path from "path";
 import { commands, EndOfLine, ExtensionContext, languages, Range, TextDocument, TextEditor, TextEditorEdit, workspace } from "vscode";
 import {
@@ -6,22 +8,24 @@ import {
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
+import { VDF, VDFIndentation, VDFNewLine } from "../../shared/vdf";
 import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
-import { VDF, VDFIndentation, VDFNewLine } from "./vdf";
-import { VDFExtended } from "./vdf_extended";
 
 const clientsInfo = {
-	vdf: {
-		id: "vdf-language-server",
-		name: "VDF Language Server",
-	},
 	hudanimations: {
 		id: "hudanimations-language-server",
 		name: "HUD Animations Language Server",
+	},
+	vdf: {
+		id: "vdf-language-server",
+		name: "VDF Language Server",
 	}
 }
 
-const clients: Record<string, LanguageClient | undefined> = {}
+const clients: Record<keyof typeof clientsInfo, LanguageClient | null> = {
+	hudanimations: null,
+	vdf: null
+}
 
 export function activate(context: ExtensionContext): void {
 
@@ -31,10 +35,10 @@ export function activate(context: ExtensionContext): void {
 		const { document } = editor
 		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
 		if (!editor.selection.isEmpty) {
-			edit.replace(editor.selection, VDF.stringify(VDF.parse(document.getText(editor.selection)), indentation))
+			edit.replace(editor.selection, VDF.stringify(VDF.parse(document.getText(editor.selection)), { indentation }))
 		}
 		else {
-			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(VDF.parse(document.getText()), indentation))
+			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(VDF.parse(document.getText()), { indentation }))
 			languages.setTextDocumentLanguage(document, "json");
 		}
 	}))
@@ -42,12 +46,12 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.json-to-vdf", (editor: TextEditor, edit: TextEditorEdit): void => {
 		const { document } = editor
 		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
-		const eol = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
+		const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
 		if (!editor.selection.isEmpty) {
-			edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), indentation, eol))
+			edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), { indentation, newLine }))
 		}
 		else {
-			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), indentation, eol))
+			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), { indentation, newLine }))
 			languages.setTextDocumentLanguage(document, "vdf");
 		}
 	}))
@@ -55,9 +59,11 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sort-vdf", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
 		const ext = document.fileName.split('.').pop()
-		if (((ext): ext is keyof typeof sortKeysOrders => sortKeysOrders.hasOwnProperty(ext))(ext)) {
+		if (ext && ((ext): ext is keyof typeof sortKeysOrders => sortKeysOrders.hasOwnProperty(ext))(ext)) {
+			const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
+			const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
 			const order = sortKeysOrders[ext]
-			const result: string = VDFExtended.sort(VDF.parse(document.getText()), order)
+			const result: string = VDF.stringify(VDF.parse(document.getText()), { indentation, newLine, order })
 			edit.replace(new Range(0, 0, document.lineCount, 0), result)
 		}
 	}))
@@ -74,10 +80,17 @@ export function activate(context: ExtensionContext): void {
 		}
 	}))
 
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", async (editor: TextEditor, edit: TextEditorEdit, ...params: any[]) => {
+		const filePath = `${tmpdir()}/vscode-vdf-show-reference-position.json`
+		writeFileSync(filePath, JSON.stringify(params[0]))
+		await commands.executeCommand("editor.action.referenceSearch.trigger")
+		unlinkSync(filePath)
+	}))
+
 	const onDidOpenTextDocument = (e: TextDocument) => {
 		const languageId: string = e.languageId
 		if (((languageId): languageId is keyof typeof clientsInfo => clientsInfo.hasOwnProperty(languageId))(languageId)) {
-			if (clients[languageId] == undefined) {
+			if (clients[languageId] == null) {
 
 				const serverModule = context.asAbsolutePath(path.join("servers", languageId, "dist", "server.js"))
 
@@ -111,7 +124,7 @@ export function activate(context: ExtensionContext): void {
 					clientOptions
 				)
 
-				clients[languageId].start();
+				clients[languageId]!.start();
 			}
 		}
 	}
@@ -122,8 +135,11 @@ export function activate(context: ExtensionContext): void {
 
 export function deactivate() {
 	const promises: Promise<void>[] = []
-	for (const scheme in clients) {
-		promises.push(clients[scheme]?.stop())
+	let languageId: keyof typeof clients
+	for (languageId in clients) {
+		if (clients[languageId] != null) {
+			promises.push(clients[languageId]!.stop())
+		}
 	}
 	return Promise.all(promises)
 }

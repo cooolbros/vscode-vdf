@@ -1,0 +1,16 @@
+{
+	"[jsonc]": {
+		"editor.formatOnPaste": false,
+		"editor.formatOnSave": false,
+		"editor.insertSpaces": true
+	},
+	"files.exclude": {
+		"**/.DS_Store": true,
+		"**/.git": true,
+		"**/.hg": true,
+		"**/.svn": true,
+		"**/CVS": true,
+		"**/Thumbs.db": true,
+		"**/tsconfig.tsbuildinfo": true
+    }
+}

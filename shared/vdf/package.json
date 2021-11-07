@@ -1,0 +1,4 @@
+{
+  "main": "./dist/vdf.js",
+  "typings": "./dist/vdf.d.ts"
+}
