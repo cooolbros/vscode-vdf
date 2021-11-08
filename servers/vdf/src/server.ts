@@ -16,7 +16,7 @@ import {
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
 import { getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, loadControls, VDFDocumentSymbol } from "../../../shared/tools";
-import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
+import { VDF, VDFIndentation, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import clientscheme from "./JSON/clientscheme.json";
@@ -542,7 +542,10 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 			return [
 				{
 					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
-					newText: VDF.stringify(VDF.parse(document.getText()))
+					newText: VDF.stringify(VDF.parse(document.getText()), {
+						indentation: params.options.insertSpaces ? VDFIndentation.Spaces : VDFIndentation.Tabs,
+						tabSize: params.options.tabSize
+					})
 				}
 			]
 		}

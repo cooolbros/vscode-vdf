@@ -12,6 +12,7 @@ export enum VDFOSTags {
 
 export interface VDFStringifyOptions {
 	indentation?: VDFIndentation
+	tabSize?: number
 	newLine?: VDFNewLine
 	order?: string[] | null
 }
@@ -224,6 +225,7 @@ export class VDF {
 	static stringify(obj: any, options?: VDFStringifyOptions): any {
 		const _options: Required<VDFStringifyOptions> = {
 			indentation: options?.indentation ?? VDFIndentation.Tabs,
+			tabSize: options?.tabSize ?? 4,
 			newLine: options?.newLine ?? VDFNewLine.CRLF,
 			order: options?.order ?? null
 		}
@@ -233,7 +235,7 @@ export class VDF {
 		const tabIndentation: boolean = _options.indentation == VDFIndentation.Tabs
 		const getIndentation: (level: number) => string = tabIndentation
 			? (level: number) => tab.repeat(level)
-			: (level: number) => space.repeat(level * 4)
+			: (level: number) => space.repeat(level * _options.tabSize)
 		const getWhitespace: (longest: number, current: number) => string = tabIndentation
 			? (longest: number, current: number) => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
 			: (longest: number, current: number) => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
