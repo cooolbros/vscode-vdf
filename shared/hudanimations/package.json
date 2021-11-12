@@ -1,0 +1,4 @@
+{
+  "main": "./dist/hudanimations.js",
+  "typings": "./dist/hudanimations.d.ts"
+}

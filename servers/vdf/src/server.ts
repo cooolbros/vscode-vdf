@@ -15,7 +15,7 @@ import {
 	InitializeResult, Location, Position, ProposedFeatures, Range, ReferenceParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, loadControls, VDFDocumentSymbol } from "../../../shared/tools";
+import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
 import { VDF, VDFIndentation, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
@@ -75,14 +75,11 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 						{
 							severity: DiagnosticSeverity.Error,
 							message: e.message,
-							range: Range.create(
-								Position.create(e.line, e.character),
-								Position.create(e.line, e.character)
-							)
+							range: e.range
 						}
 					]
 				}
-				return []
+				throw e
 			}
 		})()
 	})
@@ -102,7 +99,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 		if (document) {
 			const line = document.getText({
 				start: Position.create(params.position.line, 0),
-				end: Position.create(params.position.line, Infinity),
+				end: Position.create(params.position.line, params.position.character),
 			})
 			const tokens = line.split(/\s+/).filter((i) => i != "")
 			if (tokens.length == 1) {
@@ -179,7 +176,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 							iterateDir(`materials`)
 							return Array.from(images).map((i) => ({
 								label: i,
-								kind: CompletionItemKind.Field
+								kind: CompletionItemKind.File
 							}))
 						}
 						case "pin_to_sibling": {
@@ -200,79 +197,11 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 						}
 						default: {
 							// connection.console.log("default:")
-							const sectionIcons: Record<keyof typeof clientscheme, CompletionItemKind> = {
-								"Colors": CompletionItemKind.Color,
-								"Borders": CompletionItemKind.Snippet,
-								"Fonts": CompletionItemKind.Text,
-							}
 
 							let section: keyof typeof clientscheme
 							for (section in clientscheme) {
 								if (clientscheme[section].includes(key)) {
-									const hudRoot = getHUDRoot(document)
-									if (hudRoot == null) {
-										return []
-									}
-									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-									let hudclientscheme: any
-
-									const detailsGenerator: (key: string, value: any) => Partial<CompletionItem> = ({
-										"Colors": (key: string, value: any) => ({
-											detail: <string>value,
-											documentation: (() => {
-												try {
-													let colourValue: string
-													if (/[^\s\d]/.test(value)) {
-														// connection.console.log(`Looking up ${value}`)
-														colourValue = <string>hudclientscheme["Scheme"]["Colors"][value]
-														// connection.console.log(`colourValue is ${colourValue}`)
-													}
-													else {
-														colourValue = value
-													}
-
-													const colours: number[] = colourValue.split(/\s+/).map(parseFloat)
-
-													const r = colours[0].toString(16)
-													const g = colours[1].toString(16)
-													const b = colours[2].toString(16)
-													// const a = (colours[3] * 255).toString(16)
-													const hex = `#${r.length == 1 ? `0${r}` : r}${g.length == 1 ? `0${g}` : g}${b.length == 1 ? `0${b}` : b}`
-
-													// connection.console.log(hex)
-													return hex
-												}
-												catch (e: any) {
-													connection.console.log(e.message)
-													return "#00ff00"
-												}
-											})()
-										}),
-										"Borders": (key: string, value: any) => ({
-											detail: value.bordertype == "scalable_image"
-												? `[Image] ${value.image ?? ""}${value.image && value.color ? " " : ""}${value.color ?? ""} `
-												: ((): string => {
-													const firstBorderSideKey = Object.keys(value).find(i => typeof value[i] == "object")
-													if (firstBorderSideKey) {
-														const firstBorderSide = value[firstBorderSideKey]
-														const thickness = Object.keys(firstBorderSide).length
-														const colour: string = firstBorderSide[Object.keys(firstBorderSide)[0]].color
-														return `[Line] ${thickness}px ${/\s/.test(colour) ? `"${colour}"` : colour} `
-													}
-													return ""
-												})()
-										}),
-										"Fonts": (key: string, value: any) => ({ detail: `${value["1"]?.name ?? ""}${value?.["1"]?.name && value?.["1"]?.tall ? " " : ""}${value["1"]?.tall ?? ""} ` })
-									}[section])
-
-									if (existsSync(clientschemePath)) {
-										hudclientscheme = loadControls(clientschemePath)
-										return Object.keys(hudclientscheme["Scheme"][section]).map((i) => ({
-											label: i,
-											kind: sectionIcons[section],
-											...detailsGenerator(i, hudclientscheme["Scheme"][section][i]),
-										}))
-									}
+									return clientschemeValues(document, section)
 								}
 							}
 
@@ -499,11 +428,59 @@ connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | u
 	}
 })
 
-connection.onCodeLens((params: CodeLensParams): CodeLens[] | null => {
+connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null> => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
 		try {
-			return VDFExtended.getCodeLens(params.textDocument.uri, document.getText(), connection)
+			const showOnAllElements = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
+				scopeUri: params.textDocument.uri,
+				section: "vscode-vdf"
+			})).referencesCodeLens.showOnAllElements
+
+			const elementReferences: Record<string, { range?: Range, references: Location[] }> = {}
+			const addCodelens = (documentSymbols: VDFDocumentSymbol[]) => {
+				for (const documentSymbol of documentSymbols) {
+					const value: string | undefined = documentSymbol.value?.toLowerCase()
+					if (documentSymbol.key.toLowerCase() == "pin_to_sibling" && value && documentSymbol.valueRange) {
+						if (!elementReferences.hasOwnProperty(value)) {
+							elementReferences[value] = { references: [] }
+						}
+						elementReferences[value].references.push({
+							uri: params.textDocument.uri,
+							range: documentSymbol.valueRange
+						})
+					}
+					else if (documentSymbol.children) {
+						elementReferences[documentSymbol.key.toLowerCase()] = {
+							range: documentSymbol.keyRange,
+							references: []
+						}
+						addCodelens(documentSymbol.children)
+					}
+				}
+			}
+			addCodelens(documentsSymbols[params.textDocument.uri] ?? getVDFDocumentSymbols(document.getText()))
+
+			const codeLensItems: CodeLens[] = []
+			for (const key in elementReferences) {
+				const elementRef = elementReferences[key]
+				if (elementRef.range && (elementRef.references.length > 0 || showOnAllElements)) {
+					codeLensItems.push({
+						range: elementRef.range,
+						command: {
+							title: getCodeLensTitle(elementRef.references.length),
+							command: "vscode-vdf.showReferences",
+							arguments: [
+								params.textDocument.uri,
+								elementRef.range,
+								elementRef.references
+							]
+						}
+					})
+				}
+			}
+
+			return codeLensItems
 		}
 		catch (e: any) {
 			connection.console.log(e.message)

@@ -1,3 +1,7 @@
+// VDF
+
+import { Range } from "vscode-languageserver-types"
+
 export interface VDFTokeniserOptions {
 	allowMultilineStrings?: boolean
 	osTags?: VDFOSTags
@@ -83,7 +87,10 @@ export class VDFTokeniser {
 			while (this.str[j] != "\"" && j < this.str.length) {
 				if (this.str[j] == '\n') {
 					if (!this.options.allowMultilineStrings) {
-						throw new VDFSyntaxError(`Unexpected EOL at position ${j} (line ${_line + 1}, position ${_character + 1})! Are you missing a closing double quote?`, _line, _character)
+						throw new VDFSyntaxError(`Unexpected EOL at position ${j} (line ${_line + 1}, position ${_character + 1})! Are you missing a closing double quote?`, {
+							start: { line: _line, character: _character - currentToken.length },
+							end: { line: _line, character: _character }
+						})
 					}
 					else {
 						_line++
@@ -115,7 +122,10 @@ export class VDFTokeniser {
 			_quoted = 0
 			while (!VDFTokeniser.whiteSpaceIgnore.includes(this.str[j]) && j < this.str.length) {
 				if (this.str[j] == "\"") {
-					throw new VDFSyntaxError(`Unexpected " at position ${j} (line ${this.line}, position ${this.character})! Are you missing terminating whitespace?`, _line, _character)
+					throw new VDFSyntaxError(`Unexpected " at position ${j} (line ${this.line}, position ${this.character})! Are you missing terminating whitespace?`, {
+						start: { line: _line, character: _character - currentToken.length },
+						end: { line: _line, character: _character }
+					})
 				}
 				if (this.str[j] == "\\") {
 					// Add backslash
@@ -146,12 +156,8 @@ export class VDFTokeniser {
 }
 
 export class VDFSyntaxError extends Error {
-	line: number
-	character: number
-	constructor(message: string, line: number, character: number) {
+	constructor(message: string, public range: Range) {
 		super(message)
-		this.line = line
-		this.character = character
 	}
 }
 

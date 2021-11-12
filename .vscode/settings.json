@@ -10,7 +10,6 @@
 		"**/.hg": true,
 		"**/.svn": true,
 		"**/CVS": true,
-		"**/Thumbs.db": true,
-		"**/tsconfig.tsbuildinfo": true
-    }
+		"**/Thumbs.db": true
+	}
 }

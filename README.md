@@ -27,16 +27,19 @@ VDF/Valve KeyValues language support for VSCode
  - Autocomplete for #base paths
  - Autocomplete for image paths
  - Autocomplete for pin_to_sibling elements
+
+### Features (HUD Animations Specific)
+ - Autocompletion for keywords, HUD elements (from associated files), common properties, clientscheme values, interpolators
+ - Codelens for event references
+ - Reference provider for events
  - Syntax highlighting for HUD Animations
 
-
 ### TODO
- - Add autocomplete for "particleName" property
- - Add autocomplete for "vcd" property
  - Add code actions for non-normalized file paths
  - Add rename provider
  - Add settings for formatting preference
+ - Add type checking for HUD files
+ - Better HUD Animations formatting
  - Better VDF formatting
- - Code lens for element and clientscheme references
- - Document formatting for HUD animations
+ - Code lens for clientscheme references
  - Unify behaviour for #base and image path autocomplete

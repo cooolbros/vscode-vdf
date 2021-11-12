@@ -1,7 +1,5 @@
-import { unlinkSync, writeFileSync } from "fs";
-import { tmpdir } from "os";
 import * as path from "path";
-import { commands, EndOfLine, ExtensionContext, languages, Range, TextDocument, TextEditor, TextEditorEdit, workspace } from "vscode";
+import { commands, EndOfLine, ExtensionContext, languages, Location, Position, Range, TextDocument, TextEditor, TextEditorEdit, Uri, workspace } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
@@ -31,7 +29,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Commands
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.format-vdf", (editor: TextEditor, edit: TextEditorEdit) => {
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
 		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
 		if (!editor.selection.isEmpty) {
@@ -43,7 +41,7 @@ export function activate(context: ExtensionContext): void {
 		}
 	}))
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.json-to-vdf", (editor: TextEditor, edit: TextEditorEdit): void => {
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", (editor: TextEditor, edit: TextEditorEdit): void => {
 		const { document } = editor
 		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
 		const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
@@ -56,7 +54,24 @@ export function activate(context: ExtensionContext): void {
 		}
 	}))
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sort-vdf", (editor: TextEditor, edit: TextEditorEdit) => {
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", async (editor: TextEditor, edit: TextEditorEdit, ...params: any[]) => {
+
+		type JSONLocation = { uri: string, range: JSONRange }
+		type JSONRange = { start: JSONPosition, end: JSONPosition }
+		type JSONPosition = { line: number, character: number }
+
+		// https://code.visualstudio.com/api/references/commands
+		// https://github.com/microsoft/vscode/issues/95308#issuecomment-644123877
+		await commands.executeCommand(
+			"editor.action.showReferences",
+			Uri.parse(<string>params[0]),
+			new Position((<JSONRange>params[1]).start.line, (<JSONRange>params[1]).start.character),
+			(<JSONLocation[]>params[2]).map(i => new Location(Uri.parse(i.uri), new Range(new Position(i.range.start.line, i.range.start.character), new Position(i.range.end.line, i.range.end.character)))),
+			"peek"
+		)
+	}))
+
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sortVDF", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
 		const ext = document.fileName.split('.').pop()
 		if (ext && ((ext): ext is keyof typeof sortKeysOrders => sortKeysOrders.hasOwnProperty(ext))(ext)) {
@@ -68,7 +83,7 @@ export function activate(context: ExtensionContext): void {
 		}
 	}))
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.vdf-to-json", (editor: TextEditor, edit: TextEditorEdit) => {
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
 		const indentation = !editor.options.insertSpaces ? "\t" : "    "
 		if (!editor.selection.isEmpty) {
@@ -80,12 +95,7 @@ export function activate(context: ExtensionContext): void {
 		}
 	}))
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", async (editor: TextEditor, edit: TextEditorEdit, ...params: any[]) => {
-		const filePath = `${tmpdir()}/vscode-vdf-show-reference-position.json`
-		writeFileSync(filePath, JSON.stringify(params[0]))
-		await commands.executeCommand("editor.action.referenceSearch.trigger")
-		unlinkSync(filePath)
-	}))
+	// Language Server
 
 	const onDidOpenTextDocument = (e: TextDocument) => {
 		const languageId: string = e.languageId

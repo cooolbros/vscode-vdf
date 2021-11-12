@@ -12,36 +12,41 @@
     "vscode": "^1.6.0"
   },
   "activationEvents": [
-    "onLanguage:vdf",
-    "onLanguage:hudanimations",
-    "onCommand:vscode-vdf.format-vdf",
-    "onCommand:vscode-vdf.json-to-vdf",
+    "onCommand:vscode-vdf.formatVDF",
+    "onCommand:vscode-vdf.JSONToVDF",
     "onCommand:vscode-vdf.showReferences",
-    "onCommand:vscode-vdf.sort-vdf",
-    "onCommand:vscode-vdf.vdf-to-json"
+    "onCommand:vscode-vdf.sortVDF",
+    "onCommand:vscode-vdf.VDFToJSON",
+    "onLanguage:hudanimations",
+    "onLanguage:vdf"
   ],
   "main": "./client/dist/extension.js",
   "contributes": {
     "commands": [
       {
         "category": "VDF",
+        "title": "Format VDF",
+        "command": "vscode-vdf.formatVDF"
+      },
+      {
+        "category": "VDF",
         "title": "Convert JSON to VDF",
-        "command": "vscode-vdf.json-to-vdf"
+        "command": "vscode-vdf.JSONToVDF"
       },
       {
         "category": "VDF",
         "title": "Show References",
-        "command": "vscode-vdf.show-references"
+        "command": "vscode-vdf.showReferences"
       },
       {
         "category": "VDF",
         "title": "Sort VDF",
-        "command": "vscode-vdf.sort-vdf"
+        "command": "vscode-vdf.sortVDF"
       },
       {
         "category": "VDF",
         "title": "Convert VDF to JSON",
-        "command": "vscode-vdf.vdf-to-json"
+        "command": "vscode-vdf.VDFToJSON"
       }
     ],
     "grammars": [
@@ -68,6 +73,9 @@
           ".vdf",
           ".vmt"
         ],
+        "filenames": [
+          "hudanimations_manifest.txt"
+        ],
         "configuration": "./vdf-language-configuration.json"
       },
       {
@@ -79,11 +87,14 @@
         "extensions": [
           ".hudanimations"
         ],
+        "filenamePatterns": [
+          "hudanimations*.txt"
+        ],
         "configuration": "./hudanimations-language-configuration.json"
       }
     ],
     "configuration": {
-      "title": "VSCode VDF",
+      "title": "VDF",
       "properties": {
         "vscode-vdf.teamFortess2Folder": {
           "description": "Path to Team Fortress 2 Folder",
@@ -91,9 +102,20 @@
           "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
         },
         "vscode-vdf.hudAnimationsExtraTabs": {
-          "description": "",
+          "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
           "type": "number",
-          "default": "1"
+          "default": 1,
+          "minimum": 1
+        },
+        "vscode-vdf.referencesCodeLens.showOnAllElements": {
+          "description": "Enable/disable references CodeLens on all elements in VDF files.",
+          "type": "boolean",
+          "default": false
+        },
+        "vscode-vdf.referencesCodeLens.showOnAllEvents": {
+          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
+          "type": "boolean",
+          "default": false
         }
       }
     }

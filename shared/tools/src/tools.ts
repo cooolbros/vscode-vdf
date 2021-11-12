@@ -1,8 +1,18 @@
-import fs from "fs"
+import fs, { existsSync } from "fs"
 import path from "path"
 import { fileURLToPath, pathToFileURL, URL } from "url"
-import { Definition, DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver/node"
+import { TextDocument } from "vscode-languageserver-textdocument"
+import { CompletionItem, CompletionItemKind, Definition, DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver/node"
 import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser, VDFTokeniserOptions } from "../../vdf"
+
+export interface VSCodeVDFSettings {
+	readonly teamFortess2Folder: string
+	readonly hudAnimationsExtraTabs: number
+	readonly referencesCodeLens: {
+		readonly showOnAllElements: boolean
+		readonly showOnAllEvents: boolean
+	}
+}
 
 /**
  * Recursive merge all properties from one object into another
@@ -47,7 +57,12 @@ export function getHUDRoot({ uri }: { uri: string }): string | null {
 	return null
 }
 
-export function loadControls(filePath: string): any {
+/**
+ * Load all key/values from a .res file (include #base files)
+ * @description This function will load all controls in .res files and does not match the behaviour of TF2 .res loading
+ * @param filePath .res path
+ */
+export function loadAllControls(filePath: string): any {
 	const origin: object = {}
 	const addControls = (filePath: string) => {
 		const obj = fs.existsSync(filePath) ? VDF.parse(fs.readFileSync(filePath, "utf-8")) : {}
@@ -70,7 +85,6 @@ export interface VDFDocumentSymbol extends DocumentSymbol {
 	valueRange?: Range,
 	children?: VDFDocumentSymbol[]
 }
-
 
 export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions): VDFDocumentSymbol[] {
 	const tokeniser = new VDFTokeniser(str, options)
@@ -99,7 +113,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 
 				locations.push({
 					name: currentToken,
-					kind: 19,
+					kind: SymbolKind.Object,
 					range: range,
 					selectionRange: range,
 					children: parseObject(),
@@ -155,7 +169,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				}
 
 				if (nextToken == "}") {
-					throw new VDFSyntaxError(`Missing value for "${currentToken}"`, tokeniser.line, tokeniser.character)
+					throw new VDFSyntaxError(`Missing value for "${currentToken}"`, Range.create(Position.create(tokeniser.line, tokeniser.character - nextToken.length), Position.create(tokeniser.line, tokeniser.character)))
 				}
 			}
 			currentToken = tokeniser.next();
@@ -219,4 +233,79 @@ export function getLocationOfKey(uri: string, str: string | DocumentSymbol[], ke
 	key = key.toLowerCase()
 
 	return searchFile(uri, str)
+}
+
+const sectionIcons = {
+	"Colors": CompletionItemKind.Color,
+	"Borders": CompletionItemKind.Snippet,
+	"Fonts": CompletionItemKind.Text,
+}
+
+export function clientschemeValues(document: TextDocument, section: "Colors" | "Borders" | "Fonts"): CompletionItem[] {
+	const hudRoot = getHUDRoot(document)
+	if (hudRoot == null) {
+		return []
+	}
+
+	const clientschemePath = `${hudRoot}/resource/clientscheme.res`
+	let hudclientscheme: any
+
+	if (existsSync(clientschemePath)) {
+		hudclientscheme = loadAllControls(clientschemePath)
+		return Object.entries(hudclientscheme["Scheme"][section]).map(([key, value]: [string, any]) => {
+			switch (section) {
+				case "Colors": {
+					let colourValue: string = value
+					while (/[^\s\d]/.test(colourValue) && colourValue != undefined) {
+						colourValue = <string>hudclientscheme["Scheme"]["Colors"][colourValue]
+					}
+
+					let colours: number[] = colourValue.split(/\s+/).map(parseFloat)
+
+					const r = colours[0].toString(16)
+					const g = colours[1].toString(16)
+					const b = colours[2].toString(16)
+					const a = (colours[3] * 255).toString(16)
+
+					const hex = `#${r.length == 1 ? `0${r}` : r}${g.length == 1 ? `0${g}` : g}${b.length == 1 ? `0${b}` : b}`
+					return {
+						label: key,
+						kind: sectionIcons[section],
+						documentation: hex
+					}
+				}
+				case "Borders": {
+					return {
+						label: key,
+						kind: sectionIcons[section],
+						detail: value?.bordertype == "scalable_image"
+							? `[Image] ${value?.image ?? ""}${value?.image && value?.color ? " " : ""}${value?.color ?? ""} `
+							: ((): string => {
+								const firstBorderSideKey = Object.keys(value).find(i => typeof value[i] == "object")
+								if (firstBorderSideKey) {
+									const firstBorderSide = value[firstBorderSideKey]
+									const thickness = Object.keys(firstBorderSide).length
+									const colour: string = firstBorderSide[Object.keys(firstBorderSide)[0]].color
+									return `[Line] ${thickness}px ${/\s/.test(colour) ? `"${colour}"` : colour} `
+								}
+								return ""
+							})()
+					}
+				}
+				case "Fonts": {
+					return {
+						label: key,
+						kind: sectionIcons[section],
+						detail: `${value["1"]?.name ?? ""}${value?.["1"]?.name && value?.["1"]?.tall ? " " : ""}${value["1"]?.tall ?? ""}`
+					}
+				}
+			}
+		})
+	}
+
+	return []
+}
+
+export function getCodeLensTitle(references: number): string {
+	return `${references} reference${references == 1 ? "" : "s"}`
 }

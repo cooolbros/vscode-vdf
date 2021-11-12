@@ -1,4 +1,4 @@
-import { CodeLens, ColorInformation, DocumentSymbol, Position, Range, _Connection } from "vscode-languageserver/node";
+import { ColorInformation, DocumentSymbol, Position, Range } from "vscode-languageserver/node";
 import { getVDFDocumentSymbols } from "../../../shared/tools";
 import { VDFTokeniser } from "../../../shared/vdf";
 
@@ -29,7 +29,6 @@ export class VDFExtended {
 					// Primitive
 					tokeniser.next(); // Skip over value
 					// Check primitive os tag
-
 
 					if (/\d+\s+\d+\s+\d+\s+\d+/.test(nextToken)) {
 						const colour = nextToken.split(/\s+/)
@@ -79,132 +78,6 @@ export class VDFExtended {
 			}
 			str = typeof str == "string" ? getVDFDocumentSymbols(str) : str
 			return search(str)
-		},
-
-	}
-
-	static getCodeLens(uri: string, str: string, connection: _Connection): CodeLens[] {
-		const elementReferences: Record<string, [CodeLens[], Range?]> = {}
-		const tokeniser = new VDFTokeniser(str)
-
-		const parseObject = () => {
-			let currentToken = tokeniser.next();
-			let nextToken = tokeniser.next(true);
-			while (currentToken != "}" && nextToken != "EOF") {
-				const lookahead: string = tokeniser.next(true)
-				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-					// Object with OS Tag
-
-					if (!elementReferences.hasOwnProperty(currentToken)) {
-						elementReferences[currentToken] = [[], {
-							start: Position.create(tokeniser.line, tokeniser.character),
-							end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
-						}]
-					}
-					elementReferences[currentToken][1] = {
-						start: Position.create(tokeniser.line, tokeniser.character),
-						end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
-					}
-
-					tokeniser.next(); // Skip over OS Tag
-					tokeniser.next(); // Skip over opening brace
-				}
-				else if (nextToken == "{") {
-					// Object
-
-
-					if (!elementReferences.hasOwnProperty(currentToken)) {
-						elementReferences[currentToken] = [[], {
-							start: Position.create(tokeniser.line, tokeniser.character),
-							end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
-						}]
-					}
-					elementReferences[currentToken][1] = {
-						start: Position.create(tokeniser.line, tokeniser.character),
-						end: Position.create(tokeniser.line, tokeniser.character + currentToken.length)
-					}
-
-					tokeniser.next(); // Skip over opening brace
-
-					parseObject()
-				}
-				else {
-					// Primitive
-
-					tokeniser.next(); // Skip over value
-					// Check primitive os tag
-					const lookahead: string = tokeniser.next(true)
-					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-						tokeniser.next()
-					}
-
-					if (currentToken.toLowerCase() == "pin_to_sibling") {
-						if (!elementReferences.hasOwnProperty(nextToken)) {
-							elementReferences[nextToken] = [[], undefined]
-						}
-
-						elementReferences[nextToken][0].push({
-							range: {
-								start: Position.create(tokeniser.line, tokeniser.character - nextToken.length),
-								end: Position.create(tokeniser.line, tokeniser.character)
-							}
-						})
-					}
-
-					if (nextToken == "}") {
-						throw {
-							message: `Missing value for "${currentToken}"`,
-							line: tokeniser.line,
-							character: tokeniser.character
-						}
-					}
-				}
-				currentToken = tokeniser.next();
-				nextToken = tokeniser.next(true);
-			}
 		}
-
-		parseObject()
-
-		const codelenss: CodeLens[] = []
-		for (const property in elementReferences) {
-
-			const [references, range] = elementReferences[property]
-			if (references.length > 0) {
-				if (range != undefined) {
-					codelenss.push({
-						range: range,
-						command: {
-							title: `${references.length} reference${references.length > 1 ? "s" : ""}`,
-							command: "vscode-vdf.showReferences",
-							arguments: [
-								Position.create(range.start.line, range.start.character)
-							]
-						}
-					})
-				}
-				// else {
-				// 	connection.sendDiagnostics({
-				// 		uri: uri,
-				// 		diagnostics: [
-				// 			{
-				// 				message: `Cannot find name ${property}`,
-				// 				range: {
-				// 					start: Position.create(0, 0),
-				// 					end: Position.create(0, 10)
-				// 				}
-				// 			}
-				// 		]
-				// 	})
-				// }
-			}
-			else {
-				// connection.console.log(`${property} has no references`)
-			}
-		}
-
-		return codelenss
 	}
-
-
 }
