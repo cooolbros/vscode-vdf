@@ -309,3 +309,7 @@ export function clientschemeValues(document: TextDocument, section: "Colors" | "
 export function getCodeLensTitle(references: number): string {
 	return `${references} reference${references == 1 ? "" : "s"}`
 }
+
+export function RangecontainsPosition(range: Range, position: Position): boolean {
+	return range.start.line <= position.line && range.start.character <= position.character && position.line <= range.end.line && position.character <= range.end.character
+}

@@ -12,10 +12,10 @@ import {
 	ColorPresentationParams,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
 	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
-	InitializeResult, Location, Position, ProposedFeatures, Range, ReferenceParams, TextDocumentChangeEvent, TextDocuments,
+	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
+import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, RangecontainsPosition, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
 import { VDF, VDFIndentation, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
@@ -25,8 +25,6 @@ import { VDFExtended } from "./vdf_extended";
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-
-
 
 const documentsSymbols: Record<string, VDFDocumentSymbol[]> = {}
 
@@ -57,6 +55,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			},
 			colorProvider: true,
 			documentFormattingProvider: true,
+			renameProvider: {
+				prepareProvider: true
+			}
 		}
 	}
 })
@@ -104,7 +105,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 			const tokens = line.split(/\s+/).filter((i) => i != "")
 			if (tokens.length == 1) {
 				// Suggest key
-				const documentSymbols = VDFExtended.Searcher.getObjectAtLocation(documentsSymbols[document.uri], params.position)
+				const documentSymbols = VDFExtended.Searcher.getObjectAtPosition(documentsSymbols[document.uri], params.position)
 				if (documentSymbols) {
 					let controlName: string = ""
 					const properties: string[] = []
@@ -533,6 +534,71 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 	else {
 		return []
 	}
+})
+
+let oldName: string
+
+connection.onPrepareRename((params: PrepareRenameParams) => {
+	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): Range | null => {
+		for (const documentSymbol of documentSymbols) {
+			if (RangecontainsPosition(documentSymbol.range, params.position)) {
+				if (documentSymbol.children) {
+					// Permit renaming objects
+					oldName = documentSymbol.name.toLowerCase()
+					return documentSymbol.range
+				}
+			}
+
+			const keyKey = documentSymbol.name.toLowerCase()
+			if ((keyKey == "fieldname" || keyKey == "pin_to_sibling") && documentSymbol.value && documentSymbol.valueRange) {
+				if (RangecontainsPosition(documentSymbol.valueRange, params.position)) {
+					// Also permit renaming by reference to object
+					oldName = documentSymbol.value.toLowerCase()
+					return documentSymbol.valueRange
+				}
+			}
+			else if (documentSymbol.children) {
+				const range = iterateObject(documentSymbol.children)
+				if (range != null) {
+					return range
+				}
+			}
+		}
+		return null
+	}
+	return iterateObject(documentsSymbols[params.textDocument.uri])
+})
+
+connection.onRenameRequest((params: RenameParams) => {
+	if (oldName == undefined) {
+		throw new Error(`oldName is undefined`)
+	}
+	const edits: TextEdit[] = []
+	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
+		for (const documentSymbol of documentSymbols) {
+			if (documentSymbol.name.toLowerCase() == oldName) {
+				edits.push({
+					newText: params.newName,
+					range: documentSymbol.range
+				})
+			}
+
+			if (documentSymbol.value && documentSymbol.valueRange) {
+				const keyKey = documentSymbol.name.toLowerCase()
+				if ((keyKey == "fieldname" || keyKey == "pin_to_sibling") && documentSymbol.value.toLowerCase() == oldName) {
+					edits.push({
+						newText: params.newName,
+						range: documentSymbol.valueRange
+					})
+				}
+			}
+			else if (documentSymbol.children) {
+				iterateObject(documentSymbol.children)
+			}
+		}
+	}
+	iterateObject(documentsSymbols[params.textDocument.uri])
+	return { changes: { [`${params.textDocument.uri}`]: edits } }
 })
 
 documents.listen(connection)
