@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, ProposedFeatures, Range, ReferenceParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
+import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
 import { animationisType, File, getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol, HUDAnimations, HUDAnimationsSyntaxError } from "../../../shared/hudanimations";
 import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, VSCodeVDFSettings } from "../../../shared/tools";
 import { VDFTokeniser } from "../../../shared/vdf";
@@ -41,6 +41,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			},
 			// colorProvider: true,
 			documentFormattingProvider: true,
+			renameProvider: {
+				prepareProvider: true
+			}
 		}
 	}
 })
@@ -454,6 +457,56 @@ connection.onDocumentFormatting(async (params: DocumentFormattingParams): Promis
 		}
 		return null
 	}
+})
+
+let oldName: string
+
+connection.onPrepareRename((params: PrepareRenameParams) => {
+	for (const event of documentsSymbols[params.textDocument.uri]) {
+		if (event.nameRange.start.line == params.position.line) {
+			if (event.nameRange.start.character <= params.position.character && params.position.character <= event.nameRange.end.character) {
+				oldName = event.name.toLowerCase()
+				return event.nameRange
+			}
+		}
+		for (const { animation, eventRange } of event.animations) {
+			if ((animationisType(animation, "RunEvent") || animationisType(animation, "StopEvent") || animationisType(animation, "RunEventChild")) && eventRange) {
+				if (eventRange.start.line == params.position.line) {
+					if (eventRange.start.character <= params.position.character && params.position.character <= eventRange.end.character) {
+						oldName = animation.event.toLowerCase()
+						return eventRange
+					}
+				}
+			}
+		}
+	}
+	return null
+})
+
+connection.onRenameRequest((params: RenameParams) => {
+	if (oldName == undefined) {
+		throw new Error(`oldName is undefined`)
+	}
+	const edits: TextEdit[] = []
+	for (const event of documentsSymbols[params.textDocument.uri]) {
+		if (event.name.toLowerCase() == oldName) {
+			edits.push({
+				newText: params.newName,
+				range: event.nameRange
+			})
+		}
+		for (const { animation, eventRange } of event.animations) {
+			if ((animationisType(animation, "RunEvent") || animationisType(animation, "StopEvent") || animationisType(animation, "RunEventChild")) && eventRange) {
+				if (animation.event.toLowerCase() == oldName) {
+					edits.push({
+						newText: params.newName,
+						range: eventRange
+					})
+				}
+			}
+		}
+	}
+	return { changes: { [`${params.textDocument.uri}`]: edits } }
 })
 
 documents.listen(connection)

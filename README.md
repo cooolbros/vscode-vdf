@@ -32,6 +32,7 @@ VDF/Valve KeyValues language support for VSCode
  - Autocompletion for keywords, HUD elements (from associated files), common properties, clientscheme values, interpolators
  - Codelens for event references
  - Reference provider for events
+ - Rename provider for events
  - Syntax highlighting for HUD Animations
 
 ### TODO
