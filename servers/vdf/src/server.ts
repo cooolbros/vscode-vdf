@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
+import { dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
@@ -11,7 +12,7 @@ import {
 	ColorPresentation,
 	ColorPresentationParams,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
-	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
+	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
@@ -51,6 +52,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			referencesProvider: true,
 			documentSymbolProvider: true,
 			codeLensProvider: {
+				resolveProvider: false
+			},
+			documentLinkProvider: {
 				resolveProvider: false
 			},
 			colorProvider: true,
@@ -489,6 +493,25 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 		}
 	}
 	return null
+})
+
+connection.onDocumentLinks((params: DocumentLinkParams) => {
+	const documentLinks: DocumentLink[] = []
+	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
+		for (const documentSymbol of documentSymbols) {
+			if (documentSymbol.name.toLocaleLowerCase() == "#base" && documentSymbol.value && documentSymbol.valueRange) {
+				documentLinks.push({
+					range: documentSymbol.valueRange,
+					target: `${dirname(params.textDocument.uri)}/${documentSymbol.value}`
+				})
+			}
+			if (documentSymbol.children) {
+				iterateObject(documentSymbol.children)
+			}
+		}
+	}
+	iterateObject(documentsSymbols[params.textDocument.uri])
+	return documentLinks
 })
 
 connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] => {
