@@ -1,23 +1,27 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
 import { dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
+	CodeAction,
+	CodeActionParams,
 	CodeLens,
 	CodeLensParams,
 	ColorInformation,
 	ColorPresentation,
 	ColorPresentationParams,
+	Command,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
-	createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
+	createConnection, Definition, DefinitionLink, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, RangecontainsPosition, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
+import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, RangecontainsPosition, RangecontainsRange, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
 import { VDF, VDFIndentation, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
+import { CompletionFiles } from "./files_completion";
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import clientscheme from "./JSON/clientscheme.json";
@@ -51,6 +55,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			definitionProvider: true,
 			referencesProvider: true,
 			documentSymbolProvider: true,
+			codeActionProvider: {
+				resolveProvider: false
+			},
 			codeLensProvider: {
 				resolveProvider: false
 			},
@@ -71,7 +78,8 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 		uri: change.document.uri,
 		diagnostics: ((): Diagnostic[] => {
 			try {
-				documentsSymbols[change.document.uri] = getVDFDocumentSymbols(change.document.getText())
+				const documentSymbols = getVDFDocumentSymbols(change.document.getText())
+				documentsSymbols[change.document.uri] = documentSymbols
 				return []
 			}
 			catch (e: unknown) {
@@ -98,7 +106,7 @@ documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
 	})
 })
 
-connection.onCompletion((params: CompletionParams): CompletionItem[] | CompletionList | null => {
+connection.onCompletion(async (params: CompletionParams): Promise<CompletionList | CompletionItem[] | null> => {
 	try {
 		const document = documents.get(params.textDocument.uri)
 		if (document) {
@@ -107,9 +115,10 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 				end: Position.create(params.position.line, params.position.character),
 			})
 			const tokens = line.split(/\s+/).filter((i) => i != "")
-			if (tokens.length == 1) {
+			if (tokens.length <= 1) {
 				// Suggest key
-				const documentSymbols = VDFExtended.Searcher.getObjectAtPosition(documentsSymbols[document.uri], params.position)
+				// connection.console.log("Suggesting a key...")
+				const documentSymbols = getDocumentSymbolsAtPosition(documentsSymbols[document.uri], params.position)
 				if (documentSymbols) {
 					let controlName: string = ""
 					const properties: string[] = []
@@ -121,13 +130,12 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 					}
 
 					if (controlName != "") {
+						connection.console.log(`Controlname is ${controlName}`)
 						if (((controlName): controlName is keyof typeof hudTypes => hudTypes.hasOwnProperty(controlName))(controlName)) {
 							return [...hudTypes[controlName], ...hudTypes.genericHudTypes].filter((i) => !properties.includes(i.label))
 						}
-						return null
-						// return hudTypes.genericHudTypes.filter((i) => !properties.includes(i.label))
+						return hudTypes.genericHudTypes.filter((i) => !properties.includes(i.label))
 					}
-					// return hudTypes.genericHudTypes.filter((i) => !properties.includes(i.label))
 					return null
 				}
 				return null
@@ -140,49 +148,35 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | Completio
 					// connection.console.log(`Switching "${key}"`)
 					switch (key.toLowerCase()) {
 						case "#base": {
-							const items: CompletionItem[] = []
-							let basePath: string = ""
-							const _path = tokens.pop()
-							if (_path) {
-								basePath = _path.split(/[\s\r\n"]+/).join("")
-							}
-							const absoluteBasePath = `${path.dirname(fileURLToPath(document.uri))}/${basePath}/`
-							// connection.console.log(absoluteBasePath)
-							if (existsSync(absoluteBasePath)) {
-								for (const item of readdirSync(absoluteBasePath)) {
-									items.push({
-										label: item,
-										kind: statSync(`${absoluteBasePath}/${item}`).isFile() ? CompletionItemKind.File : CompletionItemKind.Folder,
-										commitCharacters: [
-											"/"
-										]
-									})
-								}
-								return {
-									isIncomplete: true,
-									items: items,
-								}
-							}
-							break;
+
+							const autoCompletionKind = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
+								scopeUri: params.textDocument.uri,
+								section: "vscode-vdf"
+							})).autoCompletionKind
+
+							const folder = path.dirname(fileURLToPath(document.uri))
+
+							return autoCompletionKind == "incremental"
+								? CompletionFiles.Incremental(`${folder}${path.sep}${tokens.pop()?.split(/[\s\r\n"]+/).join("") ?? ""}`)
+								: CompletionFiles.All(folder)
 						}
 						case "image": {
 							const hudRoot = getHUDRoot(document)
-							const images: Set<string> = new Set()
-							const iterateDir = (relativeFolderPath: string) => {
-								for (const item of readdirSync(`${hudRoot}/${relativeFolderPath}/`)) {
-									if (!statSync(`${hudRoot}/${relativeFolderPath}/${item}`).isFile()) {
-										iterateDir(`${relativeFolderPath}/${item}`)
-									}
-									else {
-										images.add(`${path.relative(`${hudRoot}/materials/vgui`, `${hudRoot}/${relativeFolderPath}`)}\\${path.parse(item).name}`.split('\\').join('/'))
-									}
-								}
+							if (hudRoot) {
+								const autoCompletionKind = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
+									scopeUri: params.textDocument.uri,
+									section: "vscode-vdf"
+								})).autoCompletionKind
+
+								const materials = `${hudRoot}/materials`
+								const vgui = `${materials}/vgui`
+
+								return autoCompletionKind == "incremental"
+									? CompletionFiles.Incremental(`${vgui}${path.sep}${tokens.pop()?.split(/[\s\r\n"]+/).join("") ?? ""}`, true)
+									: CompletionFiles.All(materials, vgui, true)
 							}
-							iterateDir(`materials`)
-							return Array.from(images).map((i) => ({
-								label: i,
-								kind: CompletionItemKind.File
-							}))
+
+							return null
 						}
 						case "pin_to_sibling": {
 							const keys: CompletionItem[] = []
@@ -260,15 +254,24 @@ connection.onHover((params: HoverParams): Hover | undefined => {
 	}
 })
 
-connection.onDefinition(async (params: DefinitionParams): Promise<Definition | null> => {
+connection.onDefinition(async (params: DefinitionParams): Promise<Definition | DefinitionLink[] | null> => {
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
-		const line: string = document.getText({ start: { line: params.position.line, character: 0 }, end: { line: params.position.line, character: Infinity }, })
+		// Don't call (Range | Position).create because Infinity is an invalid character number
+		const line = document.getText({
+			start: { line: params.position.line, character: 0 },
+			end: { line: params.position.line, character: Infinity }
+		})
+
 		let hudRoot: string | undefined | null = undefined
+
 		const entries = Object.entries(VDF.parse(line))
 		if (entries.length) {
 			let [key, value] = entries[0]
-			if (params.position.character < line.indexOf(<string>value)) {
+
+			const valueIndex = line.indexOf(<string>value)
+
+			if (params.position.character < valueIndex) {
 				return null
 			}
 
@@ -335,13 +338,14 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 							vmtPath = `${tempDirectory}/${relativeImagePath}`
 						}
 					}
-					return {
-						uri: pathToFileURL(vmtPath).href,
-						range: {
-							start: Position.create(0, Infinity),
-							end: Position.create(Infinity, Infinity)
-						}
-					}
+					const targetRange = Range.create(Position.create(0, 0), Position.create(0, 1))
+					const result: DefinitionLink[] = [{
+						originSelectionRange: Range.create(Position.create(params.position.line, valueIndex), Position.create(params.position.line, valueIndex + (<string>value).length)),
+						targetUri: pathToFileURL(vmtPath).href,
+						targetRange: targetRange,
+						targetSelectionRange: targetRange
+					}]
+					return result
 				}
 				case "name": {
 					hudRoot ??= getHUDRoot(document)
@@ -421,15 +425,89 @@ connection.onReferences((params: ReferenceParams): Location[] | null => {
 	return null
 })
 
-connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | undefined => {
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		try {
-			return getVDFDocumentSymbols(document.getText())
+connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] => {
+	return documentsSymbols[params.textDocument.uri]
+})
+
+connection.onCodeAction((params: CodeActionParams) => {
+	try {
+		const iterateObject = (documentSymbols: VDFDocumentSymbol[]): (Command | CodeAction)[] => {
+			const codeActions: (Command | CodeAction)[] = []
+			for (const { name, value, valueRange, children } of documentSymbols) {
+				if (value && valueRange && RangecontainsRange(valueRange, params.range)) {
+
+					if (name.toLowerCase() == "#base") {
+
+						const folder = path.dirname(fileURLToPath(params.textDocument.uri))
+
+						// Replace forward and back slashes with system seperator
+						const baseRelativePath = path.normalize(value)
+
+						// Get #base path relative to textDocument folder path
+						const newPath = path.relative(folder, `${folder}${path.sep}${baseRelativePath}`)
+
+						// If the normalized path is not the same as the relative path, push the code action
+						if (baseRelativePath != newPath) {
+							// Use forward slash seperator
+							const newBasePath = newPath.split(path.sep).join("/")
+							codeActions.push({
+								title: "Normalize file path",
+								edit: {
+									changes: {
+										[`${params.textDocument.uri}`]: [
+											{
+												newText: newBasePath,
+												range: valueRange
+											}
+										]
+									}
+								}
+							})
+						}
+					}
+
+					if (name.toLowerCase() == "image") {
+						const oldImagePath = path.normalize(value)
+						const newPath = path.relative(`materials${path.sep}vgui`, path.normalize(`materials${path.sep}vgui${path.sep}${value}`))
+						if (oldImagePath != newPath) {
+							const newBasePath = newPath.split(path.sep).join("/")
+							codeActions.push({
+								title: "Normalize file path",
+								edit: {
+									changes: {
+										[`${params.textDocument.uri}`]: [
+											{
+
+												newText: newBasePath,
+												range: valueRange
+											}
+										]
+									}
+								}
+							})
+						}
+					}
+
+					return codeActions
+				}
+
+				if (children) {
+					const result = iterateObject(children)
+					if (result.length > 0) {
+						return result
+					}
+				}
+			}
+			return codeActions
 		}
-		catch (e: any) {
-			connection.console.error(e)
+		return iterateObject(documentsSymbols[params.textDocument.uri] ?? [])
+	}
+	catch (e: unknown) {
+		if (e instanceof VDFSyntaxError) {
+			connection.console.log(`[connection.onCodeAction] ${e.toString()}`)
+			return []
 		}
+		throw e
 	}
 })
 
@@ -446,7 +524,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 			const addCodelens = (documentSymbols: VDFDocumentSymbol[]) => {
 				for (const documentSymbol of documentSymbols) {
 					const value: string | undefined = documentSymbol.value?.toLowerCase()
-					if (documentSymbol.key.toLowerCase() == "pin_to_sibling" && value && documentSymbol.valueRange) {
+					if (documentSymbol.name.toLowerCase() == "pin_to_sibling" && value && documentSymbol.valueRange) {
 						if (!elementReferences.hasOwnProperty(value)) {
 							elementReferences[value] = { references: [] }
 						}
@@ -456,8 +534,8 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 						})
 					}
 					else if (documentSymbol.children) {
-						elementReferences[documentSymbol.key.toLowerCase()] = {
-							range: documentSymbol.keyRange,
+						elementReferences[documentSymbol.name.toLowerCase()] = {
+							range: documentSymbol.nameRange,
 							references: []
 						}
 						addCodelens(documentSymbol.children)
@@ -497,21 +575,46 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 
 connection.onDocumentLinks((params: DocumentLinkParams) => {
 	const documentLinks: DocumentLink[] = []
-	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
-		for (const documentSymbol of documentSymbols) {
-			if (documentSymbol.name.toLocaleLowerCase() == "#base" && documentSymbol.value && documentSymbol.valueRange) {
-				documentLinks.push({
-					range: documentSymbol.valueRange,
-					target: `${dirname(params.textDocument.uri)}/${documentSymbol.value}`
-				})
-			}
-			if (documentSymbol.children) {
-				iterateObject(documentSymbol.children)
+	try {
+		let hudRoot: string | null
+		const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
+			for (const { name, value, valueRange, children } of documentSymbols) {
+
+				const _name = name.toLowerCase()
+
+				if (_name == "#base" && value && valueRange) {
+					connection.console.log(`#base "${dirname(params.textDocument.uri)}/${value}"`)
+					documentLinks.push({
+						range: valueRange,
+						target: `${dirname(params.textDocument.uri)}/${value}`
+					})
+				}
+
+				if (["image", "teambg_1", "teambg_2", "teambg_3"].includes(_name) && valueRange) {
+					hudRoot ??= getHUDRoot(params.textDocument)
+					if (hudRoot) {
+						documentLinks.push({
+							range: valueRange,
+							target: `file:///${hudRoot}/materials/vgui/${value}.vmt`
+						})
+					}
+				}
+
+				if (children) {
+					iterateObject(children)
+				}
 			}
 		}
+		iterateObject(documentsSymbols[params.textDocument.uri] ?? [])
+		return documentLinks
 	}
-	iterateObject(documentsSymbols[params.textDocument.uri])
-	return documentLinks
+	catch (e: unknown) {
+		if (e instanceof VDFSyntaxError) {
+			connection.console.log(`[connection.onDocumentLinks] ${e.toString()}`)
+			return documentLinks
+		}
+		throw e
+	}
 })
 
 connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] => {

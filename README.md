@@ -10,6 +10,7 @@ VDF/Valve KeyValues language support for VSCode
  - Convert VDF to JSON
  - Convert JSON to VDF
  - Jump/Peek definition for #base files
+ - Code actions for non-normalized file paths
 
 ### Features (HUD Specific)
  - Definition Provider
@@ -37,11 +38,9 @@ VDF/Valve KeyValues language support for VSCode
  - Syntax highlighting for HUD Animations
 
 ### TODO
- - Add code actions for non-normalized file paths
- - Add support for renaming clientscheme entries (project wide)
  - Add settings for formatting preference
+ - Add support for renaming clientscheme entries (project wide)
  - Add type checking for HUD files
  - Better HUD Animations formatting
  - Better VDF formatting
  - Code lens for clientscheme references
- - Unify behaviour for #base and image path autocomplete

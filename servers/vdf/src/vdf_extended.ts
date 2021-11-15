@@ -1,5 +1,4 @@
-import { ColorInformation, DocumentSymbol, Position, Range } from "vscode-languageserver/node";
-import { getVDFDocumentSymbols, RangecontainsPosition } from "../../../shared/tools";
+import { ColorInformation, Position, Range } from "vscode-languageserver/node";
 import { VDFTokeniser } from "../../../shared/vdf";
 
 export class VDFExtended {
@@ -58,26 +57,5 @@ export class VDFExtended {
 			return colours;
 		}
 		return parseObject();
-	}
-
-	static Searcher = {
-		getObjectAtPosition: (str: string | DocumentSymbol[], position: Position): DocumentSymbol[] | null => {
-			const search = (documentSymbols: DocumentSymbol[]): DocumentSymbol[] | null => {
-				for (const documentSymbol of documentSymbols) {
-					if (RangecontainsPosition(documentSymbol.range, position)) {
-						return documentSymbols
-					}
-					if (documentSymbol.children) {
-						const result = search(documentSymbol.children)
-						if (result) {
-							return result
-						}
-					}
-				}
-				return null
-			}
-			str = typeof str == "string" ? getVDFDocumentSymbols(str) : str
-			return search(str)
-		}
 	}
 }

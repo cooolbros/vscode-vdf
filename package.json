@@ -96,10 +96,18 @@
     "configuration": {
       "title": "VDF",
       "properties": {
-        "vscode-vdf.teamFortess2Folder": {
-          "description": "Path to Team Fortress 2 Folder",
+        "vscode-vdf.autoCompletionKind": {
+          "description": "Controls the method of providing autocompletion file items.",
           "type": "string",
-          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+          "enum": [
+            "incremental",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Show only files in suggested folder and suggest child items when a folder is selected.",
+            "Suggest all files recursively."
+          ],
+          "default": "incremental"
         },
         "vscode-vdf.hudAnimationsExtraTabs": {
           "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
@@ -116,6 +124,11 @@
           "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
           "type": "boolean",
           "default": false
+        },
+        "vscode-vdf.teamFortess2Folder": {
+          "description": "Path to Team Fortress 2 Folder",
+          "type": "string",
+          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
         }
       }
     }
