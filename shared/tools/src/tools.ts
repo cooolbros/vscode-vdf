@@ -94,7 +94,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 	 * @param obj Whether the object to be parsed is NOT a top level object
 	 */
 	const parseObject = (obj: boolean): VDFDocumentSymbol[] => {
-		// When throwing syntax errors here use VDFSyntaxError or the language server will think it is a real erro
+		// When throwing syntax errors here use VDFSyntaxError or the language server will think it is a real error
 
 		const documentSymbols: VDFDocumentSymbol[] = []
 
