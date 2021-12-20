@@ -33,12 +33,21 @@ export enum VDFNewLine {
 
 export class VDFTokeniser {
 	private static readonly whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
+	private static readonly whiteSpaceTokenTerminate: string[] = ["\"", "{", "}"]
 	private readonly str: string
 	public readonly options: VDFTokeniserOptions
 	public position: number = 0
 	public line: number = 0
 	public character: number = 0
 	public quoted: 0 | 1 = 0
+
+	// Peek
+	private _peekToken: string | null = null
+	private _peekPosition: number = 0
+	private _peekLine: number = 0
+	private _peekCharacter: number = 0
+	private _peekQuoted: 0 | 1 = 0
+
 	constructor(str: string, options?: VDFTokeniserOptions) {
 		this.str = str
 		this.options = {
@@ -48,43 +57,60 @@ export class VDFTokeniser {
 	}
 	next(lookAhead: boolean = false): string {
 		let currentToken: string = ""
+		if (this._peekToken != null) {
+			currentToken = this._peekToken;
+			this.position = this._peekPosition;
+			this.line = this._peekLine;
+			this.character = this._peekCharacter;
+			this.quoted = this._peekQuoted;
+			this._peekToken = null;
+			return currentToken;
+		}
+
 		let j: number = this.position
 		let _line: number = this.line
 		let _character: number = this.character
 		let _quoted: 0 | 1 = this.quoted
-		if (j >= this.str.length - 1) {
+
+		if (j >= this.str.length) {
 			return "EOF"
 		}
-		while ((VDFTokeniser.whiteSpaceIgnore.includes(this.str[j]) || this.str[j] == "/") && j <= this.str.length - 1) {
-			if (this.str[j] == '\n') {
+
+		while (j < this.str.length && (VDFTokeniser.whiteSpaceIgnore.includes(this.str[j]) || this.str[j] == "/")) {
+			if (this.str[j] == "\n") {
 				_line++
 				_character = 0
+			}
+			else if (this.str[j] == "/") {
+				const j1 = j + 1
+				if (j1 < this.str.length && this.str[j1] == "/") {
+					j++
+					while (j < this.str.length && this.str[j] != "\n") {
+						j++
+					}
+					_line++
+					_character = 0
+				}
+				else {
+					break
+				}
 			}
 			else {
 				_character++
 			}
-			if (this.str[j] == '/') {
-				if (this.str[j + 1] == '/') {
-					while (this.str[j] != '\n') {
-						j++
-						// _character++
-					}
-				}
-			}
-			else {
-				j++
-				// _character++
-			}
-			if (j >= this.str.length) {
-				return "EOF"
-			}
+			j++
 		}
+
+		if (j >= this.str.length) {
+			return "EOF"
+		}
+
 		if (this.str[j] == "\"") {
 			// Read until next quote (ignore opening quote)
 			_quoted = 1
 			j++ // Skip over opening double quote
 			_character++ // Skip over opening double quote
-			while (this.str[j] != "\"" && j < this.str.length) {
+			while (this.str[j] != "\"") {
 				if (this.str[j] == '\n') {
 					if (!this.options.allowMultilineStrings) {
 						throw new VDFSyntaxError(`Unexpected EOL at position ${j} (line ${_line + 1}, position ${_character + 1})! Are you missing a closing double quote?`, {
@@ -103,6 +129,13 @@ export class VDFTokeniser {
 					j++
 					_character++
 
+					if (j >= this.str.length) {
+						throw new VDFSyntaxError(`Unclosed escape sequence at position ${j} (line ${_line + 1}, character ${_character + 1})!`, {
+							start: { line: _line, character: _character - currentToken.length },
+							end: { line: _line, character: _character }
+						})
+					}
+
 					// Add character
 					currentToken += this.str[j]
 					j++
@@ -113,6 +146,13 @@ export class VDFTokeniser {
 					j++
 					_character++
 				}
+
+				if (j >= this.str.length) {
+					throw new VDFSyntaxError(`Unexpected EOF at position ${j} (line ${_line + 1}, character ${_character + 1})!`, {
+						start: { line: _line, character: _character - currentToken.length },
+						end: { line: _line, character: _character }
+					})
+				}
 			}
 			j++ // Skip over closing quote
 			_character++ // Skip over closing quote
@@ -120,23 +160,35 @@ export class VDFTokeniser {
 		else {
 			// Read until whitespace (or end of file)
 			_quoted = 0
-			while (!VDFTokeniser.whiteSpaceIgnore.includes(this.str[j]) && j < this.str.length) {
-				if (this.str[j] == "\"") {
-					throw new VDFSyntaxError(`Unexpected " at position ${j} (line ${this.line}, position ${this.character})! Are you missing terminating whitespace?`, {
-						start: { line: _line, character: _character - currentToken.length },
-						end: { line: _line, character: _character }
-					})
-				}
+			while (j < this.str.length && !VDFTokeniser.whiteSpaceIgnore.includes(this.str[j])) {
 				if (this.str[j] == "\\") {
 					// Add backslash
 					currentToken += "\\"
 					j++
 					_character++
 
+					if (j >= this.str.length) {
+						throw new VDFSyntaxError(`Unclosed escape sequence at position ${j} (line ${_line + 1}, character ${_character + 1})!`, {
+							start: { line: _line, character: _character - currentToken.length },
+							end: { line: _line, character: _character }
+						})
+					}
+
 					// Add character
 					currentToken += this.str[j]
 					j++
 					_character++
+				}
+				else if (VDFTokeniser.whiteSpaceTokenTerminate.includes(this.str[j])) {
+					// ", {, } terminate a whitespace initiated token but are not added
+					if (currentToken == "") {
+						// VDFTokeniser.WhiteSpaceTokenTerminate contains a '"' but it that should not be
+						// the case here because if currentToken is "" it would be a quoted token
+						currentToken += this.str[j];
+						j++
+						_character++
+					}
+					break;
 				}
 				else {
 					currentToken += this.str[j]

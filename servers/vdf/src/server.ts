@@ -20,8 +20,9 @@ import {
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
 import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, RangecontainsPosition, RangecontainsRange, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
-import { VDF, VDFIndentation, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
+import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
 import { CompletionFiles } from "./files_completion";
+import { getVDFFormatDocumentSymbols, printVDFFormatDocumentSymbols } from "./formatter";
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import clientscheme from "./JSON/clientscheme.json";
@@ -84,6 +85,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 			}
 			catch (e: unknown) {
 				if (e instanceof VDFSyntaxError) {
+					connection.console.log(`[documents.onDidChangeContent] ${e.toString()}`)
 					return [
 						{
 							severity: DiagnosticSeverity.Error,
@@ -99,7 +101,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 })
 
 documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
-	connection.console.log(`documents.onDidClose ${params.document.uri}`)
+	connection.console.log(`[documents.onDidClose] ${params.document.uri}`)
 	connection.sendDiagnostics({
 		uri: params.document.uri,
 		diagnostics: []
@@ -222,8 +224,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 		return []
 	}
 	catch (e: any) {
-		connection.console.log(e.message)
-		// connection.console.log(JSON.stringify(e, null, "\t"))
+		connection.console.log(`[connection.onCompletion] ${e.toString()}`)
 		return []
 	}
 })
@@ -566,7 +567,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 			return codeLensItems
 		}
 		catch (e: any) {
-			connection.console.log(e.message)
+			connection.console.log(`[connection.onCodeLens] ${e.toString()}`)
 			return null
 		}
 	}
@@ -639,21 +640,23 @@ connection.onColorPresentation((params: ColorPresentationParams): ColorPresentat
 	}
 })
 
-connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] | undefined => {
+connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] | null => {
+	connection.console.log("[connection.onDocumentFormatting]")
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
 		try {
 			return [
 				{
 					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
-					newText: VDF.stringify(VDF.parse(document.getText()), {
-						indentation: params.options.insertSpaces ? VDFIndentation.Spaces : VDFIndentation.Tabs,
-						tabSize: params.options.tabSize
-					})
+					newText: printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(document.getText(), connection), connection)
 				}
 			]
 		}
-		catch (e: any) {
+		catch (e: unknown) {
+			if (e instanceof Error) {
+				connection.console.log(e.message)
+				connection.console.log(e.stack!)
+			}
 			return []
 		}
 	}

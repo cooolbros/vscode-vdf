@@ -99,7 +99,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 		const documentSymbols: VDFDocumentSymbol[] = []
 
 		let key = tokeniser.next()
-		let keyRange = Range.create(tokeniser.line, tokeniser.character - tokeniser.quoted - key.length, tokeniser.line, tokeniser.character - tokeniser.quoted)
+		let keyRange: Range
 
 		let value = tokeniser.next(true)
 		// Don't calculate valueRange because the next token could indicate that the value is an object
@@ -107,6 +107,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 		const objectTerminator = obj ? "}" : "EOF"
 
 		while (key != objectTerminator) {
+			keyRange = Range.create(tokeniser.line, tokeniser.character - tokeniser.quoted - key.length, tokeniser.line, tokeniser.character - tokeniser.quoted)
 
 			if (value.startsWith("[") && value.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Objects || tokeniser.options.osTags == VDFOSTags.All)) {
 				key += ` ${tokeniser.next()}`
@@ -145,7 +146,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			else {
 				value = tokeniser.next()
 
-				if (value == objectTerminator) {
+				if (value == objectTerminator && !tokeniser.quoted) {
 					throw new VDFSyntaxError(`Value expected for "${key}"!`, keyRange)
 				}
 
@@ -172,6 +173,11 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			}
 
 			key = tokeniser.next()
+
+			if (key == "EOF" && obj) {
+				throw new VDFSyntaxError(`Unexpected "${key}" at position ${tokeniser.position} (line ${tokeniser.line + 1}, character ${tokeniser.character + 1})!`, keyRange)
+			}
+
 			if (key != objectTerminator) {
 				keyRange = Range.create(tokeniser.line, tokeniser.character - tokeniser.quoted - key.length, tokeniser.line, tokeniser.character - tokeniser.quoted)
 			}
