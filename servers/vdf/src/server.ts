@@ -524,21 +524,22 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 			const elementReferences: Record<string, { range?: Range, references: Location[] }> = {}
 			const addCodelens = (documentSymbols: VDFDocumentSymbol[]) => {
 				for (const documentSymbol of documentSymbols) {
-					const value: string | undefined = documentSymbol.value?.toLowerCase()
-					if (documentSymbol.name.toLowerCase() == "pin_to_sibling" && value && documentSymbol.valueRange) {
-						if (!elementReferences.hasOwnProperty(value)) {
-							elementReferences[value] = { references: [] }
+					if (documentSymbol.name.toLowerCase() == "pin_to_sibling" && documentSymbol.value && documentSymbol.valueRange) {
+						const elementName = documentSymbol.value.toLowerCase()
+						if (!elementReferences.hasOwnProperty(elementName)) {
+							elementReferences[elementName] = { references: [] }
 						}
-						elementReferences[value].references.push({
+						elementReferences[elementName].references.push({
 							uri: params.textDocument.uri,
 							range: documentSymbol.valueRange
 						})
 					}
 					else if (documentSymbol.children) {
-						elementReferences[documentSymbol.name.toLowerCase()] = {
-							range: documentSymbol.nameRange,
-							references: []
+						const elementName = documentSymbol.name.toLowerCase()
+						if (!elementReferences.hasOwnProperty(elementName)) {
+							elementReferences[elementName] = { references: [] }
 						}
+						elementReferences[elementName].range = documentSymbol.nameRange
 						addCodelens(documentSymbol.children)
 					}
 				}

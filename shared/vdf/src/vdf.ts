@@ -123,7 +123,7 @@ export class VDFTokeniser {
 						_character = 0
 					}
 				}
-				if (this.str[j] == "\\") {
+				else if (this.str[j] == "\\") {
 					// Add backslash
 					currentToken += "\\"
 					j++
