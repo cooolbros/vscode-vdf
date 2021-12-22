@@ -6,7 +6,7 @@ VDF/Valve KeyValues language support for VSCode
 
 ### Features
  - Syntax highlighting
- - Document formatting (currently removes comments, see TODO)
+ - Document formatting
  - Convert VDF to JSON
  - Convert JSON to VDF
  - Jump/Peek definition for #base files
