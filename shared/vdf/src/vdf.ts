@@ -214,7 +214,7 @@ export class VDFSyntaxError extends Error {
 }
 
 export class VDF {
-	static readonly OSTagDelimeter: string = "^"
+	static readonly OSTagDelimeter: "^" = "^"
 	static parse(str: string, options?: VDFTokeniserOptions) {
 		const tokeniser = new VDFTokeniser(str, options)
 		const parseObject = (): { [key: string]: any } => {

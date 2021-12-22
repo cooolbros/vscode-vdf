@@ -26,6 +26,7 @@ import { getVDFFormatDocumentSymbols, printVDFFormatDocumentSymbols } from "./fo
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import clientscheme from "./JSON/clientscheme.json";
+import { validate } from "./validator";
 import { VDFExtended } from "./vdf_extended";
 
 
@@ -81,7 +82,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 			try {
 				const documentSymbols = getVDFDocumentSymbols(change.document.getText())
 				documentsSymbols[change.document.uri] = documentSymbols
-				return []
+				return validate(documentsSymbols[change.document.uri])
 			}
 			catch (e: unknown) {
 				if (e instanceof VDFSyntaxError) {

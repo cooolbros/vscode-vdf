@@ -81,6 +81,7 @@ export function loadAllControls(filePath: string): any {
 }
 export interface VDFDocumentSymbol extends DocumentSymbol {
 	name: string
+	key: string
 	nameRange: Range
 	value?: string
 	valueRange?: Range,
@@ -110,7 +111,8 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			keyRange = Range.create(tokeniser.line, tokeniser.character - tokeniser.quoted - key.length, tokeniser.line, tokeniser.character - tokeniser.quoted)
 
 			if (value.startsWith("[") && value.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Objects || tokeniser.options.osTags == VDFOSTags.All)) {
-				key += ` ${tokeniser.next()}`
+				const osTag = tokeniser.next()
+
 				tokeniser.next() // Skip opening brace
 
 				const children = parseObject(true)
@@ -119,7 +121,8 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				const selectionRange = Range.create(keyRange.start, endPosition)
 
 				documentSymbols.push({
-					name: key,
+					name: `${key} ${osTag}`,
+					key: `${key}${VDF.OSTagDelimeter}${osTag}`,
 					nameRange: keyRange,
 					range: selectionRange,
 					selectionRange: selectionRange,
@@ -136,6 +139,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 
 				documentSymbols.push({
 					name: key,
+					key: key,
 					nameRange: keyRange,
 					range: selectionRange,
 					selectionRange: selectionRange,
@@ -150,18 +154,22 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 					throw new VDFSyntaxError(`Value expected for "${key}"!`, keyRange)
 				}
 
+				let _key = key
+
 				const lookahead: string = tokeniser.next(true)
 				if (lookahead.startsWith("[") && lookahead.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Strings || tokeniser.options.osTags == VDFOSTags.All)) {
-					key += ` ${tokeniser.next()}`
+					const osTag = tokeniser.next()
+					key += ` ${osTag}`
+					_key += `${VDF.OSTagDelimeter}${osTag}`
 				}
 
 				const valueRange = Range.create(Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted - value.length), Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted))
 
 				const containingRange = Range.create(keyRange.start, valueRange.end)
 
-
 				documentSymbols.push({
 					name: key,
+					key: _key,
 					nameRange: keyRange,
 					range: containingRange,
 					selectionRange: containingRange,
