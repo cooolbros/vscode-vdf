@@ -1,173 +1,179 @@
 {
-  "name": "vscode-vdf",
-  "displayName": "VSCode VDF",
-  "description": "VDF language support for VSCode",
-  "version": "1.0.0",
-  "publisher": "pfwobcke",
-  "icon": "icon.png",
-  "galleryBanner": {
-    "color": "#222222",
-    "theme": "dark"
-  },
-  "categories": [
-    "Formatters",
-    "Linters",
-    "Programming Languages"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cooolbros/vscode-vdf"
-  },
-  "engines": {
-    "vscode": "^1.6.0"
-  },
-  "activationEvents": [
-    "onCommand:vscode-vdf.formatVDF",
-    "onCommand:vscode-vdf.JSONToVDF",
-    "onCommand:vscode-vdf.showReferences",
-    "onCommand:vscode-vdf.sortVDF",
-    "onCommand:vscode-vdf.VDFToJSON",
-    "onLanguage:hudanimations",
-    "onLanguage:vdf"
-  ],
-  "main": "./client/dist/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "category": "VDF",
-        "title": "Format VDF",
-        "command": "vscode-vdf.formatVDF"
-      },
-      {
-        "category": "VDF",
-        "title": "Convert JSON to VDF",
-        "command": "vscode-vdf.JSONToVDF"
-      },
-      {
-        "category": "VDF",
-        "title": "Show References",
-        "command": "vscode-vdf.showReferences"
-      },
-      {
-        "category": "VDF",
-        "title": "Sort VDF",
-        "command": "vscode-vdf.sortVDF"
-      },
-      {
-        "category": "VDF",
-        "title": "Convert VDF to JSON",
-        "command": "vscode-vdf.VDFToJSON"
-      }
-    ],
-    "grammars": [
-      {
-        "language": "vdf",
-        "scopeName": "source.vdf",
-        "path": "./syntaxes/vdf.tmLanguage.json"
-      },
-      {
-        "language": "hudanimations",
-        "scopeName": "source.hudanimations",
-        "path": "./syntaxes/hudanimations.tmLanguage.json"
-      }
-    ],
-    "languages": [
-      {
-        "id": "vdf",
-        "aliases": [
-          "Valve KeyValues",
-          "vdf"
-        ],
-        "extensions": [
-          ".res",
-          ".vdf",
-          ".vmt"
-        ],
-        "filenames": [
-          "hudanimations_manifest.txt"
-        ],
-        "configuration": "./vdf-language-configuration.json"
-      },
-      {
-        "id": "hudanimations",
-        "aliases": [
-          "Valve HUD Animations",
-          "hudanimations"
-        ],
-        "extensions": [
-          ".hudanimations"
-        ],
-        "filenamePatterns": [
-          "hudanimations*.txt"
-        ],
-        "configuration": "./hudanimations-language-configuration.json"
-      }
-    ],
-    "configuration": {
-      "title": "VDF",
-      "properties": {
-        "vscode-vdf.autoCompletionKind": {
-          "description": "Controls the method of providing autocompletion file items.",
-          "type": "string",
-          "enum": [
-            "incremental",
-            "all"
-          ],
-          "enumDescriptions": [
-            "Show only files in suggested folder and suggest child items when a folder is selected.",
-            "Suggest all files recursively."
-          ],
-          "default": "incremental"
-        },
-        "vscode-vdf.hudAnimations.extraTabs": {
-          "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
-          "type": "number",
-          "default": 1,
-          "minimum": 1
-        },
-        "vscode-vdf.hudAnimations.layoutScope": {
-          "description": "Controls the scope to compare token lengths to when formatting HUD animations.",
-          "type": "string",
-          "enum": [
-            "event",
-            "file"
-          ],
-          "default": "event"
-        },
-        "vscode-vdf.hudAnimations.referencesCodeLens.showOnAllEvents": {
-          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
-          "type": "boolean",
-          "default": false
-        },
-        "vscode-vdf.referencesCodeLens.showOnAllElements": {
-          "description": "Enable/disable references CodeLens on all elements in VDF files.",
-          "type": "boolean",
-          "default": false
-        },
-        "vscode-vdf.teamFortess2Folder": {
-          "description": "Path to Team Fortress 2 Folder",
-          "type": "string",
-          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
-        }
-      }
-    }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc --build --force shared/vdf && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/vdf",
-    "watch": "tsc -b -w",
-    "postinstall": "cd client && npm install && cd ../servers/vdf && npm install && cd ../../servers/hudanimations && npm i && cd ../.."
-  },
-  "devDependencies": {
-    "@types/mocha": "^8.2.2",
-    "@types/node": "^12.12.0",
-    "@typescript-eslint/eslint-plugin": "^4.23.0",
-    "@typescript-eslint/parser": "^4.23.0",
-    "eslint": "^7.26.0",
-    "mocha": "^8.3.2",
-    "typescript": "^4.4.3"
-  },
-  "dependencies": {
-    "vscode-languageserver": "^7.0.0"
-  }
+	"name": "vscode-vdf",
+	"displayName": "VSCode VDF",
+	"description": "VDF language support for VSCode",
+	"version": "1.0.0",
+	"publisher": "pfwobcke",
+	"icon": "icon.png",
+	"galleryBanner": {
+		"color": "#222222",
+		"theme": "dark"
+	},
+	"categories": [
+		"Formatters",
+		"Linters",
+		"Programming Languages"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/cooolbros/vscode-vdf"
+	},
+	"engines": {
+		"vscode": "^1.6.0"
+	},
+	"activationEvents": [
+		"onCommand:vscode-vdf.formatVDF",
+		"onCommand:vscode-vdf.JSONToVDF",
+		"onCommand:vscode-vdf.showReferences",
+		"onCommand:vscode-vdf.sortVDF",
+		"onCommand:vscode-vdf.VDFToJSON",
+		"onLanguage:hudanimations",
+		"onLanguage:vdf"
+	],
+	"main": "./client/dist/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"category": "VDF",
+				"title": "Format VDF",
+				"command": "vscode-vdf.formatVDF"
+			},
+			{
+				"category": "VDF",
+				"title": "Convert JSON to VDF",
+				"command": "vscode-vdf.JSONToVDF"
+			},
+			{
+				"category": "VDF",
+				"title": "Show References",
+				"command": "vscode-vdf.showReferences"
+			},
+			{
+				"category": "VDF",
+				"title": "Sort VDF",
+				"command": "vscode-vdf.sortVDF"
+			},
+			{
+				"category": "VDF",
+				"title": "Convert VDF to JSON",
+				"command": "vscode-vdf.VDFToJSON"
+			}
+		],
+		"grammars": [
+			{
+				"language": "vdf",
+				"scopeName": "source.vdf",
+				"path": "./syntaxes/vdf.tmLanguage.json"
+			},
+			{
+				"language": "hudanimations",
+				"scopeName": "source.hudanimations",
+				"path": "./syntaxes/hudanimations.tmLanguage.json"
+			}
+		],
+		"languages": [
+			{
+				"id": "vdf",
+				"aliases": [
+					"Valve KeyValues",
+					"vdf"
+				],
+				"extensions": [
+					".res",
+					".vdf",
+					".vmt"
+				],
+				"filenames": [
+					"hudanimations_manifest.txt"
+				],
+				"configuration": "./vdf-language-configuration.json"
+			},
+			{
+				"id": "hudanimations",
+				"aliases": [
+					"Valve HUD Animations",
+					"hudanimations"
+				],
+				"extensions": [
+					".hudanimations"
+				],
+				"filenamePatterns": [
+					"hudanimations*.txt"
+				],
+				"configuration": "./hudanimations-language-configuration.json"
+			}
+		],
+		"configuration": {
+			"title": "VDF",
+			"properties": {
+				"vscode-vdf.autoCompletionKind": {
+					"description": "Controls the method of providing autocompletion file items.",
+					"type": "string",
+					"enum": [
+						"incremental",
+						"all"
+					],
+					"enumDescriptions": [
+						"Show only files in suggested folder and suggest child items when a folder is selected.",
+						"Suggest all files recursively."
+					],
+					"default": "incremental"
+				},
+				"vscode-vdf.hudAnimations.extraTabs": {
+					"description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
+					"type": "number",
+					"default": 1,
+					"minimum": 1
+				},
+				"vscode-vdf.hudAnimations.layoutScope": {
+					"description": "Controls the scope to compare token lengths to when formatting HUD animations.",
+					"type": "string",
+					"enum": [
+						"event",
+						"file"
+					],
+					"default": "event"
+				},
+				"vscode-vdf.hudAnimations.referencesCodeLens.showOnAllEvents": {
+					"description": "Enable/disable references CodeLens on all events in HUD Animations files.",
+					"type": "boolean",
+					"default": false
+				},
+				"vscode-vdf.referencesCodeLens.showOnAllElements": {
+					"description": "Enable/disable references CodeLens on all elements in VDF files.",
+					"type": "boolean",
+					"default": false
+				},
+				"vscode-vdf.teamFortess2Folder": {
+					"description": "Path to Team Fortress 2 Folder",
+					"type": "string",
+					"default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc --build --force shared/vdf && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/vdf",
+		"watch": "tsc -b -w",
+		"postinstall": "cd client && npm install && cd ../servers/vdf && npm install && cd ../../servers/hudanimations && npm i && cd ../.."
+	},
+	"devDependencies": {
+		"@types/mocha": "^8.2.2",
+		"@types/node": "^12.12.0",
+		"@typescript-eslint/eslint-plugin": "^4.23.0",
+		"@typescript-eslint/parser": "^4.23.0",
+		"eslint": "^7.26.0",
+		"mocha": "^8.3.2",
+		"typescript": "^4.4.3"
+	},
+	"dependencies": {
+		"vscode-languageserver": "^7.0.0"
+	},
+	"__metadata": {
+		"id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
+		"publisherDisplayName": "pfwobcke",
+		"publisherId": "0bca7cad-ed90-49e6-88a6-828825345806",
+		"isPreReleaseVersion": false
+	}
 }

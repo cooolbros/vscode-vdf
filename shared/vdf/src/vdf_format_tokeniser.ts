@@ -15,11 +15,11 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 		if (j >= this.str.length) {
 			if (!lookAhead) {
 				this.position = j
+				if (this.EOFRead) {
+					throw new Error(`Already read EOF`)
+				}
+				this.EOFRead = true
 			}
-			if (this.EOFRead) {
-				throw new Error(`Already read EOF`)
-			}
-			this.EOFRead = true
 			return "EOF"
 		}
 
@@ -28,10 +28,12 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 		while ([" ", "\t", "\r"].includes(this.str[j])) {
 			j++
 			if (j >= this.str.length) {
-				if (this.EOFRead) {
-					throw new Error(`Already read EOF`)
+				if (!lookAhead) {
+					if (this.EOFRead) {
+						throw new Error(`Already read EOF`)
+					}
+					this.EOFRead = true
 				}
-				this.EOFRead = true
 				return "EOF"
 			}
 		}
@@ -47,9 +49,10 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 		if (j >= this.str.length) {
 			if (!lookAhead) {
 				this.position = j
-			}
-			if (this.EOFRead) {
-				throw new Error(`Already read EOF`)
+				if (this.EOFRead) {
+					throw new Error(`Already read EOF`)
+				}
+				this.EOFRead
 			}
 			this.EOFRead = true
 			return "EOF"
