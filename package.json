@@ -2,7 +2,7 @@
   "name": "vscode-vdf",
   "displayName": "VSCode VDF",
   "description": "VDF language support for VSCode",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "publisher": "pfwobcke",
   "icon": "icon.png",
   "galleryBanner": {
