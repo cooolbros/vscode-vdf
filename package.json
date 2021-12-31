@@ -154,7 +154,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -b",
+    "compile": "tsc --build --force shared/vdf && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/vdf",
     "watch": "tsc -b -w",
     "postinstall": "cd client && npm install && cd ../servers/vdf && npm install && cd ../../servers/hudanimations && npm i && cd ../.."
   },
