@@ -2,9 +2,10 @@ import { existsSync, readFileSync } from "fs";
 import { pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
-import { animationisType, File, getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol, HUDAnimations, HUDAnimationsSyntaxError } from "../../../shared/hudanimations";
+import { animationisType, File, getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol, HUDAnimationsSyntaxError } from "../../../shared/hudanimations";
 import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, VSCodeVDFSettings } from "../../../shared/tools";
 import { VDFTokeniser } from "../../../shared/vdf";
+import { getHUDAnimationsFormatDocumentSymbols, printHUDAnimationsFormatDocumentSymbols } from "./formatter";
 import { animationCommands, commonProperties, interpolators } from "./hud_animation_types";
 import autoCompletionItems from "./JSON/autocompletion.json";
 import eventFiles from "./JSON/event_files.json";
@@ -342,7 +343,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 		const showOnAllEvents = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
 			scopeUri: params.textDocument.uri,
 			section: "vscode-vdf"
-		})).referencesCodeLens.showOnAllEvents
+		})).hudAnimations.referencesCodeLens.showOnAllEvents
 
 		for (const event of animations) {
 			const eventNameKey = event.name.toLowerCase()
@@ -432,25 +433,28 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 connection.onDocumentFormatting(async (params: DocumentFormattingParams): Promise<TextEdit[] | null> => {
 	try {
 		const document = documents.get(params.textDocument.uri)
-		const hudAnimationsExtraTabs = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
+		const options = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
 			scopeUri: params.textDocument.uri,
 			section: "vscode-vdf"
-		})).hudAnimationsExtraTabs
+		}))
+
 
 		if (document) {
-			const animations = HUDAnimations.parse(document.getText())
+			const documentSymbols = getHUDAnimationsFormatDocumentSymbols(document.getText(), connection)
+			connection.console.log(JSON.stringify(documentSymbols, null, "\t"))
 			return [
 				{
 					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
-					newText: HUDAnimations.stringify(animations, { extraTabs: hudAnimationsExtraTabs })
+					newText: printHUDAnimationsFormatDocumentSymbols(documentSymbols, connection, options.hudAnimations)
 				}
 			]
 		}
 		return null
 	}
 	catch (e: unknown) {
-		if (e instanceof HUDAnimationsSyntaxError) {
+		if (e instanceof Error) {
 			connection.console.log(`[connection.onDocumentFormatting] ${e.toString()}`)
+			connection.console.log(`[connection.onDocumentFormatting] ${e.stack!}`)
 		}
 		else {
 			throw e

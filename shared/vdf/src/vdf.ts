@@ -34,7 +34,7 @@ export enum VDFNewLine {
 export class VDFTokeniser {
 	private static readonly whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
 	private static readonly whiteSpaceTokenTerminate: string[] = ["\"", "{", "}"]
-	private readonly str: string
+	protected readonly str: string
 	public readonly options: VDFTokeniserOptions
 	public position: number = 0
 	public line: number = 0

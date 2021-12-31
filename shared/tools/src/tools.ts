@@ -6,13 +6,18 @@ import { CompletionItem, CompletionItemKind, Definition, DocumentSymbol, Positio
 import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser, VDFTokeniserOptions } from "../../vdf"
 
 export interface VSCodeVDFSettings {
-	readonly teamFortess2Folder: string
-	readonly hudAnimationsExtraTabs: number
+	readonly autoCompletionKind: "incremental" | "all"
+	readonly hudAnimations: {
+		readonly layoutScope: "event" | "file"
+		readonly extraTabs: number
+		readonly referencesCodeLens: {
+			readonly showOnAllEvents: boolean
+		}
+	}
 	readonly referencesCodeLens: {
 		readonly showOnAllElements: boolean
-		readonly showOnAllEvents: boolean
 	}
-	readonly autoCompletionKind: "incremental" | "all"
+	readonly teamFortess2Folder: string
 }
 
 /**

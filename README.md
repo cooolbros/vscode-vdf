@@ -41,5 +41,4 @@ VDF/Valve KeyValues language support for VSCode
  - Add settings for formatting preference
  - Add support for renaming clientscheme entries (project wide)
  - Add type checking for HUD files
- - Better HUD Animations formatting
  - Code lens for clientscheme references

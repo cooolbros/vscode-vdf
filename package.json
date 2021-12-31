@@ -119,19 +119,28 @@
           ],
           "default": "incremental"
         },
-        "vscode-vdf.hudAnimationsExtraTabs": {
+        "vscode-vdf.hudAnimations.extraTabs": {
           "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
           "type": "number",
           "default": 1,
           "minimum": 1
         },
-        "vscode-vdf.referencesCodeLens.showOnAllElements": {
-          "description": "Enable/disable references CodeLens on all elements in VDF files.",
+        "vscode-vdf.hudAnimations.layoutScope": {
+          "description": "Controls the scope to compare token lengths to when formatting HUD animations.",
+          "type": "string",
+          "enum": [
+            "event",
+            "file"
+          ],
+          "default": "event"
+        },
+        "vscode-vdf.hudAnimations.referencesCodeLens.showOnAllEvents": {
+          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
           "type": "boolean",
           "default": false
         },
-        "vscode-vdf.referencesCodeLens.showOnAllEvents": {
-          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
+        "vscode-vdf.referencesCodeLens.showOnAllElements": {
+          "description": "Enable/disable references CodeLens on all elements in VDF files.",
           "type": "boolean",
           "default": false
         },

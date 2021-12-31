@@ -8,8 +8,8 @@ export type File = Record<string, Event>
 export type Event = HUDAnimation<Command>[]
 
 const CommandKeys = <const>["Animate", "RunEvent", "StopEvent", "SetVisible", "FireCommand", "RunEventChild", "SetInputEnabled", "PlaySound", "StopPanelAnimations"]
-type Command = typeof CommandKeys[number]
-type CommandTypes = {
+export type Command = typeof CommandKeys[number]
+export type CommandTypes = {
 	"Animate": HUDAnimations.Animate
 	"RunEvent": HUDAnimations.RunEvent
 	"StopEvent": HUDAnimations.StopEvent
@@ -22,11 +22,11 @@ type CommandTypes = {
 }
 
 const Interpolators = <const>["Linear", "Accel", "Deaccel", "Spline", "Pulse", "Flicker", "Gain", "Bias", "Bounce"]
-type Interpolator = typeof Interpolators[number]
+export type Interpolator = typeof Interpolators[number]
 type Bit = 0 | 1
 
 export interface HUDAnimation<T extends Command> {
-	type: T
+	readonly type: T
 	osTag?: `[${string}]`
 }
 
@@ -88,7 +88,7 @@ export function isHUDAnimationCommand(animationType: string): animationType is C
 	return false
 }
 
-export function animationisType<T extends Command>(animation: HUDAnimation<Command>, animationType: T): animation is CommandTypes[typeof animationType] {
+export function animationisType<T extends Command>(animation: HUDAnimation<Command>, animationType: T): animation is CommandTypes[T] {
 	return animation.type == animationType
 }
 
@@ -99,7 +99,8 @@ export class HUDAnimationsSyntaxError extends VDFSyntaxError {
 }
 
 export interface HUDAnimationsStringifyOptions {
-	extraTabs?: number
+	readonly layoutScope: "event" | "file"
+	readonly extraTabs: number
 }
 
 export class HUDAnimations {
@@ -291,7 +292,8 @@ export class HUDAnimations {
 
 
 		const _options: Required<HUDAnimationsStringifyOptions> = {
-			extraTabs: options?.extraTabs ?? 1
+			extraTabs: options?.extraTabs ?? 1,
+			layoutScope: options?.layoutScope ?? "event",
 		}
 
 		const newLine = "\r\n"
@@ -465,7 +467,7 @@ export interface HUDAnimationStatementDocumentSymbol {
 // 	}
 // 	return result
 // }
-function sanitizeString<T extends readonly string[]>(str: string, options: T, tokeniser: VDFTokeniser): T[number] {
+export function sanitizeString<T extends readonly string[]>(str: string, options: T, tokeniser: VDFTokeniser): T[number] {
 	const _str = str.toLowerCase()
 	const result = options.find(i => i.toLowerCase() == _str)
 	if (!result) {
@@ -474,7 +476,7 @@ function sanitizeString<T extends readonly string[]>(str: string, options: T, to
 	return result
 }
 
-function sanitizeNaN(str: string, tokeniser: VDFTokeniser): number {
+export function sanitizeNaN(str: string, tokeniser: VDFTokeniser): number {
 	const result = parseFloat(str)
 	if (isNaN(result)) {
 		throw new HUDAnimationsSyntaxError(str, tokeniser, `Expected number!`)
@@ -482,7 +484,7 @@ function sanitizeNaN(str: string, tokeniser: VDFTokeniser): number {
 	return result
 }
 
-function sanitizeBit(str: string, tokeniser: VDFTokeniser): Bit {
+export function sanitizeBit(str: string, tokeniser: VDFTokeniser): Bit {
 	if (str == "1" || str == "0") {
 		return str == "1" ? 1 : 0
 	}
@@ -499,6 +501,10 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 	const tokeniser = new VDFTokeniser(str, options)
 
 	let currentToken = tokeniser.next().toLowerCase()
+
+	if (currentToken == "eof") {
+		return result
+	}
 
 	if (currentToken != "event") {
 		throw new HUDAnimationsSyntaxError(currentToken, tokeniser, `Expected "event"`)
