@@ -8,14 +8,14 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 	const addDiagnostics = (objectPath: string[], _documentSymbols: VDFDocumentSymbol[]): void => {
 		for (const { name, key, value, children, valueRange } of _documentSymbols) {
 			if (value && valueRange) {
-				let _key = name.toLowerCase()
+				const _key = key.split(VDF.OSTagDelimeter)[0].toLowerCase()
 				const _value = value.toLowerCase()
 				switch (_key) {
 					case "fieldname":
 						{
 							// fieldName must match element name
-							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0].toLowerCase()
-							if (elementName != _value) {
+							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0]
+							if (_value != elementName.toLowerCase()) {
 								diagnostics.push({
 									message: `fieldName "${value}" does not match element name "${elementName}"`,
 									range: valueRange,
@@ -27,9 +27,10 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 					case "pin_to_sibling":
 						{
 							// Element should not be pinned to itself
-							if (_value == key.split(VDF.OSTagDelimeter)[0]) {
+							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0]
+							if (_value == elementName.toLowerCase()) {
 								diagnostics.push({
-									message: `Element "${objectPath[objectPath.length - 1]}" is pinned to itself!`,
+									message: `Element "${elementName}" is pinned to itself!`,
 									range: valueRange,
 									severity: DiagnosticSeverity.Warning,
 								})
