@@ -265,6 +265,9 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 			end: { line: params.position.line, character: Infinity }
 		})
 
+		// string    = hud root directory has been found
+		// undefined = hud root directory has not been searched for
+		// null     = hud root directory has been searched for, current document is not inside a hud folder
 		let hudRoot: string | undefined | null = undefined
 
 		const entries = Object.entries(VDF.parse(line))
@@ -273,6 +276,8 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 
 			const valueIndex = line.indexOf(<string>value)
 
+			// Do not find definitions for keys
+			// TODO replace null with custom result with VDF key
 			if (params.position.character < valueIndex) {
 				return null
 			}
@@ -354,6 +359,20 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 					const clientschemePath = `${hudRoot}/resource/clientscheme.res`
 					return hudRoot && existsSync(clientschemePath) ? getLocationOfKey(clientschemePath, readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles") : null
 				}
+				case "$basetexture":
+					{
+						hudRoot ??= getHUDRoot(document)
+						if (hudRoot) {
+							return {
+								uri: `file:///${hudRoot}/materials/${value}.vtf`,
+								range: {
+									start: { line: 0, character: 0 },
+									end: { line: 0, character: Infinity }
+								}
+							}
+						}
+						break
+					}
 				case "font": {
 					hudRoot ??= getHUDRoot(document)
 					if (hudRoot && existsSync(`${hudRoot}/${value}`)) {
