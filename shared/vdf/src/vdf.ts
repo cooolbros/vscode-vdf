@@ -41,6 +41,8 @@ export class VDFTokeniser {
 	public character: number = 0
 	public quoted: 0 | 1 = 0
 
+	private tokenStartPosition: { line: number, character: number } = { line: 0, character: 0 }
+
 	// Peek
 	private _peekToken: string | null = null
 	private _peekPosition: number = 0
@@ -71,6 +73,7 @@ export class VDFTokeniser {
 		let _line: number = this.line
 		let _character: number = this.character
 		let _quoted: 0 | 1 = this.quoted
+		let _tokenStartPosition: typeof this.tokenStartPosition
 
 		if (j >= this.str.length) {
 			return "EOF"
@@ -107,9 +110,13 @@ export class VDFTokeniser {
 
 		if (this.str[j] == "\"") {
 			// Read until next quote (ignore opening quote)
+
 			_quoted = 1
 			j++ // Skip over opening double quote
 			_character++ // Skip over opening double quote
+
+			_tokenStartPosition = { line: _line, character: _character }
+
 			while (this.str[j] != "\"") {
 				if (this.str[j] == '\n') {
 					if (!this.options.allowMultilineStrings) {
@@ -160,6 +167,7 @@ export class VDFTokeniser {
 		else {
 			// Read until whitespace (or end of file)
 			_quoted = 0
+			_tokenStartPosition = { line: _line, character: _character }
 			while (j < this.str.length && !VDFTokeniser.whiteSpaceIgnore.includes(this.str[j])) {
 				if (this.str[j] == "\\") {
 					// Add backslash
@@ -202,8 +210,18 @@ export class VDFTokeniser {
 			this.line = _line
 			this.character = _character
 			this.quoted = _quoted
+			this.tokenStartPosition = _tokenStartPosition
 		}
 		return currentToken
+	}
+	tokenRange(): Range {
+		return {
+			start: this.tokenStartPosition,
+			end: {
+				line: this.line,
+				character: this.character - this.quoted
+			}
+		}
 	}
 }
 

@@ -691,16 +691,16 @@ let oldName: string
 connection.onPrepareRename((params: PrepareRenameParams) => {
 	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): Range | null => {
 		for (const documentSymbol of documentSymbols) {
-			if (RangecontainsPosition(documentSymbol.range, params.position)) {
+			if (RangecontainsPosition(documentSymbol.nameRange, params.position)) {
 				if (documentSymbol.children) {
 					// Permit renaming objects
-					oldName = documentSymbol.name.toLowerCase()
-					return documentSymbol.range
+					oldName = documentSymbol.key.toLowerCase()
+					return documentSymbol.nameRange
 				}
 			}
 
-			const keyKey = documentSymbol.name.toLowerCase()
-			if ((keyKey == "fieldname" || keyKey == "pin_to_sibling") && documentSymbol.value && documentSymbol.valueRange) {
+			const key = documentSymbol.name.toLowerCase()
+			if ((key == "fieldname" || key == "pin_to_sibling") && documentSymbol.value && documentSymbol.valueRange) {
 				if (RangecontainsPosition(documentSymbol.valueRange, params.position)) {
 					// Also permit renaming by reference to object
 					oldName = documentSymbol.value.toLowerCase()
@@ -726,10 +726,10 @@ connection.onRenameRequest((params: RenameParams) => {
 	const edits: TextEdit[] = []
 	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
 		for (const documentSymbol of documentSymbols) {
-			if (documentSymbol.name.toLowerCase() == oldName) {
+			if (documentSymbol.key.split(VDF.OSTagDelimeter)[0].toLowerCase() == oldName) {
 				edits.push({
 					newText: params.newName,
-					range: documentSymbol.range
+					range: documentSymbol.nameRange
 				})
 			}
 

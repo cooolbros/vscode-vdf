@@ -85,11 +85,46 @@ export function loadAllControls(filePath: string): any {
 	return origin
 }
 export interface VDFDocumentSymbol extends DocumentSymbol {
+
+	/**
+	 * User visible document symbol name e.g. xpos
+	 */
 	name: string
+
+	/**
+	 * VDF Document Symbol key e.g. xpos^[$WIN32]
+	 */
 	key: string
+
+	/**
+	 * VDF Document Symbol OS Tag e.g. [$WIN32]
+	 */
+	osTag?: string
+
+	/**
+	 * VDF Document Symbol OS Tag Range
+	 */
+	osTagRange?: Range
+
+	/**
+	 * Document range containing key
+	 */
 	nameRange: Range
+
+	/**
+	 * VDF Document Symbol Primitive Value
+	 */
 	value?: string
+
+
+	/**
+	 * VDF Document Symbol Primitive Value Range
+	 */
 	valueRange?: Range,
+
+	/**
+	 * VDF Document Symbol children
+	 */
 	children?: VDFDocumentSymbol[]
 }
 
@@ -118,6 +153,8 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			if (value.startsWith("[") && value.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Objects || tokeniser.options.osTags == VDFOSTags.All)) {
 				const osTag = tokeniser.next()
 
+				const osTagRange = Range.create(tokeniser.line, tokeniser.character - osTag.length, tokeniser.line, tokeniser.character)
+
 				tokeniser.next() // Skip opening brace
 
 				const children = parseObject(true)
@@ -128,6 +165,8 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				documentSymbols.push({
 					name: `${key} ${osTag}`,
 					key: `${key}${VDF.OSTagDelimeter}${osTag}`,
+					osTag: osTag,
+					osTagRange: osTagRange,
 					nameRange: keyRange,
 					range: selectionRange,
 					selectionRange: selectionRange,
@@ -159,23 +198,29 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 					throw new VDFSyntaxError(`Value expected for "${key}"!`, keyRange)
 				}
 
-				let _key = key
+				const valueRange = tokeniser.tokenRange()
+
+				let osTag: string | undefined
+				let osTageRange: Range | undefined
 
 				const lookahead: string = tokeniser.next(true)
 				if (lookahead.startsWith("[") && lookahead.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Strings || tokeniser.options.osTags == VDFOSTags.All)) {
-					const osTag = tokeniser.next()
-					key += ` ${osTag}`
-					_key += `${VDF.OSTagDelimeter}${osTag}`
+					osTag = tokeniser.next()
+					osTageRange = tokeniser.tokenRange()
 				}
 
-				const valueRange = Range.create(Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted - value.length), Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted))
-
-				const containingRange = Range.create(keyRange.start, valueRange.end)
+				const containingRange = Range.create(keyRange.start, osTageRange != undefined ? osTageRange.end : valueRange.end)
 
 				documentSymbols.push({
-					name: key,
-					key: _key,
+					name: osTag != undefined ? `${key} ${osTag}` : key,
+					key: osTag != undefined ? `${key}${VDF.OSTagDelimeter}${osTag}` : key,
 					nameRange: keyRange,
+					...(osTag != undefined && {
+						osTag: osTag
+					}),
+					...(osTageRange != undefined && {
+						osTagRange: osTageRange
+					}),
 					range: containingRange,
 					selectionRange: containingRange,
 					value: value,
@@ -354,7 +399,13 @@ export function getCodeLensTitle(references: number): string {
 }
 
 export function RangecontainsPosition(range: Range, position: Position): boolean {
-	return range.start.line <= position.line && range.end.line >= position.line
+	if (range.start.line != position.line || range.end.line != position.line) {
+		return false
+	}
+	if (range.start.character > position.character || range.end.character < position.character) {
+		return false
+	}
+	return true
 }
 
 export function RangecontainsRange(range: Range, { start, end }: Range): boolean {
