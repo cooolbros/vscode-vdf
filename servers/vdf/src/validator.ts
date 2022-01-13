@@ -2,6 +2,33 @@ import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { VDFDocumentSymbol } from "../../../shared/tools/src/tools";
 import { VDF } from "../../../shared/vdf";
 
+const pinValues = [
+	"PIN_TOPLEFT",
+	"PIN_TOPRIGHT",
+	"PIN_BOTTOMLEFT",
+	"PIN_BOTTOMRIGHT",
+	"PIN_CENTER_TOP",
+	"PIN_CENTER_RIGHT",
+	"PIN_CENTER_BOTTOM",
+	"PIN_CENTER_LEFT"
+]
+
+const enumMembers = {
+	"textalignment": [
+		"center",
+		"north",
+		"north-east",
+		"east",
+		"south-east",
+		"south",
+		"south-west",
+		"west",
+		"north-est"
+	],
+	"pin_corner_to_sibling": pinValues,
+	"pin_to_sibling_corner": pinValues
+}
+
 export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 	const diagnostics: Diagnostic[] = []
 
@@ -34,6 +61,28 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 									range: valueRange,
 									severity: DiagnosticSeverity.Warning,
 								})
+							}
+							break
+						}
+					default:
+						{
+							if (((key): key is keyof typeof enumMembers => enumMembers.hasOwnProperty(key))(_key)) {
+								let i = 0
+								let enumValueValid = false
+								while (i < enumMembers[_key].length && !enumValueValid) {
+									if (enumMembers[_key][i].toLowerCase() == _value) {
+										enumValueValid = true
+									}
+									i++
+								}
+
+								if (!enumValueValid) {
+									diagnostics.push({
+										message: `"${value}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
+										range: valueRange,
+										severity: DiagnosticSeverity.Warning,
+									})
+								}
 							}
 							break
 						}

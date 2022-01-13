@@ -86,9 +86,3 @@ export namespace hudTypes {
 		{ label: "teambg_3", kind: CompletionItemKind.Field },
 	]
 }
-
-
-// export const hudTypes: Record<string, CompletionItem[]> = {
-
-
-// }

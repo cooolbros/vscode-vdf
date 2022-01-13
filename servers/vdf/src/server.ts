@@ -289,9 +289,15 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 				case "labeltext": {
 
 					const searchLocalizationFile = (filePath: string): Definition | null => {
-						const documentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf16le").substr(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings });
-						const result = getLocationOfKey(filePath, documentSymbols, (<string>value).substr(1))
-						return result
+						try {
+							const documentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf16le").substring(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings });
+							const result = getLocationOfKey(filePath, documentSymbols, (<string>value).substring(1))
+							return result
+						}
+						catch (e: any) {
+							connection.console.log(e.toString())
+							return null
+						}
 					}
 
 					hudRoot ??= getHUDRoot(document)
@@ -299,17 +305,34 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 					if (hudRoot) {
 						const chat_englishPath = `${hudRoot}/resource/chat_english.txt`
 						const tf_englishPath = `${hudRoot}/../../resource/tf_english.txt`
-						return existsSync(chat_englishPath)
-							? (searchLocalizationFile(chat_englishPath) ?? searchLocalizationFile(tf_englishPath))
-							: existsSync(tf_englishPath) ? searchLocalizationFile(tf_englishPath) : null
+
+						if (existsSync(chat_englishPath)) {
+							const result = searchLocalizationFile(chat_englishPath)
+							if (result) {
+								return result
+							}
+
+							if (existsSync(tf_englishPath)) {
+								return searchLocalizationFile(tf_englishPath)
+							}
+						}
+						else if (existsSync(tf_englishPath)) {
+							return searchLocalizationFile(tf_englishPath)
+						}
 					}
 					else {
 						const teamFortress2Folder = (await connection.workspace.getConfiguration({
 							scopeUri: document.uri,
 							section: "vscode-vdf"
 						})).teamFortess2Folder
-						return searchLocalizationFile(`${teamFortress2Folder}/tf/resource/tf_english.txt`)
+
+						const tf_englishPath = `${teamFortress2Folder}/tf/resource/tf_english.txt`
+
+						if (existsSync(tf_englishPath)) {
+							return searchLocalizationFile(tf_englishPath)
+						}
 					}
+					return null
 				}
 				case "image":
 				case "teambg_1":
