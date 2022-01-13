@@ -1,12 +1,12 @@
+<p align="center"><img src="https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png" width="150"></p>
+
 # VSCode VDF Language Support
 
 VDF/Valve KeyValues language support for VSCode
 
-***This extension is still in development***
-
 ### Features
  - Syntax highlighting
- - Document formatting
+ - File formatting
  - Convert VDF to JSON
  - Convert JSON to VDF
  - Jump/Peek definition for #base files
@@ -38,7 +38,12 @@ VDF/Valve KeyValues language support for VSCode
  - Syntax highlighting for HUD Animations
 
 ### TODO
+ - Add popfile support
  - Add settings for formatting preference
  - Add support for renaming clientscheme entries (project wide)
- - Add type checking for HUD files
+ - Add VTF viewer/editor
  - Code lens for clientscheme references
+
+Github: https://github.com/cooolbros/vscode-vdf
+
+VS Marketplace: https://marketplace.visualstudio.com/items?itemName=pfwobcke.vscode-vdf
