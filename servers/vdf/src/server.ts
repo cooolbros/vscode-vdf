@@ -22,7 +22,7 @@ import {
 import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, RangecontainsPosition, RangecontainsRange, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
 import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser } from "../../../shared/vdf";
 import { CompletionFiles } from "./files_completion";
-import { getVDFFormatDocumentSymbols, printVDFFormatDocumentSymbols } from "./formatter";
+import { format } from "./formatter";
 import { hudTypes } from "./HUD/keys";
 import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import clientscheme from "./JSON/clientscheme.json";
@@ -692,7 +692,7 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 			return [
 				{
 					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
-					newText: printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(document.getText(), connection), connection)
+					newText: format(document.getText(), connection)
 				}
 			]
 		}

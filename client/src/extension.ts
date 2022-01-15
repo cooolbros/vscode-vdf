@@ -17,12 +17,17 @@ const clientsInfo = {
 	vdf: {
 		id: "vdf-language-server",
 		name: "VDF Language Server",
+	},
+	population: {
+		id: "population-language-server",
+		name: "Population Language Server"
 	}
 }
 
 const clients: Record<keyof typeof clientsInfo, LanguageClient | null> = {
 	hudanimations: null,
-	vdf: null
+	vdf: null,
+	population: null
 }
 
 export function activate(context: ExtensionContext): void {
@@ -37,7 +42,7 @@ export function activate(context: ExtensionContext): void {
 		}
 		else {
 			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(VDF.parse(document.getText()), { indentation }))
-			languages.setTextDocumentLanguage(document, "json");
+			languages.setTextDocumentLanguage(document, "json")
 		}
 	}))
 
@@ -50,7 +55,7 @@ export function activate(context: ExtensionContext): void {
 		}
 		else {
 			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), { indentation, newLine }))
-			languages.setTextDocumentLanguage(document, "vdf");
+			languages.setTextDocumentLanguage(document, "vdf")
 		}
 	}))
 
@@ -91,7 +96,7 @@ export function activate(context: ExtensionContext): void {
 		}
 		else {
 			edit.replace(new Range(0, 0, document.lineCount, 0), JSON.stringify(VDF.parse(document.getText()), null, indentation))
-			languages.setTextDocumentLanguage(document, "json");
+			languages.setTextDocumentLanguage(document, "json")
 		}
 	}))
 
@@ -134,12 +139,12 @@ export function activate(context: ExtensionContext): void {
 					clientOptions
 				)
 
-				clients[languageId]!.start();
+				clients[languageId]!.start()
 			}
 		}
 	}
 
-	workspace.textDocuments.forEach(onDidOpenTextDocument);
+	workspace.textDocuments.forEach(onDidOpenTextDocument)
 	workspace.onDidOpenTextDocument(onDidOpenTextDocument)
 }
 

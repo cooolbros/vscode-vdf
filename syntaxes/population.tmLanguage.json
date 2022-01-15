@@ -1,0 +1,47 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Population",
+	"patterns": [
+		{
+			"match": "^(\\s?\"?#base\"?)\\s+(\"?.*\"?)$",
+			"captures": {
+				"1": {
+					"name": "keyword.control"
+				},
+				"2": {
+					"name": "string"
+				}
+			}
+		},
+		{
+			"name": "comment",
+			"match": "//.*$"
+		},
+		{
+			"name": "entity.name.type.enum",
+			"match": "(?i)\\b(Attributes|BehaviorModifiers|Class|Objective|Skill|WeaponRestrictions|Where)\\b"
+		},
+		{
+			"name": "keyword.control",
+			"match": "(?i)\\b(Action|Target)\\b"
+		},
+		{
+			"name": "keyword",
+			"match": "(?i)\\b(FirstSpawnOutput|Health|MaxActive|Name|No|OnBombDroppedOutput|OnKilledOutput|RandomChoice|SpawnCount|Speed|Squad|StartingPathTrackNode|Tank|Template|TFBot|TotalCount|TotalCurrency|WaitBeforeStarting|WaitBetweenSpawns|WaitForAllSpawned|Wave|WaveSchedule|WaveSpawn|Yes)\\b"
+		},
+		{
+			"name": "variable.other.enummember",
+			"match": "(?i)\\b(Aggressive|AirChargeOnly|AlwaysCrit|AlwaysFireWeapon|AutoJump|BecomeSpectatorOnDeath|BlastImmune|BulletImmune|Demoman|DestroySentries|DisableDodge|Easy|Engineer|Expert|FireImmune|Hard|Heavy(weapons)?|HoldFireUntilFullReload|Idle|IgnoreEnemies|IgnoreFlag|Medic|MeleeOnly|MiniBoss|Mobber|Normal|Parachute|PrimaryOnly|ProjectileShield|Push|Pyro|RemoveOnDeath|RetainBuildings|Scout|SecondaryOnly|Sniper|Soldier|spawnbot.*|SpawnWithFullCharge|Spy|SuppressFire|TeleportToHint|UseBossHealthBar|VaccinatorBlast|VaccinatorBullets|VaccinatorFire)\\b"
+		},
+		{
+			"name": "constant.numeric",
+			"match": "\\b(\\d+)\\b"
+		},
+		{
+			"name": "variable",
+			"match": "\\b(\\w+)\\b"
+		}
+	],
+	"repository": {},
+	"scopeName": "source.population"
+}

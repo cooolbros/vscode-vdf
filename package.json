@@ -28,6 +28,7 @@
     "onCommand:vscode-vdf.sortVDF",
     "onCommand:vscode-vdf.VDFToJSON",
     "onLanguage:hudanimations",
+    "onLanguage:population",
     "onLanguage:vdf"
   ],
   "main": "./client/dist/extension.js",
@@ -61,17 +62,47 @@
     ],
     "grammars": [
       {
-        "language": "vdf",
-        "scopeName": "source.vdf",
-        "path": "./syntaxes/vdf.tmLanguage.json"
-      },
-      {
         "language": "hudanimations",
         "scopeName": "source.hudanimations",
         "path": "./syntaxes/hudanimations.tmLanguage.json"
+      },
+      {
+        "language": "population",
+        "scopeName": "source.population",
+        "path": "./syntaxes/population.tmLanguage.json"
+      },
+      {
+        "language": "vdf",
+        "scopeName": "source.vdf",
+        "path": "./syntaxes/vdf.tmLanguage.json"
       }
     ],
     "languages": [
+      {
+        "id": "hudanimations",
+        "aliases": [
+          "Valve HUD Animations",
+          "hudanimations"
+        ],
+        "extensions": [
+          ".hudanimations"
+        ],
+        "filenamePatterns": [
+          "hudanimations*.txt"
+        ],
+        "configuration": "./hudanimations-language-configuration.json"
+      },
+      {
+        "id": "population",
+        "aliases": [
+          "Population",
+          "pop"
+        ],
+        "extensions": [
+          ".pop"
+        ],
+        "configuration": "./population-language-configuration.json"
+      },
       {
         "id": "vdf",
         "aliases": [
@@ -87,20 +118,6 @@
           "hudanimations_manifest.txt"
         ],
         "configuration": "./vdf-language-configuration.json"
-      },
-      {
-        "id": "hudanimations",
-        "aliases": [
-          "Valve HUD Animations",
-          "hudanimations"
-        ],
-        "extensions": [
-          ".hudanimations"
-        ],
-        "filenamePatterns": [
-          "hudanimations*.txt"
-        ],
-        "configuration": "./hudanimations-language-configuration.json"
       }
     ],
     "configuration": {

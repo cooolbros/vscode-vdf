@@ -1,19 +1,21 @@
-import { _Connection } from "vscode-languageserver"
-import { VDFIndentation, VDFNewLine, VDFStringifyOptions } from "../../../shared/vdf"
-import { getVDFFormatDocumentSymbols, VDFFormatDocumentSymbol } from "../../../shared/vdf/dist/getVDFFormatDocumentSymbols"
+import { _Connection } from "vscode-languageserver";
+import { VDFIndentation, VDFNewLine, VDFStringifyOptions } from "../../../shared/vdf";
+import { getVDFFormatDocumentSymbols, VDFFormatDocumentSymbol } from "../../../shared/vdf/dist/getVDFFormatDocumentSymbols";
 
-export function format(str: string, connection: _Connection) {
+export function format(str: string, connection: _Connection): string {
 	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str, connection), connection)
 }
 
 function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[], connection: _Connection, options?: VDFStringifyOptions): string {
 
+	// connection.console.log(`PRINTING`)
 	const _options: Required<VDFStringifyOptions> = {
 		indentation: options?.indentation ?? VDFIndentation.Tabs,
 		tabSize: options?.tabSize ?? 4,
 		newLine: options?.newLine ?? VDFNewLine.CRLF,
 		order: options?.order ?? null
 	}
+
 
 	const tab: string = "\t"
 	const space: string = " "
@@ -33,7 +35,6 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 	const lineCommentBeforeSlash = "\t"
 	const lineCommentAfterSlash = " "
 
-
 	const stringifyObject = (documentSymbols: VDFFormatDocumentSymbol[], level: number): string => {
 		let str = ""
 
@@ -45,13 +46,20 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 			}
 		}
 
+		let previousTokenWasPrimitiveValue = false
+
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.blockComment != undefined) {
 				str += `${getIndentation(level)}//${documentSymbol.blockComment != "" ? blockCommentAfterSlash : ""}${documentSymbol.blockComment}${eol}`
 			}
 			else if (documentSymbol.key != undefined && documentSymbol.value != undefined) {
 				if (Array.isArray(documentSymbol.value)) {
-					str += `${getIndentation(level)}"${documentSymbol.key}"`
+
+					if (previousTokenWasPrimitiveValue) {
+						str += `${eol}`
+					}
+
+					str += `${getIndentation(level)}${/\s/.test(documentSymbol.key) ? `"${documentSymbol.key}"` : documentSymbol.key}`
 
 					if (documentSymbol.osTag != undefined) {
 						str += ` ${documentSymbol.osTag}`
@@ -68,7 +76,7 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 					str += `${getIndentation(level)}}${eol}`
 				}
 				else {
-					str += `${getIndentation(level)}"${documentSymbol.key}"${getWhitespace(longestKeyLength, documentSymbol.key.length)}"${documentSymbol.value}"`
+					str += `${getIndentation(level)}${/\s/.test(documentSymbol.key) ? `"${documentSymbol.key}"` : documentSymbol.key} ${/\s/.test(documentSymbol.value) ? `"${documentSymbol.value}"` : documentSymbol.value}`
 					if (documentSymbol.osTag != undefined) {
 						str += ` ${documentSymbol.osTag}`
 					}
@@ -78,8 +86,11 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 					str += `${eol}`
 				}
 			}
+
+			previousTokenWasPrimitiveValue = documentSymbol.value != undefined
 		}
 		return str
 	}
+
 	return stringifyObject(documentSymbols, 0)
 }
