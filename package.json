@@ -28,7 +28,7 @@
     "onCommand:vscode-vdf.sortVDF",
     "onCommand:vscode-vdf.VDFToJSON",
     "onLanguage:hudanimations",
-    "onLanguage:population",
+    "onLanguage:popfile",
     "onLanguage:vdf"
   ],
   "main": "./client/dist/extension.js",
@@ -67,9 +67,9 @@
         "path": "./syntaxes/hudanimations.tmLanguage.json"
       },
       {
-        "language": "population",
-        "scopeName": "source.population",
-        "path": "./syntaxes/population.tmLanguage.json"
+        "language": "popfile",
+        "scopeName": "source.popfile",
+        "path": "./syntaxes/popfile.tmLanguage.json"
       },
       {
         "language": "vdf",
@@ -93,15 +93,15 @@
         "configuration": "./hudanimations-language-configuration.json"
       },
       {
-        "id": "population",
+        "id": "popfile",
         "aliases": [
-          "Population",
-          "pop"
+          "Popfile",
+          "popfile"
         ],
         "extensions": [
           ".pop"
         ],
-        "configuration": "./population-language-configuration.json"
+        "configuration": "./popfile-language-configuration.json"
       },
       {
         "id": "vdf",
@@ -171,7 +171,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc --build --force shared/vdf && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/population && tsc --build --force servers/vdf",
+    "compile": "tsc --build --force shared/vdf && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/popfile && tsc --build --force servers/vdf",
     "watch": "tsc -b -w",
     "postinstall": "cd client && npm install && cd ../servers/vdf && npm install && cd ../../servers/hudanimations && npm i && cd ../.."
   },

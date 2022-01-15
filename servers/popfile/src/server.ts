@@ -13,7 +13,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
 	return {
 		serverInfo: {
-			name: "Population Language Server"
+			name: "Popfile Language Server"
 		},
 		capabilities: {
 			// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing

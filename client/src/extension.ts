@@ -18,16 +18,16 @@ const clientsInfo = {
 		id: "vdf-language-server",
 		name: "VDF Language Server",
 	},
-	population: {
-		id: "population-language-server",
-		name: "Population Language Server"
+	popfile: {
+		id: "popfile-language-server",
+		name: "Popfile Language Server"
 	}
 }
 
 const clients: Record<keyof typeof clientsInfo, LanguageClient | null> = {
 	hudanimations: null,
 	vdf: null,
-	population: null
+	popfile: null
 }
 
 export function activate(context: ExtensionContext): void {

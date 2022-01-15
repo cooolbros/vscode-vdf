@@ -1,6 +1,6 @@
 {
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-	"name": "Population",
+	"name": "Popfile",
 	"patterns": [
 		{
 			"match": "^(\\s?\"?#base\"?)\\s+(\"?.*\"?)$",
@@ -43,5 +43,5 @@
 		}
 	],
 	"repository": {},
-	"scopeName": "source.population"
+	"scopeName": "source.popfile"
 }
