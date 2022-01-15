@@ -19,7 +19,7 @@
     "url": "https://github.com/cooolbros/vscode-vdf"
   },
   "engines": {
-    "vscode": "^1.6.0"
+    "vscode": "^1.63.0"
   },
   "activationEvents": [
     "onCommand:vscode-vdf.formatVDF",
