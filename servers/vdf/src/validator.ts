@@ -1,32 +1,37 @@
+import { AssertionError } from "assert";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { VDFDocumentSymbol } from "../../../shared/tools/src/tools";
 import { VDF } from "../../../shared/vdf";
 
 const pinValues = [
-	"PIN_TOPLEFT",
-	"PIN_TOPRIGHT",
-	"PIN_BOTTOMLEFT",
-	"PIN_BOTTOMRIGHT",
-	"PIN_CENTER_TOP",
-	"PIN_CENTER_RIGHT",
-	"PIN_CENTER_BOTTOM",
-	"PIN_CENTER_LEFT"
+	"PIN_TOPLEFT",       // 0
+	"PIN_TOPRIGHT",      // 1
+	"PIN_BOTTOMLEFT",    // 2
+	"PIN_BOTTOMRIGHT",   // 3
+	"PIN_CENTER_TOP",    // 4
+	"PIN_CENTER_RIGHT",  // 5
+	"PIN_CENTER_BOTTOM", // 6
+	"PIN_CENTER_LEFT"    // 7
 ]
 
 const enumMembers = {
+	"pin_corner_to_sibling": pinValues,
+	"pin_to_sibling_corner": pinValues,
+}
+
+const unionTypes = {
 	"textalignment": [
-		"center",
+		// textAlignment is not a real enum -- no numbers are allowed
+		"north-west",
 		"north",
 		"north-east",
-		"east",
-		"south-east",
-		"south",
-		"south-west",
 		"west",
-		"north-est"
+		"center",
+		"east",
+		"south-west",
+		"south",
+		"south-east"
 	],
-	"pin_corner_to_sibling": pinValues,
-	"pin_to_sibling_corner": pinValues
 }
 
 export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
@@ -67,18 +72,38 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 					default:
 						{
 							if (((key): key is keyof typeof enumMembers => enumMembers.hasOwnProperty(key))(_key)) {
-								let i = 0
-								let enumValueValid = false
-								while (i < enumMembers[_key].length && !enumValueValid) {
-									if (enumMembers[_key][i].toLowerCase() == _value) {
-										enumValueValid = true
-									}
-									i++
-								}
 
-								if (!enumValueValid) {
+								// If the value contains any letters it must be matched to an enum values
+								if (/\D/.test(_value)) {
+									// Enum members are case insensitive
+									const result = enumMembers[_key].find(x => x.toLowerCase() == _value)
+									if (result == undefined) {
+										diagnostics.push({
+											message: `"${value}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
+											range: valueRange,
+											severity: DiagnosticSeverity.Warning,
+										})
+									}
+								}
+								else {
+									// Numbers just have to be in the enum range
+									const ivalue = parseInt(_value)
+									if (isNaN(ivalue)) {
+										throw new AssertionError({ expected: "number", actual: ivalue })
+									}
+									if (ivalue < 0 || ivalue > enumMembers[_key].length - 1) {
+										diagnostics.push({
+											message: `"${value}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
+											range: valueRange,
+											severity: DiagnosticSeverity.Warning,
+										})
+									}
+								}
+							}
+							if (((key): key is keyof typeof unionTypes => unionTypes.hasOwnProperty(key))(_key)) {
+								if (!unionTypes[_key].includes(_value)) {
 									diagnostics.push({
-										message: `"${value}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
+										message: `"${value}" is not a valid value for ${_key}! Expected "${unionTypes[_key].join(`" | "`)}"`,
 										range: valueRange,
 										severity: DiagnosticSeverity.Warning,
 									})
