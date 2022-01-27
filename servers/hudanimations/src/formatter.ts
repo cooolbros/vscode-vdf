@@ -1,6 +1,6 @@
 import { _Connection } from "vscode-languageserver"
 import { animationisType, Command, CommandTypes, HUDAnimation, HUDAnimations, HUDAnimationsStringifyOptions, HUDAnimationsSyntaxError, Interpolator, sanitizeBit, sanitizeNaN } from "../../../shared/hudanimations"
-import { VDFFormatTokeniser } from "../../../shared/vdf/dist/vdf_format_tokeniser"
+import { VDFFormatTokeniser } from "../../../shared/vdf/dist/VDFFormatTokeniser"
 
 export interface HUDAnimationsFormatDocumentSymbol {
 	comment?: string
