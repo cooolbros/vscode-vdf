@@ -73,6 +73,6 @@
   "include": ["./src/**/*", "./src/**/*.json"],
   "references": [
       { "path": "../../shared/tools" },
-      { "path": "../../shared/vdf" }
+      { "path": "../../shared/VDF" }
   ]
 }

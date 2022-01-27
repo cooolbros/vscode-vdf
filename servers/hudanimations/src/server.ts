@@ -4,7 +4,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
 import { animationisType, File, getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol, HUDAnimationsSyntaxError } from "../../../shared/hudanimations";
 import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, VSCodeVDFSettings } from "../../../shared/tools";
-import { VDFTokeniser } from "../../../shared/vdf";
+import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser";
 import { getHUDAnimationsFormatDocumentSymbols, printHUDAnimationsFormatDocumentSymbols } from "./formatter";
 import { animationCommands, commonProperties, interpolators } from "./hud_animation_types";
 import autoCompletionItems from "./JSON/autocompletion.json";

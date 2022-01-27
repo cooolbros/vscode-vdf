@@ -2,7 +2,9 @@
 
 import { _Connection } from "vscode-languageserver";
 import { DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver-types";
-import { VDFSyntaxError, VDFTokeniser, VDFTokeniserOptions } from "../../../shared/vdf";
+import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions";
+import { VDFSyntaxError } from "../../VDF/dist/VDFErrors";
+import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser";
 
 export type File = Record<string, Event>
 export type Event = HUDAnimation<Command>[]
@@ -491,7 +493,7 @@ export function sanitizeBit(str: string, tokeniser: VDFTokeniser): Bit {
 	throw new HUDAnimationsSyntaxError(str, tokeniser, `Expected "1" | "0"`)
 }
 
-export function getHUDAnimationsDocumentInfo(connection: _Connection, str: string, options?: VDFTokeniserOptions,): { animations: File, symbols: HUDAnimationEventDocumentSymbol[] } {
+export function getHUDAnimationsDocumentInfo(connection: _Connection, str: string, options?: VDFTokeniserOptions): { animations: File, symbols: HUDAnimationEventDocumentSymbol[] } {
 
 	const result: ReturnType<typeof getHUDAnimationsDocumentInfo> = {
 		animations: {},
@@ -540,7 +542,7 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 
 					const property = tokeniser.next()
 					const value = tokeniser.next()
-					const valueRange = Range.create(Position.create(tokeniser.line, tokeniser.character - value.length - tokeniser.quoted), Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted))
+					const valueRange = Range.create(Position.create(tokeniser.line, tokeniser.character - value.length), Position.create(tokeniser.line, tokeniser.character))
 
 					const interpolator = sanitizeString(tokeniser.next(), Interpolators, tokeniser)
 

@@ -6,7 +6,9 @@ import {
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
-import { VDF, VDFIndentation, VDFNewLine } from "../../shared/vdf";
+import { VDF } from "../../shared/VDF";
+import { VDFIndentation } from "../../shared/VDF/dist/models/VDFIndentation";
+import { VDFNewLine } from "../../shared/VDF/dist/models/VDFNewLine";
 import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
 
 const clientsInfo = {

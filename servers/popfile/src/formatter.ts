@@ -1,6 +1,8 @@
 import { _Connection } from "vscode-languageserver";
-import { VDFIndentation, VDFNewLine, VDFStringifyOptions } from "../../../shared/vdf";
 import { getVDFFormatDocumentSymbols, VDFFormatDocumentSymbol } from "../../../shared/vdf/dist/getVDFFormatDocumentSymbols";
+import { VDFIndentation } from "../../../shared/VDF/dist/models/VDFIndentation";
+import { VDFNewLine } from "../../../shared/VDF/dist/models/VDFNewLine";
+import { VDFStringifyOptions } from "../../../shared/VDF/dist/models/VDFStringifyOptions";
 
 export function format(str: string, connection: _Connection): string {
 	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str, connection), connection)
@@ -8,14 +10,12 @@ export function format(str: string, connection: _Connection): string {
 
 function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[], connection: _Connection, options?: VDFStringifyOptions): string {
 
-	// connection.console.log(`PRINTING`)
 	const _options: Required<VDFStringifyOptions> = {
 		indentation: options?.indentation ?? VDFIndentation.Tabs,
 		tabSize: options?.tabSize ?? 4,
 		newLine: options?.newLine ?? VDFNewLine.CRLF,
 		order: options?.order ?? null
 	}
-
 
 	const tab: string = "\t"
 	const space: string = " "

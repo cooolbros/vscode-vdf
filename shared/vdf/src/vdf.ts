@@ -1,298 +1,74 @@
 // VDF
 
-import { Range } from "vscode-languageserver-types"
+import { VDFIndentation } from "./models/VDFIndentation";
+import { VDFNewLine } from "./models/VDFNewLine";
+import { VDFStringifyOptions } from "./models/VDFStringifyOptions";
+import { VDFTokeniserOptions } from "./models/VDFTokeniserOptions";
+import { VDFTokeniser } from "./VDFTokeniser";
 
-export interface VDFTokeniserOptions {
-	allowMultilineStrings?: boolean
-	osTags?: VDFOSTags
-}
-
-export enum VDFOSTags {
-	None,
-	Strings,
-	Objects,
-	All
-}
-
-export interface VDFStringifyOptions {
-	indentation?: VDFIndentation
-	tabSize?: number
-	newLine?: VDFNewLine
-	order?: string[] | null
-}
-
-export enum VDFIndentation {
-	Tabs,
-	Spaces
-}
-
-export enum VDFNewLine {
-	LF = 1,
-	CRLF = 2
-}
-
-export class VDFTokeniser {
-	private static readonly whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
-	private static readonly whiteSpaceTokenTerminate: string[] = ["\"", "{", "}"]
-	protected readonly str: string
-	public readonly options: VDFTokeniserOptions
-	public position: number = 0
-	public line: number = 0
-	public character: number = 0
-	public quoted: 0 | 1 = 0
-
-	private tokenStartPosition: { line: number, character: number } = { line: 0, character: 0 }
-
-	// Peek
-	private _peekToken: string | null = null
-	private _peekPosition: number = 0
-	private _peekLine: number = 0
-	private _peekCharacter: number = 0
-	private _peekQuoted: 0 | 1 = 0
-
-	constructor(str: string, options?: VDFTokeniserOptions) {
-		this.str = str
-		this.options = {
-			allowMultilineStrings: options?.allowMultilineStrings ?? false,
-			osTags: options?.osTags ?? VDFOSTags.All
+/**
+ * Provides support for parsing and stringifying VDF objects
+ */
+export class VDF {
+	static readonly OSTagDelimeter: "^" = "^"
+	static parse(str: string, options?: VDFTokeniserOptions): { [key: string]: string | ReturnType<typeof VDF.parse> | (string | ReturnType<typeof VDF.parse>)[] } {
+		const tokeniser = new VDFTokeniser(str, options)
+		const trim = (str: string): [string, 0 | 1] => {
+			const quoted = str.startsWith("\"") && str.endsWith("\"")
+			return quoted ? [str.slice(1, -1), 1] : [str, 0];
 		}
-	}
-	next(lookAhead: boolean = false): string {
-		let currentToken: string = ""
-		if (this._peekToken != null) {
-			currentToken = this._peekToken;
-			this.position = this._peekPosition;
-			this.line = this._peekLine;
-			this.character = this._peekCharacter;
-			this.quoted = this._peekQuoted;
-			this._peekToken = null;
-			return currentToken;
-		}
-
-		let j: number = this.position
-		let _line: number = this.line
-		let _character: number = this.character
-		let _quoted: 0 | 1 = this.quoted
-		let _tokenStartPosition: typeof this.tokenStartPosition
-
-		if (j >= this.str.length) {
-			return "EOF"
-		}
-
-		while (j < this.str.length && (VDFTokeniser.whiteSpaceIgnore.includes(this.str[j]) || this.str[j] == "/")) {
-			if (this.str[j] == "\n") {
-				_line++
-				_character = 0
-			}
-			else if (this.str[j] == "/") {
-				const j1 = j + 1
-				if (j1 < this.str.length && this.str[j1] == "/") {
-					j++
-					while (j < this.str.length && this.str[j] != "\n") {
-						j++
-					}
-					_line++
-					_character = 0
+		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: string | ReturnType<typeof VDF.parse>) => {
+			if (obj.hasOwnProperty(key)) {
+				const existing = obj[key]
+				if (Array.isArray(existing)) {
+					existing.push(value)
 				}
 				else {
-					break
+					obj[key] = [existing, value]
 				}
 			}
 			else {
-				_character++
-			}
-			j++
-		}
-
-		if (j >= this.str.length) {
-			return "EOF"
-		}
-
-		if (this.str[j] == "\"") {
-			// Read until next quote (ignore opening quote)
-
-			_quoted = 1
-			j++ // Skip over opening double quote
-			_character++ // Skip over opening double quote
-
-			_tokenStartPosition = { line: _line, character: _character }
-
-			while (this.str[j] != "\"") {
-				if (this.str[j] == '\n') {
-					if (!this.options.allowMultilineStrings) {
-						throw new VDFSyntaxError(`Unexpected EOL at position ${j} (line ${_line + 1}, position ${_character + 1})! Are you missing a closing double quote?`, {
-							start: { line: _line, character: _character - currentToken.length },
-							end: { line: _line, character: _character }
-						})
-					}
-					else {
-						_line++
-						_character = 0
-					}
-				}
-				else if (this.str[j] == "\\") {
-					// Add backslash
-					currentToken += "\\"
-					j++
-					_character++
-
-					if (j >= this.str.length) {
-						throw new VDFSyntaxError(`Unclosed escape sequence at position ${j} (line ${_line + 1}, character ${_character + 1})!`, {
-							start: { line: _line, character: _character - currentToken.length },
-							end: { line: _line, character: _character }
-						})
-					}
-
-					// Add character
-					currentToken += this.str[j]
-					j++
-					_character++
-				}
-				else {
-					currentToken += this.str[j]
-					j++
-					_character++
-				}
-
-				if (j >= this.str.length) {
-					throw new VDFSyntaxError(`Unexpected EOF at position ${j} (line ${_line + 1}, character ${_character + 1})!`, {
-						start: { line: _line, character: _character - currentToken.length },
-						end: { line: _line, character: _character }
-					})
-				}
-			}
-			j++ // Skip over closing quote
-			_character++ // Skip over closing quote
-		}
-		else {
-			// Read until whitespace (or end of file)
-			_quoted = 0
-			_tokenStartPosition = { line: _line, character: _character }
-			while (j < this.str.length && !VDFTokeniser.whiteSpaceIgnore.includes(this.str[j])) {
-				if (this.str[j] == "\\") {
-					// Add backslash
-					currentToken += "\\"
-					j++
-					_character++
-
-					if (j >= this.str.length) {
-						throw new VDFSyntaxError(`Unclosed escape sequence at position ${j} (line ${_line + 1}, character ${_character + 1})!`, {
-							start: { line: _line, character: _character - currentToken.length },
-							end: { line: _line, character: _character }
-						})
-					}
-
-					// Add character
-					currentToken += this.str[j]
-					j++
-					_character++
-				}
-				else if (VDFTokeniser.whiteSpaceTokenTerminate.includes(this.str[j])) {
-					// ", {, } terminate a whitespace initiated token but are not added
-					if (currentToken == "") {
-						// VDFTokeniser.WhiteSpaceTokenTerminate contains a '"' but it that should not be
-						// the case here because if currentToken is "" it would be a quoted token
-						currentToken += this.str[j];
-						j++
-						_character++
-					}
-					break;
-				}
-				else {
-					currentToken += this.str[j]
-					j++
-					_character++
-				}
+				obj[key] = value
 			}
 		}
-		if (!lookAhead) {
-			this.position = j
-			this.line = _line
-			this.character = _character
-			this.quoted = _quoted
-			this.tokenStartPosition = _tokenStartPosition
-		}
-		return currentToken
-	}
-	tokenRange(): Range {
-		return {
-			start: this.tokenStartPosition,
-			end: {
-				line: this.line,
-				character: this.character - this.quoted
-			}
-		}
-	}
-}
-
-export class VDFSyntaxError extends Error {
-	constructor(message: string, public range: Range) {
-		super(message)
-	}
-}
-
-export class VDF {
-	static readonly OSTagDelimeter: "^" = "^"
-	static parse(str: string, options?: VDFTokeniserOptions) {
-		const tokeniser = new VDFTokeniser(str, options)
-		const parseObject = (): { [key: string]: any } => {
-			const obj: { [key: string]: any } = {}
-			let currentToken = tokeniser.next();
-			let nextToken = tokeniser.next(true);
-			while (currentToken != "}" && nextToken != "EOF") {
-				const lookahead: string = tokeniser.next(true)
-				if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-					// Object with OS Tag
-					currentToken += `${VDF.OSTagDelimeter}${tokeniser.next()}`;
-					tokeniser.next(); // Skip over opening brace
-					obj[currentToken] = parseObject();
-				}
-				else if (nextToken == "{") {
+		const parseObject = (isObject: boolean = false): ReturnType<typeof VDF.parse> => {
+			const obj: ReturnType<typeof VDF.parse> = {}
+			let currentToken = tokeniser.next()
+			const objectTerminator = isObject ? "}" : "__EOF__"
+			while (currentToken != objectTerminator) {
+				let value = tokeniser.next()
+				if (value == "{") {
 					// Object
-					tokeniser.next(); // Skip over opening brace
-					if (obj.hasOwnProperty(currentToken)) {
-						const value = obj[currentToken]
-						if (Array.isArray(value)) {
-							// Object list exists
-							obj[currentToken].push(parseObject());
-						}
-						else {
-							// Object already exists
-							obj[currentToken] = [value, parseObject()]
-						}
+					write(obj, currentToken, parseObject(true))
+				}
+				else if (value.startsWith("[") && value.endsWith("]")) {
+					// Object with OS Tag or Primitive with 1 or 2 OS Tags
+					let osTag = value
+					value = tokeniser.next()
+					if (value == "{") {
+						// Object with OS Tag
+						write(obj, `${trim(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, parseObject(true))
 					}
 					else {
-						// Object doesnt exist
-						obj[currentToken] = parseObject();
+						// Primitive with 1 or 2 OS Tags
+						const lookAhead = tokeniser.next(true)
+						if (lookAhead.startsWith("[") && lookAhead.endsWith("]")) {
+							osTag = lookAhead // Second OS Tag overwrites first
+							tokeniser.next() // Skip second OS Tag
+						}
+						write(obj, `${trim(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, trim(value)[0])
 					}
 				}
 				else {
 					// Primitive
-					tokeniser.next(); // Skip over value
-					// Check primitive os tag
-					const lookahead: string = tokeniser.next(true)
-					if (lookahead.startsWith("[") && lookahead.endsWith("]")) {
-						currentToken += `${VDF.OSTagDelimeter}${tokeniser.next()}`;
+					let osTag = tokeniser.next(true)
+					if (osTag.startsWith("[") && osTag.endsWith("]")) {
+						currentToken += `${VDF.OSTagDelimeter}${osTag}`
+						tokeniser.next() // Skip OS Tag
 					}
-					if (obj.hasOwnProperty(currentToken)) {
-						const value = obj[currentToken]
-						// dynamic property exists
-						if (Array.isArray(value)) {
-							// Array already exists
-							obj[currentToken].push(nextToken);
-						}
-						else {
-							// Primitive type already exists
-							obj[currentToken] = [value, nextToken]
-						}
-					}
-					else {
-						// Property doesn't exist
-						obj[currentToken] = nextToken;
-					}
+					write(obj, trim(currentToken)[0], trim(value)[0])
 				}
-				currentToken = tokeniser.next();
-				nextToken = tokeniser.next(true);
+				currentToken = tokeniser.next()
 			}
 			return obj;
 		}

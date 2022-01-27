@@ -1,6 +1,8 @@
 import { _Connection } from "vscode-languageserver"
-import { VDFIndentation, VDFNewLine, VDFStringifyOptions } from "../../../shared/vdf"
 import { getVDFFormatDocumentSymbols, VDFFormatDocumentSymbol } from "../../../shared/vdf/dist/getVDFFormatDocumentSymbols"
+import { VDFIndentation } from "../../../shared/VDF/dist/models/VDFIndentation"
+import { VDFNewLine } from "../../../shared/VDF/dist/models/VDFNewLine"
+import { VDFStringifyOptions } from "../../../shared/VDF/dist/models/VDFStringifyOptions"
 
 export function format(str: string, connection: _Connection) {
 	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str, connection), connection)

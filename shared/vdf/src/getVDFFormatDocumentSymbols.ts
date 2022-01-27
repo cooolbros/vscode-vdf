@@ -1,5 +1,5 @@
 import { _Connection } from "vscode-languageserver"
-import { VDFFormatTokeniser } from "./vdf_format_tokeniser"
+import { VDFFormatTokeniser } from "./VDFFormatTokeniser"
 
 export interface VDFFormatDocumentSymbol {
 	key?: string
@@ -9,87 +9,82 @@ export interface VDFFormatDocumentSymbol {
 	inLineComment?: string
 }
 
+const whiteSpaceTokenTerminate: string[] = ["\"", "{", "}"]
+
+
 export function getVDFFormatDocumentSymbols(str: string, connection: _Connection): VDFFormatDocumentSymbol[] {
-
 	const tokeniser = new VDFFormatTokeniser(str)
-
+	const comment = (str: string) => {
+		return str.substring(2).trim()
+	}
 	const parseObject = (key: string, isObject: boolean): VDFFormatDocumentSymbol[] => {
-
 		const documentSymbols: VDFFormatDocumentSymbol[] = []
 
-
-		const objectTerminator = isObject ? "}" : "EOF"
-		// connection.console.log(`Reading children of ${key}, objectTerminator is ${objectTerminator}`)
-
-		let currentToken = tokeniser.next()
-
 		// Get first real currentToken
-
+		let currentToken = tokeniser.next()
 		while (currentToken == "\n") {
 			currentToken = tokeniser.next()
 		}
 
-		let nextToken = tokeniser.next(true)
-
+		const objectTerminator = isObject ? "}" : "__EOF__"
 		while (currentToken != objectTerminator) {
-
 			const documentSymbol: VDFFormatDocumentSymbol = {}
 
-			// Get the next real currentToken
-
-			while (currentToken == "\n") {
-				currentToken = tokeniser.next()
-			}
+			// currentToken should not be '\n' here
 
 			if (currentToken.startsWith("//")) {
 				// Block Comment
-				documentSymbol.blockComment = currentToken.substring(2).trim()
-				tokeniser.next() // Skip over newline
+				documentSymbol.blockComment = comment(currentToken)
+				// Don't skip newline, block comment could be before EOF
 			}
 			else {
 				// "key"	"value"
 
+				if (VDFFormatTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
+					throw new Error(`Key "${currentToken}" is a control character ${JSON.stringify(VDFFormatTokeniser.whiteSpaceTokenTerminate)} on line ${tokeniser.line} (Parsing ${key})`) // UnexpectedTokenError
+				}
+
 				documentSymbol.key = currentToken
 
+				// Get Value
+				let nextToken = tokeniser.next()
 				while (nextToken == "\n") {
 					nextToken = tokeniser.next()
 				}
 
-				// nextToken is the value of the key
-				// it could be a comment, {, os tag (if object) or primitive value
+				// // | [$WIN32] | { | "value"
 
 				if (nextToken.startsWith("//")) {
 					// Comment after key
-					// "key"	"value" // Comment
+					// "key"	// Comment
 
-					documentSymbol.inLineComment = nextToken.substring(2).trim()
-					tokeniser.next() // Skip over comment
+					documentSymbol.inLineComment = comment(nextToken)
 
-					nextToken = tokeniser.next()
+					connection.console.log(`Setting comment for ${documentSymbol.key} to ${documentSymbol.inLineComment}`)
 
+					connection.console.log(`Skipping over "${tokeniser.next()}"`)
+
+					nextToken = tokeniser.next(true)
 					while (nextToken == "\n") {
-						nextToken = tokeniser.next()
+						tokeniser.next()
+						nextToken = tokeniser.next(true)
 					}
 
-					if (nextToken == "{" && tokeniser.quoted == 0) {
+					if (nextToken == "{") {
 						// Object with comment
-						tokeniser.next()
+						connection.console.log(`${documentSymbol.key} is an object ("${nextToken}")`)
+						tokeniser.next() // Skip over '{'
 						documentSymbol.value = parseObject(documentSymbol.key, true)
 					}
 					else {
 						// Primitive
 						if (nextToken == objectTerminator) {
-							throw new Error()
+							throw new Error(`Missing value`) // Expected value, got objectTerminator
 						}
 						documentSymbol.value = nextToken
+						// Value has already been skipped
 
-
-						// Skip over value
-						while (nextToken == "\n") {
-							nextToken = tokeniser.next()
-						}
-
-
+						// Skip all tokens that are newlines, then peek the next token
 						nextToken = tokeniser.next(true)
 						while (nextToken == "\n") {
 							tokeniser.next()
@@ -100,7 +95,6 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 							documentSymbol.osTag = nextToken
 							tokeniser.next() // Skip over OS Tag
 						}
-
 					}
 				}
 				else if (nextToken.startsWith("[") && nextToken.endsWith("]")) {
@@ -113,8 +107,7 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 						nextToken = tokeniser.next()
 					}
 
-					if (nextToken == "{" && tokeniser.quoted == 0) {
-						tokeniser.next()
+					if (nextToken == "{") {
 						documentSymbol.value = parseObject(documentSymbol.key, true)
 					}
 					else if (nextToken.startsWith("//")) {
@@ -129,7 +122,7 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 							nextToken = tokeniser.next()
 						}
 
-						if (nextToken == "{" && tokeniser.quoted == 0) {
+						if (nextToken == "{") {
 							// Object with OS Tag and Comment
 							tokeniser.next()
 							documentSymbol.value = parseObject(documentSymbol.key, true)
@@ -142,26 +135,28 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 						throw new Error(`Path not implemented. nextToken is "${nextToken}"`)
 					}
 				}
-				else if (nextToken == "{" && tokeniser.quoted == 0) {
+				else if (nextToken == "{") {
 					// Object
-					tokeniser.next()
+					// connection.console.log(`Skipping over "${tokeniser.next()}"`) // Skip over '{'
 					documentSymbol.value = parseObject(documentSymbol.key, true)
 				}
 				else {
 					// Primitive || Primitive with OS tag || Primitve with inline comment || primitive with OS tag and inline comment
 
-					if (nextToken == objectTerminator) {
+					if (nextToken == objectTerminator || nextToken == "\n" || VDFFormatTokeniser.whiteSpaceTokenTerminate.includes(nextToken)) {
 						throw new Error(`Missing value for ${documentSymbol.key} (nextToken is "${nextToken}") (objectTerminator is "${objectTerminator}")`)
 					}
 
 					documentSymbol.value = nextToken
 					// connection.console.log(`[32] Setting "${documentSymbol.key}" to "${documentSymbol.value}"`)
 
-					tokeniser.next()
-					// connection.console.log(`[33] Skipping over primitive value "${next()}"`) // Skip over value
+					// Skip newlines to read OS Tag
 
 					let lookAhead = tokeniser.next(true)
-					// Dont skip newline characters, as newline terminates symbol
+					while (lookAhead == "\n") {
+						tokeniser.next()
+						lookAhead = tokeniser.next(true)
+					}
 
 					if (lookAhead.startsWith("[") && lookAhead.endsWith("]")) {
 						// Primitive value with OS Tag
@@ -170,42 +165,27 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 						lookAhead = tokeniser.next(true)
 					}
 
+					// Dont skip newline characters, as newline terminates symbol
+
 					if (lookAhead.startsWith("//")) {
 						// Primitive value with inline comment
 
-						documentSymbol.inLineComment = lookAhead.substring(2).trim()
+						documentSymbol.inLineComment = comment(lookAhead)
 						tokeniser.next() // Skip over inline comment
 					}
 				}
 			}
 
 			documentSymbols.push(documentSymbol)
-			// connection.console.log(`Pushing documentsymbol ${JSON.stringify(documentSymbol)}`)
 
 			currentToken = tokeniser.next()
-
-			if (currentToken == "EOF" && !isObject) {
-				// connection.console.log(`Breaking ("EOF" and !isObject)`)
-				break
-			}
-
-			// connection.console.log(`[63] currentToken is "${currentToken}"`)
-
 			while (currentToken == "\n") {
-
-				// connection.console.log(`Skipping ^n`)
 				currentToken = tokeniser.next()
 			}
 
-			// connection.console.log(`The next real token after documentSymbol is ${currentToken}`)
-
-			if (currentToken == "EOF" && isObject) {
-				throw new Error(`Missing }!`)
-			}
-
-			// connection.console.log(`Setting currentToken to ${currentToken}`)
-			nextToken = tokeniser.next(true)
-			// i++
+			// if (currentToken == "EOF" && isObject) {
+			// 	throw new Error(`Missing }!`)
+			// }
 		}
 
 		return documentSymbols

@@ -74,6 +74,6 @@
   "references": [
       { "path": "../../shared/hudanimations" },
       { "path": "../../shared/tools" },
-      { "path": "../../shared/vdf" }
+      { "path": "../../shared/VDF" }
   ]
 }

@@ -1,0 +1,51 @@
+{
+	"_": [
+		"#base",
+		"~WaveSchedule"
+	],
+	"doneoutput": [
+		"~Target",
+		"~Action"
+	],
+	"mission": [
+		"Objective"
+	],
+	"randomchoice": [],
+	"squad": [],
+	"startwaveoutput": [
+		"~Target",
+		"~Action"
+	],
+	"tfbot": [
+		"Template",
+		"Class",
+		"Name",
+		"Health"
+	],
+	"wave": [
+		"~DoneOutput",
+		"~StartWaveOutput",
+		"Checkpoint",
+		"WaitWhenDone",
+		"WaveSpawn"
+	],
+	"waveschedule": [
+		"~Templates",
+		"AddSentryBusterWhenDamageDealtExceeds",
+		"AddSentryBusterWhenKillCountExceeds",
+		"Advanced",
+		"CanBotsAttackWhileInSpawnRoom",
+		"IsEndless",
+		"RespawnWaveTime",
+		"StartingCurrency"
+	],
+	"wavespawn": [
+		"MaxActive",
+		"SpawnCount",
+		"TotalCount",
+		"TotalCurrency",
+		"WaitBeforeStarting",
+		"WaitBetweenSpawns",
+		"Where"
+	]
+}

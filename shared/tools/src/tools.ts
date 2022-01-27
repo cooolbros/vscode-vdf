@@ -3,7 +3,10 @@ import path from "path"
 import { fileURLToPath, pathToFileURL, URL } from "url"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { CompletionItem, CompletionItemKind, Definition, DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver/node"
-import { VDF, VDFOSTags, VDFSyntaxError, VDFTokeniser, VDFTokeniserOptions } from "../../vdf"
+import { VDF } from "../../VDF"
+import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions"
+import { UnexpectedTokenError } from "../../VDF/dist/VDFErrors"
+import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser"
 
 export interface VSCodeVDFSettings {
 	readonly autoCompletionKind: "incremental" | "all"
@@ -70,10 +73,13 @@ export function getHUDRoot({ uri }: { uri: string }): string | null {
  */
 export function loadAllControls(filePath: string): any {
 	const origin: object = {}
+
+	const filterString = (value: unknown): value is string => typeof value == "string"
+
 	const addControls = (filePath: string) => {
 		const obj = fs.existsSync(filePath) ? VDF.parse(fs.readFileSync(filePath, "utf-8")) : {}
 		if (obj.hasOwnProperty("#base")) {
-			const baseFiles: string[] = Array.isArray(obj["#base"]) ? obj["#base"] : [obj["#base"]]
+			const baseFiles: string[] = Array.isArray(obj["#base"]) ? obj["#base"].filter(filterString) : [...Object.values(obj["#base"]).filter(filterString)]
 			const folder = path.dirname(filePath)
 			for (const baseFile of baseFiles) {
 				addControls(`${folder}/${baseFile}`)
@@ -89,159 +95,138 @@ export interface VDFDocumentSymbol extends DocumentSymbol {
 	/**
 	 * User visible document symbol name e.g. xpos
 	 */
-	name: string
+	readonly name: string
+
 
 	/**
-	 * VDF Document Symbol key e.g. xpos^[$WIN32]
+	 * Documentsymbol VDF key e.g. xpos^[$WIN32]
 	 */
-	key: string
-
-	/**
-	 * VDF Document Symbol OS Tag e.g. [$WIN32]
-	 */
-	osTag?: string
-
-	/**
-	 * VDF Document Symbol OS Tag Range
-	 */
-	osTagRange?: Range
+	readonly key: string
 
 	/**
 	 * Document range containing key
 	 */
-	nameRange: Range
+	readonly nameRange: Range
+
+	/**
+	 * VDF Document Symbol OS Tag e.g. [$WIN32]
+	 */
+	readonly osTag?: string
 
 	/**
 	 * VDF Document Symbol Primitive Value
 	 */
-	value?: string
-
+	readonly detail?: string
 
 	/**
 	 * VDF Document Symbol Primitive Value Range
 	 */
-	valueRange?: Range,
+	readonly detailRange?: Range
 
 	/**
 	 * VDF Document Symbol children
 	 */
-	children?: VDFDocumentSymbol[]
+	readonly children?: VDFDocumentSymbol[]
 }
 
 export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions): VDFDocumentSymbol[] {
 	const tokeniser = new VDFTokeniser(str, options)
+	const trim = (str: string): [string, 0 | 1] => {
+		const quoted = str.startsWith("\"") && str.endsWith("\"")
+		return quoted ? [str.slice(1, -1), 1] : [str, 0];
+	}
 	/**
 	 * Gets a list of key/value pairs between an opening and closing brace
 	 * @param obj Whether the object to be parsed is NOT a top level object
 	 */
 	const parseObject = (obj: boolean): VDFDocumentSymbol[] => {
-		// When throwing syntax errors here use VDFSyntaxError or the language server will think it is a real error
-
 		const documentSymbols: VDFDocumentSymbol[] = []
 
-		let key = tokeniser.next()
-		let keyRange: Range
+		let currentToken = tokeniser.next()
+		let nextToken = tokeniser.next(true)
 
-		let value = tokeniser.next(true)
-		// Don't calculate valueRange because the next token could indicate that the value is an object
+		const objectTerminator = obj ? "}" : "__EOF__"
+		while (currentToken != objectTerminator) {
+			const [key, keyQuoted] = trim(currentToken)
+			const startPosition = Position.create(tokeniser.line, tokeniser.character - key.length - keyQuoted)
+			const nameRange: Range = Range.create(startPosition, Position.create(tokeniser.line, tokeniser.character - keyQuoted))
 
-		const objectTerminator = obj ? "}" : "EOF"
-
-		while (key != objectTerminator) {
-			keyRange = Range.create(tokeniser.line, tokeniser.character - tokeniser.quoted - key.length, tokeniser.line, tokeniser.character - tokeniser.quoted)
-
-			if (value.startsWith("[") && value.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Objects || tokeniser.options.osTags == VDFOSTags.All)) {
-				const osTag = tokeniser.next()
-
-				const osTagRange = Range.create(tokeniser.line, tokeniser.character - osTag.length, tokeniser.line, tokeniser.character)
-
-				tokeniser.next() // Skip opening brace
-
-				const children = parseObject(true)
-
-				const endPosition = Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted)
-				const selectionRange = Range.create(keyRange.start, endPosition)
-
-				documentSymbols.push({
-					name: `${key} ${osTag}`,
-					key: `${key}${VDF.OSTagDelimeter}${osTag}`,
-					osTag: osTag,
-					osTagRange: osTagRange,
-					nameRange: keyRange,
-					range: selectionRange,
-					selectionRange: selectionRange,
-					children: children,
-					kind: SymbolKind.Object
-				})
+			if (VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
+				throw new UnexpectedTokenError(currentToken, "key", nameRange)
 			}
-			else if (value == "{") {
-				tokeniser.next() // Skip opening brace
-				const children = parseObject(true)
 
-				const endPosition = Position.create(tokeniser.line, tokeniser.character - tokeniser.quoted)
-				const selectionRange = Range.create(keyRange.start, endPosition)
+			nextToken = tokeniser.next()
 
-				documentSymbols.push({
-					name: key,
-					key: key,
-					nameRange: keyRange,
-					range: selectionRange,
-					selectionRange: selectionRange,
-					children: children,
-					kind: SymbolKind.Object
-				})
+			let osTag: string | undefined
+			let children: VDFDocumentSymbol[] | undefined
+			let detail: string | undefined
+			let detailQuoted: 0 | 1
+			let detailRange: Range | undefined
+
+			if (nextToken == "{") {
+				children = parseObject(true)
+			}
+			else if (nextToken.startsWith("[") && nextToken.endsWith("]")) {
+				const lookAhead = tokeniser.next(true)
+				if (lookAhead == "{") {
+					osTag = nextToken
+					tokeniser.next() // Skip {
+					children = parseObject(true)
+				}
+				else {
+					[detail, detailQuoted] = trim(nextToken)
+					detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - Number(detailQuoted)), Position.create(tokeniser.line, tokeniser.character - Number(detailQuoted)))
+					if (detail == objectTerminator) {
+						throw new UnexpectedTokenError(detail, "value", detailRange)
+					}
+				}
 			}
 			else {
-				value = tokeniser.next()
-
-				if (value == objectTerminator && !tokeniser.quoted) {
-					throw new VDFSyntaxError(`Value expected for "${key}"!`, keyRange)
+				[detail, detailQuoted] = trim(nextToken)
+				detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - Number(detailQuoted)), Position.create(tokeniser.line, tokeniser.character - Number(detailQuoted)))
+				if (detail == objectTerminator) {
+					throw new UnexpectedTokenError(detail, "value", detailRange)
 				}
 
-				const valueRange = tokeniser.tokenRange()
-
-				let osTag: string | undefined
-				let osTageRange: Range | undefined
-
-				const lookahead: string = tokeniser.next(true)
-				if (lookahead.startsWith("[") && lookahead.endsWith("]") && (tokeniser.options.osTags == VDFOSTags.Strings || tokeniser.options.osTags == VDFOSTags.All)) {
-					osTag = tokeniser.next()
-					osTageRange = tokeniser.tokenRange()
+				// OS Tag
+				nextToken = tokeniser.next(true)
+				if (nextToken.startsWith("[") && nextToken.endsWith("]")) {
+					osTag = nextToken
+					tokeniser.next()
 				}
+			}
 
-				const containingRange = Range.create(keyRange.start, osTageRange != undefined ? osTageRange.end : valueRange.end)
 
-				documentSymbols.push({
-					name: osTag != undefined ? `${key} ${osTag}` : key,
-					key: osTag != undefined ? `${key}${VDF.OSTagDelimeter}${osTag}` : key,
-					nameRange: keyRange,
-					...(osTag != undefined && {
-						osTag: osTag
-					}),
-					...(osTageRange != undefined && {
-						osTagRange: osTageRange
-					}),
-					range: containingRange,
-					selectionRange: containingRange,
-					value: value,
-					detail: value,
-					valueRange: valueRange,
-					kind: SymbolKind.String
+			const endPosition = Position.create(tokeniser.line, tokeniser.character)
+			const selectionRange = Range.create(startPosition, endPosition)
+
+			documentSymbols.push({
+				name: `${key}${osTag != undefined ? ` ${osTag}` : ""}`,
+				key: key,
+				nameRange: nameRange,
+				kind: children != undefined ? SymbolKind.Object : SymbolKind.String,
+				range: selectionRange,
+				selectionRange: selectionRange,
+				...(osTag != undefined && {
+					osTag: osTag
+				}),
+				...(children != undefined && {
+					children: children
+				}),
+				...(detail != undefined && {
+					detail: detail
+				}),
+				...(detailRange != undefined && {
+					detailRange: detailRange
 				})
-			}
+			})
 
-			key = tokeniser.next()
-
-			if (key == "EOF" && obj) {
-				throw new VDFSyntaxError(`Unexpected "${key}" at position ${tokeniser.position} (line ${tokeniser.line + 1}, character ${tokeniser.character + 1})!`, keyRange)
-			}
-
-			if (key != objectTerminator) {
-				keyRange = Range.create(tokeniser.line, tokeniser.character - tokeniser.quoted - key.length, tokeniser.line, tokeniser.character - tokeniser.quoted)
-			}
-			value = tokeniser.next(true)
+			currentToken = tokeniser.next()
+			nextToken = tokeniser.next(true)
 		}
+
 		return documentSymbols
+
 	}
 	return parseObject(false)
 }
@@ -304,17 +289,20 @@ export function getLocationOfKey(uri: string, str: string | VDFDocumentSymbol[],
  * @returns
  */
 export function getDocumentSymbolsAtPosition(str: string | VDFDocumentSymbol[], position: Position): VDFDocumentSymbol[] | null {
+	const elementStack: VDFDocumentSymbol[] = []
 	const search = (documentSymbols: VDFDocumentSymbol[]): VDFDocumentSymbol[] | null => {
 		for (const documentSymbol of documentSymbols) {
+			elementStack.push(documentSymbol)
 			if (documentSymbol.children) {
 				const result = search(documentSymbol.children)
-				if (result) {
+				if (result != null) {
 					return result
 				}
 			}
-			if (position.line >= documentSymbol.nameRange.start.line) {
-				return documentSymbols
+			if (RangecontainsPosition(documentSymbol.selectionRange, position)) {
+				return elementStack.reverse()
 			}
+			elementStack.pop()
 		}
 		return null
 	}
@@ -399,10 +387,7 @@ export function getCodeLensTitle(references: number): string {
 }
 
 export function RangecontainsPosition(range: Range, position: Position): boolean {
-	if (range.start.line != position.line || range.end.line != position.line) {
-		return false
-	}
-	if (range.start.character > position.character || range.end.character < position.character) {
+	if (range.start.line > position.line || range.end.line < position.line) {
 		return false
 	}
 	return true

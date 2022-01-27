@@ -1,7 +1,7 @@
 import { AssertionError } from "assert";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
-import { VDFDocumentSymbol } from "../../../shared/tools/src/tools";
-import { VDF } from "../../../shared/vdf";
+import { VDFDocumentSymbol } from "../../../shared/tools";
+import { VDF } from "../../../shared/VDF/dist/VDF";
 
 const pinValues = [
 	"PIN_TOPLEFT",       // 0
@@ -30,18 +30,21 @@ const unionTypes = {
 		"east",
 		"south-west",
 		"south",
-		"south-east"
+		"south-east",
+		"left",
+		"right",
 	],
 }
 
 export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
+
 	const diagnostics: Diagnostic[] = []
 
 	const addDiagnostics = (objectPath: string[], _documentSymbols: VDFDocumentSymbol[]): void => {
-		for (const { name, key, value, children, valueRange } of _documentSymbols) {
-			if (value && valueRange) {
+		for (const { key, detail, children, detailRange } of _documentSymbols) {
+			if (detail && detailRange) {
 				const _key = key.split(VDF.OSTagDelimeter)[0].toLowerCase()
-				const _value = value.toLowerCase()
+				const _value = detail.toLowerCase()
 				switch (_key) {
 					case "fieldname":
 						{
@@ -49,8 +52,8 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0]
 							if (_value != elementName.toLowerCase()) {
 								diagnostics.push({
-									message: `fieldName "${value}" does not match element name "${elementName}"`,
-									range: valueRange,
+									message: `fieldName "${detail}" does not match element name "${elementName}"`,
+									range: detailRange,
 									severity: DiagnosticSeverity.Warning,
 								})
 							}
@@ -58,12 +61,14 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 						}
 					case "pin_to_sibling":
 						{
+
 							// Element should not be pinned to itself
 							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0]
+
 							if (_value == elementName.toLowerCase()) {
 								diagnostics.push({
 									message: `Element "${elementName}" is pinned to itself!`,
-									range: valueRange,
+									range: detailRange,
 									severity: DiagnosticSeverity.Warning,
 								})
 							}
@@ -79,8 +84,8 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 									const result = enumMembers[_key].find(x => x.toLowerCase() == _value)
 									if (result == undefined) {
 										diagnostics.push({
-											message: `"${value}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
-											range: valueRange,
+											message: `"${detail}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
+											range: detailRange,
 											severity: DiagnosticSeverity.Warning,
 										})
 									}
@@ -93,8 +98,8 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 									}
 									if (ivalue < 0 || ivalue > enumMembers[_key].length - 1) {
 										diagnostics.push({
-											message: `"${value}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
-											range: valueRange,
+											message: `"${detail}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
+											range: detailRange,
 											severity: DiagnosticSeverity.Warning,
 										})
 									}
@@ -103,8 +108,8 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 							if (((key): key is keyof typeof unionTypes => unionTypes.hasOwnProperty(key))(_key)) {
 								if (!unionTypes[_key].includes(_value)) {
 									diagnostics.push({
-										message: `"${value}" is not a valid value for ${_key}! Expected "${unionTypes[_key].join(`" | "`)}"`,
-										range: valueRange,
+										message: `"${detail}" is not a valid value for ${_key}! Expected "${unionTypes[_key].join(`" | "`)}"`,
+										range: detailRange,
 										severity: DiagnosticSeverity.Warning,
 									})
 								}
