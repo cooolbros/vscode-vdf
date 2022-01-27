@@ -37,8 +37,11 @@ VDF/Valve KeyValues language support for VSCode
  - Rename provider for events
  - Syntax highlighting for HUD Animations
 
+### Features (Popfile Specific)
+ - Autocompletion for Templates
+ - Autocompletion for Attributes, BehaviorModifiers, Class, Skill, Object, etc...
+
 ### TODO
- - Add popfile support
  - Add settings for formatting preference
  - Add support for renaming clientscheme entries (project wide)
  - Add VTF viewer/editor
