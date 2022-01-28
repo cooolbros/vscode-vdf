@@ -135,6 +135,9 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 		const quoted = str.startsWith("\"") && str.endsWith("\"")
 		return quoted ? [str.slice(1, -1), 1] : [str, 0];
 	}
+	const isOSTag = (str: string): str is `[${string}]` => {
+		return str.startsWith("[") && str.endsWith("]")
+	}
 	/**
 	 * Gets a list of key/value pairs between an opening and closing brace
 	 * @param obj Whether the object to be parsed is NOT a top level object
@@ -166,36 +169,43 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			if (nextToken == "{") {
 				children = parseObject(true)
 			}
-			else if (nextToken.startsWith("[") && nextToken.endsWith("]")) {
-				const lookAhead = tokeniser.next(true)
-				if (lookAhead == "{") {
-					osTag = nextToken
-					tokeniser.next() // Skip {
+			else if (isOSTag(nextToken)) {
+				osTag = nextToken
+				const value = tokeniser.next()
+				if (value == "{") {
+					// Object
 					children = parseObject(true)
 				}
 				else {
-					[detail, detailQuoted] = trim(nextToken)
-					detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - Number(detailQuoted)), Position.create(tokeniser.line, tokeniser.character - Number(detailQuoted)))
-					if (detail == objectTerminator) {
-						throw new UnexpectedTokenError(detail, "value", detailRange)
+					// Primitive
+					[detail, detailQuoted] = trim(value)
+					detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - detailQuoted), Position.create(tokeniser.line, tokeniser.character - detailQuoted))
+
+					if (value == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(detail)) {
+						throw new UnexpectedTokenError(value, "value", detailRange)
+					}
+
+					let osTag2 = tokeniser.next(true)
+					if (isOSTag(osTag2)) {
+						osTag = osTag2
+						tokeniser.next() // Skip OS Tag
 					}
 				}
 			}
 			else {
 				[detail, detailQuoted] = trim(nextToken)
-				detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - Number(detailQuoted)), Position.create(tokeniser.line, tokeniser.character - Number(detailQuoted)))
-				if (detail == objectTerminator) {
+				detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - detailQuoted), Position.create(tokeniser.line, tokeniser.character - detailQuoted))
+				if (nextToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(nextToken)) {
 					throw new UnexpectedTokenError(detail, "value", detailRange)
 				}
 
 				// OS Tag
 				nextToken = tokeniser.next(true)
-				if (nextToken.startsWith("[") && nextToken.endsWith("]")) {
+				if (isOSTag(nextToken)) {
 					osTag = nextToken
 					tokeniser.next()
 				}
 			}
-
 
 			const endPosition = Position.create(tokeniser.line, tokeniser.character)
 			const selectionRange = Range.create(startPosition, endPosition)

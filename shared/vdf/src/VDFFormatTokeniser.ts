@@ -5,11 +5,18 @@ import { VDFTokeniser } from "./VDFTokeniser"
  */
 export class VDFFormatTokeniser extends VDFTokeniser {
 	private static readonly whiteSpaceIgnoreFormat: string[] = [" ", "\t", "\r"]
-	next(lookAhead: boolean = false): string {
+	read({ lookAhead = false, skipNewlines = false }: { lookAhead?: boolean, skipNewlines?: boolean } = {}): string {
+
 		let i = this.position
 		let currentToken = ""
 
-		while (i < this.str.length && VDFFormatTokeniser.whiteSpaceIgnoreFormat.includes(this.str[i])) {
+		while (i < this.str.length && VDFFormatTokeniser.whiteSpaceIgnore.includes(this.str[i])) {
+			if (this.str[i] == "\n" && !skipNewlines) {
+				if (!lookAhead) {
+					this.position = i
+				}
+				return "\n"
+			}
 			i++
 		}
 
@@ -23,15 +30,8 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 			return "__EOF__"
 		}
 
-		if (this.str[i] == "\n") {
-			i++ // Skip over newline
-			if (!lookAhead) {
-				this.position = i
-			}
-			return "\n"
-		}
-
 		if (this.str[i] == "\"") {
+			currentToken += "\""
 			i++ // Skip over opening quote
 			while (this.str[i] != "\"") {
 				if (this.str[i] == "\\") {
@@ -56,7 +56,7 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 					throw new Error(`Unclosed quoted token "${currentToken}"!`) // missing double quote
 				}
 			}
-
+			currentToken += "\""
 			i++ // Skip over closing quote
 		}
 		else {
@@ -68,7 +68,7 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 				}
 			}
 			else {
-				while (i < this.str.length && ![" ", "\t", "\r"].includes(this.str[i])) {
+				while (i < this.str.length && !VDFFormatTokeniser.whiteSpaceIgnoreFormat.includes(this.str[i])) {
 					if (this.str[i] == "\\") {
 						// Add backslash
 						currentToken += "\\"
@@ -89,7 +89,6 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 								currentToken += this.str[i]
 								i++
 							}
-							// connection.console.log(`Breaking out of "${currentToken}" (Encountered "${escape(str[j])}")`)
 							break
 						}
 						else {

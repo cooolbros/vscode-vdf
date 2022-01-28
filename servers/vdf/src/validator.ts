@@ -49,8 +49,8 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 					case "fieldname":
 						{
 							// fieldName must match element name
-							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0]
-							if (_value != elementName.toLowerCase()) {
+							const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
+							if (elementName != undefined && _value != elementName?.toLowerCase()) {
 								diagnostics.push({
 									message: `fieldName "${detail}" does not match element name "${elementName}"`,
 									range: detailRange,
@@ -61,11 +61,9 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 						}
 					case "pin_to_sibling":
 						{
-
 							// Element should not be pinned to itself
-							const elementName = objectPath[objectPath.length - 1].split(VDF.OSTagDelimeter)[0]
-
-							if (_value == elementName.toLowerCase()) {
+							const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
+							if (elementName != undefined && _value == elementName?.toLowerCase()) {
 								diagnostics.push({
 									message: `Element "${elementName}" is pinned to itself!`,
 									range: detailRange,
