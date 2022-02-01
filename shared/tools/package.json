@@ -1,7 +1,4 @@
 {
   "main": "./dist/tools.js",
-  "typings": "./dist/tools.d.ts",
-  "dependencies": {
-    "vscode-languageserver-textdocument": "^1.0.2"
-  }
+  "typings": "./dist/tools.d.ts"
 }

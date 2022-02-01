@@ -171,21 +171,16 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc --build --force shared/vdf && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/popfile && tsc --build --force servers/vdf",
-    "watch": "tsc -b -w",
-    "postinstall": "cd client && npm install && cd ../servers/vdf && npm install && cd ../../servers/hudanimations && npm i && cd ../.."
-  },
-  "devDependencies": {
-    "@types/mocha": "^8.2.2",
-    "@types/node": "^12.12.0",
-    "@typescript-eslint/eslint-plugin": "^4.23.0",
-    "@typescript-eslint/parser": "^4.23.0",
-    "eslint": "^7.26.0",
-    "mocha": "^8.3.2",
-    "typescript": "^4.4.3"
+    "compile": "tsc --build --force shared/VDF && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/popfile && tsc --build --force servers/vdf",
+    "postinstall": "cd client && npm install && cd .."
   },
   "dependencies": {
-    "vscode-languageserver": "^7.0.0"
+    "vscode-languageserver": "^7.0.0",
+    "vscode-languageserver-textdocument": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.13",
+    "typescript": "^4.5.5"
   },
   "__metadata": {
     "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
