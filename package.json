@@ -90,7 +90,7 @@
         "filenamePatterns": [
           "hudanimations*.txt"
         ],
-        "configuration": "./hudanimations-language-configuration.json"
+        "configuration": "./language-configuration/hudanimations-language-configuration.json"
       },
       {
         "id": "popfile",
@@ -101,7 +101,7 @@
         "extensions": [
           ".pop"
         ],
-        "configuration": "./popfile-language-configuration.json"
+        "configuration": "./language-configuration/popfile-language-configuration.json"
       },
       {
         "id": "vdf",
@@ -117,7 +117,7 @@
         "filenames": [
           "hudanimations_manifest.txt"
         ],
-        "configuration": "./vdf-language-configuration.json"
+        "configuration": "./language-configuration/vdf-language-configuration.json"
       }
     ],
     "configuration": {
