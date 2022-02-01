@@ -214,35 +214,28 @@ connection.onHover((params: HoverParams): Hover | null => {
 		return null
 	}
 
-	return {
-		contents: {
-			kind: "markdown",
-			value: "![Tux, the Linux mascot](file:///C:/Users/pfwobcke/.vscode/extensions/vscode-vdf/leaderboard_class_boss_pyro_shiverpeak_00_00_00.png)"
+	const line = document.getText(getLineRange(params.position.line))
+	const tokeniser = new VDFTokeniser(line)
+	if (tokeniser.next().toLowerCase() == `"set item tint rgb"`) {
+		const hex = decimalToHexadecimal(parseInt(tokeniser.next()))
+		const rgb = hexadecimalToRgb(hex)
+		return {
+			contents: {
+				kind: "plaintext",
+				language: "html",
+				value: `#${hex} / rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+			}
 		}
 	}
 
-	// const line = document.getText(getLineRange(params.position.line))
-	// const tokeniser = new VDFTokeniser(line)
-	// if (tokeniser.next().toLowerCase() == `"set item tint rgb"`) {
-	// 	const hex = decimalToHexadecimal(parseInt(tokeniser.next()))
-	// 	const rgb = hexadecimalToRgb(hex)
-	// 	return {
-	// 		contents: {
-	// 			kind: "plaintext",
-	// 			language: "html",
-	// 			value: `#${hex} / rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
-	// 		}
-	// 	}
-	// }
-
-	// return {
-	// 	contents: [
-	// 		{
-	// 			language: "popfile",
-	// 			value: document.getText(getLineRange(params.position.line)).trim()
-	// 		}
-	// 	]
-	// }
+	return {
+		contents: [
+			{
+				language: "popfile",
+				value: document.getText(getLineRange(params.position.line)).trim()
+			}
+		]
+	}
 })
 
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | null> => {
