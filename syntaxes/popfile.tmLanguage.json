@@ -18,12 +18,16 @@
 			"match": "//.*$"
 		},
 		{
+			"name": "constant.character",
+			"match": "\\[.*\\]"
+		},
+		{
 			"name": "string",
 			"match": "\".*\""
 		},
 		{
 			"name": "entity.name.type.enum",
-			"match": "(?i)\\b(Attributes|BehaviorModifiers|Class|Objective|Skill|WeaponRestrictions|Where|ClassIcon)\\b"
+			"match": "(?i)\\b(Attributes|BehaviorModifiers|Checkpoint|Class|ClassIcon|Objective|Skill|WeaponRestrictions|Where)\\b"
 		},
 		{
 			"name": "keyword.control",
@@ -31,11 +35,11 @@
 		},
 		{
 			"name": "keyword",
-			"match": "(?i)\\b(FirstSpawnOutput|Health|MaxActive|Name|No|OnBombDroppedOutput|OnKilledOutput|RandomChoice|SpawnCount|Speed|Squad|StartingPathTrackNode|Tank|Template|TFBot|TotalCount|TotalCurrency|WaitBeforeStarting|WaitBetweenSpawns|WaitForAllSpawned|Wave|WaveSchedule|WaveSpawn|(Item|Character)Attributes|ItemName|Item)\\b"
+			"match": "(?i)\\b(CharacterAttributes|DesiredCount|DoneOutput|FirstSpawnOutput|Health|Item|ItemAttributes|ItemName|MaxActive|MaxVisionRange|MaxVisionRange|Mission|Mission|Name|No|OnBombDroppedOutput|OnKilledOutput|RandomChoice|Squad|StartWaveOutput|StartingPathTrackNode|TFBot|Tank|Template|Templates|TotalCount|TotalCurrency|WaitBeforeStarting|WaitBetweenSpawns|WaitForAllDead|WaitForAllSpawned|Wave|WaveSchedule|WaveSpawn)\\b"
 		},
 		{
 			"name": "variable.other.enummember",
-			"match": "(?i)\\b(Aggressive|AirChargeOnly|AlwaysCrit|AlwaysFireWeapon|AutoJump|BecomeSpectatorOnDeath|BlastImmune|BulletImmune|Demoman|DestroySentries|DisableDodge|Easy|Engineer|Expert|FireImmune|Hard|Heavy(weapons)?|HoldFireUntilFullReload|Idle|IgnoreEnemies|IgnoreFlag|Medic|MeleeOnly|MiniBoss|Mobber|Normal|Parachute|PrimaryOnly|ProjectileShield|Push|Pyro|RemoveOnDeath|RetainBuildings|Scout|SecondaryOnly|Sniper|Soldier|spawnbot.*|SpawnWithFullCharge|Spy|SuppressFire|TeleportToHint|UseBossHealthBar|VaccinatorBlast|VaccinatorBullets|VaccinatorFire|demo|demo_bomber|demo_burst|demo_burst_crit|demo_burst_giant|demo_giant|demoknight|demoknight_giant|demoknight_samurai|engineer|heavy|heavy_champ|heavy_champ_giant|heavy_chief|heavy_crit|heavy_deflector|heavy_deflector_healonkill|heavy_deflector_healonkill_crit|heavy_deflector_push|heavy_giant|heavy_gru|heavy_gru_giant|heavy_heater|heavy_heater_giant|heavy_mittens|heavy_shotgun|heavy_shotgun_giant|heavy_steelfist|heavy_urgent|medic|medic_giant|medic_uber|pyro|pyro_flare|pyro_flare_giant|pyro_giant|scout|scout_bat|scout_bonk|scout_bonk_giant|scout_fan|scout_fan_giant|scout_giant|scout_giant_fast|scout_jumping|scout_jumping_g|scout_shortstop|scout_stun|scout_stun_armored|scout_stun_giant|scout_stun_giant_armored|sentry_buster|sniper|sniper_bow|sniper_bow_multi|sniper_jarate|sniper_sydneysleeper|soldier|soldier_backup|soldier_backup_giant|soldier_barrage|soldier_blackbox|soldier_blackbox_giant|soldier_buff|soldier_buff_giant|soldier_burstfire|soldier_conch|soldier_conch_giant|soldier_crit|soldier_giant|soldier_libertylauncher|soldier_libertylauncher_giant|soldier_major_crits|soldier_sergeant_crits|soldier_spammer|soldier_spammer_crit|special_blimp|spy|tank|teleporter|Yes|No)\\b"
+			"match": "(?i)\\b(Aggressive|AirChargeOnly|AlwaysCrit|AlwaysFireWeapon|AutoJump|BecomeSpectatorOnDeath|BlastImmune|BulletImmune|Demoman|DestroySentries|DisableDodge|Easy|Engineer|Expert|FireImmune|Hard|Heavy(weapons)?|HoldFireUntilFullReload|Idle|IgnoreEnemies|IgnoreFlag|Medic|MeleeOnly|MiniBoss|Mobber|No|Normal|Parachute|PrimaryOnly|ProjectileShield|Push|Pyro|RemoveOnDeath|RetainBuildings|Scout|SecondaryOnly|Sniper|Soldier|SpawnWithFullCharge|Spy|SuppressFire|TeleportToHint|UseBossHealthBar|VaccinatorBlast|VaccinatorBullets|VaccinatorFire|Yes|demo|demo_bomber|demo_burst|demo_burst_crit|demo_burst_giant|demo_giant|demoknight|demoknight_giant|demoknight_samurai|engineer|heavy|heavy_champ|heavy_champ_giant|heavy_chief|heavy_crit|heavy_deflector|heavy_deflector_healonkill|heavy_deflector_healonkill_crit|heavy_deflector_push|heavy_giant|heavy_gru|heavy_gru_giant|heavy_heater|heavy_heater_giant|heavy_mittens|heavy_shotgun|heavy_shotgun_giant|heavy_steelfist|heavy_urgent|medic|medic_giant|medic_uber|pyro|pyro_flare|pyro_flare_giant|pyro_giant|scout|scout_bat|scout_bonk|scout_bonk_giant|scout_fan|scout_fan_giant|scout_giant|scout_giant_fast|scout_jumping|scout_jumping_g|scout_shortstop|scout_stun|scout_stun_armored|scout_stun_giant|scout_stun_giant_armored|sentry_buster|sniper|sniper_bow|sniper_bow_multi|sniper_jarate|sniper_sydneysleeper|soldier|soldier_backup|soldier_backup_giant|soldier_barrage|soldier_blackbox|soldier_blackbox_giant|soldier_buff|soldier_buff_giant|soldier_burstfire|soldier_conch|soldier_conch_giant|soldier_crit|soldier_giant|soldier_libertylauncher|soldier_libertylauncher_giant|soldier_major_crits|soldier_sergeant_crits|soldier_spammer|soldier_spammer_crit|spawnbot.*|special_blimp|spy|tank|teleporter)\\b"
 		},
 		{
 			"name": "constant.numeric",

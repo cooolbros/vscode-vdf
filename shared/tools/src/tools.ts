@@ -1,5 +1,7 @@
-import fs, { existsSync } from "fs"
-import path from "path"
+import { execSync } from "child_process"
+import fs, { existsSync, mkdirSync } from "fs"
+import { tmpdir } from "os"
+import path, { dirname, join } from "path"
 import { fileURLToPath, pathToFileURL, URL } from "url"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { CompletionItem, CompletionItemKind, Definition, DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver/node"
@@ -309,7 +311,7 @@ export function getDocumentSymbolsAtPosition(str: string | VDFDocumentSymbol[], 
 					return result
 				}
 			}
-			if (RangecontainsPosition(documentSymbol.selectionRange, position)) {
+			if (RangecontainsPosition(documentSymbol.range, position)) {
 				return elementStack.reverse()
 			}
 			elementStack.pop()
@@ -400,9 +402,63 @@ export function RangecontainsPosition(range: Range, position: Position): boolean
 	if (range.start.line > position.line || range.end.line < position.line) {
 		return false
 	}
+	// Disabled because documents.onDidChangeContent takes a while to catch up so connection.onCompletion uses old layout when you enter newlines
+	// if (range.start.line == position.line && position.character < range.start.character) {
+	// 	return false
+	// }
+	// if (range.end.line == position.line && position.character > range.end.character) {
+	// 	return false
+	// }
 	return true
 }
 
 export function RangecontainsRange(range: Range, { start, end }: Range): boolean {
 	return RangecontainsPosition(range, start) && RangecontainsPosition(range, end)
+}
+
+export function getLineRange(line: number): Range {
+	return {
+		start: {
+			line: line,
+			character: 0
+		},
+		end: {
+			line: line,
+			character: Infinity
+		}
+	}
+}
+
+export function recursiveDocumentSymbolLookup(documentSymbols: VDFDocumentSymbol[], callback: (documentSymbol: VDFDocumentSymbol) => boolean): VDFDocumentSymbol | null {
+	const search = (_documentSymbols: VDFDocumentSymbol[]): ReturnType<typeof recursiveDocumentSymbolLookup> => {
+		for (const documentSymbol of _documentSymbols) {
+			if (documentSymbol.children) {
+				const result = search(documentSymbol.children)
+				if (result != null) {
+					return result
+				}
+			}
+			if (callback(documentSymbol)) {
+				return documentSymbol
+			}
+		}
+		return null
+	}
+	return search(documentSymbols)
+}
+
+
+export function VPKExtract(teamFortress2Folder: string, vpkPath: string, file: string): string | null {
+	const vpkBinPath = join(teamFortress2Folder, "bin", existsSync(join(teamFortress2Folder, "bin/vpk.exe")) ? "vpk" : "vpk_linux32")
+	const temp = tmpdir()
+	mkdirSync(join(temp, dirname(file)), { recursive: true })
+	const outputPath = join(temp, file)
+	const args: string[] = [
+		`"${vpkBinPath}"`,
+		`x`,
+		`"${join(teamFortress2Folder, vpkPath)}"`,
+		`"${file}"`
+	]
+	execSync(args.join(" "), { cwd: temp })
+	return existsSync(outputPath) ? outputPath : null
 }

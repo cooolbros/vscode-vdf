@@ -128,17 +128,17 @@
 		"tank",
 		"teleporter"
 	],
-	"skill": [
-		"Easy",
-		"Normal",
-		"Hard",
-		"Expert"
-	],
 	"objective": [
 		"Engineer",
 		"Sniper",
 		"Spy",
 		"DestroySentries"
+	],
+	"skill": [
+		"Easy",
+		"Normal",
+		"Hard",
+		"Expert"
 	],
 	"weaponrestrictions": [
 		"PrimaryOnly",
