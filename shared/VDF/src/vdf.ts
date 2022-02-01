@@ -39,7 +39,7 @@ export class VDF {
 				let value = tokeniser.next()
 				if (value == "{") {
 					// Object
-					write(obj, currentToken, parseObject(true))
+					write(obj, trim(currentToken)[0], parseObject(true))
 				}
 				else if (value.startsWith("[") && value.endsWith("]")) {
 					// Object with OS Tag or Primitive with 1 or 2 OS Tags
