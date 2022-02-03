@@ -25,14 +25,6 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 	const documentSymbols: HUDAnimationsFormatDocumentSymbol[] = []
 	const tokeniser = new VDFFormatTokeniser(str)
 
-	const tokeniser_next_skipNewLines = (): string => {
-		let currentToken = tokeniser.next()
-		while (currentToken == "\n") {
-			currentToken = tokeniser.next()
-		}
-		return currentToken
-	}
-
 	// Tools
 	const readOSTagAndComment = (animation: { osTag?: string, comment?: string }): void => {
 		let osTagorcomment = tokeniser.next(true)
@@ -50,7 +42,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 	}
 
 	// Get the next real token
-	let currentToken = tokeniser_next_skipNewLines()
+	let currentToken = tokeniser.read({ skipNewlines: true })
 
 	while (currentToken != "EOF") {
 
@@ -61,7 +53,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 			documentSymbol.comment = parserTools.convert.comment(currentToken)
 		}
 		else if (currentToken.toLowerCase() == "event") {
-			let eventName = tokeniser.next()
+			let eventName = tokeniser.read()
 
 			if (eventName == "{") {
 				throw new HUDAnimationsSyntaxError("{", tokeniser, "Expected event name!")
@@ -72,18 +64,18 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 				animations: []
 			}
 
-			let openingBraceorComment = tokeniser_next_skipNewLines()
+			let openingBraceorComment = tokeniser.read({ skipNewlines: true })
 
 			if (parserTools.is.comment(openingBraceorComment)) {
 				documentSymbol.event.comment = parserTools.convert.comment(openingBraceorComment)
-				openingBraceorComment = tokeniser_next_skipNewLines()
+				openingBraceorComment = tokeniser.read({ skipNewlines: true })
 			}
 
 			if (openingBraceorComment != "{") {
 				throw new HUDAnimationsSyntaxError(openingBraceorComment, tokeniser, "{")
 			}
 
-			let animationType = tokeniser_next_skipNewLines()
+			let animationType = tokeniser.read({ skipNewlines: true })
 
 			// Read animation statements
 			while (animationType != "}") {
@@ -96,10 +88,10 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "animate": {
 							const animation: AddComment<HUDAnimations.Animate> = {
 								type: "Animate",
-								element: tokeniser_next_skipNewLines(),
-								property: tokeniser_next_skipNewLines(),
-								value: tokeniser_next_skipNewLines(),
-								interpolator: <Interpolator>tokeniser.next(),
+								element: tokeniser.read({ skipNewlines: true }),
+								property: tokeniser.read({ skipNewlines: true }),
+								value: tokeniser.read({ skipNewlines: true }),
+								interpolator: <Interpolator>tokeniser.read({ skipNewlines: true }),
 
 								// Surpress compiler error
 								delay: 0,
@@ -109,14 +101,14 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							const interpolator = animation.interpolator!.toLowerCase()
 
 							if (interpolator == "pulse") {
-								animation.frequency = <any>tokeniser_next_skipNewLines()
+								animation.frequency = <any>tokeniser.read({ skipNewlines: true })
 							}
 							else if (["gain", "bias"].includes(interpolator)) {
-								animation.bias = sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+								animation.bias = sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 							}
 
-							animation.delay = sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
-							animation.duration = sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+							animation.delay = sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+							animation.duration = sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 
 							readOSTagAndComment(animation)
 							documentSymbol.event.animations.push(animation)
@@ -125,8 +117,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "runevent": {
 							const runEvent: AddComment<HUDAnimations.RunEvent> = {
 								type: "RunEvent",
-								event: tokeniser_next_skipNewLines(),
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+								event: tokeniser.read({ skipNewlines: true }),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 							}
 							readOSTagAndComment(runEvent)
 							documentSymbol.event.animations.push(runEvent)
@@ -135,8 +127,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "stopevent": {
 							const stopEvent: AddComment<HUDAnimations.StopEvent> = {
 								type: "StopEvent",
-								event: tokeniser_next_skipNewLines(),
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+								event: tokeniser.read({ skipNewlines: true }),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 							}
 							readOSTagAndComment(stopEvent)
 							documentSymbol.event.animations.push(stopEvent)
@@ -145,9 +137,9 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "setvisible": {
 							const setVisible: AddComment<HUDAnimations.SetVisible> = {
 								type: "SetVisible",
-								element: tokeniser_next_skipNewLines(),
-								visible: sanitizeBit(tokeniser_next_skipNewLines(), tokeniser),
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser),
+								element: tokeniser.read({ skipNewlines: true }),
+								visible: sanitizeBit(tokeniser.read({ skipNewlines: true }), tokeniser),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser),
 							}
 							readOSTagAndComment(setVisible)
 							documentSymbol.event.animations.push(setVisible)
@@ -156,8 +148,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "firecommand": {
 							const fireCommand: AddComment<HUDAnimations.FireCommand> = {
 								type: "FireCommand",
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser),
-								command: tokeniser_next_skipNewLines(),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser),
+								command: tokeniser.read({ skipNewlines: true }),
 							}
 							readOSTagAndComment(fireCommand)
 							documentSymbol.event.animations.push(fireCommand)
@@ -166,9 +158,9 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "runeventchild": {
 							const runEventChild: AddComment<HUDAnimations.RunEventChild> = {
 								type: "RunEventChild",
-								element: tokeniser_next_skipNewLines(),
-								event: tokeniser_next_skipNewLines(),
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+								element: tokeniser.read({ skipNewlines: true }),
+								event: tokeniser.read({ skipNewlines: true }),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 							}
 							readOSTagAndComment(runEventChild)
 							documentSymbol.event.animations.push(runEventChild)
@@ -177,9 +169,9 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "setinputenabled": {
 							const setInputEnabled: AddComment<HUDAnimations.SetInputEnabled> = {
 								type: "SetInputEnabled",
-								element: tokeniser_next_skipNewLines(),
-								visible: <any>tokeniser_next_skipNewLines(),
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+								element: tokeniser.read({ skipNewlines: true }),
+								visible: <any>tokeniser.read({ skipNewlines: true }),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 							}
 							readOSTagAndComment(setInputEnabled)
 							documentSymbol.event.animations.push(setInputEnabled)
@@ -188,8 +180,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "playsound": {
 							const playSound: AddComment<HUDAnimations.PlaySound> = {
 								type: "PlaySound",
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser),
-								sound: tokeniser_next_skipNewLines(),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser),
+								sound: tokeniser.read({ skipNewlines: true }),
 							}
 							readOSTagAndComment(playSound)
 							documentSymbol.event.animations.push(playSound)
@@ -198,8 +190,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 						case "stoppanelanimations": {
 							const stopPanelAnimations: AddComment<HUDAnimations.StopPanelAnimations> = {
 								type: "StopPanelAnimations",
-								element: tokeniser_next_skipNewLines(),
-								delay: sanitizeNaN(tokeniser_next_skipNewLines(), tokeniser)
+								element: tokeniser.read({ skipNewlines: true }),
+								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
 							}
 							readOSTagAndComment(stopPanelAnimations)
 							documentSymbol.event.animations.push(stopPanelAnimations)
@@ -210,7 +202,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 					}
 				}
 
-				animationType = tokeniser_next_skipNewLines()
+				animationType = tokeniser.read({ skipNewlines: true })
 			}
 		}
 		else {
@@ -219,7 +211,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 
 		documentSymbols.push(documentSymbol)
 
-		currentToken = tokeniser_next_skipNewLines()
+		currentToken = tokeniser.read({ skipNewlines: true })
 	}
 
 	return documentSymbols
