@@ -19,7 +19,8 @@ import {
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, getVDFDocumentSymbols, RangecontainsPosition, RangecontainsRange, VDFDocumentSymbol, VSCodeVDFSettings } from "../../../shared/tools";
+import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, RangecontainsPosition, RangecontainsRange, VSCodeVDFSettings } from "../../../shared/tools";
+import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags";
 import { VDF } from "../../../shared/VDF/dist/VDF";
 import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";

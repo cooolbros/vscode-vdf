@@ -1,6 +1,6 @@
 import { AssertionError } from "assert";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
-import { VDFDocumentSymbol } from "../../../shared/tools";
+import { VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDF } from "../../../shared/VDF/dist/VDF";
 
 const pinValues = [
