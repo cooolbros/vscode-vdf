@@ -27,17 +27,23 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 
 	// Tools
 	const readOSTagAndComment = (animation: { osTag?: string, comment?: string }): void => {
-		let osTagorcomment = tokeniser.next(true)
-
-		if (parserTools.is.osTag(osTagorcomment)) {
-			animation.osTag = parserTools.convert.osTag(osTagorcomment)
-			tokeniser.next()
-			osTagorcomment = tokeniser.next(true)
-		}
+		let osTagorcomment = tokeniser.read({ lookAhead: true, skipNewlines: false })
 
 		if (parserTools.is.comment(osTagorcomment)) {
-			animation.comment = parserTools.convert.comment(osTagorcomment)
-			tokeniser.next()
+			animation.comment = osTagorcomment
+			tokeniser.read({ skipNewlines: false })	// Skip comment
+		}
+		else {
+			osTagorcomment = tokeniser.read({ lookAhead: true, skipNewlines: true })
+			if (parserTools.is.osTag(osTagorcomment)) {
+				animation.osTag = osTagorcomment
+				tokeniser.read({ skipNewlines: true })	// Skip OS Tag
+				osTagorcomment = tokeniser.read({ lookAhead: true, skipNewlines: false })
+				if (parserTools.is.comment(osTagorcomment)) {
+					animation.comment = parserTools.convert.comment(osTagorcomment)
+					tokeniser.read({ skipNewlines: false })
+				}
+			}
 		}
 	}
 
