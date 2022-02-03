@@ -1,6 +1,7 @@
 import { DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver";
 import { VDFTokeniserOptions } from "./models/VDFTokeniserOptions";
 import { UnexpectedTokenError } from "./VDFErrors";
+import { parserTools } from "./VDFParserTools";
 import { VDFTokeniser } from "./VDFTokeniser";
 
 export interface VDFDocumentSymbol extends DocumentSymbol {
@@ -44,13 +45,7 @@ export interface VDFDocumentSymbol extends DocumentSymbol {
 
 export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions): VDFDocumentSymbol[] {
 	const tokeniser = new VDFTokeniser(str, options)
-	const trim = (str: string): [string, 0 | 1] => {
-		const quoted = str.startsWith("\"") && str.endsWith("\"")
-		return quoted ? [str.slice(1, -1), 1] : [str, 0];
-	}
-	const isOSTag = (str: string): str is `[${string}]` => {
-		return str.startsWith("[") && str.endsWith("]")
-	}
+
 	/**
 	 * Gets a list of key/value pairs between an opening and closing brace
 	 * @param obj Whether the object to be parsed is NOT a top level object
@@ -63,7 +58,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 
 		const objectTerminator = obj ? "}" : "__EOF__"
 		while (currentToken != objectTerminator) {
-			const [key, keyQuoted] = trim(currentToken)
+			const [key, keyQuoted] = parserTools.convert.token(currentToken)
 			const startPosition = Position.create(tokeniser.line, tokeniser.character - key.length - keyQuoted)
 			const nameRange: Range = Range.create(startPosition, Position.create(tokeniser.line, tokeniser.character - keyQuoted))
 
@@ -82,7 +77,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			if (nextToken == "{") {
 				children = parseObject(true)
 			}
-			else if (isOSTag(nextToken)) {
+			else if (parserTools.is.osTag(nextToken)) {
 				osTag = nextToken
 				const value = tokeniser.next()
 				if (value == "{") {
@@ -91,7 +86,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				}
 				else {
 					// Primitive
-					[detail, detailQuoted] = trim(value)
+					[detail, detailQuoted] = parserTools.convert.token(value)
 					detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - detailQuoted), Position.create(tokeniser.line, tokeniser.character - detailQuoted))
 
 					if (value == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(detail)) {
@@ -99,14 +94,14 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 					}
 
 					let osTag2 = tokeniser.next(true)
-					if (isOSTag(osTag2)) {
+					if (parserTools.is.osTag(osTag2)) {
 						osTag = osTag2
 						tokeniser.next() // Skip OS Tag
 					}
 				}
 			}
 			else {
-				[detail, detailQuoted] = trim(nextToken)
+				[detail, detailQuoted] = parserTools.convert.token(nextToken)
 				detailRange = Range.create(Position.create(tokeniser.line, tokeniser.character - detail.length - detailQuoted), Position.create(tokeniser.line, tokeniser.character - detailQuoted))
 				if (nextToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(nextToken)) {
 					throw new UnexpectedTokenError(detail, "value", detailRange)
@@ -114,7 +109,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 
 				// OS Tag
 				nextToken = tokeniser.next(true)
-				if (isOSTag(nextToken)) {
+				if (parserTools.is.osTag(nextToken)) {
 					osTag = nextToken
 					tokeniser.next()
 				}

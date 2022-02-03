@@ -1,5 +1,6 @@
 import { _Connection } from "vscode-languageserver"
 import { VDFFormatTokeniser } from "./VDFFormatTokeniser"
+import { parserTools } from "./VDFParserTools"
 import { VDFTokeniser } from "./VDFTokeniser"
 
 export interface VDFFormatDocumentSymbol {
@@ -22,19 +23,6 @@ export class InvalidTokenSequenceError extends Error {
 
 export function getVDFFormatDocumentSymbols(str: string, connection: _Connection): VDFFormatDocumentSymbol[] {
 	const tokeniser = new VDFFormatTokeniser(str)
-	const isComment = (str: string): str is `//${string}` => {
-		return str.startsWith("//")
-	}
-	const isOSTag = (str: string): str is `[${string}]` => {
-		return str.startsWith("[") && str.endsWith("]")
-	}
-	const trim = (str: string): [string, 0 | 1] => {
-		const quoted = str.startsWith("\"") && str.endsWith("\"")
-		return quoted ? [str.slice(1, -1), 1] : [str, 0];
-	}
-	const comment = (str: `//${string}`): string => {
-		return str.substring(2).trim()
-	}
 	const parseObject = (key: string, isObject: boolean): VDFFormatDocumentSymbol[] => {
 		const documentSymbols: VDFFormatDocumentSymbol[] = []
 
@@ -45,18 +33,18 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 		while (currentToken != objectTerminator) {
 			const documentSymbol: VDFFormatDocumentSymbol = {}
 
-			if (isComment(currentToken)) {
+			if (parserTools.is.comment(currentToken)) {
 				// Block comment
-				documentSymbol.blockComment = comment(currentToken)
+				documentSymbol.blockComment = parserTools.convert.comment(currentToken)
 			}
 			else {
 				if (currentToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
 					throw new InvalidTokenSequenceError(currentToken)
 				}
-				documentSymbol.key = trim(currentToken)[0]
+				documentSymbol.key = parserTools.convert.token(currentToken)[0]
 				let value = tokeniser.read({ skipNewlines: true })
-				if (isComment(value)) {
-					documentSymbol.inLineComment = comment(value)
+				if (parserTools.is.comment(value)) {
+					documentSymbol.inLineComment = parserTools.convert.comment(value)
 					value = tokeniser.read({ skipNewlines: true })
 					if (value == "{") {
 						documentSymbol.value = parseObject(documentSymbol.key, true)
@@ -65,11 +53,11 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 						throw new InvalidTokenSequenceError(documentSymbol.key, documentSymbol.inLineComment, value)
 					}
 				}
-				else if (isOSTag(value)) {
+				else if (parserTools.is.osTag(value)) {
 					documentSymbol.osTag = value
 					value = tokeniser.read({ skipNewlines: true })
-					if (isComment(value)) {
-						documentSymbol.inLineComment = comment(value)
+					if (parserTools.is.comment(value)) {
+						documentSymbol.inLineComment = parserTools.convert.comment(value)
 						value = tokeniser.read({ skipNewlines: true })
 						if (value == "{") {
 							documentSymbol.value = parseObject(documentSymbol.key, true)
@@ -82,7 +70,7 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 						documentSymbol.value = parseObject(documentSymbol.key, true)
 					}
 					else {
-						documentSymbol.value = trim(value)[0]
+						documentSymbol.value = parserTools.convert.token(value)[0]
 					}
 				}
 				else if (value == "{") {
@@ -92,20 +80,20 @@ export function getVDFFormatDocumentSymbols(str: string, connection: _Connection
 					if (value == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(value)) {
 						throw new InvalidTokenSequenceError(documentSymbol.key, value)
 					}
-					documentSymbol.value = trim(value)[0]
+					documentSymbol.value = parserTools.convert.token(value)[0]
 					let lookAhead = tokeniser.read({ lookAhead: true, skipNewlines: false })
-					if (isComment(lookAhead)) {
-						documentSymbol.inLineComment = comment(lookAhead)
+					if (parserTools.is.comment(lookAhead)) {
+						documentSymbol.inLineComment = parserTools.convert.comment(lookAhead)
 						tokeniser.read() // Skip comment
 					}
 					else {
 						lookAhead = tokeniser.read({ lookAhead: true, skipNewlines: true })
-						if (isOSTag(lookAhead)) {
+						if (parserTools.is.osTag(lookAhead)) {
 							documentSymbol.osTag = lookAhead
 							tokeniser.read({ skipNewlines: true })	// Skip OS Tag
 							lookAhead = tokeniser.read({ lookAhead: true, skipNewlines: false })
-							if (isComment(lookAhead)) {
-								documentSymbol.inLineComment = comment(lookAhead)
+							if (parserTools.is.comment(lookAhead)) {
+								documentSymbol.inLineComment = parserTools.convert.comment(lookAhead)
 								tokeniser.read()
 							}
 						}

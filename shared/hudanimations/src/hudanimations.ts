@@ -4,6 +4,7 @@ import { _Connection } from "vscode-languageserver";
 import { DocumentSymbol, Position, Range, SymbolKind } from "vscode-languageserver-types";
 import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions";
 import { VDFSyntaxError } from "../../VDF/dist/VDFErrors";
+import { parserTools } from "../../VDF/dist/VDFParserTools";
 import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser";
 
 export type File = Record<string, Event>
@@ -170,8 +171,8 @@ export class HUDAnimations {
 							...getInterpolator(tokeniser.next()),
 							delay: parseFloat(tokeniser.next()),
 							duration: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return animate
@@ -180,8 +181,8 @@ export class HUDAnimations {
 							type: "RunEvent",
 							event: tokeniser.next(),
 							delay: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return runEvent
@@ -194,8 +195,8 @@ export class HUDAnimations {
 							// 	character: tokeniser.character
 							// },
 							delay: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return stopEvent
@@ -205,8 +206,8 @@ export class HUDAnimations {
 							element: tokeniser.next(),
 							visible: tokeniser.next() == "1" ? 1 : 0,
 							delay: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return setVisible
@@ -215,8 +216,8 @@ export class HUDAnimations {
 							type: "FireCommand",
 							delay: parseFloat(tokeniser.next()),
 							command: tokeniser.next(),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return fireCommand
@@ -230,8 +231,8 @@ export class HUDAnimations {
 							// 	character: tokeniser.character
 							// },
 							delay: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return runEventChild
@@ -241,8 +242,8 @@ export class HUDAnimations {
 							element: tokeniser.next(),
 							visible: tokeniser.next() == "1" ? 1 : 0,
 							delay: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return setInputEnabled
@@ -251,8 +252,8 @@ export class HUDAnimations {
 							type: "PlaySound",
 							delay: parseFloat(tokeniser.next()),
 							sound: tokeniser.next(),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return playSound
@@ -261,8 +262,8 @@ export class HUDAnimations {
 							type: "StopPanelAnimations",
 							element: tokeniser.next(),
 							delay: parseFloat(tokeniser.next()),
-							...(tokeniser.next(true).startsWith("[") && {
-								osTag: `[${tokeniser.next().slice(1, -1)}]`
+							...(parserTools.is.osTag(tokeniser.next(true)) && {
+								osTag: parserTools.convert.osTag(tokeniser.next())
 							})
 						}
 						return stopPanelAnimations
@@ -553,8 +554,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 					const duration = sanitizeNaN(tokeniser.next(), tokeniser)
 
 					let osTag: `[${string}]` | undefined
-					if (tokeniser.next(true).startsWith("[")) {
-						osTag = `[${tokeniser.next().slice(1, -1)}]`
+					if (parserTools.is.osTag(tokeniser.next(true))) {
+						osTag = parserTools.convert.osTag(tokeniser.next())
 					}
 
 					const animation: HUDAnimations.Animate = {
@@ -587,8 +588,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						type: "RunEvent",
 						event: referencedEventName,
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(runEvent)
@@ -609,8 +610,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						type: "StopEvent",
 						event: referencedEventName,
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(stopEvent)
@@ -627,8 +628,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						element: tokeniser.next(),
 						visible: sanitizeBit(tokeniser.next(), tokeniser),
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(setVisible)
@@ -643,8 +644,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						type: "FireCommand",
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
 						command: tokeniser.next(),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(fireCommand)
@@ -667,8 +668,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						element: referencedElement,
 						event: referencedEventName,
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(runEventChild)
@@ -685,8 +686,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						element: tokeniser.next(),
 						visible: sanitizeBit(tokeniser.next(), tokeniser),
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(setInputEnabled)
@@ -701,8 +702,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						type: "PlaySound",
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
 						sound: tokeniser.next(),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(playSound)
@@ -717,8 +718,8 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 						type: "StopPanelAnimations",
 						element: tokeniser.next(),
 						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						...(tokeniser.next(true).startsWith("[") && {
-							osTag: `[${tokeniser.next().slice(1, -1)}]`
+						...(parserTools.is.osTag(tokeniser.next(true)) && {
+							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
 					}
 					result.animations[eventName].push(stopPanelAnimations)

@@ -1,6 +1,7 @@
 import { _Connection } from "vscode-languageserver"
 import { animationisType, Command, CommandTypes, HUDAnimation, HUDAnimations, HUDAnimationsStringifyOptions, HUDAnimationsSyntaxError, Interpolator, sanitizeBit, sanitizeNaN } from "../../../shared/hudanimations"
 import { VDFFormatTokeniser } from "../../../shared/vdf/dist/VDFFormatTokeniser"
+import { parserTools } from "../../../shared/VDF/dist/VDFParserTools"
 
 export interface HUDAnimationsFormatDocumentSymbol {
 	comment?: string
@@ -36,22 +37,16 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 	const readOSTagAndComment = (animation: { osTag?: string, comment?: string }): void => {
 		let osTagorcomment = tokeniser.next(true)
 
-		if (osTagorcomment.startsWith("[") && osTagorcomment.endsWith("]")) {
-			animation.osTag = `[${osTagorcomment.slice(1, -1)}]`
+		if (parserTools.is.osTag(osTagorcomment)) {
+			animation.osTag = parserTools.convert.osTag(osTagorcomment)
 			tokeniser.next()
 			osTagorcomment = tokeniser.next(true)
 		}
 
-		if (osTagorcomment.startsWith("//")) {
-			animation.comment = sanitiseComment(osTagorcomment)
+		if (parserTools.is.comment(osTagorcomment)) {
+			animation.comment = parserTools.convert.comment(osTagorcomment)
 			tokeniser.next()
 		}
-	}
-
-	const sanitiseComment = (comment: string): string => {
-		// Extract comment text from comment string, the stringifyer will add the same
-		// whitespace before every comment to unify, this removes indentation in comments
-		return comment.substring(2).trim()
 	}
 
 	// Get the next real token
@@ -61,9 +56,9 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 
 		const documentSymbol: HUDAnimationsFormatDocumentSymbol = {}
 
-		if (currentToken.startsWith("//")) {
+		if (parserTools.is.comment(currentToken)) {
 			// Comment
-			documentSymbol.comment = sanitiseComment(currentToken)
+			documentSymbol.comment = parserTools.convert.comment(currentToken)
 		}
 		else if (currentToken.toLowerCase() == "event") {
 			let eventName = tokeniser.next()
@@ -79,8 +74,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 
 			let openingBraceorComment = tokeniser_next_skipNewLines()
 
-			if (openingBraceorComment.startsWith("//")) {
-				documentSymbol.event.comment = sanitiseComment(openingBraceorComment)
+			if (parserTools.is.comment(openingBraceorComment)) {
+				documentSymbol.event.comment = parserTools.convert.comment(openingBraceorComment)
 				openingBraceorComment = tokeniser_next_skipNewLines()
 			}
 
@@ -92,8 +87,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 
 			// Read animation statements
 			while (animationType != "}") {
-				if (animationType.startsWith("//")) {
-					documentSymbol.event.animations.push({ comment: sanitiseComment(animationType) })
+				if (parserTools.is.comment(animationType)) {
+					documentSymbol.event.animations.push({ comment: parserTools.convert.comment(animationType) })
 				}
 				else {
 					// Animation

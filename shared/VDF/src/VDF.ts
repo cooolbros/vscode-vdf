@@ -4,6 +4,7 @@ import { VDFIndentation } from "./models/VDFIndentation";
 import { VDFNewLine } from "./models/VDFNewLine";
 import { VDFStringifyOptions } from "./models/VDFStringifyOptions";
 import { VDFTokeniserOptions } from "./models/VDFTokeniserOptions";
+import { parserTools } from "./VDFParserTools";
 import { VDFTokeniser } from "./VDFTokeniser";
 
 /**
@@ -13,10 +14,6 @@ export class VDF {
 	static readonly OSTagDelimeter: "^" = "^"
 	static parse(str: string, options?: VDFTokeniserOptions): { [key: string]: string | ReturnType<typeof VDF.parse> | (string | ReturnType<typeof VDF.parse>)[] } {
 		const tokeniser = new VDFTokeniser(str, options)
-		const trim = (str: string): [string, 0 | 1] => {
-			const quoted = str.startsWith("\"") && str.endsWith("\"")
-			return quoted ? [str.slice(1, -1), 1] : [str, 0];
-		}
 		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: string | ReturnType<typeof VDF.parse>) => {
 			if (obj.hasOwnProperty(key)) {
 				const existing = obj[key]
@@ -39,34 +36,34 @@ export class VDF {
 				let value = tokeniser.next()
 				if (value == "{") {
 					// Object
-					write(obj, trim(currentToken)[0], parseObject(true))
+					write(obj, parserTools.convert.token(currentToken)[0], parseObject(true))
 				}
-				else if (value.startsWith("[") && value.endsWith("]")) {
+				else if (parserTools.is.osTag(value)) {
 					// Object with OS Tag or Primitive with 1 or 2 OS Tags
 					let osTag = value
 					value = tokeniser.next()
 					if (value == "{") {
 						// Object with OS Tag
-						write(obj, `${trim(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, parseObject(true))
+						write(obj, `${parserTools.convert.token(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, parseObject(true))
 					}
 					else {
 						// Primitive with 1 or 2 OS Tags
 						const lookAhead = tokeniser.next(true)
-						if (lookAhead.startsWith("[") && lookAhead.endsWith("]")) {
+						if (parserTools.is.osTag(lookAhead)) {
 							osTag = lookAhead // Second OS Tag overwrites first
 							tokeniser.next() // Skip second OS Tag
 						}
-						write(obj, `${trim(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, trim(value)[0])
+						write(obj, `${parserTools.convert.token(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, parserTools.convert.token(value)[0])
 					}
 				}
 				else {
 					// Primitive
 					let osTag = tokeniser.next(true)
-					if (osTag.startsWith("[") && osTag.endsWith("]")) {
+					if (parserTools.is.osTag(osTag)) {
 						currentToken += `${VDF.OSTagDelimeter}${osTag}`
 						tokeniser.next() // Skip OS Tag
 					}
-					write(obj, trim(currentToken)[0], trim(value)[0])
+					write(obj, parserTools.convert.token(currentToken)[0], parserTools.convert.token(value)[0])
 				}
 				currentToken = tokeniser.next()
 			}
