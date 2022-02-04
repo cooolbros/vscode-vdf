@@ -1,9 +1,34 @@
-import { _Connection } from "vscode-languageserver";
+import { DocumentSymbol, _Connection } from "vscode-languageserver";
 import { Position, Range, SymbolKind } from "vscode-languageserver-types";
 import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions";
 import { parserTools } from "../../VDF/dist/VDFParserTools";
 import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser";
-import { CommandKeys, File, HUDAnimationEventDocumentSymbol, HUDAnimations, HUDAnimationsSyntaxError, HUDAnimationStatementDocumentSymbol, Interpolators, sanitizeBit, sanitizeNaN, sanitizeString } from "./hudanimations";
+import { Command, CommandKeys, File, HUDAnimation, HUDAnimations, HUDAnimationsSyntaxError, Interpolators, sanitizeBit, sanitizeNaN, sanitizeString } from "./hudanimations";
+
+export interface HUDAnimationEventDocumentSymbol extends DocumentSymbol {
+	nameRange: Range
+	animations: HUDAnimationStatementDocumentSymbol[]
+}
+
+export interface HUDAnimationStatementDocumentSymbol {
+	animation: HUDAnimation<Command>
+
+	/**
+	 * Range covering the animation command e.g. `Animate`
+	 * 	 */
+	commandRange: Range
+
+	// Animate (References)
+	// elementRange?: Range
+	valueRange?: Range
+
+	// RunEvent | StopEvent | RunEventChild
+
+	/**
+	 * Range covering the referenced event e.g. `RunEvent "SomeEvent" 0`
+	 */
+	eventRange?: Range
+}
 
 export function getHUDAnimationsDocumentInfo(connection: _Connection, str: string, options?: VDFTokeniserOptions): { animations: File; symbols: HUDAnimationEventDocumentSymbol[]; } {
 

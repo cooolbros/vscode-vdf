@@ -1,6 +1,6 @@
 // HUD Animations
 
-import { DocumentSymbol, Position, Range } from "vscode-languageserver-types";
+import { Position, Range } from "vscode-languageserver-types";
 import { VDFSyntaxError } from "../../VDF/dist/VDFErrors";
 import { parserTools } from "../../VDF/dist/VDFParserTools";
 import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser";
@@ -431,31 +431,6 @@ export class HUDAnimations {
 		}
 		return str
 	}
-}
-
-export interface HUDAnimationEventDocumentSymbol extends DocumentSymbol {
-	nameRange: Range
-	animations: HUDAnimationStatementDocumentSymbol[]
-}
-
-export interface HUDAnimationStatementDocumentSymbol {
-	animation: HUDAnimation<Command>
-
-	/**
-	 * Range covering the animation command e.g. `Animate`
-	 * 	 */
-	commandRange: Range
-
-	// Animate (References)
-	// elementRange?: Range
-	valueRange?: Range
-
-	// RunEvent | StopEvent | RunEventChild
-
-	/**
-	 * Range covering the referenced event e.g. `RunEvent "SomeEvent" 0`
-	 */
-	eventRange?: Range
 }
 
 // These both work
