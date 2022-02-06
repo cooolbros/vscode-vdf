@@ -1,9 +1,11 @@
-import { DocumentSymbol, _Connection } from "vscode-languageserver";
-import { Position, Range, SymbolKind } from "vscode-languageserver-types";
-import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions";
-import { parserTools } from "../../VDF/dist/VDFParserTools";
-import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser";
-import { Command, CommandKeys, File, HUDAnimation, HUDAnimations, HUDAnimationsSyntaxError, Interpolators, sanitizeBit, sanitizeNaN, sanitizeString } from "./hudanimations";
+import { DocumentSymbol, _Connection } from "vscode-languageserver"
+import { Position, Range, SymbolKind } from "vscode-languageserver-types"
+import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions"
+import { parserTools } from "../../VDF/dist/VDFParserTools"
+import { VDFTokeniser } from "../../VDF/dist/VDFTokeniser"
+import { Command, Commands, File, HUDAnimation, HUDAnimationTypes } from "./hudanimations"
+import { HUDAnimationsSyntaxError } from "./HUDAnimationsErrors"
+import { HUDAnimationsValidation } from "./validation"
 
 export interface HUDAnimationEventDocumentSymbol extends DocumentSymbol {
 	nameRange: Range
@@ -15,8 +17,13 @@ export interface HUDAnimationStatementDocumentSymbol {
 
 	/**
 	 * Range covering the animation command e.g. `Animate`
-	 * 	 */
+	 */
 	commandRange: Range
+
+	/**
+	 * Range covering the referenced element e.g. `Aniamte "SomeElement" FgColor Red`
+	 */
+	elementRange?: Range
 
 	// Animate (References)
 	// elementRange?: Range
@@ -30,249 +37,276 @@ export interface HUDAnimationStatementDocumentSymbol {
 	eventRange?: Range
 }
 
-export function getHUDAnimationsDocumentInfo(connection: _Connection, str: string, options?: VDFTokeniserOptions): { animations: File; symbols: HUDAnimationEventDocumentSymbol[]; } {
+export function getHUDAnimationsDocumentInfo(connection: _Connection, str: string, options?: VDFTokeniserOptions): { animations: File, symbols: HUDAnimationEventDocumentSymbol[] } {
 
 	const result: ReturnType<typeof getHUDAnimationsDocumentInfo> = {
 		animations: {},
 		symbols: []
-	};
-
-	const tokeniser = new VDFTokeniser(str, options);
-
-	let currentToken = tokeniser.next().toLowerCase();
-
-	if (currentToken == "eof") {
-		return result;
 	}
 
-	if (currentToken != "event") {
-		throw new HUDAnimationsSyntaxError(currentToken, tokeniser, `Expected "event"`);
-	}
+	const tokeniser = new VDFTokeniser(str, options)
 
-	let eventStartPosition = Position.create(tokeniser.line, tokeniser.character);
+	let currentToken = tokeniser.next().toLowerCase()
 
-	while (currentToken == "event") {
-		const eventName = tokeniser.next();
-		if (eventName == "{") {
-			throw new HUDAnimationsSyntaxError(eventName, tokeniser, "Expected event name");
+	let eventStartPosition = Position.create(tokeniser.line, tokeniser.character)
+
+	while (currentToken != "__EOF__") {
+
+		if (VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
+			throw new HUDAnimationsSyntaxError(currentToken, tokeniser, "Expected \"event\"")
 		}
 
-		const eventNameRange = Range.create(Position.create(tokeniser.line, tokeniser.character - eventName.length), Position.create(tokeniser.line, tokeniser.character));
+		currentToken = parserTools.convert.token(currentToken)[0]
 
-		result.animations[eventName] = [];
-		const eventAnimations: HUDAnimationStatementDocumentSymbol[] = [];
+		if (currentToken.toLowerCase() != "event") {
+			throw new HUDAnimationsSyntaxError(currentToken, tokeniser, "Expected \"event\"")
+		}
 
-		let openingBrace = tokeniser.next();
+		const eventNameToken = tokeniser.next()
+		if (eventNameToken == "{") {
+			throw new HUDAnimationsSyntaxError(eventNameToken, tokeniser, "Expected event name")
+		}
+
+		const [eventName, eventNameQuoted] = parserTools.convert.token(eventNameToken)
+
+		const eventNameRange = Range.create(Position.create(tokeniser.line, tokeniser.character - eventName.length), Position.create(tokeniser.line, tokeniser.character))
+
+		result.animations[eventName] = []
+		const eventAnimations: HUDAnimationStatementDocumentSymbol[] = []
+
+		let openingBrace = tokeniser.next()
 		if (openingBrace != "{") {
-			throw new HUDAnimationsSyntaxError(openingBrace, tokeniser, "Are you missing an opening brace?");
+			throw new HUDAnimationsSyntaxError(openingBrace, tokeniser, "Are you missing an opening brace?")
 		}
 
-		let animationCommand: string = tokeniser.next();
+		let animationCommand: string = tokeniser.next()
 
 		while (animationCommand != "}") {
-			const commandRange = Range.create(Position.create(tokeniser.line, tokeniser.character - animationCommand.length), Position.create(tokeniser.line, tokeniser.character));
-			switch (sanitizeString(animationCommand, CommandKeys, tokeniser)) {
+			const commandRange = Range.create(Position.create(tokeniser.line, tokeniser.character - animationCommand.length), Position.create(tokeniser.line, tokeniser.character))
+			switch (HUDAnimationsValidation.validateAnimationCommand(parserTools.convert.token(animationCommand), tokeniser)) {
 				case "Animate": {
+					// Element
+					const [element, elementQuoted] = parserTools.convert.token(tokeniser.next())
+					const elementRange = Range.create(tokeniser.line, tokeniser.character - element.length - elementQuoted, tokeniser.line, tokeniser.character - elementQuoted)
 
-					const element = tokeniser.next();
-					// const elementRange = Range.create(Position.create(tokeniser.line, tokeniser.character - element.length), Position.create(tokeniser.line, tokeniser.character))
-					const property = tokeniser.next();
-					const value = tokeniser.next();
-					const valueRange = Range.create(Position.create(tokeniser.line, tokeniser.character - value.length), Position.create(tokeniser.line, tokeniser.character));
+					// Property
+					const property = parserTools.convert.token(tokeniser.next())[0]
 
-					const interpolator = sanitizeString(tokeniser.next(), Interpolators, tokeniser);
+					// Value
+					const [value, valueQuoted] = parserTools.convert.token(tokeniser.next())
+					const valueRange = Range.create(tokeniser.line, tokeniser.character - element.length - valueQuoted, tokeniser.line, tokeniser.character - valueQuoted)
 
-					const frequency = interpolator == "Pulse" ? sanitizeNaN(tokeniser.next(), tokeniser) : undefined;
-					const bias = (interpolator == "Gain" || interpolator == "Bias") ? sanitizeNaN(tokeniser.next(), tokeniser) : undefined;
+					const interpolator = HUDAnimationsValidation.validateInterpolator(parserTools.convert.token(tokeniser.next()), tokeniser)
 
-					const delay = sanitizeNaN(tokeniser.next(), tokeniser);
-					const duration = sanitizeNaN(tokeniser.next(), tokeniser);
+					const frequency = interpolator == "Pulse" ? HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser) : null
+					const bias = (interpolator == "Gain" || interpolator == "Bias") ? HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser) : null
 
-					let osTag: `[${string}]` | undefined;
+					const delay = HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser)
+					const duration = HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser)
+
+					let osTag: `[${string}]` | undefined
 					if (parserTools.is.osTag(tokeniser.next(true))) {
-						osTag = parserTools.convert.osTag(tokeniser.next());
+						osTag = parserTools.convert.osTag(tokeniser.next())
 					}
 
-					const animation: HUDAnimations.Animate = {
+					const animation: HUDAnimationTypes["Animate"] = {
 						type: "Animate",
 						element: element,
 						property: property,
 						value: value,
 						interpolator: interpolator,
-						...(frequency && { frequency: frequency }),
-						...(bias && { bias: bias }),
+						...(frequency != null && { frequency: frequency }),
+						...(bias != null && { bias: bias }),
 						delay: delay,
 						duration: duration,
 						osTag: osTag
-					};
-					result.animations[eventName].push(animation);
+					}
+					result.animations[eventName].push(animation)
 					eventAnimations.push({
 						commandRange: commandRange,
+						elementRange: elementRange,
 						valueRange: valueRange,
 						animation: animation
-					});
-					break;
+					})
+					break
 				}
 				case "RunEvent": {
-					const referencedEventName = tokeniser.next();
+					const [referencedEventName, referencedEventNameTokenQuoted] = parserTools.convert.token(tokeniser.next())
 					const eventRange = Range.create(
-						Position.create(tokeniser.line, tokeniser.character - referencedEventName.length),
-						Position.create(tokeniser.line, tokeniser.character)
-					);
-					const runEvent: HUDAnimations.RunEvent = {
+						Position.create(tokeniser.line, tokeniser.character - referencedEventName.length - referencedEventNameTokenQuoted),
+						Position.create(tokeniser.line, tokeniser.character - referencedEventNameTokenQuoted)
+					)
+					const runEvent: HUDAnimationTypes["RunEvent"] = {
 						type: "RunEvent",
 						event: referencedEventName,
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(runEvent);
+					}
+					result.animations[eventName].push(runEvent)
 					eventAnimations.push({
 						commandRange: commandRange,
 						eventRange: eventRange,
 						animation: runEvent
-					});
-					break;
+					})
+					break
 				}
 				case "StopEvent": {
-					const referencedEventName = tokeniser.next();
+					const [referencedEventName, referencedEventNameTokenQuoted] = parserTools.convert.token(tokeniser.next())
 					const eventRange = Range.create(
-						Position.create(tokeniser.line, tokeniser.character - referencedEventName.length),
-						Position.create(tokeniser.line, tokeniser.character)
-					);
-					const stopEvent: HUDAnimations.StopEvent = {
+						Position.create(tokeniser.line, tokeniser.character - referencedEventName.length - referencedEventNameTokenQuoted),
+						Position.create(tokeniser.line, tokeniser.character - referencedEventNameTokenQuoted)
+					)
+					const stopEvent: HUDAnimationTypes["StopEvent"] = {
 						type: "StopEvent",
 						event: referencedEventName,
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(stopEvent);
+					}
+					result.animations[eventName].push(stopEvent)
 					eventAnimations.push({
 						commandRange: commandRange,
 						eventRange: eventRange,
 						animation: stopEvent
-					});
-					break;
+					})
+					break
 				}
 				case "SetVisible": {
-					const setVisible: HUDAnimations.SetVisible = {
+
+					const [element, elementQuoted] = parserTools.convert.token(tokeniser.next())
+					const elementRange = Range.create(tokeniser.line, tokeniser.character - element.length - elementQuoted, tokeniser.line, tokeniser.character - elementQuoted)
+
+					const setVisible: HUDAnimationTypes["SetVisible"] = {
 						type: "SetVisible",
-						element: tokeniser.next(),
-						visible: sanitizeBit(tokeniser.next(), tokeniser),
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
+						element: element,
+						visible: HUDAnimationsValidation.validateBit(parserTools.convert.token(tokeniser.next()), tokeniser),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(setVisible);
+					}
+					result.animations[eventName].push(setVisible)
 					eventAnimations.push({
 						commandRange: commandRange,
+						elementRange: elementRange,
 						animation: setVisible
-					});
-					break;
+					})
+					break
 				}
 				case "FireCommand": {
-					const fireCommand: HUDAnimations.FireCommand = {
+					const fireCommand: HUDAnimationTypes["FireCommand"] = {
 						type: "FireCommand",
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						command: tokeniser.next(),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
+						command: parserTools.convert.token(tokeniser.next())[0],
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(fireCommand);
+					}
+					result.animations[eventName].push(fireCommand)
 					eventAnimations.push({
 						commandRange: commandRange,
 						animation: fireCommand
-					});
-					break;
+					})
+					break
 				}
 				case "RunEventChild": {
-					const referencedElement = tokeniser.next();
-					const referencedEventName = tokeniser.next();
+					const [element, elementQuoted] = parserTools.convert.token(tokeniser.next())
+					const elementRange = Range.create(tokeniser.line, tokeniser.character - element.length - elementQuoted, tokeniser.line, tokeniser.character - elementQuoted)
+
+					const referencedEventName = tokeniser.next()
 					const eventRange = Range.create(
 						Position.create(tokeniser.line, tokeniser.character - referencedEventName.length),
 						Position.create(tokeniser.line, tokeniser.character)
-					);
+					)
 
-					const runEventChild: HUDAnimations.RunEventChild = {
+					const runEventChild: HUDAnimationTypes["RunEventChild"] = {
 						type: "RunEventChild",
-						element: referencedElement,
+						element: element,
 						event: referencedEventName,
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(runEventChild);
+					}
+					result.animations[eventName].push(runEventChild)
 					eventAnimations.push({
 						commandRange: commandRange,
+						elementRange: elementRange,
 						eventRange: eventRange,
 						animation: runEventChild
-					});
-					break;
+					})
+					break
 				}
 				case "SetInputEnabled": {
-					const setInputEnabled: HUDAnimations.SetInputEnabled = {
+					const [element, elementQuoted] = parserTools.convert.token(tokeniser.next())
+					const elementRange = Range.create(tokeniser.line, tokeniser.character - element.length - elementQuoted, tokeniser.line, tokeniser.character - elementQuoted)
+
+					const setInputEnabled: HUDAnimationTypes["SetInputEnabled"] = {
 						type: "SetInputEnabled",
-						element: tokeniser.next(),
-						visible: sanitizeBit(tokeniser.next(), tokeniser),
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
+						element: element,
+						visible: HUDAnimationsValidation.validateBit(parserTools.convert.token(tokeniser.next()), tokeniser),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(setInputEnabled);
+					}
+					result.animations[eventName].push(setInputEnabled)
 					eventAnimations.push({
 						commandRange: commandRange,
+						elementRange: elementRange,
 						animation: setInputEnabled
-					});
-					break;
+					})
+					break
 				}
 				case "PlaySound": {
-					const playSound: HUDAnimations.PlaySound = {
+					const playSound: HUDAnimationTypes["PlaySound"] = {
 						type: "PlaySound",
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
-						sound: tokeniser.next(),
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
+						sound: parserTools.convert.token(tokeniser.next())[0],
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(playSound);
+					}
+					result.animations[eventName].push(playSound)
 					eventAnimations.push({
 						commandRange: commandRange,
 						animation: playSound
-					});
-					break;
+					})
+					break
 				}
 				case "StopPanelAnimations": {
-					const stopPanelAnimations: HUDAnimations.StopPanelAnimations = {
+
+					const [element, elementQuoted] = parserTools.convert.token(tokeniser.next())
+					const elementRange = Range.create(tokeniser.line, tokeniser.character - element.length - elementQuoted, tokeniser.line, tokeniser.character - elementQuoted)
+
+					const stopPanelAnimations: HUDAnimationTypes["StopPanelAnimations"] = {
 						type: "StopPanelAnimations",
-						element: tokeniser.next(),
-						delay: sanitizeNaN(tokeniser.next(), tokeniser),
+						element: element,
+						delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.next()), tokeniser),
 						...(parserTools.is.osTag(tokeniser.next(true)) && {
 							osTag: parserTools.convert.osTag(tokeniser.next())
 						})
-					};
-					result.animations[eventName].push(stopPanelAnimations);
+					}
+					result.animations[eventName].push(stopPanelAnimations)
 					eventAnimations.push({
 						commandRange: commandRange,
+						elementRange: elementRange,
 						animation: stopPanelAnimations
-					});
-					break;
+					})
+					break
 				}
 				default: {
-					throw new HUDAnimationsSyntaxError(animationCommand, tokeniser, `Expected "${CommandKeys.join(`" | "`)}"`);
+					throw new HUDAnimationsSyntaxError(animationCommand, tokeniser, `Expected "${Commands.join(`" | "`)}"`)
 				}
 			}
 
-			animationCommand = tokeniser.next();
+			animationCommand = tokeniser.next()
 		}
 
-		const eventEndPosition = Position.create(tokeniser.line, tokeniser.character);
+		const eventEndPosition = Position.create(tokeniser.line, tokeniser.character)
 
 		result.symbols.push({
 			name: eventName,
@@ -282,11 +316,11 @@ export function getHUDAnimationsDocumentInfo(connection: _Connection, str: strin
 			kind: SymbolKind.Event,
 			// kind: SymbolKind.Function,
 			animations: eventAnimations
-		});
+		})
 
-		currentToken = tokeniser.next();
-		eventStartPosition = Position.create(tokeniser.line, tokeniser.character - "event".length);
+		currentToken = tokeniser.next()
+		eventStartPosition = Position.create(tokeniser.line, tokeniser.character - "event".length)
 	}
 
-	return result;
+	return result
 }

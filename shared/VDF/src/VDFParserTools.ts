@@ -1,4 +1,4 @@
-import { Position, Range } from "vscode-languageserver";
+import { Range } from "vscode-languageserver";
 
 export const parserTools = {
 	is: {
@@ -25,10 +25,7 @@ export const parserTools = {
 	},
 	calculate: {
 		tokenRange: ([str, quoted]: [string, 0 | 1], line: number, character: number): Range => {
-			return Range.create(
-				Position.create(line, character - str.length - quoted),
-				Position.create(line, character - quoted)
-			)
+			return Range.create(line, character - str.length - quoted, line, character - quoted)
 		}
 	}
 }

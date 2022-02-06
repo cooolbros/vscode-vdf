@@ -2,10 +2,11 @@ import { existsSync, readFileSync } from "fs";
 import { pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
-import { animationisType, File, HUDAnimationsSyntaxError } from "../../../shared/hudanimations";
+import { animationIsType, Commands, File } from "../../../shared/hudanimations";
 import { getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol } from "../../../shared/hudanimations/dist/getHUDAnimationsDocumentInfo";
 import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, VSCodeVDFSettings } from "../../../shared/tools";
 import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
+import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
 import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser";
 import { getHUDAnimationsFormatDocumentSymbols, printHUDAnimationsFormatDocumentSymbols } from "./formatter";
 import { animationCommands, commonProperties, interpolators } from "./hud_animation_types";
@@ -32,7 +33,8 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 			completionProvider: {
 				resolveProvider: false,
 				triggerCharacters: [
-					"\""
+					"\"",
+					...Commands.map(command => command[0].toLowerCase())
 				]
 			},
 			hoverProvider: true,
@@ -62,12 +64,14 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 				return []
 			}
 			catch (e: unknown) {
-				if (e instanceof HUDAnimationsSyntaxError) {
+				if (e instanceof VDFSyntaxError) {
 					connection.console.log(`[documents.onDidChangeContent] ${e.toString()}`)
 					return [
 						{
 							severity: DiagnosticSeverity.Error,
+
 							message: e.message,
+
 							range: e.range
 						}
 					]
@@ -100,9 +104,15 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | null => {
 			const tokeniser = new VDFTokeniser(line)
 			const tokens: string[] = []
 			let currentToken: string = tokeniser.next()
-			while (currentToken != "EOF") {
+			while (currentToken != "__EOF__") {
 				tokens.push(currentToken)
-				currentToken = tokeniser.next()
+				try {
+					currentToken = tokeniser.next()
+				}
+				catch (e: any) {
+					connection.console.log(e.stack)
+					break
+				}
 			}
 
 			if (!/\s/.test(line[line.length - 1])) {
@@ -356,7 +366,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 				eventReferences[eventNameKey].range = event.nameRange
 			}
 			for (const { animation, eventRange } of event.animations) {
-				if ((animationisType(animation, "RunEvent") || animationisType(animation, "StopEvent") || animationisType(animation, "RunEventChild")) && eventRange) {
+				if ((animationIsType(animation, "RunEvent") || animationIsType(animation, "StopEvent") || animationIsType(animation, "RunEventChild")) && eventRange) {
 					const referencedEventNameKey = animation.event.toLowerCase()
 					if (!eventReferences.hasOwnProperty(referencedEventNameKey)) {
 						eventReferences[referencedEventNameKey] = { references: [] }
@@ -440,10 +450,8 @@ connection.onDocumentFormatting(async (params: DocumentFormattingParams): Promis
 			section: "vscode-vdf"
 		}))
 
-
 		if (document) {
 			const documentSymbols = getHUDAnimationsFormatDocumentSymbols(document.getText(), connection)
-			connection.console.log(JSON.stringify(documentSymbols, null, "\t"))
 			return [
 				{
 					range: Range.create(Position.create(0, 0), Position.create(document.lineCount, 0)),
@@ -476,7 +484,7 @@ connection.onPrepareRename((params: PrepareRenameParams) => {
 			}
 		}
 		for (const { animation, eventRange } of event.animations) {
-			if ((animationisType(animation, "RunEvent") || animationisType(animation, "StopEvent") || animationisType(animation, "RunEventChild")) && eventRange) {
+			if ((animationIsType(animation, "RunEvent") || animationIsType(animation, "StopEvent") || animationIsType(animation, "RunEventChild")) && eventRange) {
 				if (eventRange.start.line == params.position.line) {
 					if (eventRange.start.character <= params.position.character && params.position.character <= eventRange.end.character) {
 						oldName = animation.event.toLowerCase()
@@ -502,7 +510,7 @@ connection.onRenameRequest((params: RenameParams) => {
 			})
 		}
 		for (const { animation, eventRange } of event.animations) {
-			if ((animationisType(animation, "RunEvent") || animationisType(animation, "StopEvent") || animationisType(animation, "RunEventChild")) && eventRange) {
+			if ((animationIsType(animation, "RunEvent") || animationIsType(animation, "StopEvent") || animationIsType(animation, "RunEventChild")) && eventRange) {
 				if (animation.event.toLowerCase() == oldName) {
 					edits.push({
 						newText: params.newName,

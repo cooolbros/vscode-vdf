@@ -1,5 +1,7 @@
 import { _Connection } from "vscode-languageserver"
-import { animationisType, Command, CommandTypes, HUDAnimation, HUDAnimations, HUDAnimationsStringifyOptions, HUDAnimationsSyntaxError, Interpolator, sanitizeBit, sanitizeNaN } from "../../../shared/hudanimations"
+import { animationIsType, Command, HUDAnimation, HUDAnimationTypes } from "../../../shared/hudanimations"
+import { HUDAnimationsSyntaxError } from "../../../shared/hudanimations/dist/HUDAnimationsErrors"
+import { HUDAnimationsValidation } from "../../../shared/hudanimations/dist/validation"
 import { VDFFormatTokeniser } from "../../../shared/vdf/dist/VDFFormatTokeniser"
 import { parserTools } from "../../../shared/VDF/dist/VDFParserTools"
 
@@ -8,17 +10,15 @@ export interface HUDAnimationsFormatDocumentSymbol {
 	event?: IEvent
 }
 
-
-type AnimationWithComment = AddComment<HUDAnimations.Animate> | AddComment<HUDAnimations.RunEvent> | AddComment<HUDAnimations.StopEvent> | AddComment<HUDAnimations.SetVisible> | AddComment<HUDAnimations.FireCommand> | AddComment<HUDAnimations.RunEventChild> | AddComment<HUDAnimations.SetInputEnabled> | AddComment<HUDAnimations.PlaySound> | AddComment<HUDAnimations.StopPanelAnimations>
-
 interface IEvent {
-	name?: string
+	name: string
 	comment?: string
 	animations: ({ comment: string } | AnimationWithComment)[]
 }
 
-type AddComment<T> = T & { comment?: string }
+type AnimationWithComment = { [P in keyof HUDAnimationTypes]: AddComment<HUDAnimationTypes[P]> }[keyof HUDAnimationTypes]
 
+type AddComment<T> = T & { comment?: string }
 
 export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _Connection): HUDAnimationsFormatDocumentSymbol[] {
 
@@ -50,7 +50,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 	// Get the next real token
 	let currentToken = tokeniser.read({ skipNewlines: true })
 
-	while (currentToken != "EOF") {
+	while (currentToken != "__EOF__") {
 
 		const documentSymbol: HUDAnimationsFormatDocumentSymbol = {}
 
@@ -58,15 +58,21 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 			// Comment
 			documentSymbol.comment = parserTools.convert.comment(currentToken)
 		}
-		else if (currentToken.toLowerCase() == "event") {
+		else {
+			currentToken = parserTools.convert.token(currentToken)[0]
+
+			if (currentToken.toLowerCase() != "event") {
+				throw new HUDAnimationsSyntaxError(currentToken, tokeniser, `Expected "event"!`)
+			}
+
 			let eventName = tokeniser.read()
 
-			if (eventName == "{") {
+			if (eventName == "__EOF__" || VDFFormatTokeniser.whiteSpaceTokenTerminate.includes(eventName)) {
 				throw new HUDAnimationsSyntaxError("{", tokeniser, "Expected event name!")
 			}
 
 			documentSymbol.event = {
-				name: eventName,
+				name: parserTools.convert.token(eventName)[0],
 				animations: []
 			}
 
@@ -92,112 +98,112 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 					// Animation
 					switch (<Lowercase<Command>>animationType.toLowerCase()) {
 						case "animate": {
-							const animation: AddComment<HUDAnimations.Animate> = {
+							const animation: AddComment<HUDAnimationTypes["Animate"]> = {
 								type: "Animate",
-								element: tokeniser.read({ skipNewlines: true }),
-								property: tokeniser.read({ skipNewlines: true }),
-								value: tokeniser.read({ skipNewlines: true }),
-								interpolator: <Interpolator>tokeniser.read({ skipNewlines: true }),
+								element: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								property: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								value: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								interpolator: HUDAnimationsValidation.validateInterpolator(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser),
 
-								// Surpress compiler error
+								// Suppress compiler error
 								delay: 0,
 								duration: 0
 							}
 
-							const interpolator = animation.interpolator!.toLowerCase()
+							const interpolator = animation.interpolator!
 
-							if (interpolator == "pulse") {
-								animation.frequency = <any>tokeniser.read({ skipNewlines: true })
+							if (interpolator == "Pulse") {
+								animation.frequency = HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
-							else if (["gain", "bias"].includes(interpolator)) {
-								animation.bias = sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+							else if (["Gain", "Bias"].includes(interpolator)) {
+								animation.bias = HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 
-							animation.delay = sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
-							animation.duration = sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+							animation.delay = HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
+							animation.duration = HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 
 							readOSTagAndComment(animation)
 							documentSymbol.event.animations.push(animation)
 							break;
 						}
 						case "runevent": {
-							const runEvent: AddComment<HUDAnimations.RunEvent> = {
+							const runEvent: AddComment<HUDAnimationTypes["RunEvent"]> = {
 								type: "RunEvent",
-								event: tokeniser.read({ skipNewlines: true }),
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+								event: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 							readOSTagAndComment(runEvent)
 							documentSymbol.event.animations.push(runEvent)
 							break;
 						}
 						case "stopevent": {
-							const stopEvent: AddComment<HUDAnimations.StopEvent> = {
+							const stopEvent: AddComment<HUDAnimationTypes["StopEvent"]> = {
 								type: "StopEvent",
-								event: tokeniser.read({ skipNewlines: true }),
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+								event: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 							readOSTagAndComment(stopEvent)
 							documentSymbol.event.animations.push(stopEvent)
 							break;
 						}
 						case "setvisible": {
-							const setVisible: AddComment<HUDAnimations.SetVisible> = {
+							const setVisible: AddComment<HUDAnimationTypes["SetVisible"]> = {
 								type: "SetVisible",
-								element: tokeniser.read({ skipNewlines: true }),
-								visible: sanitizeBit(tokeniser.read({ skipNewlines: true }), tokeniser),
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser),
+								element: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								visible: HUDAnimationsValidation.validateBit(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser),
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 							readOSTagAndComment(setVisible)
 							documentSymbol.event.animations.push(setVisible)
 							break;
 						}
 						case "firecommand": {
-							const fireCommand: AddComment<HUDAnimations.FireCommand> = {
+							const fireCommand: AddComment<HUDAnimationTypes["FireCommand"]> = {
 								type: "FireCommand",
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser),
-								command: tokeniser.read({ skipNewlines: true }),
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser),
+								command: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
 							}
 							readOSTagAndComment(fireCommand)
 							documentSymbol.event.animations.push(fireCommand)
 							break;
 						}
 						case "runeventchild": {
-							const runEventChild: AddComment<HUDAnimations.RunEventChild> = {
+							const runEventChild: AddComment<HUDAnimationTypes["RunEventChild"]> = {
 								type: "RunEventChild",
-								element: tokeniser.read({ skipNewlines: true }),
-								event: tokeniser.read({ skipNewlines: true }),
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+								element: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								event: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 							readOSTagAndComment(runEventChild)
 							documentSymbol.event.animations.push(runEventChild)
 							break;
 						}
 						case "setinputenabled": {
-							const setInputEnabled: AddComment<HUDAnimations.SetInputEnabled> = {
+							const setInputEnabled: AddComment<HUDAnimationTypes["SetInputEnabled"]> = {
 								type: "SetInputEnabled",
-								element: tokeniser.read({ skipNewlines: true }),
-								visible: <any>tokeniser.read({ skipNewlines: true }),
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+								element: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								visible: HUDAnimationsValidation.validateBit(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser),
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 							readOSTagAndComment(setInputEnabled)
 							documentSymbol.event.animations.push(setInputEnabled)
 							break;
 						}
 						case "playsound": {
-							const playSound: AddComment<HUDAnimations.PlaySound> = {
+							const playSound: AddComment<HUDAnimationTypes["PlaySound"]> = {
 								type: "PlaySound",
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser),
-								sound: tokeniser.read({ skipNewlines: true }),
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser),
+								sound: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
 							}
 							readOSTagAndComment(playSound)
 							documentSymbol.event.animations.push(playSound)
 							break;
 						}
 						case "stoppanelanimations": {
-							const stopPanelAnimations: AddComment<HUDAnimations.StopPanelAnimations> = {
+							const stopPanelAnimations: AddComment<HUDAnimationTypes["StopPanelAnimations"]> = {
 								type: "StopPanelAnimations",
-								element: tokeniser.read({ skipNewlines: true }),
-								delay: sanitizeNaN(tokeniser.read({ skipNewlines: true }), tokeniser)
+								element: parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0],
+								delay: HUDAnimationsValidation.validateNaN(parserTools.convert.token(tokeniser.read({ skipNewlines: true })), tokeniser)
 							}
 							readOSTagAndComment(stopPanelAnimations)
 							documentSymbol.event.animations.push(stopPanelAnimations)
@@ -208,11 +214,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 					}
 				}
 
-				animationType = tokeniser.read({ skipNewlines: true })
+				animationType = parserTools.convert.token(tokeniser.read({ skipNewlines: true }))[0]
 			}
-		}
-		else {
-			throw new HUDAnimationsSyntaxError(currentToken, tokeniser)
 		}
 
 		documentSymbols.push(documentSymbol)
@@ -223,14 +226,17 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 	return documentSymbols
 }
 
+export interface HUDAnimationsStringifyOptions {
+	readonly layoutScope: "event" | "file"
+	readonly extraTabs: number
+}
+
 export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnimationsFormatDocumentSymbol[], connection: _Connection, options?: Partial<HUDAnimationsStringifyOptions>): string {
 
 	const _options: HUDAnimationsStringifyOptions = {
 		extraTabs: options?.extraTabs ?? 1,
 		layoutScope: options?.layoutScope ?? "event",
 	}
-
-	connection.console.log(JSON.stringify(_options, null, "\t"))
 
 	// { [key in Command]: readonly (keyof CommandTypes[key])[] }
 	const keyOrders = {
@@ -248,8 +254,8 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 	const keyOrder_AnimateGainBias = <const>["type", "element", "property", "value", "interpolator", "bias", "delay", "duration", "osTag"]
 	const keyOrder_AnimatePulse = <const>["type", "element", "property", "value", "interpolator", "frequency", "delay", "duration", "osTag"]
 
-	const getKeyOrders = <T extends Command>(animation: CommandTypes[T]) => {
-		if (animationisType(animation, "Animate")) {
+	const getKeyOrders = <T extends Command>(animation: HUDAnimationTypes[T]) => {
+		if (animationIsType(animation, "Animate")) {
 			if (animation.interpolator == "Gain" || animation.interpolator == "Bias") {
 				return keyOrder_AnimateGainBias
 			}
@@ -261,6 +267,14 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 		else {
 			return keyOrders[animation.type]
 		}
+	}
+
+	const quoted = (value: string) => {
+		return value == "" || /\s/.test(value)
+	}
+
+	const writeValue = (value: string): string => {
+		return quoted(value) ? `"${value}"` : value
 	}
 
 	// Because comments end an animation, dont bother updating i
@@ -277,7 +291,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 	const writeComment = (comment: string): string => {
 		// Comment double slashes are removed by the parser and trimmed
 		// If the comment (after trimmed) starts with a '//' it might be a row of '/'s so dont add double slash at the beginning
-		return `${(comment[0] == "/" && comment[1] == "/") ? "" : "//"}${commentAfter}${comment}`
+		return `${(comment[0] == "/" && comment[1] == "/") ? "" : "//"}${comment != "" ? commentAfter : ""}${comment}`
 		// Dont add newline to comment because if one animation has a comment and one
 		//  doesnt there will be two newlines on the animation with comment
 	}
@@ -324,7 +338,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 			str += `${writeComment(documentSymbol.comment)}${newLine}`
 		}
 		else if (documentSymbol.event) {
-			str += `event ${documentSymbol.event.name}`
+			str += `event ${writeValue(documentSymbol.event.name)}`
 			if (documentSymbol.event.comment != undefined) {
 				str += `    ${writeComment(documentSymbol.event.comment)}`
 			}
@@ -362,9 +376,9 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 					switch (animation.type) {
 						case "Animate": {
 							str += `    Animate${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.element}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
-							str += `${animation.property}${" ".repeat(keyLengths[i++] - animation.property.length + extraSpaces)}`
-							str += `${/\s/.test(animation.value) ? `"${animation.value}"` : animation.value}${" ".repeat(keyLengths[i++] - (/\s/.test(animation.value) ? animation.value.length + 2 : animation.value.length) + extraSpaces)}`
+							str += `${writeValue(animation.element)}${" ".repeat(keyLengths[i++] - (quoted(animation.element) ? animation.element.length + 2 : animation.element.length) + extraSpaces)}`
+							str += `${writeValue(animation.property)}${" ".repeat(keyLengths[i++] - animation.property.length + extraSpaces)}`
+							str += `${writeValue(animation.value)}${" ".repeat(keyLengths[i++] - (quoted(animation.value) ? animation.value.length + 2 : animation.value.length) + extraSpaces)}`
 							if (animation.interpolator == "Gain" || animation.interpolator == "Bias") {
 								str += `${animation.interpolator}${" ".repeat(keyLengths[i++] - animation.interpolator.length + extraSpaces)}`
 								str += `${animation.bias}${" ".repeat(keyLengths[i++] - animation.bias!.toString().length + extraSpaces)}`
@@ -386,7 +400,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						}
 						case "RunEvent": {
 							str += `    RunEvent${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.event}${" ".repeat(keyLengths[i++] - animation.event.length + extraSpaces)}`
+							str += `${writeValue(animation.event)}${" ".repeat(keyLengths[i++] - animation.event.length + extraSpaces)}`
 							str += `${animation.delay}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
 							str += `${newLine}`
@@ -394,7 +408,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						}
 						case "StopEvent": {
 							str += `    StopEvent${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.event}${" ".repeat(keyLengths[i++] - animation.event.length + extraSpaces)}`
+							str += `${writeValue(animation.event)}${" ".repeat(keyLengths[i++] - animation.event.length + extraSpaces)}`
 							str += `${animation.delay}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
 							str += `${newLine}`
@@ -402,7 +416,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						}
 						case "SetVisible": {
 							str += `    SetVisible${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.element}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
+							str += `${writeValue(animation.element)}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
 							str += `${animation.visible}${" ".repeat(keyLengths[i++] - animation.visible.toString().length + extraSpaces)}`
 							str += `${animation.delay}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
@@ -412,15 +426,15 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						case "FireCommand": {
 							str += `    FireCommand${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
 							str += `${animation.delay}${" ".repeat(keyLengths[i++] - animation.delay.toString().length + extraSpaces)}`
-							str += `${/\s/.test(animation.command) ? `"${animation.command}"` : animation.command}`
+							str += `${writeValue(animation.command)}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.command)
 							str += `${newLine}`
 							break
 						}
 						case "RunEventChild": {
 							str += `    RunEventChild${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.element}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
-							str += `${animation.event}${" ".repeat(keyLengths[i++] - animation.event.length + extraSpaces)}`
+							str += `${writeValue(animation.element)}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
+							str += `${writeValue(animation.event)}${" ".repeat(keyLengths[i++] - animation.event.length + extraSpaces)}`
 							str += `${animation.delay}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
 							str += `${newLine}`
@@ -428,7 +442,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						}
 						case "SetInputEnabled": {
 							str += `    SetInputEnabled${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.element}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
+							str += `${writeValue(animation.element)}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
 							str += `${animation.visible}${" ".repeat(keyLengths[i++] - 1 + extraSpaces)}`
 							str += `${animation.delay}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
@@ -438,14 +452,14 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						case "PlaySound": {
 							str += `    PlaySound${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
 							str += `${animation.delay}${" ".repeat(keyLengths[i++] - animation.delay.toString().length + extraSpaces)}`
-							str += `${animation.sound}`
+							str += `${writeValue(animation.sound)}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
 							str += `${newLine}`
 							break
 						}
 						case "StopPanelAnimations": {
 							str += `    StopPanelAnimations${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`
-							str += `${animation.element}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
+							str += `${writeValue(animation.element)}${" ".repeat(keyLengths[i++] - animation.element.length + extraSpaces)}`
 							str += `${animation.delay}`
 							writeOSTagAndOrComment(animation, keyLengths, i, animation.delay.toString())
 							str += `${newLine}`

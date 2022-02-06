@@ -8,7 +8,7 @@
 		},
 		{
 			"name": "keyword",
-			"match": "(event)\\s+(\\w+)",
+			"match": "(?i)(\"event\"|event)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"0": {
 					"name": "entity.name.function"
@@ -19,7 +19,7 @@
 			}
 		},
 		{
-			"match": "(?i)(RunEventChild)\\s+(\\w+)\\s+(\\w+)",
+			"match": "(?i)(RunEventChild)\\s+(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"0": {
 					"name": "entity.name.function"
@@ -33,7 +33,7 @@
 			}
 		},
 		{
-			"match": "(?i)(RunEvent|StopEvent)\\s+\\w+",
+			"match": "(?i)(RunEvent|StopEvent)\\s+(\".*\"|\\w+)",
 			"captures": {
 				"0": {
 					"name": "entity.name.function"
@@ -55,7 +55,7 @@
 			}
 		},
 		{
-			"match": "(?i)(Animate)\\s+(\\w+)\\s+(\\w+)\\s+(\".*\"|\\S+)\\s+(\\w+)",
+			"match": "(?i)(Animate)\\s+(\".*?\"|\\S+)\\s+(\\S+)\\s+(\".*?\"|\\S+)\\s+(\\w+)",
 			"captures": {
 				"0": {},
 				"1": {
@@ -79,7 +79,7 @@
 			}
 		},
 		{
-			"match": "(?i)(SetVisible)\\s+(\\w+)",
+			"match": "(?i)(SetVisible)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"0": {},
 				"1": {
@@ -91,7 +91,7 @@
 			}
 		},
 		{
-			"match": "(?i)(FireCommand|PlaySound)\\s+([\\d.]+)\\s+(\".*\"|\\S+)",
+			"match": "(?i)(FireCommand|PlaySound)\\s+([\\d.]+)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"0": {},
 				"1": {
@@ -106,7 +106,7 @@
 			}
 		},
 		{
-			"match": "(?i)(SetInputEnabled)\\s+(\\w+)",
+			"match": "(?i)(SetInputEnabled)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"0": {},
 				"1": {

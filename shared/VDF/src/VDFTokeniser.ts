@@ -3,7 +3,6 @@ import { VDFOSTags } from "./models/VDFOSTags"
 import { VDFTokeniserOptions } from "./models/VDFTokeniserOptions"
 import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedCharacterError } from "./VDFErrors"
 
-
 export class VDFTokeniser {
 	public static readonly whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
 	public static readonly whiteSpaceTokenTerminate: string[] = ["\"", "{", "}"]
