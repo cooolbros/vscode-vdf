@@ -69,9 +69,7 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 					return [
 						{
 							severity: DiagnosticSeverity.Error,
-
 							message: e.message,
-
 							range: e.range
 						}
 					]
