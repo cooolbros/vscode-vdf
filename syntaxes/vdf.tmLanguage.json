@@ -23,7 +23,7 @@
 		},
 		{
 			"name": "variable",
-			"match": "(\"?[\\w.]+\"?)\\s*(\".*\")",
+			"match": "(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"1": {
 					"name": "variable"
@@ -35,7 +35,7 @@
 		},
 		{
 			"name": "variable",
-			"match": "(\".*\")"
+			"match": "(\".*\"|\\w+)"
 		}
 	],
 	"repository": {},
