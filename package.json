@@ -161,7 +161,7 @@
           "type": "boolean",
           "default": false
         },
-        "vscode-vdf.teamFortess2Folder": {
+        "vscode-vdf.teamFortress2Folder": {
           "description": "Path to Team Fortress 2 Folder",
           "type": "string",
           "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"

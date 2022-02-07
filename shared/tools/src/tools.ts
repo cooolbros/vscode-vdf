@@ -20,7 +20,7 @@ export interface VSCodeVDFSettings {
 	readonly referencesCodeLens: {
 		readonly showOnAllElements: boolean
 	}
-	readonly teamFortess2Folder: string
+	readonly teamFortress2Folder: string
 }
 
 /**

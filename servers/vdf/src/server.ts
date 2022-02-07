@@ -324,10 +324,10 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 							}
 						}
 						else {
-							const teamFortress2Folder = (await connection.workspace.getConfiguration({
+							const teamFortress2Folder = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
 								scopeUri: document.uri,
 								section: "vscode-vdf"
-							})).teamFortess2Folder
+							})).teamFortress2Folder
 
 							const tf_englishPath = `${teamFortress2Folder}/tf/resource/tf_english.txt`
 

@@ -255,7 +255,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 				const teamFortress2Folder = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
 					scopeUri: params.textDocument.uri,
 					section: "vscode-vdf"
-				})).teamFortess2Folder
+				})).teamFortress2Folder
 				const result = findClassIcon(teamFortress2Folder, <string>value)
 				return result != null ? { uri: pathToFileURL(result).toString(), range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } } : null
 			}
