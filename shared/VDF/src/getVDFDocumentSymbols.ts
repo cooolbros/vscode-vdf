@@ -13,7 +13,8 @@ export interface VDFDocumentSymbol extends DocumentSymbol {
 
 
 	/**
-	 * Documentsymbol VDF key e.g. xpos^[$WIN32]
+	 * Documentsymbol VDF key e.g. xpos\
+	 * This key does not contain the OS Tag, instead access VDFDocumentSymbol.osTag
 	 */
 	readonly key: string
 
