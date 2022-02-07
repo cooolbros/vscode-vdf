@@ -529,6 +529,3 @@ connection.onRenameRequest((params: RenameParams): WorkspaceEdit => {
 
 documents.listen(connection)
 connection.listen()
-
-
-let s = `sd`
