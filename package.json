@@ -60,6 +60,54 @@
         "command": "vscode-vdf.VDFToJSON"
       }
     ],
+    "configuration": {
+      "title": "VDF",
+      "properties": {
+        "vscode-vdf.autoCompletionKind": {
+          "description": "Controls the method of providing autocompletion file items.",
+          "type": "string",
+          "enum": [
+            "incremental",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Show only files in suggested folder and suggest child items when a folder is selected.",
+            "Suggest all files recursively."
+          ],
+          "default": "incremental"
+        },
+        "vscode-vdf.hudAnimations.extraTabs": {
+          "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
+          "type": "number",
+          "default": 1,
+          "minimum": 1
+        },
+        "vscode-vdf.hudAnimations.layoutScope": {
+          "description": "Controls the scope to compare token lengths to when formatting HUD animations.",
+          "type": "string",
+          "enum": [
+            "event",
+            "file"
+          ],
+          "default": "event"
+        },
+        "vscode-vdf.hudAnimations.referencesCodeLens.showOnAllEvents": {
+          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
+          "type": "boolean",
+          "default": false
+        },
+        "vscode-vdf.referencesCodeLens.showOnAllElements": {
+          "description": "Enable/disable references CodeLens on all elements in VDF files.",
+          "type": "boolean",
+          "default": false
+        },
+        "vscode-vdf.teamFortress2Folder": {
+          "description": "Path to Team Fortress 2 Folder",
+          "type": "string",
+          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+        }
+      }
+    },
     "grammars": [
       {
         "language": "hudanimations",
@@ -119,55 +167,7 @@
         ],
         "configuration": "./language-configuration/vdf-language-configuration.json"
       }
-    ],
-    "configuration": {
-      "title": "VDF",
-      "properties": {
-        "vscode-vdf.autoCompletionKind": {
-          "description": "Controls the method of providing autocompletion file items.",
-          "type": "string",
-          "enum": [
-            "incremental",
-            "all"
-          ],
-          "enumDescriptions": [
-            "Show only files in suggested folder and suggest child items when a folder is selected.",
-            "Suggest all files recursively."
-          ],
-          "default": "incremental"
-        },
-        "vscode-vdf.hudAnimations.extraTabs": {
-          "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
-          "type": "number",
-          "default": 1,
-          "minimum": 1
-        },
-        "vscode-vdf.hudAnimations.layoutScope": {
-          "description": "Controls the scope to compare token lengths to when formatting HUD animations.",
-          "type": "string",
-          "enum": [
-            "event",
-            "file"
-          ],
-          "default": "event"
-        },
-        "vscode-vdf.hudAnimations.referencesCodeLens.showOnAllEvents": {
-          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
-          "type": "boolean",
-          "default": false
-        },
-        "vscode-vdf.referencesCodeLens.showOnAllElements": {
-          "description": "Enable/disable references CodeLens on all elements in VDF files.",
-          "type": "boolean",
-          "default": false
-        },
-        "vscode-vdf.teamFortress2Folder": {
-          "description": "Path to Team Fortress 2 Folder",
-          "type": "string",
-          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
