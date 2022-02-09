@@ -19,15 +19,15 @@ VDF/Valve KeyValues language support for VSCode
     - pin_to_sibling
     - image
     - customfontfiles
- - Autocomplete for element properties:
+ - Autocompletion for element properties:
     - ImagePanel => image, scaleImage, etc...
     - CExLabel => labelText, font, textAlignment, fgcolor, etc...
- - Autocomplete for property values
+ - Autocompletion for property values
     - font => Will suggest from clientscheme
     - textAlignment => center, north, east, south, west
- - Autocomplete for #base paths
- - Autocomplete for image paths
- - Autocomplete for pin_to_sibling elements
+ - Autocompletion for #base paths
+ - Autocompletion for image paths
+ - Autocompletion for pin_to_sibling elements
  - Rename HUD elements
 
 ### Features (HUD Animations Specific)
@@ -40,6 +40,9 @@ VDF/Valve KeyValues language support for VSCode
 ### Features (Popfile Specific)
  - Autocompletion for Templates
  - Autocompletion for Attributes, BehaviorModifiers, Class, Skill, Objective, etc...
+ - Definition Provider
+   - Templates
+ - Rename Templates (file wide)
 
 ### TODO
  - Add settings for formatting preference
