@@ -1,8 +1,7 @@
-import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import * as path from "path";
-import { dirname } from "path";
+import { dirname, join, normalize } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
@@ -20,6 +19,7 @@ import {
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
 import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, RangecontainsPosition, RangecontainsRange, VSCodeVDFSettings } from "../../../shared/tools";
+import { VPK } from "../../../shared/tools/dist/VPK";
 import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags";
 import { VDF } from "../../../shared/VDF/dist/VDF";
@@ -342,63 +342,37 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 					case "teambg_2":
 					case "teambg_3": {
 						hudRoot ??= getHUDRoot(document)
-						let vmtPath: string
-						const hudvmtPath = path.normalize(`${hudRoot}/materials/vgui/${value}.vmt`)
-						if (existsSync(hudvmtPath)) {
-							vmtPath = hudvmtPath
+						const relativeVMTPath = normalize(`materials/vgui/${value}.vmt`)
+						const hudVmt = hudRoot != null ? join(hudRoot, relativeVMTPath) : null
+						if (hudVmt != null && existsSync(hudVmt)) {
+							return { uri: pathToFileURL(hudVmt).href, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
 						}
-						else {
-							const teamFortress2Folder = "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
-							const tempDirectory: string = tmpdir()
-
-							const relativeImagePath = path.posix.normalize(`materials/vgui/${value}.vmt`)
-
-							if (existsSync(relativeImagePath)) {
-								vmtPath = `${tempDirectory}/${relativeImagePath}`
-							}
-							else {
-								mkdirSync(path.dirname(`${tempDirectory}/${relativeImagePath}`), { recursive: true })
-
-								execSync([
-									`"${teamFortress2Folder}/bin/vpk.exe"`,
-									"x",
-									`"${teamFortress2Folder}/tf/tf2_misc_dir.vpk"`,
-									`"${relativeImagePath}"`
-								].join(" "), {
-									cwd: tempDirectory
-								})
-
-								vmtPath = `${tempDirectory}/${relativeImagePath}`
-							}
-						}
-						const targetRange = Range.create(Position.create(0, 0), Position.create(0, 1))
-						const result: DefinitionLink[] = [{
-							originSelectionRange: Range.create(Position.create(params.position.line, valueIndex), Position.create(params.position.line, valueIndex + (<string>value).length)),
-							targetUri: pathToFileURL(vmtPath).href,
-							targetRange: targetRange,
-							targetSelectionRange: targetRange
-						}]
-						return result
+						const vpk = new VPK(async () => (await connection.workspace.getConfiguration("vscode-vdf")).teamFortress2Folder)
+						const tf2_misc_dir = "tf/tf2_misc_dir.vpk"
+						const vpkResult = await vpk.extract(tf2_misc_dir, relativeVMTPath, { returnNullOnError: true })
+						return vpkResult != null
+							// Use VPK protocol to make document read only
+							? { uri: `vpk:///${relativeVMTPath}?vpk=${tf2_misc_dir}&readfromTempDir=true`, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } }
+							: null
 					}
 					case "name": {
 						hudRoot ??= getHUDRoot(document)
 						const clientschemePath = `${hudRoot}/resource/clientscheme.res`
 						return hudRoot && existsSync(clientschemePath) ? getLocationOfKey(clientschemePath, readFileSync(clientschemePath, "utf-8"), "name", <string>value, "CustomFontFiles") : null
 					}
-					case "$basetexture":
-						{
-							hudRoot ??= getHUDRoot(document)
-							if (hudRoot) {
-								return {
-									uri: `file:///${hudRoot}/materials/${value}.vtf`,
-									range: {
-										start: { line: 0, character: 0 },
-										end: { line: 0, character: Infinity }
-									}
+					case "$basetexture": {
+						hudRoot ??= getHUDRoot(document)
+						if (hudRoot) {
+							return {
+								uri: `file:///${hudRoot}/materials/${value}.vtf`,
+								range: {
+									start: { line: 0, character: 0 },
+									end: { line: 0, character: Infinity }
 								}
 							}
-							break
 						}
+						break
+					}
 					case "font": {
 						hudRoot ??= getHUDRoot(document)
 						if (hudRoot && existsSync(`${hudRoot}/${value}`)) {
@@ -626,48 +600,38 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 	return null
 })
 
-connection.onDocumentLinks((params: DocumentLinkParams) => {
+connection.onDocumentLinks(async (params: DocumentLinkParams) => {
+
 	const documentLinks: DocumentLink[] = []
-	try {
-		let hudRoot: string | null
-		const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
-			for (const { name, detail, detailRange, children } of documentSymbols) {
+	// const teamFortress2Folder = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({ scopeUri: params.textDocument.uri, section: "vscode-vdf" })).teamFortress2Folder
+	const imageProperties = ["image", "teambg_1", "teambg_2", "teambg_3"]
 
-				const _name = name.toLowerCase()
 
-				if (_name == "#base" && detail && detailRange) {
-					connection.console.log(`#base "${dirname(params.textDocument.uri)}/${detail}"`)
-					documentLinks.push({
-						range: detailRange,
-						target: `${dirname(params.textDocument.uri)}/${detail}`
-					})
-				}
-
-				if (["image", "teambg_1", "teambg_2", "teambg_3"].includes(_name) && detailRange) {
-					hudRoot ??= getHUDRoot(params.textDocument)
-					if (hudRoot) {
-						documentLinks.push({
-							range: detailRange,
-							target: `file:///${hudRoot}/materials/vgui/${detail}.vmt`
-						})
-					}
-				}
-
-				if (children) {
-					iterateObject(children)
-				}
+	let hudRoot: string | null | undefined
+	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
+		for (const { key, detail, detailRange, children } of documentSymbols) {
+			const _key = key.toLowerCase().replace("_minmode", "")
+			if (_key == "#base" && detail && detailRange) {
+				documentLinks.push({
+					range: detailRange,
+					target: `${dirname(params.textDocument.uri)}/${detail}`
+				})
+			}
+			else if (imageProperties.includes(_key) && detailRange) {
+				hudRoot ??= getHUDRoot(params.textDocument)
+				const hudVMT = hudRoot ? path.join(hudRoot, "materials/vgui", `${detail}.vmt`) : null
+				documentLinks.push({
+					range: detailRange,
+					target: hudVMT != null && existsSync(hudVMT) ? pathToFileURL(hudVMT).href : `vpk:///materials/vgui/${detail}.vmt?vpk=tf/tf2_misc_dir.vpk`
+				})
+			}
+			else if (children) {
+				iterateObject(children)
 			}
 		}
-		iterateObject(documentsSymbols[params.textDocument.uri] ?? [])
-		return documentLinks
 	}
-	catch (e: unknown) {
-		if (e instanceof VDFSyntaxError) {
-			connection.console.log(`[connection.onDocumentLinks] ${e.toString()}`)
-			return documentLinks
-		}
-		throw e
-	}
+	iterateObject(documentsSymbols[params.textDocument.uri] ?? [])
+	return documentLinks
 })
 
 connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] => {

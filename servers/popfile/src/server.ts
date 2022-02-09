@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { dirname, join } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
+import { fileURLToPath } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { CodeLens, CodeLensParams, ColorInformation, ColorPresentationParams, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection } from "vscode-languageserver/node";
 import { getCodeLensTitle, getDocumentSymbolsAtPosition, getLineRange, getLocationOfKey, RangecontainsPosition, recursiveDocumentSymbolLookup, VSCodeVDFSettings } from "../../../shared/tools";
@@ -256,8 +256,8 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 					scopeUri: params.textDocument.uri,
 					section: "vscode-vdf"
 				})).teamFortress2Folder
-				const result = findClassIcon(teamFortress2Folder, <string>value)
-				return result != null ? { uri: pathToFileURL(result).toString(), range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } } : null
+				const result = await findClassIcon(teamFortress2Folder, <string>value)
+				return result != null ? { uri: result.href, range: { start: { line: 0, character: 0 }, end: { line: Infinity, character: Infinity } } } : null
 			}
 			case "template": {
 				return getLocationOfKey(document.uri, documentsSymbols[params.textDocument.uri] ?? document.getText(), <string>value)

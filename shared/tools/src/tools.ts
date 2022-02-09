@@ -1,7 +1,5 @@
-import { execSync } from "child_process"
-import fs, { existsSync, mkdirSync } from "fs"
-import { tmpdir } from "os"
-import path, { dirname, join } from "path"
+import fs, { existsSync } from "fs"
+import path from "path"
 import { fileURLToPath, pathToFileURL, URL } from "url"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { CompletionItem, CompletionItemKind, Definition, Position, Range } from "vscode-languageserver/node"
@@ -293,20 +291,4 @@ export function recursiveDocumentSymbolLookup(documentSymbols: VDFDocumentSymbol
 		return null
 	}
 	return search(documentSymbols)
-}
-
-
-export function VPKExtract(teamFortress2Folder: string, vpkPath: string, file: string): string | null {
-	const vpkBinPath = join(teamFortress2Folder, "bin", existsSync(join(teamFortress2Folder, "bin/vpk.exe")) ? "vpk" : "vpk_linux32")
-	const temp = tmpdir()
-	mkdirSync(join(temp, dirname(file)), { recursive: true })
-	const outputPath = join(temp, file)
-	const args: string[] = [
-		`"${vpkBinPath}"`,
-		`x`,
-		`"${join(teamFortress2Folder, vpkPath)}"`,
-		`"${file}"`
-	]
-	execSync(args.join(" "), { cwd: temp })
-	return existsSync(outputPath) ? outputPath : null
 }

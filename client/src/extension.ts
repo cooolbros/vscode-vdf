@@ -1,15 +1,20 @@
+import { copyFileSync, mkdirSync } from "fs";
 import * as path from "path";
-import { commands, EndOfLine, ExtensionContext, languages, Location, Position, Range, TextDocument, TextEditor, TextEditorEdit, Uri, workspace } from "vscode";
+import { dirname, join } from "path";
+import { URLSearchParams } from "url";
+import { commands, EndOfLine, ExtensionContext, languages, Location, Position, Range, TextDocument, TextEditor, TextEditorEdit, Uri, window, workspace } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
+import { VPK } from "../../shared/tools/dist/VPK";
 import { VDF } from "../../shared/VDF";
 import { VDFIndentation } from "../../shared/VDF/dist/models/VDFIndentation";
 import { VDFNewLine } from "../../shared/VDF/dist/models/VDFNewLine";
 import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
+import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider";
 
 const clientsInfo = {
 	hudanimations: {
@@ -34,7 +39,39 @@ const clients: Record<keyof typeof clientsInfo, LanguageClient | null> = {
 
 export function activate(context: ExtensionContext): void {
 
+	// https://code.visualstudio.com/api/references/contribution-points#contributes
+
 	// Commands
+
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", async (editor: TextEditor) => {
+
+		const currentWorkspace = workspace.workspaceFolders
+			? workspace.workspaceFolders.length > 1
+				? await (async () => {
+					const selection = await window.showQuickPick(workspace.workspaceFolders!.map(workspaceFolder => workspaceFolder.name), { title: "Select workspace folder to extract VPK file to" })
+					return workspace.workspaceFolders!.find(workspaceFolder => workspaceFolder.name == selection)!
+				})()
+				: workspace.workspaceFolders[0]
+			: null
+
+		if (!currentWorkspace) {
+			window.showErrorMessage(`Cannot find workspace folder`)
+			return
+		}
+
+		const workspaceFolder = currentWorkspace.uri.fsPath
+
+		const uri = editor.document.uri
+		const vpk = new VPK(workspace.getConfiguration("vscode-vdf").get("teamFortress2Folder")!)
+		const params = new URLSearchParams(uri.query)
+
+		const result = await vpk.extract(params.get("vpk")!, uri.fsPath)
+
+		mkdirSync(join(workspaceFolder, dirname(uri.fsPath)), { recursive: true })
+		copyFileSync(result!, join(workspaceFolder, uri.fsPath))
+
+		window.showTextDocument(Uri.file(join(workspaceFolder, uri.fsPath)))
+	}))
 
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", (editor: TextEditor, edit: TextEditorEdit) => {
 		const { document } = editor
@@ -44,7 +81,6 @@ export function activate(context: ExtensionContext): void {
 		}
 		else {
 			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(VDF.parse(document.getText()), { indentation }))
-			languages.setTextDocumentLanguage(document, "json")
 		}
 	}))
 
@@ -101,6 +137,9 @@ export function activate(context: ExtensionContext): void {
 			languages.setTextDocumentLanguage(document, "json")
 		}
 	}))
+
+	// VPK Protocol
+	workspace.registerTextDocumentContentProvider("vpk", new VPKTextDocumentContentProvider(workspace))
 
 	// Language Server
 

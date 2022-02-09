@@ -35,6 +35,12 @@
   "contributes": {
     "commands": [
       {
+        "category": "VPK",
+        "title": "Extract file to workspace",
+        "command": "vscode-vdf.extractVPKFileToWorkspace",
+        "icon": "$(file-add)"
+      },
+      {
         "category": "VDF",
         "title": "Format VDF",
         "command": "vscode-vdf.formatVDF"
@@ -167,7 +173,16 @@
         ],
         "configuration": "./language-configuration/vdf-language-configuration.json"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vscode-vdf.extractVPKFileToWorkspace",
+          "group": "navigation",
+          "when": "resourceScheme == vpk && workspaceFolderCount > 0"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
