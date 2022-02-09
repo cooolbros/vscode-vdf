@@ -1,19 +1,17 @@
-import { copyFileSync, mkdirSync } from "fs";
 import * as path from "path";
-import { dirname, join } from "path";
-import { URLSearchParams } from "url";
-import { commands, EndOfLine, ExtensionContext, languages, Location, Position, Range, TextDocument, TextEditor, TextEditorEdit, Uri, window, workspace } from "vscode";
+import { commands, ExtensionContext, TextDocument, workspace } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
-import { VPK } from "../../shared/tools/dist/VPK";
-import { VDF } from "../../shared/VDF";
-import { VDFIndentation } from "../../shared/VDF/dist/models/VDFIndentation";
-import { VDFNewLine } from "../../shared/VDF/dist/models/VDFNewLine";
-import * as sortKeysOrders from "./JSON/vdf_sort_keys_orders.json";
+import { extractVPKFileToWorkspace } from "./commands/extractVPKFileToWorkspace";
+import { formatVDF } from "./commands/formatVDF";
+import { JSONToVDF } from "./commands/JSONToVDF";
+import { showReferences } from "./commands/showReferences";
+import { sortVDF } from "./commands/sortVDF";
+import { VDFToJSON } from "./commands/VDFToJSON";
 import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider";
 
 const clientsInfo = {
@@ -43,100 +41,12 @@ export function activate(context: ExtensionContext): void {
 
 	// Commands
 
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", async (editor: TextEditor) => {
-
-		const currentWorkspace = workspace.workspaceFolders
-			? workspace.workspaceFolders.length > 1
-				? await (async () => {
-					const selection = await window.showQuickPick(workspace.workspaceFolders!.map(workspaceFolder => workspaceFolder.name), { title: "Select workspace folder to extract VPK file to" })
-					return workspace.workspaceFolders!.find(workspaceFolder => workspaceFolder.name == selection)!
-				})()
-				: workspace.workspaceFolders[0]
-			: null
-
-		if (!currentWorkspace) {
-			window.showErrorMessage(`Cannot find workspace folder`)
-			return
-		}
-
-		const workspaceFolder = currentWorkspace.uri.fsPath
-
-		const uri = editor.document.uri
-		const vpk = new VPK(workspace.getConfiguration("vscode-vdf").get("teamFortress2Folder")!)
-		const params = new URLSearchParams(uri.query)
-
-		const result = await vpk.extract(params.get("vpk")!, uri.fsPath)
-
-		mkdirSync(join(workspaceFolder, dirname(uri.fsPath)), { recursive: true })
-		copyFileSync(result!, join(workspaceFolder, uri.fsPath))
-
-		window.showTextDocument(Uri.file(join(workspaceFolder, uri.fsPath)))
-	}))
-
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", (editor: TextEditor, edit: TextEditorEdit) => {
-		const { document } = editor
-		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
-		if (!editor.selection.isEmpty) {
-			edit.replace(editor.selection, VDF.stringify(VDF.parse(document.getText(editor.selection)), { indentation }))
-		}
-		else {
-			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(VDF.parse(document.getText()), { indentation }))
-		}
-	}))
-
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", (editor: TextEditor, edit: TextEditorEdit): void => {
-		const { document } = editor
-		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
-		const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
-		if (!editor.selection.isEmpty) {
-			edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), { indentation, newLine }))
-		}
-		else {
-			edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), { indentation, newLine }))
-			languages.setTextDocumentLanguage(document, "vdf")
-		}
-	}))
-
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", async (editor: TextEditor, edit: TextEditorEdit, ...params: any[]) => {
-
-		type JSONLocation = { uri: string, range: JSONRange }
-		type JSONRange = { start: JSONPosition, end: JSONPosition }
-		type JSONPosition = { line: number, character: number }
-
-		// https://code.visualstudio.com/api/references/commands
-		// https://github.com/microsoft/vscode/issues/95308#issuecomment-644123877
-		await commands.executeCommand(
-			"editor.action.showReferences",
-			Uri.parse(<string>params[0]),
-			new Position((<JSONRange>params[1]).start.line, (<JSONRange>params[1]).start.character),
-			(<JSONLocation[]>params[2]).map(i => new Location(Uri.parse(i.uri), new Range(new Position(i.range.start.line, i.range.start.character), new Position(i.range.end.line, i.range.end.character)))),
-			"peek"
-		)
-	}))
-
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sortVDF", (editor: TextEditor, edit: TextEditorEdit) => {
-		const { document } = editor
-		const ext = document.fileName.split('.').pop()
-		if (ext && ((ext): ext is keyof typeof sortKeysOrders => sortKeysOrders.hasOwnProperty(ext))(ext)) {
-			const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
-			const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
-			const order = sortKeysOrders[ext]
-			const result: string = VDF.stringify(VDF.parse(document.getText()), { indentation, newLine, order })
-			edit.replace(new Range(0, 0, document.lineCount, 0), result)
-		}
-	}))
-
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", (editor: TextEditor, edit: TextEditorEdit) => {
-		const { document } = editor
-		const indentation = !editor.options.insertSpaces ? "\t" : "    "
-		if (!editor.selection.isEmpty) {
-			edit.replace(editor.selection, JSON.stringify(VDF.parse(document.getText(editor.selection)), null, indentation))
-		}
-		else {
-			edit.replace(new Range(0, 0, document.lineCount, 0), JSON.stringify(VDF.parse(document.getText()), null, indentation))
-			languages.setTextDocumentLanguage(document, "json")
-		}
-	}))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", formatVDF))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sortVDF", sortVDF))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// VPK Protocol
 	workspace.registerTextDocumentContentProvider("vpk", new VPKTextDocumentContentProvider(workspace))
