@@ -46,10 +46,10 @@
 		"~Action"
 	],
 	"tfbot": [
-		"Template",
 		"Class",
+		"Health",
 		"Name",
-		"Health"
+		"Template"
 	],
 	"wave": [
 		"~DoneOutput",
