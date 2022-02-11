@@ -42,12 +42,12 @@ VDF/Valve KeyValues language support for VSCode
  - Autocompletion for Attributes, BehaviorModifiers, Class, Skill, Objective, etc...
  - Definition Provider
    - Templates
+ - Import #base templates into popfile
  - Rename Templates (file wide)
 
 ### TODO
  - Add settings for formatting preference
  - Add support for renaming clientscheme entries (project wide)
- - Add un-#base-ifier
  - Add VTF viewer/editor
  - Code lens for clientscheme references
 

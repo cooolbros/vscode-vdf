@@ -1,6 +1,6 @@
 import { Range, TextEditor, TextEditorEdit } from "vscode";
-import { VDF } from "../../../shared/VDF";
 import { VDFIndentation } from "../../../shared/VDF/dist/models/VDFIndentation";
+import { VDF } from "../../../shared/VDF/dist/VDF";
 
 export function formatVDF(editor: TextEditor, edit: TextEditorEdit): void {
 	const { document } = editor

@@ -8,6 +8,7 @@ import {
 } from "vscode-languageclient/node";
 import { extractVPKFileToWorkspace } from "./commands/extractVPKFileToWorkspace";
 import { formatVDF } from "./commands/formatVDF";
+import { importPopfileTemplates } from "./commands/importPopfileTemplates";
 import { JSONToVDF } from "./commands/JSONToVDF";
 import { showReferences } from "./commands/showReferences";
 import { sortVDF } from "./commands/sortVDF";
@@ -43,6 +44,7 @@ export function activate(context: ExtensionContext): void {
 
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", formatVDF))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sortVDF", sortVDF))
