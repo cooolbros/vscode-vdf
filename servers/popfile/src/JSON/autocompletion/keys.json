@@ -37,7 +37,11 @@
 		"use large smoke explosion"
 	],
 	"mission": [
-		"Objective"
+		"BeginAtWave",
+		"CooldownTime",
+		"InitialCooldown",
+		"Objective",
+		"RunForThisManyWaves"
 	],
 	"randomchoice": [],
 	"squad": [],
@@ -45,10 +49,20 @@
 		"~Target",
 		"~Action"
 	],
+	"tank": [
+		"~OnBombDroppedOutput",
+		"~OnKilledOutput",
+		"Health",
+		"Name",
+		"Skin",
+		"Speed",
+		"StartingPathTrackNode"
+	],
 	"tfbot": [
 		"Class",
 		"Health",
 		"Name",
+		"Skill",
 		"Template"
 	],
 	"wave": [
@@ -59,6 +73,7 @@
 		"WaveSpawn"
 	],
 	"waveschedule": [
+		"~Mission",
 		"~Templates",
 		"AddSentryBusterWhenDamageDealtExceeds",
 		"AddSentryBusterWhenKillCountExceeds",

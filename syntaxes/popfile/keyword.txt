@@ -1,3 +1,4 @@
+BeginAtWave
 CharacterAttributes
 DesiredCount
 DoneOutput
@@ -16,6 +17,7 @@ No
 OnBombDroppedOutput
 OnKilledOutput
 RandomChoice
+SpawnCount
 Squad
 StartingPathTrackNode
 StartWaveOutput
