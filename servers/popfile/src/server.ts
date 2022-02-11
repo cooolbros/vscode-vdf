@@ -395,7 +395,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 })
 
 connection.onDocumentLinks((params: DocumentLinkParams) => {
-	return documentsSymbols[params.textDocument.uri]
+	return (documentsSymbols[params.textDocument.uri] ?? [])
 		.filter((i): i is VDFDocumentSymbol & { detail: string, detailRange: Range } => i.name.toLowerCase() == "#base" && i.detail != undefined && i.detailRange != undefined)
 		.map<DocumentLink>((i) => ({ range: i.detailRange, target: join(dirname(params.textDocument.uri), i.detail) }))
 })
