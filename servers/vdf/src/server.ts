@@ -92,8 +92,14 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 					return [
 						{
 							severity: DiagnosticSeverity.Error,
-							message: `[${e.constructor.name}] ${e.message}`,
-							range: e.range
+							message: `${e.message}`,
+							range: e.range,
+							source: "VDFSyntaxError",
+							code: e.constructor.name,
+							// tags: [
+							// 	1, // Grey out
+							// 	2 // Underline
+							// ]
 						}
 					]
 				}

@@ -70,7 +70,9 @@ documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): vo
 						{
 							severity: DiagnosticSeverity.Error,
 							message: e.message,
-							range: e.range
+							range: e.range,
+							source: "VDFSyntaxError",
+							code: e.constructor.name,
 						}
 					]
 				}
