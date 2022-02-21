@@ -725,12 +725,18 @@ connection.onDocumentFormatting((params: DocumentFormattingParams): TextEdit[] |
 let oldName: string
 
 connection.onPrepareRename((params: PrepareRenameParams) => {
+
+	// Don't allow rename if there are no document symbols
+	if (!documentsSymbols[params.textDocument.uri]) {
+		return null
+	}
+
 	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): Range | null => {
 		for (const { name, nameRange, children, detail, detailRange } of documentSymbols) {
 			if (RangecontainsPosition(nameRange, params.position)) {
 				if (children) {
 					// Permit renaming objects
-					oldName = name.toLowerCase()
+					oldName = name
 					return nameRange
 				}
 			}
@@ -739,7 +745,7 @@ connection.onPrepareRename((params: PrepareRenameParams) => {
 			if ((key == "fieldname" || key == "pin_to_sibling") && detail && detailRange) {
 				if (RangecontainsPosition(detailRange, params.position)) {
 					// Also permit renaming by reference to object
-					oldName = detail.toLowerCase()
+					oldName = detail
 					return detailRange
 				}
 			}
@@ -759,11 +765,13 @@ connection.onRenameRequest((params: RenameParams) => {
 	if (oldName == undefined) {
 		throw new Error(`oldName is undefined`)
 	}
-	const edits: TextEdit[] = []
-	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
+	const oldNameLowerCase = oldName.toLowerCase()
+
+	const changes: { [uri: string]: TextEdit[] } = {}
+	const iterateObject = (documentUri: string, documentSymbols: VDFDocumentSymbol[]): void => {
 		for (const documentSymbol of documentSymbols) {
-			if (documentSymbol.name.split(VDF.OSTagDelimeter)[0].toLowerCase() == oldName) {
-				edits.push({
+			if (documentSymbol.name.split(VDF.OSTagDelimeter)[0].toLowerCase() == oldNameLowerCase) {
+				changes[documentUri].push({
 					newText: params.newName,
 					range: documentSymbol.nameRange
 				})
@@ -771,20 +779,38 @@ connection.onRenameRequest((params: RenameParams) => {
 
 			if (documentSymbol.detail && documentSymbol.detailRange) {
 				const keyKey = documentSymbol.key.split(VDF.OSTagDelimeter)[0].toLowerCase()
-				if ((keyKey == "fieldname" || keyKey == "pin_to_sibling") && documentSymbol.detail.toLowerCase() == oldName) {
-					edits.push({
+				if ((keyKey == "fieldname" || keyKey == "pin_to_sibling") && documentSymbol.detail.toLowerCase() == oldNameLowerCase) {
+					changes[documentUri].push({
 						newText: params.newName,
 						range: documentSymbol.detailRange
 					})
 				}
 			}
 			else if (documentSymbol.children) {
-				iterateObject(documentSymbol.children)
+				iterateObject(documentUri, documentSymbol.children)
 			}
 		}
 	}
-	iterateObject(documentsSymbols[params.textDocument.uri])
-	return { changes: { [`${params.textDocument.uri}`]: edits } }
+
+	changes[params.textDocument.uri] = []
+	iterateObject(params.textDocument.uri, documentsSymbols[params.textDocument.uri])
+
+	const dir = dirname(params.textDocument.uri)
+	for (const baseFile of documentsSymbols[params.textDocument.uri].filter((documentSymbol): documentSymbol is VDFDocumentSymbol & { detail: string } => documentSymbol.name.toLowerCase() == "#base" && documentSymbol.detail != undefined)) {
+		const baseFileUri = `${dir}/${baseFile.detail}`
+		try {
+			const baseDocumentSymbols = documentsSymbols.hasOwnProperty(baseFileUri)
+				? documentsSymbols[baseFileUri]
+				: getVDFDocumentSymbols(readFileSync(fileURLToPath(baseFileUri), "utf-8"))
+			changes[baseFileUri] = []
+			iterateObject(baseFileUri, baseDocumentSymbols)
+		}
+		catch (e: any) {
+			throw new Error(`Unable to parse file "${fileURLToPath(baseFileUri)}" (${e.message}). Cannot rename "${oldName}"`)
+		}
+	}
+
+	return { changes }
 })
 
 documents.listen(connection)
