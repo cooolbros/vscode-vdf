@@ -5,8 +5,7 @@ import { dirname, join, normalize } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
-	CodeAction,
-	CodeActionParams,
+	CodeAction, CodeActionKind, CodeActionParams,
 	CodeLens,
 	CodeLensParams,
 	ColorInformation,
@@ -463,7 +462,7 @@ connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] => 
 
 connection.onCodeAction((params: CodeActionParams) => {
 	try {
-		const iterateObject = (documentSymbols: VDFDocumentSymbol[]): (Command | CodeAction)[] => {
+		const iterateObject = (documentSymbols: VDFDocumentSymbol[], parentName: string | null): (Command | CodeAction)[] => {
 			const codeActions: (Command | CodeAction)[] = []
 			for (const { name, detail, detailRange, children } of documentSymbols) {
 				if (detail && detailRange && RangecontainsRange(detailRange, params.range)) {
@@ -520,11 +519,31 @@ connection.onCodeAction((params: CodeActionParams) => {
 						}
 					}
 
+					if (name.toLowerCase() == "fieldname") {
+						if (parentName != null && detail != parentName.toLowerCase()) {
+							codeActions.push({
+								title: `Change fieldName to "${parentName}"`,
+								edit: {
+									changes: {
+										[`${params.textDocument.uri}`]: [
+											{
+												newText: parentName,
+												range: detailRange
+											}
+										]
+									}
+								},
+								isPreferred: true,
+								kind: CodeActionKind.QuickFix
+							})
+						}
+					}
+
 					return codeActions
 				}
 
 				if (children) {
-					const result = iterateObject(children)
+					const result = iterateObject(children, name)
 					if (result.length > 0) {
 						return result
 					}
@@ -532,7 +551,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 			}
 			return codeActions
 		}
-		return iterateObject(documentsSymbols[params.textDocument.uri] ?? [])
+		return iterateObject(documentsSymbols[params.textDocument.uri] ?? [], null)
 	}
 	catch (e: unknown) {
 		if (e instanceof VDFSyntaxError) {
