@@ -520,7 +520,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 					}
 
 					if (name.toLowerCase() == "fieldname") {
-						if (parentName != null && detail != parentName.toLowerCase()) {
+						if (parentName != null && detail.toLowerCase() != parentName.toLowerCase()) {
 							codeActions.push({
 								title: `Change fieldName to "${parentName}"`,
 								edit: {
