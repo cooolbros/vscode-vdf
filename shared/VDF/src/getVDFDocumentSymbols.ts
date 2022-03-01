@@ -60,12 +60,11 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 		const objectTerminator = obj ? "}" : "__EOF__"
 		while (currentToken != objectTerminator) {
 			const [key, keyQuoted] = parserTools.convert.token(currentToken)
+			if (currentToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
+				throw new UnexpectedTokenError(currentToken, "key", Range.create(tokeniser.line, tokeniser.character - 1, tokeniser.line, tokeniser.character))
+			}
 			const startPosition = Position.create(tokeniser.line, tokeniser.character - key.length - keyQuoted)
 			const nameRange: Range = Range.create(startPosition, Position.create(tokeniser.line, tokeniser.character - keyQuoted))
-
-			if (VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
-				throw new UnexpectedTokenError(currentToken, "key", nameRange)
-			}
 
 			nextToken = tokeniser.next()
 
