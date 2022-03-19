@@ -27,6 +27,7 @@
     "onCommand:vscode-vdf.showReferences",
     "onCommand:vscode-vdf.sortVDF",
     "onCommand:vscode-vdf.VDFToJSON",
+    "onCustomEditor:vscode-vdf.VTFEditor",
     "onLanguage:hudanimations",
     "onLanguage:popfile",
     "onLanguage:vdf"
@@ -120,6 +121,18 @@
         }
       }
     },
+    "customEditors": [
+      {
+        "viewType": "vscode-vdf.VTFEditor",
+        "displayName": "VTF Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.vtf"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
     "grammars": [
       {
         "language": "hudanimations",

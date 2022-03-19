@@ -1,5 +1,5 @@
 import * as path from "path";
-import { commands, ExtensionContext, TextDocument, workspace } from "vscode";
+import { commands, ExtensionContext, TextDocument, window, workspace } from "vscode";
 import {
 	LanguageClient,
 	LanguageClientOptions,
@@ -14,6 +14,7 @@ import { showReferences } from "./commands/showReferences";
 import { sortVDF } from "./commands/sortVDF";
 import { VDFToJSON } from "./commands/VDFToJSON";
 import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider";
+import { VTFEditor } from "./VTF/VTFEditor";
 
 const clientsInfo = {
 	hudanimations: {
@@ -51,6 +52,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// VPK Protocol
+
 	workspace.registerTextDocumentContentProvider("vpk", new VPKTextDocumentContentProvider(workspace))
 
 	// Language Server
@@ -99,6 +101,10 @@ export function activate(context: ExtensionContext): void {
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)
 	workspace.onDidOpenTextDocument(onDidOpenTextDocument)
+
+	// Custom Editors
+
+	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
 }
 
 export function deactivate() {
