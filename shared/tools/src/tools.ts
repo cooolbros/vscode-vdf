@@ -54,14 +54,27 @@ export function merge(obj1: any, obj2: any): any {
  * @returns The root of the HUD folder as a file path string (`C:/...`)
  */
 export function getHUDRoot({ uri }: { uri: string }): string | null {
-	let folderPath = fileURLToPath(uri)
-	while (folderPath != `${new URL(folderPath).protocol}\\`) {
-		if (fs.existsSync(`${folderPath}/info.vdf`)) {
+
+	const filePath = (<T extends string>(str: string, search: T): str is `${T}${string}` => str.startsWith(search))(uri, "git:/")
+		? gitUriToFilePath(uri)
+		: fileURLToPath(uri)
+
+	let folderPath = path.dirname(filePath)
+	let folderPathReference = filePath
+
+	while (folderPath != folderPathReference) {
+		if (fs.existsSync(path.join(folderPath, "info.vdf"))) {
 			return folderPath
 		}
 		folderPath = path.dirname(folderPath)
+		folderPathReference = path.dirname(folderPathReference)
 	}
+
 	return null
+}
+
+export function gitUriToFilePath(uri: `git:/${string}`): string {
+	return JSON.parse(new URL(uri).searchParams.keys().next().value)["path"]
 }
 
 /**

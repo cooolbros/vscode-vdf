@@ -17,7 +17,7 @@ import {
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, RangecontainsPosition, RangecontainsRange, VSCodeVDFSettings } from "../../../shared/tools";
+import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, gitUriToFilePath, RangecontainsPosition, RangecontainsRange, VSCodeVDFSettings } from "../../../shared/tools";
 import { VPK } from "../../../shared/tools/dist/VPK";
 import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags";
@@ -631,6 +631,9 @@ connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 	// const teamFortress2Folder = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({ scopeUri: params.textDocument.uri, section: "vscode-vdf" })).teamFortress2Folder
 	const imageProperties = ["image", "teambg_1", "teambg_2", "teambg_3"]
 
+	let folderPath = (<T extends string>(str: string, search: T): str is `${T}${string}` => str.startsWith(search))(params.textDocument.uri, "git:/")
+		? dirname(gitUriToFilePath(params.textDocument.uri))
+		: dirname(params.textDocument.uri)
 
 	let hudRoot: string | null | undefined
 	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): void => {
@@ -639,7 +642,7 @@ connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 			if (_key == "#base" && detail && detailRange) {
 				documentLinks.push({
 					range: detailRange,
-					target: `${dirname(params.textDocument.uri)}/${detail}`
+					target: pathToFileURL(path.join(folderPath, detail)).href
 				})
 			}
 			else if (imageProperties.includes(_key) && detailRange) {
