@@ -2,8 +2,10 @@ import { existsSync, readdirSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { CodeLens, CodeLensParams, ColorInformation, ColorPresentationParams, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, createConnection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection } from "vscode-languageserver/node";
+import { CodeLens, CodeLensParams, ColorInformation, ColorPresentationParams, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, createConnection, Definition, DefinitionParams, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection } from "vscode-languageserver/node";
 import { getCodeLensTitle, getDocumentSymbolsAtPosition, getLineRange, getLocationOfKey, RangecontainsPosition, recursiveDocumentSymbolLookup, VSCodeVDFSettings } from "../../../shared/tools";
+import { Configuration } from "../../../shared/tools/dist/configurationManager";
+import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
 import { VDF } from "../../../shared/VDF";
 import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
@@ -14,6 +16,8 @@ import { format } from "./formatter";
 import robot_gatebot from "./JSON/templates/robot_gatebot.json";
 import robot_giant from "./JSON/templates/robot_giant.json";
 import robot_standard from "./JSON/templates/robot_standard.json";
+import { validate } from "./validator";
+
 
 const autoCompletion = {
 	keys: Object.fromEntries(Object.entries<string[]>(require("./JSON/autocompletion/keys.json")).map(([key, values]) => [key, values.map(value => value.startsWith("~") ? ({ label: value.slice(1), kind: CompletionItemKind.Class }) : ({ label: value, kind: CompletionItemKind.Field }))])),
@@ -27,8 +31,10 @@ const autoCompletion = {
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-
 const documentsSymbols: Record<string, VDFDocumentSymbol[]> = {}
+const configuration = new Configuration(connection)
+
+const sendDiagnostics = _sendDiagnostics(connection, getVDFDocumentSymbols, validate)
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
@@ -71,32 +77,52 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	}
 })
 
+documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
+	configuration.add(e.document.uri)
+	sendDiagnostics(e.document.uri, e.document)
+})
+
 documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): void => {
-	connection.console.log("[documents.onDidChangeContent]")
-	connection.sendDiagnostics({
-		uri: change.document.uri,
-		diagnostics: ((): Diagnostic[] => {
-			try {
-				documentsSymbols[change.document.uri] = getVDFDocumentSymbols(change.document.getText())
-				return []
+
+	const documentConfiguration = configuration.getConfiguration(change.document.uri)
+	if (documentConfiguration == undefined) {
+		return
+	}
+
+	const shouldSendDiagnostics = documentConfiguration.updateDiagnosticsEvent == "type"
+	try {
+		documentsSymbols[change.document.uri] = getVDFDocumentSymbols(change.document.getText())
+		if (shouldSendDiagnostics) {
+			sendDiagnostics(change.document.uri, validate(documentsSymbols[change.document.uri]))
+		}
+	}
+	catch (e: unknown) {
+		if (e instanceof VDFSyntaxError) {
+			if (shouldSendDiagnostics) {
+				sendDiagnostics(change.document.uri, e)
 			}
-			catch (e: unknown) {
-				if (e instanceof VDFSyntaxError) {
-					connection.console.log(`[documents.onDidChangeContent] ${e.toString()}`)
-					return [
-						{
-							severity: DiagnosticSeverity.Error,
-							message: e.message,
-							range: e.range,
-							source: "VDFSyntaxError",
-							code: e.constructor.name,
-						}
-					]
-				}
-				throw e
-			}
-		})()
-	})
+			return
+		}
+		throw e
+	}
+})
+
+documents.onDidSave((e: TextDocumentChangeEvent<TextDocument>) => {
+
+	const documentConfiguration = configuration.getConfiguration(e.document.uri)
+	if (documentConfiguration == undefined) {
+		return
+	}
+
+	if (documentConfiguration.updateDiagnosticsEvent == "save") {
+		sendDiagnostics(e.document.uri, e.document)
+	}
+})
+
+documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
+	connection.console.log(`[documents.onDidClose] ${params.document.uri}`)
+	configuration.remove(params.document.uri)
+	sendDiagnostics(params.document.uri, [])
 })
 
 connection.onCompletion(async (params: CompletionParams): Promise<CompletionList | CompletionItem[] | null> => {
@@ -201,14 +227,6 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 
 	}
 	return null
-})
-
-documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
-	connection.console.log(`[documents.onDidClose] ${params.document.uri}`)
-	connection.sendDiagnostics({
-		uri: params.document.uri,
-		diagnostics: []
-	})
 })
 
 connection.onHover((params: HoverParams): Hover | null => {

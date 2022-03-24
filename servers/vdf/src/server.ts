@@ -13,11 +13,13 @@ import {
 	ColorPresentationParams,
 	Command,
 	CompletionItem, CompletionItemKind, CompletionList, CompletionParams,
-	createConnection, Definition, DefinitionLink, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
+	createConnection, Definition, DefinitionLink, DefinitionParams, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
 import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, gitUriToFilePath, RangecontainsPosition, RangecontainsRange, VSCodeVDFSettings } from "../../../shared/tools";
+import { Configuration } from "../../../shared/tools/dist/configurationManager";
+import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
 import { VPK } from "../../../shared/tools/dist/VPK";
 import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags";
@@ -31,11 +33,12 @@ import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
 import clientscheme from "./JSON/clientscheme.json";
 import { validate } from "./validator";
 
-
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-
 const documentsSymbols: Record<string, VDFDocumentSymbol[]> = {}
+const configuration = new Configuration(connection)
+
+const sendDiagnostics = _sendDiagnostics(connection, getVDFDocumentSymbols, validate)
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
@@ -77,43 +80,52 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	}
 })
 
+documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
+	configuration.add(e.document.uri)
+	sendDiagnostics(e.document.uri, e.document)
+})
+
 documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): void => {
-	connection.sendDiagnostics({
-		uri: change.document.uri,
-		diagnostics: ((): Diagnostic[] => {
-			try {
-				documentsSymbols[change.document.uri] = getVDFDocumentSymbols(change.document.getText())
-				return validate(documentsSymbols[change.document.uri])
+
+	const documentConfiguration = configuration.getConfiguration(change.document.uri)
+	if (documentConfiguration == undefined) {
+		return
+	}
+
+	const shouldSendDiagnostics = documentConfiguration.updateDiagnosticsEvent == "type"
+	try {
+		documentsSymbols[change.document.uri] = getVDFDocumentSymbols(change.document.getText())
+		if (shouldSendDiagnostics) {
+			sendDiagnostics(change.document.uri, validate(documentsSymbols[change.document.uri]))
+		}
+	}
+	catch (e: unknown) {
+		if (e instanceof VDFSyntaxError) {
+			if (shouldSendDiagnostics) {
+				sendDiagnostics(change.document.uri, e)
 			}
-			catch (e: unknown) {
-				if (e instanceof VDFSyntaxError) {
-					connection.console.log(`[documents.onDidChangeContent] ${e.toString()}`)
-					return [
-						{
-							severity: DiagnosticSeverity.Error,
-							message: `${e.message}`,
-							range: e.range,
-							source: "VDFSyntaxError",
-							code: e.constructor.name,
-							// tags: [
-							// 	1, // Grey out
-							// 	2 // Underline
-							// ]
-						}
-					]
-				}
-				throw e
-			}
-		})()
-	})
+			return
+		}
+		throw e
+	}
+})
+
+documents.onDidSave((e: TextDocumentChangeEvent<TextDocument>) => {
+
+	const documentConfiguration = configuration.getConfiguration(e.document.uri)
+	if (documentConfiguration == undefined) {
+		return
+	}
+
+	if (documentConfiguration.updateDiagnosticsEvent == "save") {
+		sendDiagnostics(e.document.uri, e.document)
+	}
 })
 
 documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
 	connection.console.log(`[documents.onDidClose] ${params.document.uri}`)
-	connection.sendDiagnostics({
-		uri: params.document.uri,
-		diagnostics: []
-	})
+	configuration.remove(params.document.uri)
+	sendDiagnostics(params.document.uri, [])
 })
 
 connection.onCompletion(async (params: CompletionParams): Promise<CompletionList | CompletionItem[] | null> => {

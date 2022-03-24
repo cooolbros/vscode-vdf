@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from "fs";
 import { pathToFileURL } from "url";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
+import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
 import { animationIsType, Commands, File } from "../../../shared/hudanimations";
 import { getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol } from "../../../shared/hudanimations/dist/getHUDAnimationsDocumentInfo";
 import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, VSCodeVDFSettings } from "../../../shared/tools";
+import { Configuration } from "../../../shared/tools/dist/configurationManager";
+import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
 import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
 import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser";
@@ -15,11 +17,12 @@ import eventFiles from "./JSON/event_files.json";
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-
 const documentHUDAnimations: Record<string, File> = {}
 const documentsSymbols: Record</* Document Uri */ string, HUDAnimationEventDocumentSymbol[]> = {}
-
 const documentEventReferences: Record</* Document Uri */ string, Record</* event */ string, Location[]>> = {}
+const configuration = new Configuration(connection)
+
+const sendDiagnostics = _sendDiagnostics(connection, getHUDAnimationsDocumentInfo, () => [])
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
 	connection.console.log("connection.onInitialize")
@@ -53,41 +56,54 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 	}
 })
 
+documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
+	configuration.add(e.document.uri)
+	sendDiagnostics(e.document.uri, e.document)
+})
+
 documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): void => {
-	connection.sendDiagnostics({
-		uri: change.document.uri,
-		diagnostics: ((): Diagnostic[] => {
-			try {
-				const { animations, symbols } = getHUDAnimationsDocumentInfo(connection, change.document.getText())
-				documentHUDAnimations[change.document.uri] = animations
-				documentsSymbols[change.document.uri] = symbols
-				return []
+
+	const documentConfiguration = configuration.getConfiguration(change.document.uri)
+	if (documentConfiguration == undefined) {
+		return
+	}
+
+	const shouldSendDiagnostics = documentConfiguration.updateDiagnosticsEvent == "type"
+	try {
+		const { animations, symbols } = getHUDAnimationsDocumentInfo(change.document.getText())
+		documentHUDAnimations[change.document.uri] = animations
+		documentsSymbols[change.document.uri] = symbols
+		if (shouldSendDiagnostics) {
+			sendDiagnostics(change.document.uri, [])
+		}
+	}
+	catch (e: unknown) {
+		if (e instanceof VDFSyntaxError) {
+			if (shouldSendDiagnostics) {
+				sendDiagnostics(change.document.uri, e)
 			}
-			catch (e: unknown) {
-				if (e instanceof VDFSyntaxError) {
-					connection.console.log(`[documents.onDidChangeContent] ${e.toString()}`)
-					return [
-						{
-							severity: DiagnosticSeverity.Error,
-							message: e.message,
-							range: e.range,
-							source: "VDFSyntaxError",
-							code: e.constructor.name,
-						}
-					]
-				}
-				throw e
-			}
-		})()
-	})
+			return
+		}
+		throw e
+	}
+})
+
+documents.onDidSave((e: TextDocumentChangeEvent<TextDocument>) => {
+
+	const documentConfiguration = configuration.getConfiguration(e.document.uri)
+	if (documentConfiguration == undefined) {
+		return
+	}
+
+	if (documentConfiguration.updateDiagnosticsEvent == "save") {
+		sendDiagnostics(e.document.uri, e.document)
+	}
 })
 
 documents.onDidClose((params: TextDocumentChangeEvent<TextDocument>) => {
 	connection.console.log(`[documents.onDidClose] ${params.document.uri}`)
-	connection.sendDiagnostics({
-		uri: params.document.uri,
-		diagnostics: []
-	})
+	configuration.remove(params.document.uri)
+	sendDiagnostics(params.document.uri, [])
 })
 
 
@@ -256,7 +272,7 @@ connection.onDefinition((params: DefinitionParams) => {
 				switch (tokens[tokenIndex - 1]?.toLowerCase()) {
 					case "animate":
 						{
-							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(connection, document.getText()).symbols
+							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
 							for (const documentSymbol of documentSymbols) {
 								if (documentSymbol.range.end.line > params.position.line) {
 									const eventName = documentSymbol.name.toLowerCase()
@@ -276,7 +292,7 @@ connection.onDefinition((params: DefinitionParams) => {
 					case "runevent":
 					case "stopevent":
 						{
-							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(connection, document.getText()).symbols
+							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
 							const _token = token.toLowerCase()
 							const eventSymbol = documentSymbols.find(i => i.name.toLowerCase() == _token)
 							if (eventSymbol) {
@@ -301,7 +317,7 @@ connection.onDefinition((params: DefinitionParams) => {
 					default:
 						{
 							if (tokens[tokenIndex - 2]?.toLowerCase() == "runeventchild") {
-								const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(connection, document.getText()).symbols
+								const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
 								const eventSymbol = documentSymbols.find(i => i.name == token)
 								return eventSymbol
 									? { uri: params.textDocument.uri, range: eventSymbol.range }
@@ -339,7 +355,7 @@ connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | u
 	const document = documents.get(params.textDocument.uri)
 	if (document) {
 		try {
-			return getHUDAnimationsDocumentInfo(connection, document.getText()).symbols
+			return getHUDAnimationsDocumentInfo(document.getText()).symbols
 		}
 		catch (e: any) {
 			connection.console.error(e)

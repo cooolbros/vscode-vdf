@@ -8,6 +8,7 @@ import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../VDF/dist/getVDFD
 
 export interface VSCodeVDFSettings {
 	readonly autoCompletionKind: "incremental" | "all"
+	readonly updateDiagnosticsEvent: "type" | "save"
 	readonly hudAnimations: {
 		readonly layoutScope: "event" | "file"
 		readonly extraTabs: number

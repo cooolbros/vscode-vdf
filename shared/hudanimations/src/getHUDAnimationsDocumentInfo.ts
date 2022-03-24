@@ -1,4 +1,4 @@
-import { DocumentSymbol, _Connection } from "vscode-languageserver"
+import { DocumentSymbol } from "vscode-languageserver"
 import { Position, Range, SymbolKind } from "vscode-languageserver-types"
 import { VDFTokeniserOptions } from "../../VDF/dist/models/VDFTokeniserOptions"
 import { parserTools } from "../../VDF/dist/VDFParserTools"
@@ -37,7 +37,7 @@ export interface HUDAnimationStatementDocumentSymbol {
 	eventRange?: Range
 }
 
-export function getHUDAnimationsDocumentInfo(connection: _Connection, str: string, options?: VDFTokeniserOptions): { animations: File, symbols: HUDAnimationEventDocumentSymbol[] } {
+export function getHUDAnimationsDocumentInfo(str: string, options?: VDFTokeniserOptions): { animations: File, symbols: HUDAnimationEventDocumentSymbol[] } {
 
 	const result: ReturnType<typeof getHUDAnimationsDocumentInfo> = {
 		animations: {},

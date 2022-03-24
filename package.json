@@ -118,6 +118,19 @@
           "description": "Path to Team Fortress 2 Folder",
           "type": "string",
           "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+        },
+        "vscode-vdf.updateDiagnosticsEvent": {
+          "description": "Controls when to update file diagnostics",
+          "type": "string",
+          "enum": [
+            "type",
+            "save"
+          ],
+          "enumDescriptions": [
+            "Update file diagnostics in real time.",
+            "Update file diagnostics when the file is saved."
+          ],
+          "default": "type"
         }
       }
     },
