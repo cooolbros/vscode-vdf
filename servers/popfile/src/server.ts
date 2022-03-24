@@ -79,7 +79,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 
 documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
 	configuration.add(e.document.uri)
-	sendDiagnostics(e.document.uri, e.document)
+	documentsSymbols[e.document.uri] = sendDiagnostics(e.document.uri, e.document)!
 })
 
 documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): void => {

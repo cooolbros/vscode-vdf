@@ -58,7 +58,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
 
 documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
 	configuration.add(e.document.uri)
-	sendDiagnostics(e.document.uri, e.document)
+	const { animations, symbols } = sendDiagnostics(e.document.uri, e.document)!
+	documentHUDAnimations[e.document.uri] = animations
+	documentsSymbols[e.document.uri] = symbols
 })
 
 documents.onDidChangeContent((change: TextDocumentChangeEvent<TextDocument>): void => {
