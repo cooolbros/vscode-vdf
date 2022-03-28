@@ -9,11 +9,10 @@
 		"~Action"
 	],
 	"itemattributes": [
-		"Blast radius decreased",
-		"Reload time decreased",
 		"airblast pushback scale",
 		"arrow mastery",
 		"attack projectiles",
+		"Blast radius decreased",
 		"bullets per shot bonus",
 		"clip size bonus",
 		"clip size penalty",
@@ -28,9 +27,11 @@
 		"fire rate bonus",
 		"fire rate penalty",
 		"flame life bonus",
+		"ItemName",
 		"multiple sentries",
 		"projectile penetration",
 		"projectile spread angle penalty",
+		"Reload time decreased",
 		"scattergun knockback mult",
 		"uber duration bonus",
 		"ubercharge rate bonus",
@@ -39,9 +40,21 @@
 	"mission": [
 		"BeginAtWave",
 		"CooldownTime",
+		"DesiredCount",
 		"InitialCooldown",
 		"Objective",
 		"RunForThisManyWaves"
+	],
+	"population": [
+		"~Mission",
+		"~Templates",
+		"AddSentryBusterWhenDamageDealtExceeds",
+		"AddSentryBusterWhenKillCountExceeds",
+		"Advanced",
+		"CanBotsAttackWhileInSpawnRoom",
+		"IsEndless",
+		"RespawnWaveTime",
+		"StartingCurrency"
 	],
 	"randomchoice": [],
 	"squad": [],
@@ -61,6 +74,8 @@
 	"tfbot": [
 		"Class",
 		"Health",
+		"Item",
+		"MaxVisionRange",
 		"Name",
 		"Skill",
 		"Template"
@@ -84,12 +99,16 @@
 		"StartingCurrency"
 	],
 	"wavespawn": [
+		"FirstSpawnOutput",
 		"MaxActive",
 		"SpawnCount",
+		"Support",
 		"TotalCount",
 		"TotalCurrency",
 		"WaitBeforeStarting",
 		"WaitBetweenSpawns",
+		"WaitForAllDead",
+		"WaitForAllSpawned",
 		"Where"
 	]
 }

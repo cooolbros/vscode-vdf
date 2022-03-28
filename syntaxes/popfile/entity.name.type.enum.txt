@@ -1,9 +1,0 @@
-Attributes
-BehaviorModifiers
-Checkpoint
-Class
-ClassIcon
-Objective
-Skill
-WeaponRestrictions
-Where
