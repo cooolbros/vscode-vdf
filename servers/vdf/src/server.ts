@@ -640,11 +640,10 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 
 	const documentLinks: DocumentLink[] = []
-	// const teamFortress2Folder = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({ scopeUri: params.textDocument.uri, section: "vscode-vdf" })).teamFortress2Folder
 	const imageProperties = ["image", "teambg_1", "teambg_2", "teambg_3"]
 
 	let folderPath = (<T extends string>(str: string, search: T): str is `${T}${string}` => str.startsWith(search))(params.textDocument.uri, "git:/")
-		? dirname(gitUriToFilePath(params.textDocument.uri))
+		? dirname(pathToFileURL(gitUriToFilePath(params.textDocument.uri)).href)
 		: dirname(params.textDocument.uri)
 
 	let hudRoot: string | null | undefined
@@ -654,7 +653,7 @@ connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 			if (_key == "#base" && detail && detailRange) {
 				documentLinks.push({
 					range: detailRange,
-					target: pathToFileURL(path.join(folderPath, detail)).href
+					target: `${folderPath}/${detail}`
 				})
 			}
 			else if (imageProperties.includes(_key) && detailRange) {
