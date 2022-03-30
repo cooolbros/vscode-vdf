@@ -3,14 +3,14 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { EndOfLine, Position, TextEditor, TextEditorEdit, Uri } from "vscode";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
+import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols, VDFPosition } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 
 const TFBotSquadRandomChoice = ["TFBot", "Squad", "RandomChoice"].map(i => i.toLowerCase())
 
 export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit): void {
 	const documentSymbols = getVDFDocumentSymbols(editor.document.getText())
 
-	type VDFDocumentSymbolChildren = VDFDocumentSymbol & { children: VDFDocumentSymbol[] }
+	type VDFDocumentSymbolChildren = VDFDocumentSymbol & { children: VDFDocumentSymbols }
 	type VDFDocumentSymbolDetail = VDFDocumentSymbol & { detail: string }
 	const VDFDocumentSymbolHasChildren = (documentSymbol: VDFDocumentSymbol): documentSymbol is VDFDocumentSymbolChildren => documentSymbol.children != undefined
 	const VDFDocumentSymbolHasDetail = (documentSymbol: VDFDocumentSymbol): documentSymbol is VDFDocumentSymbolChildren => documentSymbol.detail != undefined
@@ -44,7 +44,7 @@ export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit)
 		.filter((documentSymbol): documentSymbol is VDFDocumentSymbolDetail => documentSymbol.name == "#base" && VDFDocumentSymbolHasDetail(documentSymbol))
 		.map((documentSymbol) => documentSymbol.detail)
 
-	const externalTemplates: (VDFDocumentSymbol & { text: string })[] = []
+	const externalTemplates: [VDFDocumentSymbol, string][] = []
 
 	for (const baseFile of baseFiles) {
 		const baseFileUri = Uri.parse(path.join(dirname(editor.document.uri.toString(true)), baseFile))
@@ -62,12 +62,9 @@ export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit)
 			for (const baseFileTemplateDocumentSymbol of baseFileTemplatesDocumentSymbols) {
 				const templateName = baseFileTemplateDocumentSymbol.name.toLowerCase()
 				if (referencedTemplatesNotInFile.includes(templateName)) {
-					const existingTemplateDocumentSymbol = externalTemplates.find(template => template.name == templateName)
+					const existingTemplateDocumentSymbol = externalTemplates.find(template => template[0].name == templateName)
 					if (!existingTemplateDocumentSymbol) {
-						externalTemplates.push({
-							...baseFileTemplateDocumentSymbol,
-							text: baseFileTextDocument.getText(baseFileTemplateDocumentSymbol.range)
-						})
+						externalTemplates.push([baseFileTemplateDocumentSymbol, baseFileTextDocument.getText(baseFileTemplateDocumentSymbol.range)])
 					}
 				}
 			}
@@ -87,15 +84,15 @@ export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit)
 	const eol = editor.document.eol == EndOfLine.CRLF ? "\r\n" : "\n"
 	let text
 	if (insertPosition != null) {
-		text = `${eol}${externalTemplates.map(template => `\t\t${template.text.split(/\r?\n/).join(eol)}`).join(eol.repeat(2))}${eol}\t`
+		text = `${eol}${externalTemplates.map(template => `\t\t${template[1].split(/\r?\n/).join(eol)}`).join(eol.repeat(2))}${eol}\t`
 	}
 	else {
-		text = `\tTemplates${eol}\t{${eol}${externalTemplates.map(template => `\t\t${template.text.split(/\r?\n/).join(eol)}`).join(eol.repeat(2))}${eol}\t}${eol.repeat(2)}`
+		text = `\tTemplates${eol}\t{${eol}${externalTemplates.map(template => `\t\t${template[1].split(/\r?\n/).join(eol)}`).join(eol.repeat(2))}${eol}\t}${eol.repeat(2)}`
 		insertPosition = (() => {
 			const WaveMission = ["Wave", "Mission"].map(i => i.toLowerCase())
 			// Insert Templates before the first wave
 			const position = waveSchedule.find(i => WaveMission.includes(i.name.toLowerCase()))!.range.start // There must be at least 1 wave for templates to be referenced, otherwise we would have exited early
-			return new Position(position.line, position.character)
+			return new VDFPosition(position.line, position.character, position.position)
 		})()
 	}
 
