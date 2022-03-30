@@ -476,10 +476,10 @@ connection.onCodeAction((params: CodeActionParams) => {
 	try {
 		const iterateObject = (documentSymbols: VDFDocumentSymbol[], parentName: string | null): (Command | CodeAction)[] => {
 			const codeActions: (Command | CodeAction)[] = []
-			for (const { name, detail, detailRange, children } of documentSymbols) {
+			for (const { key, detail, detailRange, children } of documentSymbols) {
 				if (detail && detailRange && RangecontainsRange(detailRange, params.range)) {
 
-					if (name.toLowerCase() == "#base") {
+					if (key.toLowerCase() == "#base") {
 
 						const folder = path.dirname(fileURLToPath(params.textDocument.uri))
 
@@ -509,7 +509,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 						}
 					}
 
-					if (name.toLowerCase() == "image") {
+					if (key.toLowerCase() == "image") {
 						const oldImagePath = path.normalize(detail)
 						const newPath = path.relative(`materials${path.sep}vgui`, path.normalize(`materials${path.sep}vgui${path.sep}${detail}`))
 						if (oldImagePath != newPath) {
@@ -520,7 +520,6 @@ connection.onCodeAction((params: CodeActionParams) => {
 									changes: {
 										[`${params.textDocument.uri}`]: [
 											{
-
 												newText: newBasePath,
 												range: detailRange
 											}
@@ -531,7 +530,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 						}
 					}
 
-					if (name.toLowerCase() == "fieldname") {
+					if (key.toLowerCase() == "fieldname") {
 						if (parentName != null && detail.toLowerCase() != parentName.toLowerCase()) {
 							codeActions.push({
 								title: `Change fieldName to "${parentName}"`,
@@ -555,7 +554,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 				}
 
 				if (children) {
-					const result = iterateObject(children, name)
+					const result = iterateObject(children, key)
 					if (result.length > 0) {
 						return result
 					}
