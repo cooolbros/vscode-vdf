@@ -663,6 +663,16 @@ connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 					target: hudVMT != null && existsSync(hudVMT) ? pathToFileURL(hudVMT).href : `vpk:///materials/vgui/${detail}.vmt?vpk=tf/tf2_misc_dir.vpk`
 				})
 			}
+			else if (_key == "file" && detail && detailRange) {
+				hudRoot ??= getHUDRoot(params.textDocument)
+				if (hudRoot) {
+					const file = join(hudRoot, detail)
+					documentLinks.push({
+						range: detailRange,
+						target: existsSync(file) ? pathToFileURL(file).href : `vpk:///${detail}?vpk=tf/tf2_misc_dir.vpk`
+					})
+				}
+			}
 			else if (children) {
 				iterateObject(children)
 			}
