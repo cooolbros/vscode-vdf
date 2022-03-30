@@ -3,7 +3,7 @@
 	"name": "Valve KeyValues",
 	"patterns": [
 		{
-			"match": "^(\\s?\"?#base\"?)\\s+(\".*\")$",
+			"match": "(\"#base\"|#base)\\s+(\".*?\"|\\S+)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control"
@@ -15,7 +15,7 @@
 		},
 		{
 			"name": "comment",
-			"match": "//.*"
+			"match": "//.*$"
 		},
 		{
 			"name": "constant.character",
@@ -23,7 +23,7 @@
 		},
 		{
 			"name": "variable",
-			"match": "(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
+			"match": "(\".*?\"|\\w+)\\s+(\".*?\"|\\w+)",
 			"captures": {
 				"1": {
 					"name": "variable"
@@ -35,7 +35,7 @@
 		},
 		{
 			"name": "variable",
-			"match": "(\".*\"|\\w+)"
+			"match": "(\".*?\"|\\b\\w+\\b)"
 		}
 	],
 	"repository": {},
