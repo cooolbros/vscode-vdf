@@ -53,7 +53,7 @@ export function activate(context: ExtensionContext): void {
 
 	// VPK Protocol
 
-	workspace.registerTextDocumentContentProvider("vpk", new VPKTextDocumentContentProvider(workspace))
+	context.subscriptions.push(workspace.registerTextDocumentContentProvider("vpk", new VPKTextDocumentContentProvider(workspace)))
 
 	// Language Server
 
