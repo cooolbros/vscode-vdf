@@ -8,4 +8,7 @@
 .vscode/**
 **/*.ts
 **/tsconfig.json
+**/tsconfig.tsbuildinfo
 client/node_modules/**
+src/**/*.json
+syntaxes/generate_popfile.tmLanguage.py
