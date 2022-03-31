@@ -27,11 +27,8 @@ export class VDFRange implements Range {
 		this.end = end
 	}
 
-	contains(value: VDFRange | VDFPosition): boolean {
-		if (value instanceof VDFRange) {
-			return this.start.isAfter(value.start) && this.end.isAfter(value.end)
-		}
-		return this.start.position < value.position && this.end.position > value.position
+	contains(value: Position): boolean {
+		return this.start.isBefore(value) && this.end.isAfter(value)
 	}
 }
 
@@ -39,21 +36,31 @@ export class VDFPosition implements Position {
 
 	line: number;
 	character: number;
-	position: number;
 
-	constructor(line: number, character: number, position: number) {
+	constructor(line: number, character: number) {
 		Position.create(line, character)
 		this.line = line
 		this.character = character
-		this.position = position
 	}
 
-	isBefore(value: VDFPosition): boolean {
-		return this.position < value.position
+	isBefore(value: Position): boolean {
+		if (this.line < value.line) {
+			return true
+		}
+		if (value.line < this.line) {
+			return false
+		}
+		return this.character < value.character
 	}
 
-	isAfter(value: VDFPosition): boolean {
-		return this.position > value.position
+	isAfter(value: Position): boolean {
+		if (this.line < value.line) {
+			return false;
+		}
+		if (value.line < this.line) {
+			return true;
+		}
+		return this.character > value.character;
 	}
 }
 
@@ -157,8 +164,8 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			if (currentToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
 				throw new UnexpectedTokenError(currentToken, "key", Range.create(tokeniser.line, tokeniser.character - 1, tokeniser.line, tokeniser.character))
 			}
-			const startPosition: VDFPosition = new VDFPosition(tokeniser.line, tokeniser.character - key.length - keyQuoted, tokeniser.position)
-			const nameRange: VDFRange = new VDFRange(startPosition, new VDFPosition(tokeniser.line, tokeniser.character - keyQuoted, tokeniser.position))
+			const startPosition: VDFPosition = new VDFPosition(tokeniser.line, tokeniser.character - key.length - keyQuoted)
+			const nameRange: VDFRange = new VDFRange(startPosition, new VDFPosition(tokeniser.line, tokeniser.character - keyQuoted))
 
 			nextToken = tokeniser.next()
 
@@ -181,7 +188,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				else {
 					// Primitive
 					[detail, detailQuoted] = parserTools.convert.token(value)
-					detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted, tokeniser.position), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted, tokeniser.position))
+					detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted))
 
 					if (value == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(detail)) {
 						throw new UnexpectedTokenError(value, "value", detailRange)
@@ -196,7 +203,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			}
 			else {
 				[detail, detailQuoted] = parserTools.convert.token(nextToken)
-				detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted, tokeniser.position), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted, tokeniser.position))
+				detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted))
 				if (nextToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(nextToken)) {
 					throw new UnexpectedTokenError(detail, "value", detailRange)
 				}
@@ -209,7 +216,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				}
 			}
 
-			const endPosition = new VDFPosition(tokeniser.line, tokeniser.character, tokeniser.position)
+			const endPosition = new VDFPosition(tokeniser.line, tokeniser.character)
 			const selectionRange = new VDFRange(startPosition, endPosition)
 
 			documentSymbols.push(new VDFDocumentSymbol(

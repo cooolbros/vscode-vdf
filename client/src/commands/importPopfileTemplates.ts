@@ -92,7 +92,7 @@ export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit)
 			const WaveMission = ["Wave", "Mission"].map(i => i.toLowerCase())
 			// Insert Templates before the first wave
 			const position = waveSchedule.find(i => WaveMission.includes(i.name.toLowerCase()))!.range.start // There must be at least 1 wave for templates to be referenced, otherwise we would have exited early
-			return new VDFPosition(position.line, position.character, position.position)
+			return new VDFPosition(position.line, position.character)
 		})()
 	}
 
