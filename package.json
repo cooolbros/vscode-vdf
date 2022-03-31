@@ -22,6 +22,7 @@
     "vscode": "^1.63.0"
   },
   "activationEvents": [
+    "onCommand:vscode-vdf.copyKeyValuePath",
     "onCommand:vscode-vdf.formatVDF",
     "onCommand:vscode-vdf.JSONToVDF",
     "onCommand:vscode-vdf.showReferences",
@@ -35,6 +36,11 @@
   "main": "./client/dist/extension.js",
   "contributes": {
     "commands": [
+      {
+        "category": "VDF",
+        "title": "Copy Key/Value Path To Clipboard",
+        "command": "vscode-vdf.copyKeyValuePath"
+      },
       {
         "category": "VPK",
         "title": "Extract file to workspace",
