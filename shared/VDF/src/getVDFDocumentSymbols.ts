@@ -14,6 +14,35 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 			callback(documentSymbol)
 		}
 	}
+
+	findAll(callback: (value: VDFDocumentSymbol) => boolean): { result: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
+		const documentSymbolsPath: VDFDocumentSymbol[] = []
+		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findAll"]> => {
+			for (const documentSymbol of documentSymbols) {
+				if (documentSymbol.children) {
+					documentSymbolsPath.push(documentSymbol)
+					const result = iterateDocumentSymbols(documentSymbol.children)
+					if (result != undefined) {
+						return result
+					}
+					documentSymbolsPath.pop()
+				}
+
+				if (callback(documentSymbol)) {
+					return {
+						result: documentSymbol,
+						path: documentSymbolsPath
+					}
+				}
+			}
+		}
+
+		return iterateDocumentSymbols(this)
+	}
+
+	getDocumentSymbolAtPosition(position: Position): ReturnType<VDFDocumentSymbols["findAll"]> {
+		return this.findAll(value => value.range.contains(position))
+	}
 }
 
 export class VDFRange implements Range {

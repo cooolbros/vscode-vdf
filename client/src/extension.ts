@@ -6,6 +6,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
+import { copyKeyValuePath } from "./commands/copyKeyValuePath";
 import { extractVPKFileToWorkspace } from "./commands/extractVPKFileToWorkspace";
 import { formatVDF } from "./commands/formatVDF";
 import { importPopfileTemplates } from "./commands/importPopfileTemplates";
@@ -43,6 +44,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Commands
 
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", formatVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
