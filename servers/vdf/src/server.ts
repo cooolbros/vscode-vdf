@@ -1,5 +1,4 @@
 import { existsSync, readFileSync } from "fs";
-import { tmpdir } from "os";
 import * as path from "path";
 import { dirname, join, normalize } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
@@ -17,15 +16,14 @@ import {
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
 } from "vscode-languageserver/node";
-import { clientschemeValues, getCodeLensTitle, getDocumentSymbolsAtPosition, getHUDRoot, getLocationOfKey, gitUriToFilePath, RangecontainsPosition, RangecontainsRange, VSCodeVDFSettings } from "../../../shared/tools";
+import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, gitUriToFilePath, VSCodeVDFSettings } from "../../../shared/tools";
 import { Configuration } from "../../../shared/tools/dist/configurationManager";
 import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
 import { VPK } from "../../../shared/tools/dist/VPK";
-import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
+import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags";
 import { VDF } from "../../../shared/VDF/dist/VDF";
 import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
-import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser";
 import { CompletionFiles } from "./files_completion";
 import { format } from "./formatter";
 import { hudTypes } from "./HUD/keys";
@@ -35,7 +33,7 @@ import { validate } from "./validator";
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-const documentsSymbols: Record<string, VDFDocumentSymbol[]> = {}
+const documentsSymbols: Record<string, VDFDocumentSymbols> = {}
 const configuration = new Configuration(connection)
 
 const sendDiagnostics = _sendDiagnostics(connection, getVDFDocumentSymbols, validate)
@@ -140,7 +138,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 			if (tokens.length <= 1) {
 				// Suggest key
 				// connection.console.log("Suggesting a key...")
-				const documentSymbols = getDocumentSymbolsAtPosition(documentsSymbols[document.uri], params.position)
+				const documentSymbols = documentsSymbols[document.uri].getDocumentSymbolAtPosition(params.position)?.result.children
 				if (documentSymbols) {
 					let controlName: string = ""
 					const properties: string[] = []
@@ -250,29 +248,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 })
 
 connection.onHover((params: HoverParams): Hover | undefined => {
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		const line = document.getText({
-			start: { line: params.position.line, character: 0 },
-			end: { line: params.position.line, character: Infinity },
-		})
-		try {
-			const entries = Object.entries(VDF.parse(line))
-			if (entries.length) {
-				const [key, value] = entries[0]
-				return {
-					contents: {
-						kind: "markdown",
-						language: "vdf",
-						value: `"${key}"\t\t"${value}"`
-					}
-				}
-			}
-		}
-		catch (e: any) {
-			return undefined
-		}
-	}
+	return;
 })
 
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | DefinitionLink[] | null> => {
@@ -431,41 +407,36 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 })
 
 connection.onReferences((params: ReferenceParams): Location[] | null => {
-	const document = documents.get(params.textDocument.uri)
-	if (document) {
-		const filePath = `${tmpdir()}/vscode-vdf-show-reference-position.json`
-		if (existsSync(filePath)) {
-			connection.console.log(`Found ${filePath}`)
-			params.position = JSON.parse(readFileSync(filePath, "utf-8"))
-		}
 
-		const line = document.getText({ start: Position.create(params.position.line, 0), end: Position.create(params.position.line, Infinity) })
+	const documentSymbols = documentsSymbols[params.textDocument.uri]
 
-		// Assume there is only one token in the element declaration line
-		const token = new VDFTokeniser(line).next().toLowerCase()
-
-		const locations: Location[] = []
-
-		const addSymbols = (documentSymbols: VDFDocumentSymbol[]) => {
-			for (const documentSymbol of documentSymbols) {
-				if (documentSymbol.name == "pin_to_sibling" && documentSymbol.detail?.toLowerCase() == token && documentSymbol.detailRange) {
-					locations.push({
-						uri: params.textDocument.uri,
-						range: documentSymbol.detailRange
-					})
-				}
-				else if (documentSymbol.children) {
-					addSymbols(documentSymbol.children)
-				}
-			}
-		}
-
-		addSymbols(documentsSymbols[params.textDocument.uri])
-
-		return locations
-
+	if (!documentSymbols) {
+		return null
 	}
-	return null
+
+	const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(params.position)
+
+	if (!documentSymbol) {
+		return null
+	}
+
+	const key = documentSymbol.result.key.toLowerCase()
+	const locations: Location[] = []
+
+	documentSymbols.forAll((documentSymbol) => {
+		if (documentSymbol.children) {
+			return
+		}
+
+		if (documentSymbol.key.toLowerCase() == "pin_to_sibling" && documentSymbol.detail!.toLowerCase() == key) {
+			locations.push({
+				uri: params.textDocument.uri,
+				range: documentSymbol.detailRange!
+			})
+		}
+	})
+
+	return locations
 })
 
 connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] => {
@@ -477,7 +448,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 		const iterateObject = (documentSymbols: VDFDocumentSymbol[], parentName: string | null): (Command | CodeAction)[] => {
 			const codeActions: (Command | CodeAction)[] = []
 			for (const { key, detail, detailRange, children } of documentSymbols) {
-				if (detail && detailRange && RangecontainsRange(detailRange, params.range)) {
+				if (detail && detailRange && detailRange.contains(params.range)) {
 
 					if (key.toLowerCase() == "#base") {
 
@@ -682,31 +653,35 @@ connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 	return documentLinks
 })
 
-connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] => {
+connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] | null => {
+
+	const documentSymbols = documentsSymbols[params.textDocument.uri]
+
+	if (!documentSymbols) {
+		return null
+	}
+
 	const colourPattern: RegExp = /\d+\s+\d+\s+\d+\s+\d+/
 	const colours: ColorInformation[] = []
-	const addColours = (documentSymbols: VDFDocumentSymbol[]) => {
-		for (const { children, detail, detailRange } of documentSymbols) {
-			if (children != undefined) {
-				addColours(children)
-			}
-			else if (detail && detailRange) {
-				if (colourPattern.test(detail)) {
-					const colour = detail.split(/\s+/)
-					colours.push({
-						color: {
-							red: parseInt(colour[0]) / 255,
-							green: parseInt(colour[1]) / 255,
-							blue: parseInt(colour[2]) / 255,
-							alpha: parseInt(colour[3]) / 255
-						},
-						range: detailRange
-					})
-				}
-			}
+
+	documentSymbols.forAll((documentSymbol) => {
+		if (documentSymbol.children) {
+			return
 		}
-	}
-	addColours(documentsSymbols[params.textDocument.uri] ?? [])
+
+		if (colourPattern.test(documentSymbol.detail!)) {
+			const colour = documentSymbol.detail!.split(/\s+/)
+			colours.push({
+				color: {
+					red: parseInt(colour[0]) / 255,
+					green: parseInt(colour[1]) / 255,
+					blue: parseInt(colour[2]) / 255,
+					alpha: parseInt(colour[3]) / 255
+				},
+				range: documentSymbol.detailRange!
+			})
+		}
+	})
 
 	return colours
 })
@@ -749,88 +724,82 @@ let oldName: string
 
 connection.onPrepareRename((params: PrepareRenameParams) => {
 
-	// Don't allow rename if there are no document symbols
-	if (!documentsSymbols[params.textDocument.uri]) {
+	const documentSymbols = documentsSymbols[params.textDocument.uri]
+
+	if (!documentSymbols) {
 		return null
 	}
 
-	const iterateObject = (documentSymbols: VDFDocumentSymbol[]): Range | null => {
-		for (const { name, nameRange, children, detail, detailRange } of documentSymbols) {
-			if (RangecontainsPosition(nameRange, params.position)) {
-				if (children) {
-					// Permit renaming objects
-					oldName = name
-					return nameRange
-				}
-			}
+	const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(params.position)?.result
 
-			const key = name.split(VDF.OSTagDelimeter)[0].toLowerCase()
-			if ((key == "fieldname" || key == "pin_to_sibling") && detail && detailRange) {
-				if (RangecontainsPosition(detailRange, params.position)) {
-					// Also permit renaming by reference to object
-					oldName = detail
-					return detailRange
-				}
-			}
-			else if (children) {
-				const range = iterateObject(children)
-				if (range != null) {
-					return range
-				}
-			}
-		}
+	if (!documentSymbol) {
 		return null
 	}
-	return iterateObject(documentsSymbols[params.textDocument.uri])
+
+	// Permit renaming objects
+	if (documentSymbol.children && documentSymbol.nameRange.contains(params.position)) {
+		oldName = documentSymbol.key
+		return documentSymbol.nameRange
+	}
+
+	// Also permit renaming by reference to object
+	const key = documentSymbol.key.toLowerCase()
+	if ((key == "fieldname" || key == "pin_to_sibling") && documentSymbol.detailRange?.contains(params.position)) {
+		oldName = documentSymbol.detail!
+		return documentSymbol.detailRange!
+	}
 })
 
 connection.onRenameRequest((params: RenameParams) => {
 	if (oldName == undefined) {
-		throw new Error(`oldName is undefined`)
+		throw new Error("oldName is undefined")
 	}
+
 	const oldNameLowerCase = oldName.toLowerCase()
 
 	const changes: { [uri: string]: TextEdit[] } = {}
-	const iterateObject = (documentUri: string, documentSymbols: VDFDocumentSymbol[]): void => {
-		for (const documentSymbol of documentSymbols) {
-			if (documentSymbol.name.split(VDF.OSTagDelimeter)[0].toLowerCase() == oldNameLowerCase) {
+
+	const documentSymbols = documentsSymbols[params.textDocument.uri]
+
+	const dir = dirname(params.textDocument.uri)
+	const files: [string, VDFDocumentSymbols][] = [
+		[params.textDocument.uri, documentSymbols],
+		...documentSymbols
+			.filter((documentSymbol): documentSymbol is VDFDocumentSymbol & { detail: string } => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined)
+			.map((documentSymbol): typeof files[number] => {
+				const baseFileUri: string = join(dir, documentSymbol.detail)
+				try {
+					return [
+						baseFileUri,
+						documentsSymbols.hasOwnProperty(baseFileUri)
+							? documentsSymbols[baseFileUri]
+							: getVDFDocumentSymbols(readFileSync(fileURLToPath(baseFileUri), "utf-8"))
+					]
+				}
+				catch (e: any) {
+					throw new Error(`Unable to parse file "${fileURLToPath(baseFileUri)}" (${e.message}). Cannot rename "${oldName}"`)
+				}
+			})
+	]
+
+	for (const [documentUri, documentSymbols] of files) {
+		changes[documentUri] ??= []
+		documentSymbols.forAll((documentSymbol) => {
+			if (documentSymbol.key.toLowerCase() == oldNameLowerCase) {
 				changes[documentUri].push({
 					newText: params.newName,
 					range: documentSymbol.nameRange
 				})
 			}
 
-			if (documentSymbol.detail && documentSymbol.detailRange) {
-				const keyKey = documentSymbol.key.split(VDF.OSTagDelimeter)[0].toLowerCase()
-				if ((keyKey == "fieldname" || keyKey == "pin_to_sibling") && documentSymbol.detail.toLowerCase() == oldNameLowerCase) {
-					changes[documentUri].push({
-						newText: params.newName,
-						range: documentSymbol.detailRange
-					})
-				}
+			const key = documentSymbol.key.toLowerCase()
+			if ((key == "fieldname" || key == "pin_to_sibling") && documentSymbol.detail?.toLowerCase() == oldNameLowerCase) {
+				changes[documentUri].push({
+					newText: params.newName,
+					range: documentSymbol.detailRange!
+				})
 			}
-			else if (documentSymbol.children) {
-				iterateObject(documentUri, documentSymbol.children)
-			}
-		}
-	}
-
-	changes[params.textDocument.uri] = []
-	iterateObject(params.textDocument.uri, documentsSymbols[params.textDocument.uri])
-
-	const dir = dirname(params.textDocument.uri)
-	for (const baseFile of documentsSymbols[params.textDocument.uri].filter((documentSymbol): documentSymbol is VDFDocumentSymbol & { detail: string } => documentSymbol.name.toLowerCase() == "#base" && documentSymbol.detail != undefined)) {
-		const baseFileUri = `${dir}/${baseFile.detail}`
-		try {
-			const baseDocumentSymbols = documentsSymbols.hasOwnProperty(baseFileUri)
-				? documentsSymbols[baseFileUri]
-				: getVDFDocumentSymbols(readFileSync(fileURLToPath(baseFileUri), "utf-8"))
-			changes[baseFileUri] = []
-			iterateObject(baseFileUri, baseDocumentSymbols)
-		}
-		catch (e: any) {
-			throw new Error(`Unable to parse file "${fileURLToPath(baseFileUri)}" (${e.message}). Cannot rename "${oldName}"`)
-		}
+		})
 	}
 
 	return { changes }

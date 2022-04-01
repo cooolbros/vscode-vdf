@@ -2,7 +2,7 @@ import fs, { existsSync } from "fs"
 import path from "path"
 import { fileURLToPath, pathToFileURL, URL } from "url"
 import { TextDocument } from "vscode-languageserver-textdocument"
-import { CompletionItem, CompletionItemKind, Definition, Position, Range } from "vscode-languageserver/node"
+import { CompletionItem, CompletionItemKind, Definition, Range } from "vscode-languageserver/node"
 import { VDF } from "../../VDF"
 import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../VDF/dist/getVDFDocumentSymbols"
 
@@ -154,35 +154,6 @@ export function getLocationOfKey(uri: string, str: string | VDFDocumentSymbol[],
 	return searchFile(uri, str)
 }
 
-/**
- *
- * @param str Document contents or VDF Document Symbols (VDFDocumentSymbol[])
- * @param position Position to document symbol at
- * @returns
- */
-export function getDocumentSymbolsAtPosition(str: string | VDFDocumentSymbol[], position: Position): VDFDocumentSymbol[] | null {
-	const elementStack: VDFDocumentSymbol[] = []
-	const search = (documentSymbols: VDFDocumentSymbol[]): VDFDocumentSymbol[] | null => {
-		for (const documentSymbol of documentSymbols) {
-			elementStack.push(documentSymbol)
-			if (documentSymbol.children) {
-				const result = search(documentSymbol.children)
-				if (result != null) {
-					return result
-				}
-			}
-			if (RangecontainsPosition(documentSymbol.range, position)) {
-				return elementStack.reverse()
-			}
-			elementStack.pop()
-		}
-		return null
-	}
-	str = typeof str == "string" ? getVDFDocumentSymbols(str) : str
-	return search(str)
-}
-
-
 const sectionIcons = {
 	"Colors": CompletionItemKind.Color,
 	"Borders": CompletionItemKind.Snippet,
@@ -258,23 +229,7 @@ export function getCodeLensTitle(references: number): string {
 	return `${references} reference${references == 1 ? "" : "s"}`
 }
 
-export function RangecontainsPosition(range: Range, position: Position): boolean {
-	if (range.start.line > position.line || range.end.line < position.line) {
-		return false
-	}
-	// Disabled because documents.onDidChangeContent takes a while to catch up so connection.onCompletion uses old layout when you enter newlines
-	// if (range.start.line == position.line && position.character < range.start.character) {
-	// 	return false
-	// }
-	// if (range.end.line == position.line && position.character > range.end.character) {
-	// 	return false
-	// }
-	return true
-}
 
-export function RangecontainsRange(range: Range, { start, end }: Range): boolean {
-	return RangecontainsPosition(range, start) && RangecontainsPosition(range, end)
-}
 
 export function getLineRange(line: number): Range {
 	return {
@@ -287,22 +242,4 @@ export function getLineRange(line: number): Range {
 			character: Infinity
 		}
 	}
-}
-
-export function recursiveDocumentSymbolLookup(documentSymbols: VDFDocumentSymbol[], callback: (documentSymbol: VDFDocumentSymbol) => boolean): VDFDocumentSymbol | null {
-	const search = (_documentSymbols: VDFDocumentSymbol[]): ReturnType<typeof recursiveDocumentSymbolLookup> => {
-		for (const documentSymbol of _documentSymbols) {
-			if (documentSymbol.children) {
-				const result = search(documentSymbol.children)
-				if (result != null) {
-					return result
-				}
-			}
-			if (callback(documentSymbol)) {
-				return documentSymbol
-			}
-		}
-		return null
-	}
-	return search(documentSymbols)
 }

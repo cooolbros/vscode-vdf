@@ -6,7 +6,7 @@ import { VDFTokeniser } from "./VDFTokeniser";
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 
-	forAll(callback: (value: VDFDocumentSymbol) => void) {
+	forAll(callback: (documentSymbol: VDFDocumentSymbol) => void) {
 		for (const documentSymbol of this) {
 			if (documentSymbol.children) {
 				documentSymbol.children.forAll(callback)
@@ -56,7 +56,10 @@ export class VDFRange implements Range {
 		this.end = end
 	}
 
-	contains(value: Position): boolean {
+	contains(value: Range | Position): boolean {
+		if (Range.is(value)) {
+			return this.start.isBefore(value.start) && this.end.isAfter(value.end)
+		}
 		return this.start.isBefore(value) && this.end.isAfter(value)
 	}
 }
