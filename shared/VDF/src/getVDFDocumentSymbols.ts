@@ -15,7 +15,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		}
 	}
 
-	findAll(callback: (value: VDFDocumentSymbol) => boolean): { result: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
+	findAll(callback: (documentSymbol: VDFDocumentSymbol) => boolean): { result: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
 		const documentSymbolsPath: VDFDocumentSymbol[] = []
 		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findAll"]> => {
 			for (const documentSymbol of documentSymbols) {
