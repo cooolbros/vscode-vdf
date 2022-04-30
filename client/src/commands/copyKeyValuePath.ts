@@ -1,5 +1,5 @@
 import { basename, relative, sep } from "path";
-import { env, TextEditor, window } from "vscode";
+import { TextEditor, window } from "vscode";
 import { getHUDRoot } from "../../../shared/tools";
 import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
 
@@ -35,8 +35,8 @@ export function copyKeyValuePath(editor: TextEditor) {
 			] : [])
 		].map(i => /\s/.test(i) ? `"${i}"` : i)
 		const result = `${filePath.split(sep).join("/")} ${documentSymbolsPath.join(" > ")}`
-		env.clipboard.writeText(result)
-		window.showInformationMessage("Success.")
+
+		window.showInputBox({ value: result })
 	}
 	else {
 		window.showErrorMessage("No result.")
