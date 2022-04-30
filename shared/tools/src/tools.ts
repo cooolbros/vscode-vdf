@@ -160,7 +160,7 @@ const sectionIcons = {
 	"Fonts": CompletionItemKind.Text,
 }
 
-export function clientschemeValues(document: TextDocument, section: "Colors" | "Borders" | "Fonts"): CompletionItem[] {
+export function clientschemeValues(document: TextDocument, section: keyof typeof sectionIcons): CompletionItem[] {
 	const hudRoot = getHUDRoot(document)
 	if (hudRoot == null) {
 		return []
