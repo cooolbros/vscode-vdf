@@ -11,6 +11,7 @@ VDF/Valve KeyValues language support for VSCode
  - Convert JSON to VDF
  - Jump/Peek definition for #base files
  - Code actions for non-normalized file paths
+ - View/Edit VTF files
 
 ### Features (HUD Specific)
  - Definition Provider
@@ -48,7 +49,6 @@ VDF/Valve KeyValues language support for VSCode
 ### TODO
  - Add settings for formatting preference
  - Add support for renaming clientscheme entries (project wide)
- - Add VTF viewer/editor
  - Code lens for clientscheme references
 
 Github: https://github.com/cooolbros/vscode-vdf

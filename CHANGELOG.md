@@ -1,5 +1,13 @@
 # Change Log
 
+## [2.2.0]
+ - Add copy Key/Value path to clipboard command (`VDF: Copy Key/Value Path To Clipboard`)
+ - Add setting to update file diagnostics on file save (`vscode-vdf.updateDiagnosticsEvent`)
+ - Add VTF Editor
+ - Fix document links error when viewing a git diff
+ - Fix VDF diagnostics not detecting missing closing braces at end of file
+ - Popfile: Add command to import external bot templates into Popfile
+
 ## [2.1.1]
  - Add VPK protocol
  - Add VPK extractor
