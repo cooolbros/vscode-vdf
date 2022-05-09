@@ -72,11 +72,13 @@
 		"StartingPathTrackNode"
 	],
 	"tfbot": [
+		"Attributes",
 		"Class",
 		"Health",
 		"Item",
 		"MaxVisionRange",
 		"Name",
+		"Scale",
 		"Skill",
 		"Template"
 	],
@@ -99,6 +101,10 @@
 		"StartingCurrency"
 	],
 	"wavespawn": [
+		"~RandomChoice",
+		"~Squad",
+		"~Tank",
+		"~TFBot",
 		"FirstSpawnOutput",
 		"MaxActive",
 		"SpawnCount",
