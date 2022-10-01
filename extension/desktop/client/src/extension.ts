@@ -6,6 +6,7 @@ import { JSONToVDF } from "$lib/commands/JSONToVDF";
 import { showReferences } from "$lib/commands/showReferences";
 import { sortVDF } from "$lib/commands/sortVDF";
 import { VDFToJSON } from "$lib/commands/VDFToJSON";
+import { languageClientsInfo } from "$lib/languageClientsInfo";
 import * as path from "path";
 import { commands, ExtensionContext, TextDocument, window, workspace } from "vscode";
 import {
@@ -17,26 +18,7 @@ import {
 import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider";
 import { VTFEditor } from "./VTF/VTFEditor";
 
-const clientsInfo = {
-	hudanimations: {
-		id: "hudanimations-language-server",
-		name: "HUD Animations Language Server",
-	},
-	vdf: {
-		id: "vdf-language-server",
-		name: "VDF Language Server",
-	},
-	popfile: {
-		id: "popfile-language-server",
-		name: "Popfile Language Server"
-	}
-}
-
-const clients: Record<keyof typeof clientsInfo, LanguageClient | null> = {
-	hudanimations: null,
-	vdf: null,
-	popfile: null
-}
+const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: LanguageClient } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -61,8 +43,8 @@ export function activate(context: ExtensionContext): void {
 
 	const onDidOpenTextDocument = (e: TextDocument) => {
 		const languageId: string = e.languageId
-		if (((languageId): languageId is keyof typeof clientsInfo => clientsInfo.hasOwnProperty(languageId))(languageId)) {
-			if (clients[languageId] == null) {
+		if (((languageId): languageId is keyof typeof languageClientsInfo => languageClientsInfo.hasOwnProperty(languageId))(languageId)) {
+			if (languageClients[languageId] == null) {
 
 				const serverModule = context.asAbsolutePath(path.join("servers", languageId, "dist", "server.js"))
 
@@ -89,14 +71,14 @@ export function activate(context: ExtensionContext): void {
 					]
 				}
 
-				clients[languageId] = new LanguageClient(
-					clientsInfo[languageId].id,
-					clientsInfo[languageId].name,
+				languageClients[languageId] = new LanguageClient(
+					languageClientsInfo[languageId].id,
+					languageClientsInfo[languageId].name,
 					serverOptions,
 					clientOptions
 				)
 
-				clients[languageId]!.start()
+				languageClients[languageId]!.start()
 			}
 		}
 	}
@@ -111,10 +93,10 @@ export function activate(context: ExtensionContext): void {
 
 export function deactivate() {
 	const promises: Promise<void>[] = []
-	let languageId: keyof typeof clients
-	for (languageId in clients) {
-		if (clients[languageId] != null) {
-			promises.push(clients[languageId]!.stop())
+	let languageId: keyof typeof languageClients
+	for (languageId in languageClients) {
+		if (languageClients[languageId] != null) {
+			promises.push(languageClients[languageId]!.stop())
 		}
 	}
 	return Promise.all(promises)
