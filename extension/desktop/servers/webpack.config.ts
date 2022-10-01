@@ -11,6 +11,7 @@ export const desktopServersConfiguration: Configuration = {
 		libraryTarget: "commonjs2"
 	},
 	resolve: {
+		extensions: [".ts"],
 		alias: {
 			"$lib": join(process.cwd(), "extension/lib")
 		}

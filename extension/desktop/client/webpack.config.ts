@@ -15,6 +15,7 @@ export const desktopClientConfiguration: Configuration = {
 		vscode: "commonjs vscode"
 	},
 	resolve: {
+		extensions: [".ts"],
 		alias: {
 			"$lib": join(process.cwd(), "extension/lib")
 		}
