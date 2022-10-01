@@ -6,22 +6,6 @@ import { CompletionItem, CompletionItemKind, Definition, Range } from "vscode-la
 import { VDF } from "../../VDF"
 import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../VDF/dist/getVDFDocumentSymbols"
 
-export interface VSCodeVDFSettings {
-	readonly autoCompletionKind: "incremental" | "all"
-	readonly updateDiagnosticsEvent: "type" | "save"
-	readonly hudAnimations: {
-		readonly layoutScope: "event" | "file"
-		readonly extraTabs: number
-		readonly referencesCodeLens: {
-			readonly showOnAllEvents: boolean
-		}
-	}
-	readonly referencesCodeLens: {
-		readonly showOnAllElements: boolean
-	}
-	readonly teamFortress2Folder: string
-}
-
 /**
  * Recursive merge all properties from one object into another
  * @param obj1 First Object
