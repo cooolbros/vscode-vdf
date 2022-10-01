@@ -224,8 +224,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc --build --force shared/VDF && tsc --build --force shared/hudanimations && tsc --build --force shared/tools && tsc --build --force client && tsc --build --force servers/hudanimations && tsc --build --force servers/popfile && tsc --build --force servers/vdf",
-    "postinstall": "cd client && npm install && cd .."
+    "dev": "webpack --watch --mode development",
+    "build": "webpack"
   },
   "devDependencies": {
     "@types/node": "^17.0.23",
