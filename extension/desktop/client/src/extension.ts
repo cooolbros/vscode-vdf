@@ -1,3 +1,11 @@
+import { copyKeyValuePath } from "$lib/commands/copyKeyValuePath";
+import { extractVPKFileToWorkspace } from "$lib/commands/extractVPKFileToWorkspace";
+import { formatVDF } from "$lib/commands/formatVDF";
+import { importPopfileTemplates } from "$lib/commands/importPopfileTemplates";
+import { JSONToVDF } from "$lib/commands/JSONToVDF";
+import { showReferences } from "$lib/commands/showReferences";
+import { sortVDF } from "$lib/commands/sortVDF";
+import { VDFToJSON } from "$lib/commands/VDFToJSON";
 import * as path from "path";
 import { commands, ExtensionContext, TextDocument, window, workspace } from "vscode";
 import {
@@ -6,14 +14,6 @@ import {
 	ServerOptions,
 	TransportKind
 } from "vscode-languageclient/node";
-import { copyKeyValuePath } from "./commands/copyKeyValuePath";
-import { extractVPKFileToWorkspace } from "./commands/extractVPKFileToWorkspace";
-import { formatVDF } from "./commands/formatVDF";
-import { importPopfileTemplates } from "./commands/importPopfileTemplates";
-import { JSONToVDF } from "./commands/JSONToVDF";
-import { showReferences } from "./commands/showReferences";
-import { sortVDF } from "./commands/sortVDF";
-import { VDFToJSON } from "./commands/VDFToJSON";
 import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider";
 import { VTFEditor } from "./VTF/VTFEditor";
 
