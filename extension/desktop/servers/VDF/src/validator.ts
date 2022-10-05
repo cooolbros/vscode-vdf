@@ -1,7 +1,7 @@
-import { AssertionError } from "assert";
-import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
-import { VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
-import { VDF } from "../../../shared/VDF/dist/VDF";
+import { AssertionError } from "assert"
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver"
+import { VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
+import { VDF } from "../../../shared/VDF/dist/VDF"
 
 const pinValues = [
 	"PIN_TOPLEFT",       // 0
@@ -47,73 +47,73 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 				const _value = detail.toLowerCase()
 				switch (_key) {
 					case "fieldname":
-						{
-							// fieldName must match element name
-							const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
-							if (elementName != undefined && _value != elementName?.toLowerCase()) {
-								diagnostics.push({
-									message: `fieldName "${detail}" does not match element name "${elementName}"`,
-									range: detailRange,
-									severity: DiagnosticSeverity.Warning,
-								})
-							}
-							break
+					{
+						// fieldName must match element name
+						const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
+						if (elementName != undefined && _value != elementName?.toLowerCase()) {
+							diagnostics.push({
+								message: `fieldName "${detail}" does not match element name "${elementName}"`,
+								range: detailRange,
+								severity: DiagnosticSeverity.Warning,
+							})
 						}
+						break
+					}
 					case "pin_to_sibling":
-						{
-							// Element should not be pinned to itself
-							const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
-							if (elementName != undefined && _value == elementName?.toLowerCase()) {
-								diagnostics.push({
-									message: `Element "${elementName}" is pinned to itself!`,
-									range: detailRange,
-									severity: DiagnosticSeverity.Warning,
-								})
-							}
-							break
+					{
+						// Element should not be pinned to itself
+						const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
+						if (elementName != undefined && _value == elementName?.toLowerCase()) {
+							diagnostics.push({
+								message: `Element "${elementName}" is pinned to itself!`,
+								range: detailRange,
+								severity: DiagnosticSeverity.Warning,
+							})
 						}
+						break
+					}
 					default:
-						{
-							if (((key): key is keyof typeof enumMembers => enumMembers.hasOwnProperty(key))(_key)) {
+					{
+						if (((key): key is keyof typeof enumMembers => enumMembers.hasOwnProperty(key))(_key)) {
 
-								// If the value contains any letters it must be matched to an enum values
-								if (/\D/.test(_value)) {
-									// Enum members are case insensitive
-									const result = enumMembers[_key].find(x => x.toLowerCase() == _value)
-									if (result == undefined) {
-										diagnostics.push({
-											message: `"${detail}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
-											range: detailRange,
-											severity: DiagnosticSeverity.Warning,
-										})
-									}
-								}
-								else {
-									// Numbers just have to be in the enum range
-									const ivalue = parseInt(_value)
-									if (isNaN(ivalue)) {
-										throw new AssertionError({ expected: "number", actual: ivalue })
-									}
-									if (ivalue < 0 || ivalue > enumMembers[_key].length - 1) {
-										diagnostics.push({
-											message: `"${detail}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join(`" | "`)}"`,
-											range: detailRange,
-											severity: DiagnosticSeverity.Warning,
-										})
-									}
-								}
-							}
-							if (((key): key is keyof typeof unionTypes => unionTypes.hasOwnProperty(key))(_key)) {
-								if (!unionTypes[_key].includes(_value)) {
+							// If the value contains any letters it must be matched to an enum values
+							if (/\D/.test(_value)) {
+								// Enum members are case insensitive
+								const result = enumMembers[_key].find(x => x.toLowerCase() == _value)
+								if (result == undefined) {
 									diagnostics.push({
-										message: `"${detail}" is not a valid value for ${_key}! Expected "${unionTypes[_key].join(`" | "`)}"`,
+										message: `"${detail}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join("\" | \"")}"`,
 										range: detailRange,
 										severity: DiagnosticSeverity.Warning,
 									})
 								}
 							}
-							break
+							else {
+								// Numbers just have to be in the enum range
+								const ivalue = parseInt(_value)
+								if (isNaN(ivalue)) {
+									throw new AssertionError({ expected: "number", actual: ivalue })
+								}
+								if (ivalue < 0 || ivalue > enumMembers[_key].length - 1) {
+									diagnostics.push({
+										message: `"${detail}" is not a valid value for ${_key}! Expected "${enumMembers[_key].join("\" | \"")}"`,
+										range: detailRange,
+										severity: DiagnosticSeverity.Warning,
+									})
+								}
+							}
 						}
+						if (((key): key is keyof typeof unionTypes => unionTypes.hasOwnProperty(key))(_key)) {
+							if (!unionTypes[_key].includes(_value)) {
+								diagnostics.push({
+									message: `"${detail}" is not a valid value for ${_key}! Expected "${unionTypes[_key].join("\" | \"")}"`,
+									range: detailRange,
+									severity: DiagnosticSeverity.Warning,
+								})
+							}
+						}
+						break
+					}
 				}
 			}
 			else if (children) {

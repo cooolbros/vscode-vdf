@@ -1,5 +1,5 @@
-import { VDFIndentation } from "./VDFIndentation";
-import { VDFNewLine } from "./VDFNewLine";
+import { VDFIndentation } from "./VDFIndentation"
+import { VDFNewLine } from "./VDFNewLine"
 
 export interface VDFStringifyOptions {
 	indentation?: VDFIndentation

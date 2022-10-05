@@ -1,6 +1,6 @@
 // HUD Animations
 
-export type File = Record<string, Event>
+export type File = { [key: string]: Event }
 export type Event = HUDAnimation[]
 
 export const Commands = <const>["Animate", "RunEvent", "StopEvent", "SetVisible", "FireCommand", "RunEventChild", "SetInputEnabled", "PlaySound", "StopPanelAnimations"]

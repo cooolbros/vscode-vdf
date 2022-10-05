@@ -6,7 +6,7 @@ import { VDFTokeniser } from "./VDFTokeniser"
 export class VDFFormatTokeniser extends VDFTokeniser {
 	private static readonly whiteSpaceIgnoreFormat: string[] = [" ", "\t", "\r"]
 
-	next(lookAhead: boolean = false): string {
+	next(lookAhead = false): string {
 		throw new Error()
 	}
 
@@ -45,7 +45,7 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 					i++
 
 					if (i >= this.str.length) {
-						throw new Error(`Unclosed escape sequence`) // unclosed escape sequence
+						throw new Error("Unclosed escape sequence") // unclosed escape sequence
 					}
 
 					// Add character
@@ -80,7 +80,7 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 						i++
 
 						if (i >= this.str.length) {
-							throw new Error(`Unclosed escape sequence at EOF!`)
+							throw new Error("Unclosed escape sequence at EOF!")
 						}
 
 						// Add character

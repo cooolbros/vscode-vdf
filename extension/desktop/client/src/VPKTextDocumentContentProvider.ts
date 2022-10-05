@@ -1,10 +1,10 @@
-import { readFileSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
-import { URLSearchParams } from "url";
-import * as vscode from "vscode";
-import { CancellationToken, TextDocumentContentProvider, Uri } from "vscode";
-import { VPK } from "../../shared/tools/dist/VPK";
+import { readFileSync } from "fs"
+import { tmpdir } from "os"
+import { join } from "path"
+import { URLSearchParams } from "url"
+import * as vscode from "vscode"
+import { CancellationToken, TextDocumentContentProvider, Uri } from "vscode"
+import { VPK } from "../../shared/tools/dist/VPK"
 
 // https://code.visualstudio.com/api/extension-guides/virtual-documents
 export class VPKTextDocumentContentProvider implements TextDocumentContentProvider {

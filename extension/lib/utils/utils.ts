@@ -12,7 +12,7 @@ import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../VDF/dist/getVDFD
  * @param obj2 Second Object
  */
 export function merge(obj1: any, obj2: any): any {
-	for (let i in obj1) {
+	for (const i in obj1) {
 		if (typeof obj1[i] === "object") {
 			if (obj2.hasOwnProperty(i) && typeof obj2[i] == "object") {
 				merge(obj1[i], obj2[i])
@@ -24,7 +24,7 @@ export function merge(obj1: any, obj2: any): any {
 			}
 		}
 	}
-	for (let j in obj2) {
+	for (const j in obj2) {
 		// check if property exists because we dont want to shallow merge an object
 		if (!obj1.hasOwnProperty(j)) {
 			obj1[j] = obj2[j]
@@ -165,7 +165,7 @@ export function clientschemeValues(document: TextDocument, section: keyof typeof
 						colourValue = <string>hudclientscheme["Scheme"]["Colors"][colourValue]
 					}
 
-					let colours: number[] = colourValue.split(/\s+/).map(parseFloat)
+					const colours: number[] = colourValue.split(/\s+/).map(parseFloat)
 
 					const r = colours[0].toString(16)
 					const g = colours[1].toString(16)

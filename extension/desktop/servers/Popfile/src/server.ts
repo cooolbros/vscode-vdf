@@ -1,22 +1,22 @@
-import { existsSync, readdirSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { CodeLens, CodeLensParams, ColorInformation, ColorPresentationParams, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, createConnection, Definition, DefinitionParams, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection } from "vscode-languageserver/node";
-import { getCodeLensTitle, getDocumentSymbolsAtPosition, getLineRange, getLocationOfKey, RangecontainsPosition, recursiveDocumentSymbolLookup, VSCodeVDFSettings } from "../../../shared/tools";
-import { Configuration } from "../../../shared/tools/dist/configurationManager";
-import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
-import { VDF } from "../../../shared/VDF";
-import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
-import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
-import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser";
-import { decimalToHexadecimal, hexadecimalToDecimal, hexadecimalToRgb, rgbToHexadecimal } from "./colours";
-import { findClassIcon } from "./findClassIcon";
-import { format } from "./formatter";
-import robot_gatebot from "./JSON/templates/robot_gatebot.json";
-import robot_giant from "./JSON/templates/robot_giant.json";
-import robot_standard from "./JSON/templates/robot_standard.json";
-import { validate } from "./validator";
+import { existsSync, readdirSync, readFileSync } from "fs"
+import { dirname, join } from "path"
+import { fileURLToPath } from "url"
+import { TextDocument } from "vscode-languageserver-textdocument"
+import { CodeLens, CodeLensParams, ColorInformation, ColorPresentationParams, CompletionItem, CompletionItemKind, CompletionList, CompletionParams, createConnection, Definition, DefinitionParams, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, WorkspaceEdit, _Connection } from "vscode-languageserver/node"
+import { getCodeLensTitle, getDocumentSymbolsAtPosition, getLineRange, getLocationOfKey, RangecontainsPosition, recursiveDocumentSymbolLookup, VSCodeVDFSettings } from "../../../shared/tools"
+import { Configuration } from "../../../shared/tools/dist/configurationManager"
+import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics"
+import { VDF } from "../../../shared/VDF"
+import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
+import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors"
+import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser"
+import { decimalToHexadecimal, hexadecimalToDecimal, hexadecimalToRgb, rgbToHexadecimal } from "./colours"
+import { findClassIcon } from "./findClassIcon"
+import { format } from "./formatter"
+import robot_gatebot from "./JSON/templates/robot_gatebot.json"
+import robot_giant from "./JSON/templates/robot_giant.json"
+import robot_standard from "./JSON/templates/robot_standard.json"
+import { validate } from "./validator"
 
 
 const autoCompletion = {
@@ -30,8 +30,8 @@ const autoCompletion = {
 }
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-const documentsSymbols: Record<string, VDFDocumentSymbol[]> = {}
+const documents = new TextDocuments<TextDocument>(TextDocument)
+const documentsSymbols: { [key: string]: VDFDocumentSymbol[] } = {}
 const configuration = new Configuration(connection)
 
 const sendDiagnostics = _sendDiagnostics(connection, getVDFDocumentSymbols, validate)
@@ -237,7 +237,7 @@ connection.onHover((params: HoverParams): Hover | null => {
 
 	const line = document.getText(getLineRange(params.position.line))
 	const tokeniser = new VDFTokeniser(line)
-	if (tokeniser.next().toLowerCase() == `"set item tint rgb"`) {
+	if (tokeniser.next().toLowerCase() == "\"set item tint rgb\"") {
 		const hex = decimalToHexadecimal(parseInt(tokeniser.next()))
 		const rgb = hexadecimalToRgb(hex)
 		return {
@@ -345,7 +345,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 		section: "vscode-vdf"
 	})).referencesCodeLens.showOnAllElements
 
-	const templateReferences: Record<string, { range?: Range, references: Location[] }> = {}
+	const templateReferences: { [key: string]: { range?: Range, references: Location[] } } = {}
 
 	function docSymbolHasChildren(documentSymbol: VDFDocumentSymbol): documentSymbol is VDFDocumentSymbol & { children: VDFDocumentSymbol[] } {
 		return documentSymbol.children != undefined
@@ -519,7 +519,7 @@ connection.onPrepareRename((params: PrepareRenameParams): Range | null => {
 
 connection.onRenameRequest((params: RenameParams): WorkspaceEdit => {
 	if (oldName == undefined) {
-		throw new Error(`oldName is undefined`)
+		throw new Error("oldName is undefined")
 	}
 	const edits: TextEdit[] = []
 

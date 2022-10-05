@@ -1,6 +1,6 @@
-import { existsSync, readdirSync, statSync } from "fs";
-import { parse, relative, sep } from "path";
-import { CompletionItem, CompletionItemKind, CompletionList } from "vscode-languageserver-types";
+import { existsSync, readdirSync, statSync } from "fs"
+import { parse, relative, sep } from "path"
+import { CompletionItem, CompletionItemKind, CompletionList } from "vscode-languageserver-types"
 
 
 class CompletionItemSet {
@@ -18,7 +18,7 @@ class CompletionItemSet {
 }
 
 export namespace CompletionFiles {
-	export function Incremental(startingPath: string, removeExtensions: boolean = false): CompletionList | CompletionItem[] {
+	export function Incremental(startingPath: string, removeExtensions = false): CompletionList | CompletionItem[] {
 		const items: CompletionItemSet = new CompletionItemSet()
 		if (existsSync(startingPath)) {
 			for (const item of readdirSync(startingPath)) {
@@ -34,7 +34,7 @@ export namespace CompletionFiles {
 		}
 		return []
 	}
-	export function All(root: string, relativePath?: string, removeExtensions: boolean = false): CompletionList | CompletionItem[] {
+	export function All(root: string, relativePath?: string, removeExtensions = false): CompletionList | CompletionItem[] {
 		const items: CompletionItemSet = new CompletionItemSet()
 		const iterateDir = (relativeChildPath: string) => {
 			for (const item of readdirSync(`${root}${sep}${relativeChildPath}`)) {

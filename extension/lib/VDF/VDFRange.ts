@@ -1,10 +1,10 @@
-import { Position, Range } from "vscode-languageserver";
-import { VDFPosition } from "./VDFPosition";
+import { Position, Range } from "vscode-languageserver"
+import { VDFPosition } from "./VDFPosition"
 
 export class VDFRange implements Range {
 
-	start: VDFPosition;
-	end: VDFPosition;
+	start: VDFPosition
+	end: VDFPosition
 
 	constructor(start: VDFPosition, end: VDFPosition) {
 		Range.create(start, end)

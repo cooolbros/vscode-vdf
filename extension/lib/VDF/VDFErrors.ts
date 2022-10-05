@@ -48,7 +48,7 @@ export class UnexpectedTokenError extends VDFSyntaxError {
  */
 export class UnclosedEscapeSequenceError extends VDFSyntaxError {
 	constructor(range: Range) {
-		super(`Unclosed escape sequence! Expected char`, range)
+		super("Unclosed escape sequence! Expected char", range)
 	}
 }
 

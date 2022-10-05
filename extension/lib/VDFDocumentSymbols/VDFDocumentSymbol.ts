@@ -1,6 +1,6 @@
-import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
-import { VDFRange } from "../VDF/VDFRange";
-import { VDFDocumentSymbols } from "./VDFDocumentSymbols";
+import { DocumentSymbol, SymbolKind } from "vscode-languageserver"
+import { VDFRange } from "../VDF/VDFRange"
+import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
 /**
  * VDFDocumentSymbol
@@ -26,7 +26,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	/**
 	 * The kind of this symbol.
 	*/
-	readonly kind: SymbolKind;
+	readonly kind: SymbolKind
 
 	/**
 	 * VDF Document Symbol OS Tag e.g. [$WIN32]

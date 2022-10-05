@@ -1,5 +1,5 @@
-import { DidChangeConfigurationNotification, _Connection } from "vscode-languageserver";
-import { VSCodeVDFSettings } from "./tools";
+import { DidChangeConfigurationNotification, _Connection } from "vscode-languageserver"
+import { VSCodeVDFSettings } from "./tools"
 
 export class Configuration<T = VSCodeVDFSettings> {
 

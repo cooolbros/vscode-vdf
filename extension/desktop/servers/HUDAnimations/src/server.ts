@@ -1,25 +1,25 @@
-import { existsSync, readFileSync } from "fs";
-import { pathToFileURL } from "url";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node";
-import { animationIsType, Commands, File } from "../../../shared/hudanimations";
-import { getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol } from "../../../shared/hudanimations/dist/getHUDAnimationsDocumentInfo";
-import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, VSCodeVDFSettings } from "../../../shared/tools";
-import { Configuration } from "../../../shared/tools/dist/configurationManager";
-import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
-import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
-import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
-import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser";
-import { getHUDAnimationsFormatDocumentSymbols, printHUDAnimationsFormatDocumentSymbols } from "./formatter";
-import { animationCommands, commonProperties, interpolators } from "./hud_animation_types";
-import autoCompletionItems from "./JSON/autocompletion.json";
-import eventFiles from "./JSON/event_files.json";
+import { existsSync, readFileSync } from "fs"
+import { pathToFileURL } from "url"
+import { TextDocument } from "vscode-languageserver-textdocument"
+import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, createConnection, DefinitionParams, DocumentFormattingParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams, InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, SymbolKind, TextDocumentChangeEvent, TextDocuments, TextDocumentSyncKind, TextEdit, _Connection } from "vscode-languageserver/node"
+import { animationIsType, Commands, File } from "../../../shared/hudanimations"
+import { getHUDAnimationsDocumentInfo, HUDAnimationEventDocumentSymbol } from "../../../shared/hudanimations/dist/getHUDAnimationsDocumentInfo"
+import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, VSCodeVDFSettings } from "../../../shared/tools"
+import { Configuration } from "../../../shared/tools/dist/configurationManager"
+import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics"
+import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
+import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors"
+import { VDFTokeniser } from "../../../shared/VDF/dist/VDFTokeniser"
+import { getHUDAnimationsFormatDocumentSymbols, printHUDAnimationsFormatDocumentSymbols } from "./formatter"
+import { animationCommands, commonProperties, interpolators } from "./hud_animation_types"
+import autoCompletionItems from "./JSON/autocompletion.json"
+import eventFiles from "./JSON/event_files.json"
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-const documentHUDAnimations: Record<string, File> = {}
-const documentsSymbols: Record</* Document Uri */ string, HUDAnimationEventDocumentSymbol[]> = {}
-const documentEventReferences: Record</* Document Uri */ string, Record</* event */ string, Location[]>> = {}
+const documents = new TextDocuments<TextDocument>(TextDocument)
+const documentHUDAnimations: { [key: string]: File } = {}
+const documentsSymbols: { [key: string]: HUDAnimationEventDocumentSymbol[] } = {}
+const documentEventReferences: { [key: string]: { [key: string]: Location[] } } = {}
 const configuration = new Configuration(connection)
 
 const sendDiagnostics = _sendDiagnostics(connection, getHUDAnimationsDocumentInfo, () => [])
@@ -164,7 +164,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | null => {
 
 							// HACK - Search for event name by looking at lines above
 							if (eventName == undefined) {
-								connection.console.log(`[connection.onCompletion] Searching lines for event name`)
+								connection.console.log("[connection.onCompletion] Searching lines for event name")
 								let _lineNumber = params.position.line
 								while (eventName == undefined && _lineNumber > 0) {
 									const _line = document.getText({ start: Position.create(_lineNumber, 0), end: Position.create(_lineNumber, Infinity) }).trim()
@@ -180,7 +180,7 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | null => {
 								if (hudRoot) {
 									const keys: CompletionItem[] = []
 									const addKeys = (documentSymbols: DocumentSymbol[]) => {
-										for (let documentSymbol of documentSymbols) {
+										for (const documentSymbol of documentSymbols) {
 											if (documentSymbol.children) {
 												keys.push({
 													label: documentSymbol.name,
@@ -266,67 +266,67 @@ connection.onDefinition((params: DefinitionParams) => {
 			end: Position.create(params.position.line, Infinity)
 		})
 		const matches = line.matchAll(/".*"|\S+/g)
-		let tokens: string[] = []
+		const tokens: string[] = []
 		let tokenIndex = 0
 		for (const match of matches) {
 			if (match.index! < params.position.character && params.position.character < match.index! + match[0].length) {
 				const token: string = match[0]
 				switch (tokens[tokenIndex - 1]?.toLowerCase()) {
 					case "animate":
-						{
-							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
-							for (const documentSymbol of documentSymbols) {
-								if (documentSymbol.range.end.line > params.position.line) {
-									const eventName = documentSymbol.name.toLowerCase()
-									if (((eventName): eventName is keyof typeof eventFiles => eventFiles.hasOwnProperty(eventName))(eventName)) {
-										const hudRoot = getHUDRoot(params.textDocument)
-										if (hudRoot == null) return null
-										const filePath = `${hudRoot}/${eventFiles[eventName]}`
-										if (!existsSync(filePath)) return null
-										const vdfDocumentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf-8"))
-										return getLocationOfKey(pathToFileURL(filePath).href, vdfDocumentSymbols, token)
-									}
-									return null
+					{
+						const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
+						for (const documentSymbol of documentSymbols) {
+							if (documentSymbol.range.end.line > params.position.line) {
+								const eventName = documentSymbol.name.toLowerCase()
+								if (((eventName): eventName is keyof typeof eventFiles => eventFiles.hasOwnProperty(eventName))(eventName)) {
+									const hudRoot = getHUDRoot(params.textDocument)
+									if (hudRoot == null) return null
+									const filePath = `${hudRoot}/${eventFiles[eventName]}`
+									if (!existsSync(filePath)) return null
+									const vdfDocumentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf-8"))
+									return getLocationOfKey(pathToFileURL(filePath).href, vdfDocumentSymbols, token)
 								}
+								return null
 							}
-							return null
 						}
+						return null
+					}
 					case "runevent":
 					case "stopevent":
-						{
-							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
-							const _token = token.toLowerCase()
-							const eventSymbol = documentSymbols.find(i => i.name.toLowerCase() == _token)
-							if (eventSymbol) {
-								return {
-									uri: params.textDocument.uri,
-									range: eventSymbol.range
-								}
+					{
+						const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
+						const _token = token.toLowerCase()
+						const eventSymbol = documentSymbols.find(i => i.name.toLowerCase() == _token)
+						if (eventSymbol) {
+							return {
+								uri: params.textDocument.uri,
+								range: eventSymbol.range
 							}
-							return null
-
 						}
+						return null
+
+					}
 					case "fgcolor":
 					case "bgcolor":
-						{
-							// Look up colour in clientscheme
-							const hudRoot = getHUDRoot(params.textDocument)
-							const clientschemePath = `${hudRoot}/resource/clientscheme.res`
-							return hudRoot && existsSync(clientschemePath)
-								? getLocationOfKey(clientschemePath, getVDFDocumentSymbols(readFileSync(clientschemePath, "utf-8")), token)
+					{
+						// Look up colour in clientscheme
+						const hudRoot = getHUDRoot(params.textDocument)
+						const clientschemePath = `${hudRoot}/resource/clientscheme.res`
+						return hudRoot && existsSync(clientschemePath)
+							? getLocationOfKey(clientschemePath, getVDFDocumentSymbols(readFileSync(clientschemePath, "utf-8")), token)
+							: null
+					}
+					default:
+					{
+						if (tokens[tokenIndex - 2]?.toLowerCase() == "runeventchild") {
+							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
+							const eventSymbol = documentSymbols.find(i => i.name == token)
+							return eventSymbol
+								? { uri: params.textDocument.uri, range: eventSymbol.range }
 								: null
 						}
-					default:
-						{
-							if (tokens[tokenIndex - 2]?.toLowerCase() == "runeventchild") {
-								const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
-								const eventSymbol = documentSymbols.find(i => i.name == token)
-								return eventSymbol
-									? { uri: params.textDocument.uri, range: eventSymbol.range }
-									: null
-							}
-							return null
-						}
+						return null
+					}
 				}
 			}
 			tokens.push(match[0])
@@ -368,7 +368,7 @@ connection.onDocumentSymbol((params: DocumentSymbolParams): DocumentSymbol[] | u
 connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null> => {
 	try {
 		const animations = documentsSymbols[params.textDocument.uri]
-		const eventReferences: Record<string, { range?: Range, references: Location[] }> = {}
+		const eventReferences: { [key: string]: { range?: Range, references: Location[] } } = {}
 
 		const showOnAllEvents = (<VSCodeVDFSettings>await connection.workspace.getConfiguration({
 			scopeUri: params.textDocument.uri,
@@ -517,7 +517,7 @@ connection.onPrepareRename((params: PrepareRenameParams) => {
 
 connection.onRenameRequest((params: RenameParams) => {
 	if (oldName == undefined) {
-		throw new Error(`oldName is undefined`)
+		throw new Error("oldName is undefined")
 	}
 	const edits: TextEdit[] = []
 	for (const event of documentsSymbols[params.textDocument.uri]) {

@@ -1,10 +1,10 @@
-import { exec } from "child_process";
-import { existsSync, FSWatcher, mkdirSync, readFileSync, rmSync, watch, WatchEventType } from "fs";
-import { tmpdir } from "os";
-import { basename, join } from "path";
-import { promisify } from "util";
-import { CustomDocument, EventEmitter, StatusBarAlignment, StatusBarItem, Uri, window, workspace } from "vscode";
-import { VTF, VTFBackup } from "./VTF";
+import { exec } from "child_process"
+import { existsSync, FSWatcher, mkdirSync, readFileSync, rmSync, watch, WatchEventType } from "fs"
+import { tmpdir } from "os"
+import { basename, join } from "path"
+import { promisify } from "util"
+import { CustomDocument, EventEmitter, StatusBarAlignment, StatusBarItem, Uri, window, workspace } from "vscode"
+import { VTF, VTFBackup } from "./VTF"
 
 export interface VTFPropertyChangeEvent {
 	scale?: number
@@ -16,7 +16,7 @@ export class VTFDocument implements CustomDocument {
 	/**
 	 * VTF Document Uri
 	 */
-	public readonly uri: Uri;
+	public readonly uri: Uri
 
 	/**
 	 * VTF File Watcher
@@ -138,7 +138,7 @@ export class VTFDocument implements CustomDocument {
 		const tgaPath = join(tgaFolder, basename(uri.fsPath).split(".vtf").join(".tga"))
 
 		const extract = VTFDocument.extractVTF(teamFortress2Folder, vtfPath, tgaPath)
-		let document = new VTFDocument(uri, buf, tgaPath, backup)
+		const document = new VTFDocument(uri, buf, tgaPath, backup)
 		await extract
 
 		return document
@@ -211,9 +211,9 @@ export class VTFDocument implements CustomDocument {
 	 */
 	private static async extractVTF(teamFortress2Folder: string, vtfPath: string, tgaPath: string) {
 		await promisify(exec)(`"${join(teamFortress2Folder, "bin/vtf2tga.exe")}" ${[
-			`-i`,
+			"-i",
 			`"${vtfPath}"`,
-			`-o`,
+			"-o",
 			`"${tgaPath}"`,
 		].join(" ")}`)
 	}

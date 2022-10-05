@@ -1,7 +1,7 @@
-import { execSync } from "child_process";
-import { existsSync, mkdirSync, unlinkSync } from "fs";
-import { tmpdir } from "os";
-import { dirname, join } from "path";
+import { execSync } from "child_process"
+import { existsSync, mkdirSync, unlinkSync } from "fs"
+import { tmpdir } from "os"
+import { dirname, join } from "path"
 
 export class VPK {
 
@@ -20,7 +20,7 @@ export class VPK {
 		if (existsSync(vpkLinux)) {
 			return vpkLinux
 		}
-		throw new Error(`Cannot find bin/vpk.exe or bin/vpk_linux32. Please set "vscode-vdf.teamFortress2Folder" to a valid Team Fortress 2 installation`)
+		throw new Error("Cannot find bin/vpk.exe or bin/vpk_linux32. Please set \"vscode-vdf.teamFortress2Folder\" to a valid Team Fortress 2 installation")
 	}
 
 	/**
@@ -33,7 +33,7 @@ export class VPK {
 	public async extract(vpkFile: string, filePath: string, { deleteOldFile, returnNullOnError }: { deleteOldFile?: boolean, returnNullOnError?: boolean } = {}): Promise<string | null> {
 		try {
 			const teamFortress2Folder: string = typeof this.teamFortress2Folder == "function"
-				? await ((): Promise<string> => {
+				? await (async (): Promise<string> => {
 					const result = this.teamFortress2Folder()
 					return result instanceof Promise ? result : Promise.resolve(result)
 				})()
@@ -48,7 +48,7 @@ export class VPK {
 			}
 			const args = [
 				`"${vpkCmd}"`,
-				`x`,
+				"x",
 				`"${vpkPath}"`,
 				`"${filePath}"`
 			]

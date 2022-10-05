@@ -1,4 +1,4 @@
-import { CompletionItemKind } from "vscode-languageserver/node";
+import { CompletionItemKind } from "vscode-languageserver/node"
 
 const animationCommandKind = CompletionItemKind.Keyword
 export const animationCommands = [

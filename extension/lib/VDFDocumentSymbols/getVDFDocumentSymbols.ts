@@ -57,7 +57,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 						throw new UnexpectedTokenError(value, "value", detailRange)
 					}
 
-					let osTag2 = tokeniser.next(true)
+					const osTag2 = tokeniser.next(true)
 					if (parserTools.is.osTag(osTag2)) {
 						osTag = osTag2
 						tokeniser.next() // Skip OS Tag

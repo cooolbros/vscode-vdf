@@ -1,7 +1,7 @@
-import { Diagnostic, DiagnosticSeverity, _Connection } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import { VDFDocumentSymbols } from "../../VDF/dist/getVDFDocumentSymbols";
-import { VDFSyntaxError } from "../../VDF/dist/VDFErrors";
+import { Diagnostic, DiagnosticSeverity, _Connection } from "vscode-languageserver"
+import { TextDocument } from "vscode-languageserver-textdocument"
+import { VDFDocumentSymbols } from "../../VDF/dist/getVDFDocumentSymbols"
+import { VDFSyntaxError } from "../../VDF/dist/VDFErrors"
 
 /**
  *

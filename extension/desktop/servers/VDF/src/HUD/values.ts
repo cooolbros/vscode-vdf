@@ -30,7 +30,7 @@ const pinValues: CompletionItem[] = [
 	{ label: "PIN_LAST", kind: CompletionItemKind.Enum, detail: "8" },
 ]
 
-export const statichudKeyValues: Record<string, CompletionItem[]> = {
+export const statichudKeyValues: { [key: string]: CompletionItem[] } = {
 	"controlname": [
 		{ label: "AnalogBar", kind: CompletionItemKind.Class },
 		{ label: "AnimatingImagePanel", kind: CompletionItemKind.Class },

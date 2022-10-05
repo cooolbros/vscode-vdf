@@ -1,8 +1,8 @@
-import { copyFileSync, mkdirSync } from "fs";
-import { dirname, join } from "path";
-import { URLSearchParams } from "url";
-import { TextEditor, Uri, window, workspace } from "vscode";
-import { VPK } from "../../../shared/tools/dist/VPK";
+import { copyFileSync, mkdirSync } from "fs"
+import { dirname, join } from "path"
+import { URLSearchParams } from "url"
+import { TextEditor, Uri, window, workspace } from "vscode"
+import { VPK } from "../../../shared/tools/dist/VPK"
 
 export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<void> {
 
@@ -16,7 +16,7 @@ export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<voi
 		: null
 
 	if (!currentWorkspace) {
-		window.showErrorMessage(`Cannot find workspace folder`)
+		window.showErrorMessage("Cannot find workspace folder")
 		return
 	}
 

@@ -1,9 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
-import { writeFile } from "fs/promises";
-import { dirname, join } from "path";
-import { CancellationToken, commands, CustomDocumentBackup, CustomDocumentBackupContext, CustomDocumentEditEvent, CustomDocumentOpenContext, CustomEditorProvider, Disposable, Event, EventEmitter, ExtensionContext, Uri, WebviewPanel, WebviewPanelOnDidChangeViewStateEvent, window, workspace } from "vscode";
-import { VTFBackup } from "./VTF";
-import { VTFDocument } from "./VTFDocument";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "fs"
+import { writeFile } from "fs/promises"
+import { dirname, join } from "path"
+import { CancellationToken, commands, CustomDocumentBackup, CustomDocumentBackupContext, CustomDocumentEditEvent, CustomDocumentOpenContext, CustomEditorProvider, Disposable, Event, EventEmitter, ExtensionContext, Uri, WebviewPanel, WebviewPanelOnDidChangeViewStateEvent, window, workspace } from "vscode"
+import { VTFBackup } from "./VTF"
+import { VTFDocument } from "./VTFDocument"
 
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
@@ -94,7 +94,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 			const state = message.state
 			if (state.hasOwnProperty("flags")) {
 				for (const id in state.flags) {
-					let value = state.flags[id]
+					const value = state.flags[id]
 					document.changes++
 					this.onDidChangeCustomDocumentEventEmitter.fire({
 						document,

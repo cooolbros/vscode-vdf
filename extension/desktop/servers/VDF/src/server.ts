@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from "fs";
-import * as path from "path";
-import { dirname, join, normalize } from "path";
-import { fileURLToPath, pathToFileURL } from "url";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import { existsSync, readFileSync } from "fs"
+import * as path from "path"
+import { dirname, join, normalize } from "path"
+import { fileURLToPath, pathToFileURL } from "url"
+import { TextDocument } from "vscode-languageserver-textdocument"
 import {
 	CodeAction, CodeActionKind, CodeActionParams,
 	CodeLens,
@@ -15,25 +15,25 @@ import {
 	createConnection, Definition, DefinitionLink, DefinitionParams, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InitializeParams,
 	InitializeResult, Location, Position, PrepareRenameParams, ProposedFeatures, Range, ReferenceParams, RenameParams, TextDocumentChangeEvent, TextDocuments,
 	TextDocumentSyncKind, TextEdit, _Connection
-} from "vscode-languageserver/node";
-import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, gitUriToFilePath, VSCodeVDFSettings } from "../../../shared/tools";
-import { Configuration } from "../../../shared/tools/dist/configurationManager";
-import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics";
-import { VPK } from "../../../shared/tools/dist/VPK";
-import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
-import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags";
-import { VDF } from "../../../shared/VDF/dist/VDF";
-import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors";
-import { CompletionFiles } from "./files_completion";
-import { format } from "./formatter";
-import { hudTypes } from "./HUD/keys";
-import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values";
-import clientscheme from "./JSON/clientscheme.json";
-import { validate } from "./validator";
+} from "vscode-languageserver/node"
+import { clientschemeValues, getCodeLensTitle, getHUDRoot, getLocationOfKey, gitUriToFilePath, VSCodeVDFSettings } from "../../../shared/tools"
+import { Configuration } from "../../../shared/tools/dist/configurationManager"
+import { _sendDiagnostics } from "../../../shared/tools/dist/sendDiagnostics"
+import { VPK } from "../../../shared/tools/dist/VPK"
+import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
+import { VDFOSTags } from "../../../shared/VDF/dist/models/VDFOSTags"
+import { VDF } from "../../../shared/VDF/dist/VDF"
+import { VDFSyntaxError } from "../../../shared/VDF/dist/VDFErrors"
+import { CompletionFiles } from "./files_completion"
+import { format } from "./formatter"
+import { hudTypes } from "./HUD/keys"
+import { statichudKeyBitValues, statichudKeyValues } from "./HUD/values"
+import clientscheme from "./JSON/clientscheme.json"
+import { validate } from "./validator"
 
 const connection: _Connection = createConnection(ProposedFeatures.all)
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-const documentsSymbols: Record<string, VDFDocumentSymbols> = {}
+const documents = new TextDocuments<TextDocument>(TextDocument)
+const documentsSymbols: { [key: string]: VDFDocumentSymbols } = {}
 const configuration = new Configuration(connection)
 
 const sendDiagnostics = _sendDiagnostics(connection, getVDFDocumentSymbols, validate)
@@ -140,7 +140,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 				// connection.console.log("Suggesting a key...")
 				const documentSymbols = documentsSymbols[document.uri].getDocumentSymbolAtPosition(params.position)?.result.children
 				if (documentSymbols) {
-					let controlName: string = ""
+					let controlName = ""
 					const properties: string[] = []
 					for (const documentSymbol of documentSymbols) {
 						properties.push(documentSymbol.name)
@@ -201,7 +201,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 						case "pin_to_sibling": {
 							const keys: CompletionItem[] = []
 							const addKeys = (documentSymbols: DocumentSymbol[]) => {
-								for (let documentSymbol of documentSymbols) {
+								for (const documentSymbol of documentSymbols) {
 									if (documentSymbol.children) {
 										keys.push({
 											label: documentSymbol.name,
@@ -248,7 +248,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 })
 
 connection.onHover((params: HoverParams): Hover | undefined => {
-	return;
+	return
 })
 
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | DefinitionLink[] | null> => {
@@ -286,7 +286,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 
 						const searchLocalizationFile = (filePath: string): Definition | null => {
 							try {
-								const documentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf16le").substring(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings });
+								const documentSymbols = getVDFDocumentSymbols(readFileSync(filePath, "utf16le").substring(1), { allowMultilineStrings: true, osTags: VDFOSTags.Strings })
 								const result = getLocationOfKey(filePath, documentSymbols, (<string>value).substring(1))
 								return result
 							}
@@ -387,7 +387,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 									hudRoot ??= getHUDRoot(document)
 									const clientschemePath = `${hudRoot}/resource/clientscheme.res`
 									return hudRoot && existsSync(clientschemePath) ? ((): Definition | null => {
-										const documentSymbols = getVDFDocumentSymbols(readFileSync(clientschemePath, "utf-8"));
+										const documentSymbols = getVDFDocumentSymbols(readFileSync(clientschemePath, "utf-8"))
 										return getLocationOfKey(clientschemePath, documentSymbols, <string>value)
 									})() : null
 								}
@@ -553,7 +553,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 				section: "vscode-vdf"
 			})).referencesCodeLens.showOnAllElements
 
-			const elementReferences: Record<string, { range?: Range, references: Location[] }> = {}
+			const elementReferences: { [key: string]: { range?: Range, references: Location[] } } = {}
 			const addCodelens = (documentSymbols: VDFDocumentSymbol[]) => {
 				for (const documentSymbol of documentSymbols) {
 					if (documentSymbol.name.toLowerCase() == "pin_to_sibling" && documentSymbol.detail && documentSymbol.detailRange) {
@@ -612,7 +612,7 @@ connection.onDocumentLinks(async (params: DocumentLinkParams) => {
 	const documentLinks: DocumentLink[] = []
 	const imageProperties = ["image", "teambg_1", "teambg_2", "teambg_3"]
 
-	let folderPath = (<T extends string>(str: string, search: T): str is `${T}${string}` => str.startsWith(search))(params.textDocument.uri, "git:/")
+	const folderPath = (<T extends string>(str: string, search: T): str is `${T}${string}` => str.startsWith(search))(params.textDocument.uri, "git:/")
 		? dirname(pathToFileURL(gitUriToFilePath(params.textDocument.uri)).href)
 		: dirname(params.textDocument.uri)
 
@@ -661,7 +661,7 @@ connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] | n
 		return null
 	}
 
-	const colourPattern: RegExp = /\d+\s+\d+\s+\d+\s+\d+/
+	const colourPattern = /\d+\s+\d+\s+\d+\s+\d+/
 	const colours: ColorInformation[] = []
 
 	documentSymbols.forAll((documentSymbol) => {
@@ -689,7 +689,7 @@ connection.onDocumentColor((params: DocumentColorParams): ColorInformation[] | n
 connection.onColorPresentation((params: ColorPresentationParams): ColorPresentation[] => {
 	const { uri } = params.textDocument
 	const { color } = params
-	switch (uri.split('.').pop()) {
+	switch (uri.split(".").pop()) {
 		case "res": return [{ label: `${Math.round(color.red * 255)} ${Math.round(color.green * 255)} ${Math.round(color.blue * 255)} ${Math.round(color.alpha * 255)}` }]
 		default: return [{ label: `rgba(${Math.round(color.red * 255)}, ${Math.round(color.green * 255)}, ${Math.round(color.blue * 255)}, ${Math.round(color.alpha)})` }]
 	}

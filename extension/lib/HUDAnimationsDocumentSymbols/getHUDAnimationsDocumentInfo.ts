@@ -74,7 +74,7 @@ export function getHUDAnimationsDocumentInfo(str: string, options?: VDFTokeniser
 		result.animations[eventName] = []
 		const eventAnimations: HUDAnimationStatementDocumentSymbol[] = []
 
-		let openingBrace = tokeniser.next()
+		const openingBrace = tokeniser.next()
 		if (openingBrace != "{") {
 			throw new HUDAnimationsSyntaxError(openingBrace, tokeniser, "Are you missing an opening brace?")
 		}
@@ -299,7 +299,7 @@ export function getHUDAnimationsDocumentInfo(str: string, options?: VDFTokeniser
 					break
 				}
 				default: {
-					throw new HUDAnimationsSyntaxError(animationCommand, tokeniser, `Expected "${Commands.join(`" | "`)}"`)
+					throw new HUDAnimationsSyntaxError(animationCommand, tokeniser, `Expected "${Commands.join("\" | \"")}"`)
 				}
 			}
 

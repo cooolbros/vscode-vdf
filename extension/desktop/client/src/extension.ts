@@ -1,22 +1,22 @@
-import { copyKeyValuePath } from "$lib/commands/copyKeyValuePath";
-import { extractVPKFileToWorkspace } from "$lib/commands/extractVPKFileToWorkspace";
-import { formatVDF } from "$lib/commands/formatVDF";
-import { importPopfileTemplates } from "$lib/commands/importPopfileTemplates";
-import { JSONToVDF } from "$lib/commands/JSONToVDF";
-import { showReferences } from "$lib/commands/showReferences";
-import { sortVDF } from "$lib/commands/sortVDF";
-import { VDFToJSON } from "$lib/commands/VDFToJSON";
-import { languageClientsInfo } from "$lib/languageClientsInfo";
-import * as path from "path";
-import { commands, ExtensionContext, TextDocument, window, workspace } from "vscode";
+import { copyKeyValuePath } from "$lib/commands/copyKeyValuePath"
+import { extractVPKFileToWorkspace } from "$lib/commands/extractVPKFileToWorkspace"
+import { formatVDF } from "$lib/commands/formatVDF"
+import { importPopfileTemplates } from "$lib/commands/importPopfileTemplates"
+import { JSONToVDF } from "$lib/commands/JSONToVDF"
+import { showReferences } from "$lib/commands/showReferences"
+import { sortVDF } from "$lib/commands/sortVDF"
+import { VDFToJSON } from "$lib/commands/VDFToJSON"
+import { languageClientsInfo } from "$lib/languageClientsInfo"
+import * as path from "path"
+import { commands, ExtensionContext, TextDocument, window, workspace } from "vscode"
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind
-} from "vscode-languageclient/node";
-import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider";
-import { VTFEditor } from "./VTF/VTFEditor";
+} from "vscode-languageclient/node"
+import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider"
+import { VTFEditor } from "./VTF/VTFEditor"
 
 const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: LanguageClient } = {}
 
@@ -91,7 +91,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
 }
 
-export function deactivate() {
+export async function deactivate() {
 	const promises: Promise<void>[] = []
 	let languageId: keyof typeof languageClients
 	for (languageId in languageClients) {

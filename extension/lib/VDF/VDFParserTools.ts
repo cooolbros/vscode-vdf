@@ -1,4 +1,4 @@
-import { Range } from "vscode-languageserver";
+import { Range } from "vscode-languageserver"
 
 export const parserTools = {
 	is: {
@@ -12,7 +12,7 @@ export const parserTools = {
 	convert: {
 		token: (str: string): [string, 0 | 1] => {
 			const quoted = str.startsWith("\"") && str.endsWith("\"")
-			return quoted ? [str.slice(1, -1), 1] : [str, 0];
+			return quoted ? [str.slice(1, -1), 1] : [str, 0]
 		},
 		osTag: (str: string): `[${string}]` => {
 			return `[${str.slice(1, -1)}]`

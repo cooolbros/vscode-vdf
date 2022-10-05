@@ -12,7 +12,7 @@ export async function findClassIcon(teamFortress2Folder: string, classIcon: stri
 	const relativePath = `materials/hud/leaderboard_class_${classIcon}.vmt`
 
 	// Search tf folder
-	const path1 = join(teamFortress2Folder, `tf`, relativePath)
+	const path1 = join(teamFortress2Folder, "tf", relativePath)
 	if (existsSync(path1)) {
 		return pathToFileURL(path1)
 	}

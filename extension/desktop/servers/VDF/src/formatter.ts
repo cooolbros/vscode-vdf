@@ -17,8 +17,8 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 		order: options?.order ?? null
 	}
 
-	const tab: string = "\t"
-	const space: string = " "
+	const tab = "\t"
+	const space = " "
 	const eol: string = _options.newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
 	const tabIndentation: boolean = _options.indentation == VDFIndentation.Tabs
 	const getIndentation: (level: number) => string = tabIndentation
@@ -39,7 +39,7 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 	const stringifyObject = (documentSymbols: VDFFormatDocumentSymbol[], level: number): string => {
 		let str = ""
 
-		let longestKeyLength: number = 0
+		let longestKeyLength = 0
 
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.key && !Array.isArray(documentSymbol.value)) {

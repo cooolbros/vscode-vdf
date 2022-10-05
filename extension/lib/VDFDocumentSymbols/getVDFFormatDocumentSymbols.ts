@@ -16,7 +16,7 @@ export interface VDFFormatDocumentSymbol {
  */
 export class InvalidTokenSequenceError extends Error {
 	constructor(...tokens: string[]) {
-		super(`Invalid token sequence! ("${tokens.join(`", "`)}")`)
+		super(`Invalid token sequence! ("${tokens.join("\", \"")}")`)
 	}
 }
 

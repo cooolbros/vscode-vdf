@@ -1,5 +1,5 @@
-import { Range } from "vscode-languageserver";
-import { VDFSyntaxError } from "../../VDF/dist/VDFErrors";
+import { Range } from "vscode-languageserver"
+import { VDFSyntaxError } from "../../VDF/dist/VDFErrors"
 
 export class HUDAnimationsSyntaxError extends VDFSyntaxError {
 	constructor(unExpectedToken: string, position: { position: number, line: number, character: number }, message?: string) {

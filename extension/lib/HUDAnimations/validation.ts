@@ -14,7 +14,7 @@ export const HUDAnimationsValidation = {
 		const _animationType = str.toLowerCase()
 		const result = Commands.find(command => command.toLowerCase() == _animationType)
 		if (result == undefined) {
-			throw new UnexpectedTokenError(str, `"${Commands.join(`" | "`)}"`, parserTools.calculate.tokenRange([str, quoted], tokeniser.line, tokeniser.character))
+			throw new UnexpectedTokenError(str, `"${Commands.join("\" | \"")}"`, parserTools.calculate.tokenRange([str, quoted], tokeniser.line, tokeniser.character))
 		}
 		return result
 	},
@@ -22,7 +22,7 @@ export const HUDAnimationsValidation = {
 		const _interpolatorType = str.toLowerCase()
 		const result = Interpolators.find(interpolator => interpolator.toLowerCase() == _interpolatorType)
 		if (result == undefined) {
-			throw new UnexpectedTokenError(str, `"${Interpolators.join(`" | "`)}"`, parserTools.calculate.tokenRange([str, quoted], tokeniser.line, tokeniser.character))
+			throw new UnexpectedTokenError(str, `"${Interpolators.join("\" | \"")}"`, parserTools.calculate.tokenRange([str, quoted], tokeniser.line, tokeniser.character))
 		}
 		return result
 	},
@@ -36,7 +36,7 @@ export const HUDAnimationsValidation = {
 	validateBit: ([str, quoted]: [string, 0 | 1], tokeniser: VDFTokeniser): Bit => {
 		const result = parseInt(str)
 		if (isNaN(result) || (result != 0 && result != 1)) {
-			throw new UnexpectedTokenError(str, `0 | 1`, parserTools.calculate.tokenRange([str, quoted], tokeniser.line, tokeniser.character))
+			throw new UnexpectedTokenError(str, "0 | 1", parserTools.calculate.tokenRange([str, quoted], tokeniser.line, tokeniser.character))
 		}
 		return result
 	}

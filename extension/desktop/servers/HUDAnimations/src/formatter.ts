@@ -62,10 +62,10 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 			currentToken = parserTools.convert.token(currentToken)[0]
 
 			if (currentToken.toLowerCase() != "event") {
-				throw new HUDAnimationsSyntaxError(currentToken, tokeniser, `Expected "event"!`)
+				throw new HUDAnimationsSyntaxError(currentToken, tokeniser, "Expected \"event\"!")
 			}
 
-			let eventName = tokeniser.read()
+			const eventName = tokeniser.read()
 
 			if (eventName == "__EOF__" || VDFFormatTokeniser.whiteSpaceTokenTerminate.includes(eventName)) {
 				throw new HUDAnimationsSyntaxError("{", tokeniser, "Expected event name!")
@@ -124,7 +124,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 
 							readOSTagAndComment(animation)
 							documentSymbol.event.animations.push(animation)
-							break;
+							break
 						}
 						case "runevent": {
 							const runEvent: AddComment<HUDAnimationTypes["RunEvent"]> = {
@@ -134,7 +134,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(runEvent)
 							documentSymbol.event.animations.push(runEvent)
-							break;
+							break
 						}
 						case "stopevent": {
 							const stopEvent: AddComment<HUDAnimationTypes["StopEvent"]> = {
@@ -144,7 +144,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(stopEvent)
 							documentSymbol.event.animations.push(stopEvent)
-							break;
+							break
 						}
 						case "setvisible": {
 							const setVisible: AddComment<HUDAnimationTypes["SetVisible"]> = {
@@ -155,7 +155,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(setVisible)
 							documentSymbol.event.animations.push(setVisible)
-							break;
+							break
 						}
 						case "firecommand": {
 							const fireCommand: AddComment<HUDAnimationTypes["FireCommand"]> = {
@@ -165,7 +165,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(fireCommand)
 							documentSymbol.event.animations.push(fireCommand)
-							break;
+							break
 						}
 						case "runeventchild": {
 							const runEventChild: AddComment<HUDAnimationTypes["RunEventChild"]> = {
@@ -176,7 +176,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(runEventChild)
 							documentSymbol.event.animations.push(runEventChild)
-							break;
+							break
 						}
 						case "setinputenabled": {
 							const setInputEnabled: AddComment<HUDAnimationTypes["SetInputEnabled"]> = {
@@ -187,7 +187,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(setInputEnabled)
 							documentSymbol.event.animations.push(setInputEnabled)
-							break;
+							break
 						}
 						case "playsound": {
 							const playSound: AddComment<HUDAnimationTypes["PlaySound"]> = {
@@ -197,7 +197,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(playSound)
 							documentSymbol.event.animations.push(playSound)
-							break;
+							break
 						}
 						case "stoppanelanimations": {
 							const stopPanelAnimations: AddComment<HUDAnimationTypes["StopPanelAnimations"]> = {
@@ -207,7 +207,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string, connection: _
 							}
 							readOSTagAndComment(stopPanelAnimations)
 							documentSymbol.event.animations.push(stopPanelAnimations)
-							break;
+							break
 						}
 						default:
 							throw new Error(`Unexpected ${animationType}!`)
@@ -317,9 +317,9 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 
 						const keys = getKeyOrders(animation)
 
-						for (let i: number = 0; i < keys.length; i++) {
+						for (let i = 0; i < keys.length; i++) {
 							// @ts-ignore
-							let value = animation[keys[i]]
+							const value = animation[keys[i]]
 
 							// Check value now that comments can be formatted after OS Tag and not every animation has an OS Tag
 							if (value != undefined) {
@@ -353,12 +353,12 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 					if (((a): a is AnimationWithComment => a.hasOwnProperty("type"))(animation)) {
 						const keys = getKeyOrders(animation)
 
-						for (let i: number = 0; i < keys.length; i++) {
+						for (let i = 0; i < keys.length; i++) {
 							// Type checking the animation type is useless here because getkeyorders will
 							// return the correct keys for the current animation type
 
 							// @ts-ignore
-							let value = animation[keys[i]]
+							const value = animation[keys[i]]
 
 							// Check value not falsy
 							if (value != undefined) {
@@ -372,7 +372,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 
 			for (const animation of documentSymbol.event.animations) {
 				if (((a): a is AnimationWithComment => a.hasOwnProperty("type"))(animation)) {
-					let i: number = 0
+					let i = 0
 					switch (animation.type) {
 						case "Animate": {
 							str += `    Animate${" ".repeat(keyLengths[i++] - animation.type.length + extraSpaces)}`

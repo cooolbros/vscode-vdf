@@ -12,26 +12,26 @@ export class VDFTokeniser {
 	/**
 	 * Zero-based offset position
 	 */
-	public position: number = 0
+	public position = 0
 
 	/**
 	 * Zero-based line number
 	 */
-	public line: number = 0
+	public line = 0
 
 	/**
 	 * Zero-based character number in current line
 	 */
-	public character: number = 0
+	public character = 0
 
 	// Peek
 	protected _peekToken: string | null = null
-	protected _peekPosition: number = 0
-	protected _peekLine: number = 0
-	protected _peekCharacter: number = 0
+	protected _peekPosition = 0
+	protected _peekLine = 0
+	protected _peekCharacter = 0
 
 	// EOF
-	protected _EOFRead: boolean = false
+	protected _EOFRead = false
 
 	constructor(str: string, options?: VDFTokeniserOptions) {
 		this.str = str
@@ -40,10 +40,10 @@ export class VDFTokeniser {
 			osTags: options?.osTags ?? VDFOSTags.All
 		}
 	}
-	next(lookAhead: boolean = false): string {
+	next(lookAhead = false): string {
 
 		// If a token has already been calculated using next(true), retrieve and return the token from cache
-		let currentToken: string = ""
+		let currentToken = ""
 		if (this._peekToken != null) {
 			currentToken = this._peekToken
 			this.position = this._peekPosition
@@ -103,7 +103,7 @@ export class VDFTokeniser {
 			character++
 
 			while (this.str[i] != "\"") {
-				if (this.str[i] == '\n') {
+				if (this.str[i] == "\n") {
 					if (!this.options.allowMultilineStrings) {
 						throw new UnexpectedCharacterError("\n", "\"", Range.create(tokenStartPosition, Position.create(line, character)))
 					}

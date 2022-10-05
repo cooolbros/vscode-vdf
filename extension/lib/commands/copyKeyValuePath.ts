@@ -1,7 +1,7 @@
-import { basename, relative, sep } from "path";
-import { TextEditor, window } from "vscode";
-import { getHUDRoot } from "../../../shared/tools";
-import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols";
+import { basename, relative, sep } from "path"
+import { TextEditor, window } from "vscode"
+import { getHUDRoot } from "../../../shared/tools"
+import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
 
 export function copyKeyValuePath(editor: TextEditor) {
 
