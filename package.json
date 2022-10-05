@@ -225,7 +225,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "dev": "webpack --watch --mode development",
-    "build": "webpack"
+    "build": "webpack",
+    "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
     "@types/node": "^18.7.23",
