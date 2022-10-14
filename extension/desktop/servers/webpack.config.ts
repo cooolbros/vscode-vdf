@@ -11,7 +11,7 @@ export const desktopServersConfiguration: Configuration = {
 		libraryTarget: "commonjs2"
 	},
 	resolve: {
-		extensions: [".ts"],
+		extensions: [".js", ".ts"],
 		alias: {
 			"$lib": join(process.cwd(), "extension/lib")
 		}
@@ -20,7 +20,12 @@ export const desktopServersConfiguration: Configuration = {
 		rules: [
 			{
 				test: /\.ts$/,
-				use: "ts-loader",
+				use: {
+					loader: "ts-loader",
+					options: {
+						onlyCompileBundledFiles: true
+					}
+				}
 			}
 		]
 	}

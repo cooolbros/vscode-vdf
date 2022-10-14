@@ -15,7 +15,7 @@ export const desktopClientConfiguration: Configuration = {
 		vscode: "commonjs vscode"
 	},
 	resolve: {
-		extensions: [".ts"],
+		extensions: [".js", ".ts"],
 		alias: {
 			"$lib": join(process.cwd(), "extension/lib")
 		}
@@ -24,7 +24,12 @@ export const desktopClientConfiguration: Configuration = {
 		rules: [
 			{
 				test: /\.ts$/,
-				use: "ts-loader",
+				use: {
+					loader: "ts-loader",
+					options: {
+						onlyCompileBundledFiles: true
+					}
+				}
 			}
 		]
 	}
