@@ -1,3 +1,4 @@
+import { VDFDocumentSymbol } from "$lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import { basename, relative, sep } from "path"
 import { TextEditor, window } from "vscode"
 import { getHUDRoot } from "../../../shared/tools"
@@ -10,7 +11,7 @@ export function copyKeyValuePath(editor: TextEditor): void {
 		return
 	}
 
-	const filePath = (() => {
+	const filePath = ((): string => {
 		const fsPath = editor.document.uri.fsPath
 		const hudRoot = getHUDRoot({ uri: editor.document.uri.toString() })
 		if (hudRoot) {
@@ -21,7 +22,7 @@ export function copyKeyValuePath(editor: TextEditor): void {
 
 	const position = editor.selection.start
 
-	const documentSymbolResult = (() => {
+	const documentSymbolResult = ((): VDFDocumentSymbol | null => {
 		const documentSymbols = getVDFDocumentSymbols(editor.document.getText())
 		return documentSymbols.getDocumentSymbolAtPosition(position)
 	})()

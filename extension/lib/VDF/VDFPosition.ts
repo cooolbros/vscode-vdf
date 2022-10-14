@@ -2,8 +2,8 @@ import { Position } from "vscode-languageserver"
 
 export class VDFPosition implements Position {
 
-	line: number
-	character: number
+	public line: number
+	public character: number
 
 	constructor(line: number, character: number) {
 		Position.create(line, character)
@@ -11,7 +11,7 @@ export class VDFPosition implements Position {
 		this.character = character
 	}
 
-	isBefore(value: Position): boolean {
+	public isBefore(value: Position): boolean {
 		if (this.line < value.line) {
 			return true
 		}
@@ -21,7 +21,7 @@ export class VDFPosition implements Position {
 		return this.character < value.character
 	}
 
-	isAfter(value: Position): boolean {
+	public isAfter(value: Position): boolean {
 		if (this.line < value.line) {
 			return false
 		}

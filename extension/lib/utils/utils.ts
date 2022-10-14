@@ -26,7 +26,7 @@ export function merge(obj1: any, obj2: any): any {
 	}
 	for (const j in obj2) {
 		// check if property exists because we dont want to shallow merge an object
-		if (!obj1.hasOwnProperty(j)) {
+		if (!(j in obj1)) {
 			obj1[j] = obj2[j]
 		}
 	}

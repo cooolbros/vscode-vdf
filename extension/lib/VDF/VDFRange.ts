@@ -3,8 +3,8 @@ import { VDFPosition } from "./VDFPosition"
 
 export class VDFRange implements Range {
 
-	start: VDFPosition
-	end: VDFPosition
+	public start: VDFPosition
+	public end: VDFPosition
 
 	constructor(start: VDFPosition, end: VDFPosition) {
 		Range.create(start, end)

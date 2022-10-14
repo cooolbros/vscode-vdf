@@ -36,7 +36,7 @@ export namespace CompletionFiles {
 	}
 	export function All(root: string, relativePath?: string, removeExtensions = false): CompletionList | CompletionItem[] {
 		const items: CompletionItemSet = new CompletionItemSet()
-		const iterateDir = (relativeChildPath: string) => {
+		const iterateDir = (relativeChildPath: string): void => {
 			for (const item of readdirSync(`${root}${sep}${relativeChildPath}`)) {
 				if (!statSync(`${root}${sep}${relativeChildPath}${sep}${item}`).isFile()) {
 					iterateDir(`${relativeChildPath}${item}${sep}`)

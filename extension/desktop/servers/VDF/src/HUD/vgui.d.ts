@@ -7,38 +7,38 @@ declare namespace vgui {
 	type Int = number
 
 	class AnalogBar extends Panel {
-		analogValue: Float
-		variable: string
+		public analogValue: Float
+		public variable: string
 	}
 
 	class Panel {
-		xpos: Int
-		ypos: Int
-		zpos: Int
-		navUp: string
-		navDown: string
-		navLeft: string
-		navRight: string
-		navToRelay: string
-		navActivate: string
-		navBack: string
-		IgnoreScheme: Int
-		visible: Int
-		enabled: Int
-		mouseinputenabled: Int
-		tabPosition: Int
-		tooltiptext: string
-		paintbackground: Int
-		paintborder: Int
-		border: string
-		fieldName: string
-		actionsignallevel: string
-		ForceStereoRenderToFrameBuffer: Bool
-		RoundedCorners: Int
-		pin_to_sibling: string
-		pin_corner_to_sibling: string
-		pin_to_sibling_corner: string
-		keyboardinputenabled: Bool
+		public xpos: Int
+		public ypos: Int
+		public zpos: Int
+		public navUp: string
+		public navDown: string
+		public navLeft: string
+		public navRight: string
+		public navToRelay: string
+		public navActivate: string
+		public navBack: string
+		public IgnoreScheme: Int
+		public visible: Int
+		public enabled: Int
+		public mouseinputenabled: Int
+		public tabPosition: Int
+		public tooltiptext: string
+		public paintbackground: Int
+		public paintborder: Int
+		public border: string
+		public fieldName: string
+		public actionsignallevel: string
+		public ForceStereoRenderToFrameBuffer: Bool
+		public RoundedCorners: Int
+		public pin_to_sibling: string
+		public pin_corner_to_sibling: string
+		public pin_to_sibling_corner: string
+		public keyboardinputenabled: Bool
 	}
 
 	class Label extends Panel {
@@ -48,21 +48,21 @@ declare namespace vgui {
 	class Button extends Label { }
 
 	class CExButton extends Button {
-		border_default: string
-		border_armed: string
-		border_disabled: string
-		border_selected: string
+		public border_default: string
+		public border_armed: string
+		public border_disabled: string
+		public border_selected: string
 	}
 
 	class CExImagebutton extends CExButton {
-		image_drawcolor: Color
-		image_armedcolor: Color
-		image_depressedcolor: Color
-		image_disabledcolor: Color
-		image_selectedcolor: Color
-		image_default: Image
-		image_armed: Image
-		image_selected: Image
+		public image_drawcolor: Color
+		public image_armedcolor: Color
+		public image_depressedcolor: Color
+		public image_disabledcolor: Color
+		public image_selectedcolor: Color
+		public image_default: Image
+		public image_armed: Image
+		public image_selected: Image
 	}
 
 	class RichText { }
