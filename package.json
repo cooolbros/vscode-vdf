@@ -33,7 +33,7 @@
     "onLanguage:popfile",
     "onLanguage:vdf"
   ],
-  "main": "./client/dist/extension.js",
+  "main": "./dist/desktop/extension.js",
   "contributes": {
     "commands": [
       {
