@@ -11,11 +11,11 @@ import { VDFTokeniser } from "./VDFTokeniser"
  * Provides support for parsing and stringifying VDF objects
  */
 export class VDF {
-	static readonly OSTagDelimeter: "^" = "^"
-	static parse(str: string, options?: VDFTokeniserOptions): { [key: string]: string | ReturnType<typeof VDF.parse> | (string | ReturnType<typeof VDF.parse>)[] } {
+	public static readonly OSTagDelimeter = <const>"^"
+	public static parse(str: string, options?: VDFTokeniserOptions): { [key: string]: string | ReturnType<typeof VDF.parse> | (string | ReturnType<typeof VDF.parse>)[] } {
 		const tokeniser = new VDFTokeniser(str, options)
-		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: string | ReturnType<typeof VDF.parse>) => {
-			if (obj.hasOwnProperty(key)) {
+		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: string | ReturnType<typeof VDF.parse>): void => {
+			if (key in obj) {
 				const existing = obj[key]
 				if (Array.isArray(existing)) {
 					existing.push(value)
@@ -71,7 +71,7 @@ export class VDF {
 		}
 		return parseObject()
 	}
-	static stringify(obj: any, options?: VDFStringifyOptions): any {
+	public static stringify(obj: any, options?: VDFStringifyOptions): any {
 		const _options: Required<VDFStringifyOptions> = {
 			indentation: options?.indentation ?? VDFIndentation.Tabs,
 			tabSize: options?.tabSize ?? 4,
@@ -83,11 +83,11 @@ export class VDF {
 		const eol: string = _options.newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
 		const tabIndentation: boolean = _options.indentation == VDFIndentation.Tabs
 		const getIndentation: (level: number) => string = tabIndentation
-			? (level: number) => tab.repeat(level)
-			: (level: number) => space.repeat(level * _options.tabSize)
+			? (level: number): string => tab.repeat(level)
+			: (level: number): string => space.repeat(level * _options.tabSize)
 		const getWhitespace: (longest: number, current: number) => string = tabIndentation
-			? (longest: number, current: number) => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
-			: (longest: number, current: number) => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
+			? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
+			: (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
 		const stringifyObject = (obj: any, level = 0): string => {
 			let str = ""
 			let keys: string[]

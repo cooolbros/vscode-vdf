@@ -7,7 +7,7 @@ import * as sortKeysOrders from "../JSON/vdf_sort_keys_orders.json"
 export function sortVDF(editor: TextEditor, edit: TextEditorEdit): void {
 	const { document } = editor
 	const ext = document.fileName.split(".").pop()
-	if (ext && ((ext): ext is keyof typeof sortKeysOrders => sortKeysOrders.hasOwnProperty(ext))(ext)) {
+	if (ext && ((ext): ext is keyof typeof sortKeysOrders => ext in sortKeysOrders)(ext)) {
 		const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
 		const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
 		const order = sortKeysOrders[ext]

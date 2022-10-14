@@ -4,7 +4,7 @@ import { VDFIndentation } from "../../../shared/VDF/dist/models/VDFIndentation"
 import { VDFNewLine } from "../../../shared/VDF/dist/models/VDFNewLine"
 import { VDFStringifyOptions } from "../../../shared/VDF/dist/models/VDFStringifyOptions"
 
-export function format(str: string, connection: _Connection) {
+export function format(str: string, connection: _Connection): string {
 	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str, connection), connection)
 }
 
@@ -22,11 +22,11 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 	const eol: string = _options.newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
 	const tabIndentation: boolean = _options.indentation == VDFIndentation.Tabs
 	const getIndentation: (level: number) => string = tabIndentation
-		? (level: number) => tab.repeat(level)
-		: (level: number) => space.repeat(level * _options.tabSize)
+		? (level: number): string => tab.repeat(level)
+		: (level: number): string => space.repeat(level * _options.tabSize)
 	const getWhitespace: (longest: number, current: number) => string = tabIndentation
-		? (longest: number, current: number) => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
-		: (longest: number, current: number) => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
+		? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
+		: (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
 
 
 	// Comment text

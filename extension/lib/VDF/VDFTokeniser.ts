@@ -40,7 +40,7 @@ export class VDFTokeniser {
 			osTags: options?.osTags ?? VDFOSTags.All
 		}
 	}
-	next(lookAhead = false): string {
+	public next(lookAhead = false): string {
 
 		// If a token has already been calculated using next(true), retrieve and return the token from cache
 		let currentToken = ""

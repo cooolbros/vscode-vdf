@@ -71,23 +71,23 @@ export class VTFDocument implements CustomDocument {
 	/**
 	 * VTF Version
 	 */
-	public get version() { return this.VTF.version }
+	public get version(): string { return this.VTF.version }
 
 	/**
 	 * VTF Image Format
 	 * [VTF Image Formats](VTFImageFormats.json).
 	 */
-	public get imageFormat() { return this.VTF.imageFormat }
+	public get imageFormat(): string { return this.VTF.imageFormat }
 
 	/**
 	 * VTF Width
 	 */
-	public get width() { return this.VTF.width }
+	public get width(): number { return this.VTF.width }
 
 	/**
 	 * VTF Height
 	 */
-	public get height() { return this.VTF.height }
+	public get height(): number { return this.VTF.height }
 
 	/**
 	 * Absolute path to VTF TGA file
@@ -169,7 +169,7 @@ export class VTFDocument implements CustomDocument {
 			get: <K extends keyof VTF["flags"]>(target: VTF["flags"], p: K): VTF["flags"][keyof VTF["flags"]] => {
 				return target[p]
 			},
-			set: <K extends keyof VTF["flags"]>(target: VTF["flags"], p: K, value: VTF["flags"][K]) => {
+			set: <K extends keyof VTF["flags"]>(target: VTF["flags"], p: K, value: VTF["flags"][K]): boolean => {
 				target[p] = value
 				const propertyChangedInfo = { flags: { [p]: value } }
 				this.onPropertyChanged(propertyChangedInfo)
@@ -209,7 +209,7 @@ export class VTFDocument implements CustomDocument {
 	 * @param vtfPath Absolute path to input VTF
 	 * @param tgaPath Absolute path to output TGA
 	 */
-	private static async extractVTF(teamFortress2Folder: string, vtfPath: string, tgaPath: string) {
+	private static async extractVTF(teamFortress2Folder: string, vtfPath: string, tgaPath: string): Promise<void> {
 		await promisify(exec)(`"${join(teamFortress2Folder, "bin/vtf2tga.exe")}" ${[
 			"-i",
 			`"${vtfPath}"`,
@@ -222,13 +222,13 @@ export class VTFDocument implements CustomDocument {
 	 * Handle a message receieved from the Custom Editor Webview
 	 * @param message webview message
 	 */
-	public onDidReceiveMessage(message: any) {
+	public onDidReceiveMessage(message: any): void {
 		const state = message.state
-		if (state.hasOwnProperty("scale")) {
+		if ("scale" in state) {
 			this._scale = state.scale
 			this.onPropertyChanged({ scale: this._scale })
 		}
-		if (state.hasOwnProperty("flags")) {
+		if ("flags" in state) {
 			for (const id in state.flags) {
 				// @ts-ignore
 				this.VTF.flags[id] = state.flags[id]
@@ -249,7 +249,7 @@ export class VTFDocument implements CustomDocument {
 	 * Notify extension client of VTF Document property changes
 	 * @param propertyChangedInfo
 	 */
-	private onPropertyChanged(propertyChangedInfo: VTFPropertyChangeEvent) {
+	private onPropertyChanged(propertyChangedInfo: VTFPropertyChangeEvent): void {
 		this.onVTFDidChangeEventEmitter.fire(propertyChangedInfo)
 	}
 
@@ -313,7 +313,7 @@ export class VTFDocument implements CustomDocument {
 	/**
 	 * Revert VTF Document to its last saved state on disk
 	 */
-	public revert() {
+	public revert(): void {
 		this.VTF.setFlags(this.VTF.savedFlags)
 
 		const propertyChangedInfo = { flags: this.flags }

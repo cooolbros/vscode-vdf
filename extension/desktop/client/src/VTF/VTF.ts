@@ -21,9 +21,9 @@ export class VTF {
 	private readonly versionMajor: number
 	private readonly versionMinor: number
 	public get version(): string { return `${this.versionMajor}.${this.versionMinor}` }
-	readonly width: number
-	readonly height: number
-	readonly flags: {
+	public readonly width: number
+	public readonly height: number
+	public readonly flags: {
 		"point-sample": boolean
 		"trilinear-sample": boolean
 		"clamp-s": boolean

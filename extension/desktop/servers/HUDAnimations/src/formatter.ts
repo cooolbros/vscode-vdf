@@ -254,7 +254,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 	const keyOrder_AnimateGainBias = <const>["type", "element", "property", "value", "interpolator", "bias", "delay", "duration", "osTag"]
 	const keyOrder_AnimatePulse = <const>["type", "element", "property", "value", "interpolator", "frequency", "delay", "duration", "osTag"]
 
-	const getKeyOrders = <T extends Command>(animation: HUDAnimationTypes[T]) => {
+	const getKeyOrders = <T extends Command>(animation: HUDAnimationTypes[T]): readonly string[] => {
 		if (animationIsType(animation, "Animate")) {
 			if (animation.interpolator == "Gain" || animation.interpolator == "Bias") {
 				return keyOrder_AnimateGainBias
@@ -269,7 +269,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 		}
 	}
 
-	const quoted = (value: string) => {
+	const quoted = (value: string): boolean => {
 		return value == "" || /\s/.test(value)
 	}
 
@@ -309,10 +309,10 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 		fileScopeLengths = new Array(10).fill(-4)
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.event?.animations) {
-				for (const animation of documentSymbol.event?.animations) {
+				for (const animation of documentSymbol.event.animations) {
 					// Skip over comments
 
-					if (((a): a is AnimationWithComment => a.hasOwnProperty("type"))(animation)) {
+					if (((a): a is AnimationWithComment => "type" in a)(animation)) {
 						// Get the order of keys depending on the animation type and interpolator
 
 						const keys = getKeyOrders(animation)
@@ -350,7 +350,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 			if (keyLengths == null) {
 				keyLengths = new Array(10).fill(-4)
 				for (const animation of documentSymbol.event.animations) {
-					if (((a): a is AnimationWithComment => a.hasOwnProperty("type"))(animation)) {
+					if (((a): a is AnimationWithComment => "type" in a)(animation)) {
 						const keys = getKeyOrders(animation)
 
 						for (let i = 0; i < keys.length; i++) {
@@ -371,7 +371,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 			}
 
 			for (const animation of documentSymbol.event.animations) {
-				if (((a): a is AnimationWithComment => a.hasOwnProperty("type"))(animation)) {
+				if (((a): a is AnimationWithComment => "type" in a)(animation)) {
 					let i = 0
 					switch (animation.type) {
 						case "Animate": {
@@ -467,9 +467,9 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 						}
 					}
 				}
-				else {
-					str += `    ${writeComment(animation.comment)}${newLine}`
-				}
+				// else {
+				// 	str += `    ${writeComment(animation.comment)}${newLine}`
+				// }
 			}
 			str += `}${newLine}`
 		}

@@ -25,7 +25,7 @@ export class Configuration<T = VSCodeVDFSettings> {
 		this.update(uri)
 	}
 
-	private update(uri: string) {
+	private update(uri: string): void {
 		this.connection.workspace.getConfiguration({ scopeUri: uri, section: "vscode-vdf" }).then((value) => {
 			this.configuration[uri] = value
 		})
@@ -35,7 +35,7 @@ export class Configuration<T = VSCodeVDFSettings> {
 		return this.configuration[uri]
 	}
 
-	public remove(uri: string) {
+	public remove(uri: string): void {
 		delete this.configuration[uri]
 	}
 }

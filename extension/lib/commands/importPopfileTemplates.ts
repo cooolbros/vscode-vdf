@@ -71,7 +71,7 @@ export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit)
 		}
 	}
 
-	let insertPosition = (() => {
+	let insertPosition = ((): VDFPosition | null => {
 		for (let i = waveSchedule.length - 1; i >= 0; i--) {
 			const documentSymbol = waveSchedule[i]
 			if (documentSymbol.name.toLowerCase() == "templates" && documentSymbol.children != undefined) {
@@ -88,7 +88,7 @@ export function importPopfileTemplates(editor: TextEditor, edit: TextEditorEdit)
 	}
 	else {
 		text = `\tTemplates${eol}\t{${eol}${externalTemplates.map(template => `\t\t${template[1].split(/\r?\n/).join(eol)}`).join(eol.repeat(2))}${eol}\t}${eol.repeat(2)}`
-		insertPosition = (() => {
+		insertPosition = ((): VDFPosition => {
 			const WaveMission = ["Wave", "Mission"].map(i => i.toLowerCase())
 			// Insert Templates before the first wave
 			const position = waveSchedule.find(i => WaveMission.includes(i.name.toLowerCase()))!.range.start // There must be at least 1 wave for templates to be referenced, otherwise we would have exited early

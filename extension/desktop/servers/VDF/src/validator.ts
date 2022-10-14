@@ -46,8 +46,7 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 				const _key = key.split(VDF.OSTagDelimeter)[0].toLowerCase()
 				const _value = detail.toLowerCase()
 				switch (_key) {
-					case "fieldname":
-					{
+					case "fieldname": {
 						// fieldName must match element name
 						const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
 						if (elementName != undefined && _value != elementName?.toLowerCase()) {
@@ -59,8 +58,7 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 						}
 						break
 					}
-					case "pin_to_sibling":
-					{
+					case "pin_to_sibling": {
 						// Element should not be pinned to itself
 						const elementName = objectPath[objectPath.length - 1]?.split(VDF.OSTagDelimeter)[0]
 						if (elementName != undefined && _value == elementName?.toLowerCase()) {
@@ -72,9 +70,8 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 						}
 						break
 					}
-					default:
-					{
-						if (((key): key is keyof typeof enumMembers => enumMembers.hasOwnProperty(key))(_key)) {
+					default: {
+						if (((key): key is keyof typeof enumMembers => key in enumMembers)(_key)) {
 
 							// If the value contains any letters it must be matched to an enum values
 							if (/\D/.test(_value)) {
@@ -103,7 +100,7 @@ export function validate(documentSymbols: VDFDocumentSymbol[]): Diagnostic[] {
 								}
 							}
 						}
-						if (((key): key is keyof typeof unionTypes => unionTypes.hasOwnProperty(key))(_key)) {
+						if (((key): key is keyof typeof unionTypes => key in unionTypes)(_key)) {
 							if (!unionTypes[_key].includes(_value)) {
 								diagnostics.push({
 									message: `"${detail}" is not a valid value for ${_key}! Expected "${unionTypes[_key].join("\" | \"")}"`,

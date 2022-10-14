@@ -3,7 +3,7 @@ import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 
-	forAll(callback: (documentSymbol: VDFDocumentSymbol) => void) {
+	public forAll(callback: (documentSymbol: VDFDocumentSymbol) => void): void {
 		for (const documentSymbol of this) {
 			if (documentSymbol.children) {
 				documentSymbol.children.forAll(callback)
@@ -12,7 +12,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		}
 	}
 
-	findAll(callback: (documentSymbol: VDFDocumentSymbol) => boolean): { result: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
+	public findAll(callback: (documentSymbol: VDFDocumentSymbol) => boolean): { result: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
 		const documentSymbolsPath: VDFDocumentSymbol[] = []
 		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findAll"]> => {
 			for (const documentSymbol of documentSymbols) {
@@ -37,7 +37,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		return iterateDocumentSymbols(this)
 	}
 
-	getDocumentSymbolAtPosition(position: Position): ReturnType<VDFDocumentSymbols["findAll"]> {
+	public getDocumentSymbolAtPosition(position: Position): ReturnType<VDFDocumentSymbols["findAll"]> {
 		return this.findAll(value => value.range.contains(position))
 	}
 }

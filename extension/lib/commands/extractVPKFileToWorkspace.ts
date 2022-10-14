@@ -1,14 +1,14 @@
 import { copyFileSync, mkdirSync } from "fs"
 import { dirname, join } from "path"
 import { URLSearchParams } from "url"
-import { TextEditor, Uri, window, workspace } from "vscode"
+import { TextEditor, Uri, window, workspace, WorkspaceFolder } from "vscode"
 import { VPK } from "../../../shared/tools/dist/VPK"
 
 export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<void> {
 
 	const currentWorkspace = workspace.workspaceFolders
 		? workspace.workspaceFolders.length > 1
-			? await (async () => {
+			? await (async (): Promise<WorkspaceFolder> => {
 				const selection = await window.showQuickPick(workspace.workspaceFolders!.map(workspaceFolder => workspaceFolder.name), { title: "Select workspace folder to extract VPK file to" })
 				return workspace.workspaceFolders!.find(workspaceFolder => workspaceFolder.name == selection)!
 			})()

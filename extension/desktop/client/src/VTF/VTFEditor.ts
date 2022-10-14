@@ -10,7 +10,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 	private readonly context: ExtensionContext
 
 	private readonly onDidChangeCustomDocumentEventEmitter: EventEmitter<CustomDocumentEditEvent<VTFDocument>>
-	readonly onDidChangeCustomDocument: Event<CustomDocumentEditEvent<VTFDocument>>
+	public readonly onDidChangeCustomDocument: Event<CustomDocumentEditEvent<VTFDocument>>
 
 	private readonly selectVTFZoomLevelCommand: Disposable
 
@@ -27,7 +27,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		context.subscriptions.push(this.onDidChangeCustomDocumentEventEmitter, this.selectVTFZoomLevelCommand)
 	}
 
-	saveCustomDocument(document: VTFDocument, cancellation: CancellationToken): Thenable<void> {
+	public saveCustomDocument(document: VTFDocument, cancellation: CancellationToken): Thenable<void> {
 		if (document.isReadOnly) {
 			// git:// protocols are readonly
 			return Promise.resolve()
@@ -35,7 +35,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		return workspace.fs.writeFile(document.uri, document.save())
 	}
 
-	saveCustomDocumentAs(document: VTFDocument, destination: Uri, cancellation: CancellationToken): Thenable<void> {
+	public saveCustomDocumentAs(document: VTFDocument, destination: Uri, cancellation: CancellationToken): Thenable<void> {
 		if (document.isReadOnly) {
 			// git:// protocols are readonly
 			return Promise.resolve()
@@ -43,14 +43,14 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		return workspace.fs.writeFile(destination, document.saveAs())
 	}
 
-	revertCustomDocument(document: VTFDocument, cancellation: CancellationToken): Thenable<void> {
-		return (async () => {
+	public revertCustomDocument(document: VTFDocument, cancellation: CancellationToken): Thenable<void> {
+		return (async (): Promise<void> => {
 			document.revert()
 		})()
 	}
 
-	backupCustomDocument(document: VTFDocument, context: CustomDocumentBackupContext, cancellation: CancellationToken): Thenable<CustomDocumentBackup> {
-		return (async () => {
+	public backupCustomDocument(document: VTFDocument, context: CustomDocumentBackupContext, cancellation: CancellationToken): Thenable<CustomDocumentBackup> {
+		return (async (): Promise<CustomDocumentBackup> => {
 			const backupDirectory = dirname(context.destination.fsPath)
 			if (!existsSync(backupDirectory)) {
 				mkdirSync(backupDirectory, { recursive: true })
@@ -58,7 +58,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 			await writeFile(context.destination.fsPath, JSON.stringify(document.getBackup()))
 			return {
 				id: context.destination.fsPath,
-				delete: () => {
+				delete: (): void => {
 					if (existsSync(context.destination.fsPath)) {
 						rmSync(context.destination.fsPath)
 					}
@@ -67,12 +67,12 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		})()
 	}
 
-	openCustomDocument(uri: Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): VTFDocument | Thenable<VTFDocument> {
+	public openCustomDocument(uri: Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): VTFDocument | Thenable<VTFDocument> {
 		const backup: VTFBackup | undefined = openContext.backupId != undefined && existsSync(openContext.backupId) ? JSON.parse(readFileSync(openContext.backupId, "utf-8")) : undefined
 		return VTFDocument.create(this.context.extensionPath, uri, backup)
 	}
 
-	resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): void | Thenable<void> {
+	public resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): void | Thenable<void> {
 
 		webviewPanel.webview.options = {
 			enableScripts: true
@@ -92,7 +92,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		webviewPanel.webview.onDidReceiveMessage((message) => {
 			document.onDidReceiveMessage(message)
 			const state = message.state
-			if (state.hasOwnProperty("flags")) {
+			if ("flags" in state) {
 				for (const id in state.flags) {
 					const value = state.flags[id]
 					document.changes++

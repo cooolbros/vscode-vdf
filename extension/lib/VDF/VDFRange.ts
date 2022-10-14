@@ -12,7 +12,7 @@ export class VDFRange implements Range {
 		this.end = end
 	}
 
-	contains(value: Range | Position): boolean {
+	public contains(value: Range | Position): boolean {
 		if (Range.is(value)) {
 			return this.start.isBefore(value.start) && this.end.isAfter(value.end)
 		}

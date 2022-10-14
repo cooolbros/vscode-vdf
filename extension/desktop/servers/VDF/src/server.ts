@@ -151,7 +151,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 
 					if (controlName != "") {
 						connection.console.log(`Controlname is ${controlName}`)
-						if (((controlName): controlName is keyof typeof hudTypes => hudTypes.hasOwnProperty(controlName))(controlName)) {
+						if (((controlName): controlName is keyof typeof hudTypes => controlName in hudTypes)(controlName)) {
 							return [...hudTypes[controlName], ...hudTypes.genericHudTypes].filter((i) => !properties.includes(i.label))
 						}
 						return hudTypes.genericHudTypes.filter((i) => !properties.includes(i.label))
@@ -200,7 +200,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 						}
 						case "pin_to_sibling": {
 							const keys: CompletionItem[] = []
-							const addKeys = (documentSymbols: DocumentSymbol[]) => {
+							const addKeys = (documentSymbols: DocumentSymbol[]): void => {
 								for (const documentSymbol of documentSymbols) {
 									if (documentSymbol.children) {
 										keys.push({
@@ -230,7 +230,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 									{ label: "0", kind: CompletionItemKind.Value }
 								]
 							}
-							if (statichudKeyValues.hasOwnProperty(key)) {
+							if (key in statichudKeyValues) {
 								return statichudKeyValues[key]
 							}
 						}
@@ -379,6 +379,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | D
 						}
 						// Dont break ("font" is also a clientscheme property and will be evaluated in the default: section)
 					}
+					// eslint-disable-next-line no-fallthrough
 					default: {
 						let section: keyof typeof clientscheme
 						for (section in clientscheme) {
@@ -537,7 +538,7 @@ connection.onCodeAction((params: CodeActionParams) => {
 	}
 	catch (e: unknown) {
 		if (e instanceof VDFSyntaxError) {
-			connection.console.log(`[connection.onCodeAction] ${e.toString()}`)
+			connection.console.log(`[connection.onCodeAction] ${e}`)
 			return []
 		}
 		throw e
@@ -554,11 +555,11 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 			})).referencesCodeLens.showOnAllElements
 
 			const elementReferences: { [key: string]: { range?: Range, references: Location[] } } = {}
-			const addCodelens = (documentSymbols: VDFDocumentSymbol[]) => {
+			const addCodelens = (documentSymbols: VDFDocumentSymbol[]): void => {
 				for (const documentSymbol of documentSymbols) {
 					if (documentSymbol.name.toLowerCase() == "pin_to_sibling" && documentSymbol.detail && documentSymbol.detailRange) {
 						const elementName = documentSymbol.detail.toLowerCase()
-						if (!elementReferences.hasOwnProperty(elementName)) {
+						if (!(elementName in elementReferences)) {
 							elementReferences[elementName] = { references: [] }
 						}
 						elementReferences[elementName].references.push({
@@ -568,7 +569,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 					}
 					else if (documentSymbol.children) {
 						const elementName = documentSymbol.name.toLowerCase()
-						if (!elementReferences.hasOwnProperty(elementName)) {
+						if (!(elementName in elementReferences)) {
 							elementReferences[elementName] = { references: [] }
 						}
 						elementReferences[elementName].range = documentSymbol.nameRange

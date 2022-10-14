@@ -3,7 +3,7 @@ import { TextEditor, window } from "vscode"
 import { getHUDRoot } from "../../../shared/tools"
 import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
 
-export function copyKeyValuePath(editor: TextEditor) {
+export function copyKeyValuePath(editor: TextEditor): void {
 
 	const languageId = editor.document.languageId
 	if (languageId != "vdf" && languageId != "popfile") {

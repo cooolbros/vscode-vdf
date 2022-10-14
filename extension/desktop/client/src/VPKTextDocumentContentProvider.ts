@@ -21,7 +21,7 @@ export class VPKTextDocumentContentProvider implements TextDocumentContentProvid
 		return this.workspace.getConfiguration("vscode-vdf").get("teamFortress2Folder")!
 	}
 
-	public async provideTextDocumentContent(uri: Uri, token: CancellationToken) {
+	public async provideTextDocumentContent(uri: Uri, token: CancellationToken): Promise<string | undefined> {
 		const filePath = uri.fsPath.substring(1)
 		const params = new URLSearchParams(uri.query)
 		const vpkFile = params.get("vpk")

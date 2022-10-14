@@ -6,11 +6,11 @@ import { VDFTokeniser } from "./VDFTokeniser"
 export class VDFFormatTokeniser extends VDFTokeniser {
 	private static readonly whiteSpaceIgnoreFormat: string[] = [" ", "\t", "\r"]
 
-	next(lookAhead = false): string {
+	public next(lookAhead = false): string {
 		throw new Error()
 	}
 
-	read({ lookAhead = false, skipNewlines = false }: { lookAhead?: boolean, skipNewlines?: boolean } = {}): string {
+	public read({ lookAhead = false, skipNewlines = false }: { lookAhead?: boolean, skipNewlines?: boolean } = {}): string {
 
 		let i = this.position
 		let currentToken = ""

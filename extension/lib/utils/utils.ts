@@ -14,12 +14,12 @@ import { getVDFDocumentSymbols, VDFDocumentSymbol } from "../../VDF/dist/getVDFD
 export function merge(obj1: any, obj2: any): any {
 	for (const i in obj1) {
 		if (typeof obj1[i] === "object") {
-			if (obj2.hasOwnProperty(i) && typeof obj2[i] == "object") {
+			if (i in obj2 && typeof obj2[i] == "object") {
 				merge(obj1[i], obj2[i])
 			}
 		}
 		else {
-			if (obj2.hasOwnProperty(i)) {
+			if (i in obj2) {
 				obj1[i] = obj2[i]
 			}
 		}
@@ -74,9 +74,9 @@ export function loadAllControls(filePath: string): any {
 
 	const filterString = (value: unknown): value is string => typeof value == "string"
 
-	const addControls = (filePath: string) => {
+	const addControls = (filePath: string): void => {
 		const obj = fs.existsSync(filePath) ? VDF.parse(fs.readFileSync(filePath, "utf-8")) : {}
-		if (obj.hasOwnProperty("#base")) {
+		if ("#base" in obj) {
 			const baseFiles: string[] = Array.isArray(obj["#base"]) ? obj["#base"].filter(filterString) : [...Object.values(obj["#base"]).filter(filterString)]
 			const folder = path.dirname(filePath)
 			for (const baseFile of baseFiles) {
@@ -99,7 +99,7 @@ export function loadAllControls(filePath: string): any {
 * @returns The file uri (starting with file:///), line and character of the specified key (or null if the key is not found)
 */
 export function getLocationOfKey(uri: string, str: string | VDFDocumentSymbol[], key: string, value?: string, parentKeyConstraint?: string): Definition | null {
-	const searchFile = (filePath: string, documentSymbols: VDFDocumentSymbol[]) => {
+	const searchFile = (filePath: string, documentSymbols: VDFDocumentSymbol[]): Definition | null => {
 		const objectPath: string[] = []
 		const search = (documentSymbols: VDFDocumentSymbol[]): Definition | null => {
 			for (const documentSymbol of documentSymbols) {

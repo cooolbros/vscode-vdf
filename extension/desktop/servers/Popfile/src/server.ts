@@ -155,7 +155,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 			if (documentSymbol != null) {
 				const name = documentSymbol.name.toLowerCase()
 				connection.console.log(`Suggesting key for object type "${name}"`)
-				if (autoCompletion.keys.hasOwnProperty(name)) {
+				if (name in autoCompletion.keys) {
 					return autoCompletion.keys[name]
 				}
 			}
@@ -189,7 +189,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 						for (const baseFile of baseFiles) {
 							if (baseFile != undefined) {
 								const filePath = join(folderPath, baseFile)
-								if (((baseFile): baseFile is keyof typeof autoCompletion.templates => autoCompletion.templates.hasOwnProperty(baseFile))(baseFile)) {
+								if (((baseFile): baseFile is keyof typeof autoCompletion.templates => baseFile in autoCompletion.templates)(baseFile)) {
 									templates.push(...autoCompletion.templates[baseFile])
 								}
 								else if (existsSync(filePath)) {
@@ -218,7 +218,7 @@ connection.onCompletion(async (params: CompletionParams): Promise<CompletionList
 					return templates
 				}
 				default: {
-					if (autoCompletion.values.hasOwnProperty(currentToken)) {
+					if (currentToken in autoCompletion.values) {
 						return autoCompletion.values[currentToken]
 					}
 				}
@@ -311,7 +311,7 @@ connection.onReferences((params: ReferenceParams) => {
 
 	const locations: Location[] = []
 
-	const addTemplateReferences = (documentSymbols: VDFDocumentSymbol[]) => {
+	const addTemplateReferences = (documentSymbols: VDFDocumentSymbol[]): void => {
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.name.toLowerCase() == "template" && documentSymbol.detail?.toLowerCase() == templateName && documentSymbol.detailRange) {
 				locations.push({
@@ -358,7 +358,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 				// Declare Templates
 				for (const template of documentSymbol.children?.filter(docSymbolHasChildren) ?? []) {
 					const templateName = template.name.toLowerCase()
-					if (!templateReferences.hasOwnProperty(templateName)) {
+					if (!(templateName in templateReferences)) {
 						templateReferences[templateName] = { references: [] }
 					}
 					templateReferences[templateName].range = template.nameRange
@@ -370,7 +370,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 					for (const documentSymbol of documentSymbols) {
 						if (documentSymbol.name.toLowerCase() == "template" && documentSymbol.detail && documentSymbol.detailRange) {
 							const templateName = documentSymbol.detail.toLowerCase()
-							if (!templateReferences.hasOwnProperty(templateName)) {
+							if (!(templateName in templateReferences)) {
 								templateReferences[templateName] = { references: [] }
 							}
 							templateReferences[templateName].references.push({
@@ -423,7 +423,7 @@ connection.onDocumentLinks((params: DocumentLinkParams) => {
 connection.onDocumentColor((params: DocumentColorParams) => {
 	connection.console.log("[connection.onDocumentColor]")
 	const colours: ColorInformation[] = []
-	const addColours = (documentSymbols: VDFDocumentSymbol[]) => {
+	const addColours = (documentSymbols: VDFDocumentSymbol[]): void => {
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.children) {
 				addColours(documentSymbol.children)
@@ -523,7 +523,7 @@ connection.onRenameRequest((params: RenameParams): WorkspaceEdit => {
 	}
 	const edits: TextEdit[] = []
 
-	const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbol[]) => {
+	const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbol[]): void => {
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.name.toLowerCase() == oldName) {
 				edits.push({

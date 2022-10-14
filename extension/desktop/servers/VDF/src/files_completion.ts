@@ -4,8 +4,8 @@ import { CompletionItem, CompletionItemKind, CompletionList } from "vscode-langu
 
 
 class CompletionItemSet {
-	items: CompletionItem[] = []
-	add(value: CompletionItem): this {
+	public items: CompletionItem[] = []
+	public add(value: CompletionItem): this {
 		value.label = value.label.split(sep).join("/")
 		for (const item of this.items) {
 			if (item.label == value.label) {

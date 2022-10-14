@@ -41,9 +41,9 @@ export function activate(context: ExtensionContext): void {
 
 	// Language Server
 
-	const onDidOpenTextDocument = (e: TextDocument) => {
+	const onDidOpenTextDocument = (e: TextDocument): void => {
 		const languageId: string = e.languageId
-		if (((languageId): languageId is keyof typeof languageClientsInfo => languageClientsInfo.hasOwnProperty(languageId))(languageId)) {
+		if (((languageId): languageId is keyof typeof languageClientsInfo => languageId in languageClientsInfo)(languageId)) {
 			if (languageClients[languageId] == null) {
 
 				const serverModule = context.asAbsolutePath(path.join("servers", languageId, "dist", "server.js"))
@@ -91,7 +91,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
 }
 
-export async function deactivate() {
+export async function deactivate(): Promise<void[]> {
 	const promises: Promise<void>[] = []
 	let languageId: keyof typeof languageClients
 	for (languageId in languageClients) {

@@ -146,11 +146,11 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | null => {
 
 			const animationType = tokens[0].toLowerCase()
 
-			if (((animationType): animationType is keyof typeof autoCompletionItems => autoCompletionItems.hasOwnProperty(animationType))(animationType)) {
+			if (((animationType): animationType is keyof typeof autoCompletionItems => animationType in autoCompletionItems)(animationType)) {
 				const animationLengths = autoCompletionItems[animationType]
 				const length = tokens.length.toString()
 				connection.console.log(`Length is ${length}`)
-				if (((length): length is keyof typeof animationLengths => animationLengths.hasOwnProperty(length))(length)) {
+				if (((length): length is keyof typeof animationLengths => length in animationLengths)(length)) {
 					const instructions = animationLengths[length]
 					connection.console.log(`Instructions are "${instructions}"`)
 					switch (instructions) {
@@ -175,11 +175,11 @@ connection.onCompletion((params: CompletionParams): CompletionItem[] | null => {
 								}
 							}
 
-							if (eventName && ((eventName): eventName is keyof typeof eventFiles => eventFiles.hasOwnProperty(eventName))(eventName)) {
+							if (eventName && ((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName)) {
 								const hudRoot = getHUDRoot(params.textDocument)
 								if (hudRoot) {
 									const keys: CompletionItem[] = []
-									const addKeys = (documentSymbols: DocumentSymbol[]) => {
+									const addKeys = (documentSymbols: DocumentSymbol[]): void => {
 										for (const documentSymbol of documentSymbols) {
 											if (documentSymbol.children) {
 												keys.push({
@@ -246,7 +246,7 @@ connection.onHover((params: HoverParams): Hover | null => {
 			const tokeniser = new VDFTokeniser(line)
 			tokeniser.next() // Skip "event"
 			const eventNameKey = tokeniser.next().toLowerCase()
-			if (((eventName): eventName is keyof typeof eventFiles => eventFiles.hasOwnProperty(eventName))(eventNameKey)) {
+			if (((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventNameKey)) {
 				return {
 					contents: `${eventFiles[eventNameKey]}`,
 				}
@@ -272,13 +272,12 @@ connection.onDefinition((params: DefinitionParams) => {
 			if (match.index! < params.position.character && params.position.character < match.index! + match[0].length) {
 				const token: string = match[0]
 				switch (tokens[tokenIndex - 1]?.toLowerCase()) {
-					case "animate":
-					{
+					case "animate": {
 						const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
 						for (const documentSymbol of documentSymbols) {
 							if (documentSymbol.range.end.line > params.position.line) {
 								const eventName = documentSymbol.name.toLowerCase()
-								if (((eventName): eventName is keyof typeof eventFiles => eventFiles.hasOwnProperty(eventName))(eventName)) {
+								if (((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName)) {
 									const hudRoot = getHUDRoot(params.textDocument)
 									if (hudRoot == null) return null
 									const filePath = `${hudRoot}/${eventFiles[eventName]}`
@@ -292,8 +291,7 @@ connection.onDefinition((params: DefinitionParams) => {
 						return null
 					}
 					case "runevent":
-					case "stopevent":
-					{
+					case "stopevent": {
 						const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
 						const _token = token.toLowerCase()
 						const eventSymbol = documentSymbols.find(i => i.name.toLowerCase() == _token)
@@ -307,8 +305,7 @@ connection.onDefinition((params: DefinitionParams) => {
 
 					}
 					case "fgcolor":
-					case "bgcolor":
-					{
+					case "bgcolor": {
 						// Look up colour in clientscheme
 						const hudRoot = getHUDRoot(params.textDocument)
 						const clientschemePath = `${hudRoot}/resource/clientscheme.res`
@@ -316,8 +313,7 @@ connection.onDefinition((params: DefinitionParams) => {
 							? getLocationOfKey(clientschemePath, getVDFDocumentSymbols(readFileSync(clientschemePath, "utf-8")), token)
 							: null
 					}
-					default:
-					{
+					default: {
 						if (tokens[tokenIndex - 2]?.toLowerCase() == "runeventchild") {
 							const documentSymbols = documentsSymbols[params.textDocument.uri] ?? getHUDAnimationsDocumentInfo(document.getText()).symbols
 							const eventSymbol = documentSymbols.find(i => i.name == token)
@@ -377,7 +373,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 
 		for (const event of animations) {
 			const eventNameKey = event.name.toLowerCase()
-			if (!eventReferences.hasOwnProperty(eventNameKey)) {
+			if (!(eventNameKey in eventReferences)) {
 				eventReferences[eventNameKey] = { range: event.nameRange, references: [] }
 			}
 			else {
@@ -386,7 +382,7 @@ connection.onCodeLens(async (params: CodeLensParams): Promise<CodeLens[] | null>
 			for (const { animation, eventRange } of event.animations) {
 				if ((animationIsType(animation, "RunEvent") || animationIsType(animation, "StopEvent") || animationIsType(animation, "RunEventChild")) && eventRange) {
 					const referencedEventNameKey = animation.event.toLowerCase()
-					if (!eventReferences.hasOwnProperty(referencedEventNameKey)) {
+					if (!(referencedEventNameKey in eventReferences)) {
 						eventReferences[referencedEventNameKey] = { references: [] }
 					}
 					eventReferences[referencedEventNameKey].references.push({

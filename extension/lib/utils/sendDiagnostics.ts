@@ -40,7 +40,7 @@ export function _sendDiagnostics(connection: _Connection, parse: (str: string) =
 				result = parse(data.getText())
 				diagnostics = validate(result)
 			}
-			catch (e: unknown) {
+			catch (e: any) {
 				if (e instanceof VDFSyntaxError) {
 					diagnostics = [
 						{
