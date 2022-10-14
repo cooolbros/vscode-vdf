@@ -19,7 +19,7 @@
     "url": "https://github.com/cooolbros/vscode-vdf"
   },
   "engines": {
-    "vscode": "^1.63.0"
+    "vscode": "^1.72.0"
   },
   "activationEvents": [
     "onCommand:vscode-vdf.copyKeyValuePath",
@@ -230,7 +230,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.7.23",
-    "@types/vscode": "^1.71.0",
+    "@types/vscode": "^1.72.0",
     "@types/vscode-webview": "^1.57.0",
     "@typescript-eslint/eslint-plugin": "^5.39.0",
     "@typescript-eslint/parser": "^5.39.0",
