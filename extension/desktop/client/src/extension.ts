@@ -7,14 +7,9 @@ import { showReferences } from "$lib/commands/showReferences"
 import { sortVDF } from "$lib/commands/sortVDF"
 import { VDFToJSON } from "$lib/commands/VDFToJSON"
 import { languageClientsInfo } from "$lib/languageClientsInfo"
-import * as path from "path"
+import { join } from "path"
 import { commands, ExtensionContext, TextDocument, window, workspace } from "vscode"
-import {
-	LanguageClient,
-	LanguageClientOptions,
-	ServerOptions,
-	TransportKind
-} from "vscode-languageclient/node"
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient/node"
 import { VPKTextDocumentContentProvider } from "./VPKTextDocumentContentProvider"
 import { VTFEditor } from "./VTF/VTFEditor"
 
@@ -44,9 +39,9 @@ export function activate(context: ExtensionContext): void {
 	const onDidOpenTextDocument = (e: TextDocument): void => {
 		const languageId: string = e.languageId
 		if (((languageId): languageId is keyof typeof languageClientsInfo => languageId in languageClientsInfo)(languageId)) {
-			if (languageClients[languageId] == null) {
+			if (!languageClients[languageId]) {
 
-				const serverModule = context.asAbsolutePath(path.join("servers", languageId, "dist", "server.js"))
+				const serverModule = context.asAbsolutePath(join("dist/desktop/servers", `${languageId}.js`,))
 
 				const serverOptions: ServerOptions = {
 					run: {
