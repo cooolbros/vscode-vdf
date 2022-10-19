@@ -1,80 +1,99 @@
-import { Range, SymbolKind } from "vscode-languageserver"
-import { UnexpectedTokenError } from "../VDF/VDFErrors"
-import { parserTools } from "../VDF/VDFParserTools"
-import { VDFPosition } from "../VDF/VDFPosition"
-import { VDFRange } from "../VDF/VDFRange"
-import { VDFTokeniser } from "../VDF/VDFTokeniser"
-import { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
+import { EndOfStreamError, UnexpectedTokenError } from "$lib/VDF/VDFErrors"
+import { VDFParserTools } from "$lib/VDF/VDFParserTools"
+import { VDFPosition } from "$lib/VDF/VDFPosition"
+import { VDFRange } from "$lib/VDF/VDFRange"
+import { VDFTokeniser } from "$lib/VDF/VDFTokeniser"
+import { SymbolKind } from "vscode-languageserver"
 import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
-export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions): VDFDocumentSymbols {
-	const tokeniser = new VDFTokeniser(str, options)
+export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
+	const tokeniser = new VDFTokeniser(str)
 
 	/**
 	 * Gets a list of key/value pairs between an opening and closing brace
 	 * @param obj Whether the object to be parsed is NOT a top level object
 	 */
 	const parseObject = (obj: boolean): VDFDocumentSymbols => {
+
 		const documentSymbols: VDFDocumentSymbols = new VDFDocumentSymbols()
 
-		let currentToken = tokeniser.next()
-		let nextToken = tokeniser.next(true)
+		const objectTerminator = obj ? "}" : null
+		while (true) {
 
-		const objectTerminator = obj ? "}" : "__EOF__"
-		while (currentToken != objectTerminator) {
-			const [key, keyQuoted] = parserTools.convert.token(currentToken)
-			if (currentToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(currentToken)) {
-				throw new UnexpectedTokenError(currentToken, "key", Range.create(tokeniser.line, tokeniser.character - 1, tokeniser.line, tokeniser.character))
+			const keyToken = tokeniser.next()
+
+			if (keyToken == objectTerminator) {
+				break
 			}
-			const startPosition: VDFPosition = new VDFPosition(tokeniser.line, tokeniser.character - key.length - keyQuoted)
-			const nameRange: VDFRange = new VDFRange(startPosition, new VDFPosition(tokeniser.line, tokeniser.character - keyQuoted))
+			if (keyToken == null) {
+				throw new EndOfStreamError("key", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+			}
+			if (VDFTokeniser.whiteSpaceTokenTerminate.has(keyToken)) {
+				throw new UnexpectedTokenError(`"${keyToken}"`, "key", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
+			}
 
-			nextToken = tokeniser.next()
+			const startPosition = new VDFPosition(tokeniser.line, tokeniser.character - keyToken.length)
+			const nameRange = new VDFRange(startPosition, new VDFPosition(tokeniser.line, tokeniser.character))
 
-			let osTag: `[${string}]` | undefined
+			const valueToken = tokeniser.next()
+
+			if (valueToken == null) {
+				throw new UnexpectedTokenError("EOF", "token", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+			}
+			if (VDFTokeniser.whiteSpaceTokenTerminate.has(keyToken)) {
+				throw new UnexpectedTokenError(`"${keyToken}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
+			}
+
+			let conditional: `[${string}]` | undefined
 			let children: VDFDocumentSymbols | undefined
 			let detail: string | undefined
 			let detailQuoted: 0 | 1
 			let detailRange: VDFRange | undefined
 
-			if (nextToken == "{") {
+			if (valueToken == "{") {
 				children = parseObject(true)
 			}
-			else if (parserTools.is.osTag(nextToken)) {
-				osTag = nextToken
+			else if (VDFParserTools.is.conditional(valueToken)) {
+				conditional = valueToken
+
 				const value = tokeniser.next()
+				if (value == null) {
+					throw new UnexpectedTokenError("EOF", "token", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				}
+				if (VDFTokeniser.whiteSpaceTokenTerminate.has(value)) {
+					throw new UnexpectedTokenError(`"${value}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
+				}
+
+				if (value == null) {
+					throw new UnexpectedTokenError("EOF", "\"{\"", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				}
+
 				if (value == "{") {
 					// Object
 					children = parseObject(true)
 				}
 				else {
-					// Primitive
-					[detail, detailQuoted] = parserTools.convert.token(value)
+					// String
+					[detail, detailQuoted] = VDFParserTools.convert.token(value)
 					detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted))
 
-					if (value == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(detail)) {
-						throw new UnexpectedTokenError(value, "value", detailRange)
-					}
-
-					const osTag2 = tokeniser.next(true)
-					if (parserTools.is.osTag(osTag2)) {
-						osTag = osTag2
+					const conditional2 = tokeniser.next(true)
+					if (conditional2 != null && VDFParserTools.is.conditional(conditional2)) {
+						conditional = conditional2
 						tokeniser.next() // Skip OS Tag
 					}
 				}
 			}
 			else {
-				[detail, detailQuoted] = parserTools.convert.token(nextToken)
+				// String
+				[detail, detailQuoted] = VDFParserTools.convert.token(valueToken)
 				detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted))
-				if (nextToken == "__EOF__" || VDFTokeniser.whiteSpaceTokenTerminate.includes(nextToken)) {
-					throw new UnexpectedTokenError(detail, "value", detailRange)
-				}
 
-				// OS Tag
-				nextToken = tokeniser.next(true)
-				if (parserTools.is.osTag(nextToken)) {
-					osTag = nextToken
+				// Conditional
+				const lookAhead = tokeniser.next(true)
+				if (lookAhead != null && VDFParserTools.is.conditional(lookAhead)) {
+					conditional = lookAhead
 					tokeniser.next()
 				}
 			}
@@ -83,17 +102,14 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			const selectionRange = new VDFRange(startPosition, endPosition)
 
 			documentSymbols.push(new VDFDocumentSymbol(
-				key,
+				VDFParserTools.convert.token(keyToken)[0],
 				nameRange,
 				children != undefined ? SymbolKind.Object : SymbolKind.String,
-				osTag ?? null,
+				conditional ?? null,
 				selectionRange,
 				detail ?? children!,
 				detailRange
 			))
-
-			currentToken = tokeniser.next()
-			nextToken = tokeniser.next(true)
 		}
 
 		return documentSymbols

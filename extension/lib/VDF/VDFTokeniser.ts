@@ -1,18 +1,29 @@
-import { Position, Range } from "vscode-languageserver"
-import { VDFOSTags } from "./models/VDFOSTags"
-import { VDFTokeniserOptions } from "./models/VDFTokeniserOptions"
-import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedCharacterError } from "./VDFErrors"
+import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedTokenError } from "./VDFErrors"
+import { VDFPosition } from "./VDFPosition"
+import { VDFRange } from "./VDFRange"
 
 export class VDFTokeniser {
-	public static readonly whiteSpaceIgnore: string[] = [" ", "\t", "\r", "\n"]
-	public static readonly whiteSpaceTokenTerminate: string[] = ["\"", "{", "}"]
+
+	/**
+	 * ```ts
+	 * readonly [" ", "\t", "\r", "\n"]
+	 * ```
+	 */
+	public static readonly whiteSpaceIgnore = new Set([" ", "\t", "\r", "\n"])
+
+	/**
+	 * ```ts
+	 * readonly ["\"", "{", "}"]
+	 * ```
+	 */
+	public static readonly whiteSpaceTokenTerminate = new Set(["\"", "{", "}"])
+
 	protected readonly str: string
-	public readonly options: VDFTokeniserOptions
 
 	/**
 	 * Zero-based offset position
 	 */
-	public position = 0
+	public index = 0
 
 	/**
 	 * Zero-based line number
@@ -25,50 +36,42 @@ export class VDFTokeniser {
 	public character = 0
 
 	// Peek
-	protected _peekToken: string | null = null
-	protected _peekPosition = 0
-	protected _peekLine = 0
-	protected _peekCharacter = 0
+	protected _peek: { token: string, index: number, line: number, character: number } | null = null
 
 	// EOF
 	protected _EOFRead = false
 
-	constructor(str: string, options?: VDFTokeniserOptions) {
+	constructor(str: string) {
 		this.str = str
-		this.options = {
-			allowMultilineStrings: options?.allowMultilineStrings ?? false,
-			osTags: options?.osTags ?? VDFOSTags.All
-		}
 	}
-	public next(lookAhead = false): string {
 
-		// If a token has already been calculated using next(true), retrieve and return the token from cache
-		let currentToken = ""
-		if (this._peekToken != null) {
-			currentToken = this._peekToken
-			this.position = this._peekPosition
-			this.line = this._peekLine
-			this.character = this._peekCharacter
-			this._peekToken = null
-			return currentToken
+	public next(lookAhead = false): string | null {
+
+		if (this._peek) {
+			const token = this._peek.token
+			if (!lookAhead) {
+				this.index = this._peek.index
+				this.line = this._peek.line
+				this.character = this._peek.character
+				this._peek = null
+			}
+			return token
 		}
 
-		let i: number = this.position
-		let line: number = this.line
-		let character: number = this.character
-		let tokenStartPosition: Position
+		let index = this.index
+		let line = this.line
+		let character = this.character
 
-		while (i < this.str.length && (VDFTokeniser.whiteSpaceIgnore.includes(this.str[i]) || this.str[i] == "/")) {
-			if (this.str[i] == "\n") {
+		while (index < this.str.length && (VDFTokeniser.whiteSpaceIgnore.has(this.str[index]) || this.str[index] == "/")) {
+			if (this.str[index] == "\n") {
 				line++
-				character = 0
 			}
-			else if (this.str[i] == "/") {
-				const i1 = i + 1
+			else if (this.str[index] == "/") {
+				const i1 = index + 1
 				if (i1 < this.str.length && this.str[i1] == "/") {
-					i++
-					while (i < this.str.length && this.str[i] != "\n") {
-						i++
+					index++
+					while (index < this.str.length && this.str[index] != "\n") {
+						index++
 					}
 					line++
 					character = 0
@@ -80,111 +83,89 @@ export class VDFTokeniser {
 			else {
 				character++
 			}
-			i++
+			index++
 		}
 
-		if (i >= this.str.length) {
-			if (!lookAhead) {
-				if (this._EOFRead) {
-					throw new EndOfStreamError(Range.create(Position.create(this.line, this.character), Position.create(line, character)))
-				}
-				this._EOFRead = true
+		if (index >= this.str.length) {
+			if (this._EOFRead) {
+				const position = new VDFPosition(line, character)
+				throw new UnexpectedTokenError("EOF", "token", new VDFRange(position, position))
 			}
-			return "__EOF__"
+			this._EOFRead = true
+			return null
 		}
 
-		if (this.str[i] == "\"") {
-			// Read until next quote (ignore opening quote)
+		const start = index
+		const tokenStartPosition = new VDFPosition(line, character)
 
-			tokenStartPosition = Position.create(line, character)
-
-			currentToken += "\""
-			i++
+		if (this.str[index] == "\"") {
+			index++
 			character++
+			while (this.str[index] != "\"") {
 
-			while (this.str[i] != "\"") {
-				if (this.str[i] == "\n") {
-					if (!this.options.allowMultilineStrings) {
-						throw new UnexpectedCharacterError("\n", "\"", Range.create(tokenStartPosition, Position.create(line, character)))
-					}
-					else {
-						line++
-						character = 0
-					}
+				if (index >= this.str.length) {
+					throw new EndOfStreamError("closing double quote", new VDFRange(tokenStartPosition, new VDFPosition(line, character)))
 				}
-				else if (this.str[i] == "\\") {
-					// Add backslash
-					currentToken += "\\"
-					i++
-					character++
 
-					if (i >= this.str.length) {
-						throw new UnclosedEscapeSequenceError(Range.create(tokenStartPosition, Position.create(line, character)))
+				if (this.str[index] == "\n") {
+					line++
+					character = 0
+				}
+				else if (this.str[index] == "\\") {
+					index++
+					character++
+					if (index >= this.str.length) {
+						throw new UnclosedEscapeSequenceError(new VDFRange(tokenStartPosition, new VDFPosition(line, character)))
 					}
-
-					// Add character
-					currentToken += this.str[i]
-					i++
-					character++
 				}
 				else {
-					currentToken += this.str[i]
-					i++
 					character++
 				}
-
-				if (i >= this.str.length) {
-					throw new UnexpectedCharacterError("EOF", "\"", Range.create(tokenStartPosition, Position.create(line, character))) // missing double quote
-				}
+				index++
 			}
-			currentToken += "\""
-			i++ // Skip over closing quote
-			character++ // Skip over closing quote
+			index++
+			character++
 		}
 		else {
-			// Read until whitespace (or end of file)
+			while (index < this.str.length && !VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
 
-			tokenStartPosition = Position.create(line, character)
-
-			while (i < this.str.length && !VDFTokeniser.whiteSpaceIgnore.includes(this.str[i])) {
-				if (this.str[i] == "\\") {
-					// Add backslash
-					currentToken += "\\"
-					i++
-					character++
-
-					if (i >= this.str.length) {
-						throw new UnclosedEscapeSequenceError(Range.create(tokenStartPosition, Position.create(line, character)))
-					}
-
-					// Add character
-					currentToken += this.str[i]
-					i++
-					character++
-				}
-				else if (VDFTokeniser.whiteSpaceTokenTerminate.includes(this.str[i])) {
-					// ", {, } terminate a whitespace initiated token but are not added
-					if (currentToken == "") {
-						// VDFTokeniser.WhiteSpaceTokenTerminate contains a '"' but it that should not be
-						// the case here because if currentToken is "" it would be a quoted token
-						currentToken += this.str[i]
-						i++
-						character++
+				if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
+					if (start == index) {
+						index++
 					}
 					break
 				}
-				else {
-					currentToken += this.str[i]
-					i++
+				else if (this.str[index] == "\\") {
+					index++
 					character++
+					if (index >= this.str.length) {
+						throw new UnclosedEscapeSequenceError(new VDFRange(tokenStartPosition, new VDFPosition(line, character)))
+					}
 				}
+
+				index++
+				character++
 			}
 		}
-		if (!lookAhead) {
-			this.position = i
+
+		const end = index
+
+		const token = this.str.slice(start, end)
+
+		if (lookAhead) {
+			this._peek = {
+				token,
+				index,
+				line,
+				character
+			}
+		}
+		else {
+			this.index = index
 			this.line = line
 			this.character = character
 		}
-		return currentToken
+
+		return token
 	}
 }

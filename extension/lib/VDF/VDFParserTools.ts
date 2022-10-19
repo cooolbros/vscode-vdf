@@ -1,11 +1,11 @@
 import { Range } from "vscode-languageserver"
 
-export const parserTools = {
+export const VDFParserTools = {
 	is: {
 		comment: (str: string): str is `//${string}` => {
 			return str.startsWith("//")
 		},
-		osTag: (str: string): str is `[${string}]` => {
+		conditional: (str: string): str is `[${string}]` => {
 			return str.startsWith("[") && str.endsWith("]")
 		}
 	},
@@ -14,7 +14,7 @@ export const parserTools = {
 			const quoted = str.startsWith("\"") && str.endsWith("\"")
 			return quoted ? [str.slice(1, -1), 1] : [str, 0]
 		},
-		osTag: (str: string): `[${string}]` => {
+		conditional: (str: string): `[${string}]` => {
 			return `[${str.slice(1, -1)}]`
 		},
 		comment: (str: `//${string}`): string => {

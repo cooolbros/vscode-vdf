@@ -1,4 +1,4 @@
-import { Range } from "vscode-languageserver"
+import { VDFRange } from "./VDFRange"
 
 /**
  * Generic Error of VDF type
@@ -17,20 +17,10 @@ import { Range } from "vscode-languageserver"
  * ```
  */
 export abstract class VDFSyntaxError extends Error {
-	public range: Range
-	constructor(message: string, range: Range) {
+	public range: VDFRange
+	constructor(message: string, range: VDFRange) {
 		super(message)
 		this.range = range
-	}
-}
-
-export class UnexpectedCharacterError extends VDFSyntaxError {
-	constructor(unexpected: string, expected: string, range: Range) {
-		unexpected = unexpected
-			.replace("\t", "\\t")
-			.replace("\r", "\\r")
-			.replace("\n", "\\n")
-		super(`Unexpected "${unexpected}"! Expected "${expected}"`, range)
 	}
 }
 
@@ -38,25 +28,25 @@ export class UnexpectedCharacterError extends VDFSyntaxError {
  *
  */
 export class UnexpectedTokenError extends VDFSyntaxError {
-	constructor(unexpected: string, expected: string, range: Range) {
-		super(`Unexpected "${unexpected}"! Expected ${expected}`, range)
+	constructor(unexpected: `"${string}"` | "EOF", expected: string, range: VDFRange) {
+		super(`Unexpected ${unexpected}! Expected ${expected}`, range)
 	}
 }
 
 /**
- *
+ * File ends with \
  */
 export class UnclosedEscapeSequenceError extends VDFSyntaxError {
-	constructor(range: Range) {
+	constructor(range: VDFRange) {
 		super("Unclosed escape sequence! Expected char", range)
 	}
 }
 
 /**
- *
+ * Unexpected End of File
  */
-export class EndOfStreamError extends VDFSyntaxError {
-	constructor(range: Range) {
-		super("Attempted to read past the end of the stream", range)
+export class EndOfStreamError extends UnexpectedTokenError {
+	constructor(expected: string, range: VDFRange) {
+		super("EOF", expected, range)
 	}
 }

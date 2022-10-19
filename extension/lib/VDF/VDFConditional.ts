@@ -1,4 +1,4 @@
-export enum VDFOSTags {
+export enum VDFConditional {
 	None,
 	Strings,
 	Objects,

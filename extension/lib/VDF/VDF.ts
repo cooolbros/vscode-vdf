@@ -1,20 +1,24 @@
-// VDF
-
-import { VDFIndentation } from "./models/VDFIndentation"
-import { VDFNewLine } from "./models/VDFNewLine"
-import { VDFStringifyOptions } from "./models/VDFStringifyOptions"
-import { VDFTokeniserOptions } from "./models/VDFTokeniserOptions"
-import { parserTools } from "./VDFParserTools"
+import { EndOfStreamError, UnexpectedTokenError } from "./VDFErrors"
+import { VDFIndentation } from "./VDFIndentation"
+import { VDFNewLine } from "./VDFNewLine"
+import { VDFParserTools } from "./VDFParserTools"
+import { VDFPosition } from "./VDFPosition"
+import { VDFRange } from "./VDFRange"
+import { VDFStringifyOptions } from "./VDFStringifyOptions"
 import { VDFTokeniser } from "./VDFTokeniser"
 
 /**
  * Provides support for parsing and stringifying VDF objects
  */
 export class VDF {
+
 	public static readonly OSTagDelimeter = <const>"^"
-	public static parse(str: string, options?: VDFTokeniserOptions): { [key: string]: string | ReturnType<typeof VDF.parse> | (string | ReturnType<typeof VDF.parse>)[] } {
-		const tokeniser = new VDFTokeniser(str, options)
-		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: string | ReturnType<typeof VDF.parse>): void => {
+
+	public static parse(str: string): any {
+
+		const tokeniser = new VDFTokeniser(str)
+
+		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: any): void => {
 			if (key in obj) {
 				const existing = obj[key]
 				if (Array.isArray(existing)) {
@@ -28,90 +32,108 @@ export class VDF {
 				obj[key] = value
 			}
 		}
+
 		const parseObject = (isObject = false): ReturnType<typeof VDF.parse> => {
+
 			const obj: ReturnType<typeof VDF.parse> = {}
-			let currentToken = tokeniser.next()
-			const objectTerminator = isObject ? "}" : "__EOF__"
-			while (currentToken != objectTerminator) {
-				let value = tokeniser.next()
-				if (value == "{") {
-					// Object
-					write(obj, parserTools.convert.token(currentToken)[0], parseObject(true))
+
+			const objectTerminator = isObject ? "}" : null
+			while (true) {
+
+				let key = tokeniser.next()
+
+				if (key == objectTerminator) {
+					break
 				}
-				else if (parserTools.is.osTag(value)) {
-					// Object with OS Tag or Primitive with 1 or 2 OS Tags
-					let osTag = value
-					value = tokeniser.next()
-					if (value == "{") {
-						// Object with OS Tag
-						write(obj, `${parserTools.convert.token(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, parseObject(true))
+				if (key == null) {
+					const endOfFilePosition = new VDFPosition(tokeniser.line, tokeniser.character)
+					throw new EndOfStreamError("token", new VDFRange(endOfFilePosition))
+				}
+				if (VDFTokeniser.whiteSpaceTokenTerminate.has(key)) {
+					throw new UnexpectedTokenError(`"${key}"`, "key", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
+				}
+
+				let valueToken = tokeniser.next()
+
+				if (valueToken == null) {
+					const endOfFilePosition = new VDFPosition(tokeniser.line, tokeniser.character)
+					throw new EndOfStreamError("value", new VDFRange(endOfFilePosition))
+				}
+
+				if (valueToken == "{") {
+					write(obj, key, parseObject(true))
+				}
+				else if (VDFParserTools.is.conditional(valueToken)) {
+
+					let conditional = valueToken
+					valueToken = tokeniser.next()
+
+					if (valueToken == null) {
+						const endOfFilePosition = new VDFPosition(tokeniser.line, tokeniser.character)
+						throw new EndOfStreamError("value", new VDFRange(endOfFilePosition))
+					}
+
+					if (valueToken == "{") {
+						// Object with conditional
+						write(obj, `${VDFParserTools.convert.token(key)[0]}${VDF.OSTagDelimeter}${conditional}`, parseObject(true))
 					}
 					else {
-						// Primitive with 1 or 2 OS Tags
-						const lookAhead = tokeniser.next(true)
-						if (parserTools.is.osTag(lookAhead)) {
-							osTag = lookAhead // Second OS Tag overwrites first
-							tokeniser.next() // Skip second OS Tag
+						// String value with 1 or 2 conditionals
+						const conditionalAfterValue = tokeniser.next(true)
+						if (conditionalAfterValue != null && VDFParserTools.is.conditional(conditionalAfterValue)) {
+							conditional = conditionalAfterValue
+							tokeniser.next()
 						}
-						write(obj, `${parserTools.convert.token(currentToken)[0]}${VDF.OSTagDelimeter}${osTag}`, parserTools.convert.token(value)[0])
+						write(obj, key, VDFParserTools.convert.token(valueToken)[0])
 					}
 				}
 				else {
-					// Primitive
-					const osTag = tokeniser.next(true)
-					if (parserTools.is.osTag(osTag)) {
-						currentToken += `${VDF.OSTagDelimeter}${osTag}`
-						tokeniser.next() // Skip OS Tag
+					// String with 0 or 1 conditionals
+					const conditional = tokeniser.next(true)
+					if (conditional != null && VDFParserTools.is.conditional(conditional)) {
+						key += `${VDF.OSTagDelimeter}${conditional}`
+						tokeniser.next() // Skip conditional
 					}
-					write(obj, parserTools.convert.token(currentToken)[0], parserTools.convert.token(value)[0])
+					write(obj, key, VDFParserTools.convert.token(valueToken)[0])
 				}
-				currentToken = tokeniser.next()
 			}
 			return obj
 		}
 		return parseObject()
 	}
-	public static stringify(obj: any, options?: VDFStringifyOptions): any {
-		const _options: Required<VDFStringifyOptions> = {
+
+	public static stringify(obj: any, options?: Partial<VDFStringifyOptions>): any {
+
+		const _options: VDFStringifyOptions = {
 			indentation: options?.indentation ?? VDFIndentation.Tabs,
 			tabSize: options?.tabSize ?? 4,
 			newLine: options?.newLine ?? VDFNewLine.CRLF,
-			order: options?.order ?? null
 		}
+
 		const tab = "\t"
 		const space = " "
 		const eol: string = _options.newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
 		const tabIndentation: boolean = _options.indentation == VDFIndentation.Tabs
+
 		const getIndentation: (level: number) => string = tabIndentation
 			? (level: number): string => tab.repeat(level)
 			: (level: number): string => space.repeat(level * _options.tabSize)
+
 		const getWhitespace: (longest: number, current: number) => string = tabIndentation
 			? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
 			: (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
+
 		const stringifyObject = (obj: any, level = 0): string => {
+
 			let str = ""
-			let keys: string[]
+
 			let longestKeyLength = 0
-			if (_options.order != null) {
-				keys = Object.keys(obj).sort((a: string, b: string) => {
-					longestKeyLength = Math.max(longestKeyLength, typeof obj[a] != "object" ? a.split(VDF.OSTagDelimeter)[0].length : 0)
-					// @ts-ignore
-					const _a = _options.order.indexOf(a)
-					if (_a == -1) {
-						return 1
-					}
-					// @ts-ignore
-					return _a - _options.order.indexOf(b)
-				})
+			for (const key in obj) {
+
+				longestKeyLength = Math.max(longestKeyLength, typeof obj[key] != "object" ? key.split(VDF.OSTagDelimeter)[0].length : 0)
 			}
-			else {
-				keys = []
-				for (const key in obj) {
-					keys.push(key)
-					longestKeyLength = Math.max(longestKeyLength, typeof obj[key] != "object" ? key.split(VDF.OSTagDelimeter)[0].length : 0)
-				}
-			}
-			for (const key of keys) {
+
+			for (const key in obj) {
 				const keyTokens: string[] = key.split(VDF.OSTagDelimeter)
 				if (Array.isArray(obj[key])) {
 					for (const item of obj[key]) {

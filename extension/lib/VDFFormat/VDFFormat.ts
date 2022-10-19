@@ -1,29 +1,30 @@
-import { _Connection } from "vscode-languageserver"
-import { getVDFFormatDocumentSymbols, VDFFormatDocumentSymbol } from "../../../shared/vdf/dist/getVDFFormatDocumentSymbols"
-import { VDFIndentation } from "../../../shared/VDF/dist/models/VDFIndentation"
-import { VDFNewLine } from "../../../shared/VDF/dist/models/VDFNewLine"
-import { VDFStringifyOptions } from "../../../shared/VDF/dist/models/VDFStringifyOptions"
+import { VDFIndentation } from "$lib/VDF/VDFIndentation"
+import { VDFNewLine } from "$lib/VDF/VDFNewLine"
+import { VDFStringifyOptions } from "$lib/VDF/VDFStringifyOptions"
+import { getVDFFormatDocumentSymbols } from "./getVDFFormatDocumentSymbols"
+import { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 
-export function format(str: string, connection: _Connection): string {
-	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str, connection), connection)
+export function VDFFormat(str: string): string {
+	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str))
 }
 
-function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[], connection: _Connection, options?: VDFStringifyOptions): string {
+function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[], options?: Partial<VDFStringifyOptions>): string {
 
-	const _options: Required<VDFStringifyOptions> = {
+	const _options: VDFStringifyOptions = {
 		indentation: options?.indentation ?? VDFIndentation.Tabs,
 		tabSize: options?.tabSize ?? 4,
 		newLine: options?.newLine ?? VDFNewLine.CRLF,
-		order: options?.order ?? null
 	}
 
 	const tab = "\t"
 	const space = " "
 	const eol: string = _options.newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
 	const tabIndentation: boolean = _options.indentation == VDFIndentation.Tabs
+
 	const getIndentation: (level: number) => string = tabIndentation
 		? (level: number): string => tab.repeat(level)
 		: (level: number): string => space.repeat(level * _options.tabSize)
+
 	const getWhitespace: (longest: number, current: number) => string = tabIndentation
 		? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
 		: (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
@@ -55,8 +56,8 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 				if (Array.isArray(documentSymbol.value)) {
 					str += `${getIndentation(level)}"${documentSymbol.key}"`
 
-					if (documentSymbol.osTag != undefined) {
-						str += ` ${documentSymbol.osTag}`
+					if (documentSymbol.conditional != undefined) {
+						str += ` ${documentSymbol.conditional}`
 					}
 
 					if (documentSymbol.inLineComment != undefined) {
@@ -71,8 +72,8 @@ function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[
 				}
 				else {
 					str += `${getIndentation(level)}"${documentSymbol.key}"${getWhitespace(longestKeyLength, documentSymbol.key.length)}"${documentSymbol.value}"`
-					if (documentSymbol.osTag != undefined) {
-						str += ` ${documentSymbol.osTag}`
+					if (documentSymbol.conditional != undefined) {
+						str += ` ${documentSymbol.conditional}`
 					}
 					if (documentSymbol.inLineComment != undefined) {
 						str += `${lineCommentBeforeSlash}//${documentSymbol.inLineComment != "" ? lineCommentAfterSlash : ""}${documentSymbol.inLineComment}`

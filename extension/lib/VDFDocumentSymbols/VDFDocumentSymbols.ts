@@ -12,9 +12,9 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		}
 	}
 
-	public findAll(callback: (documentSymbol: VDFDocumentSymbol) => boolean): { result: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
+	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol) => boolean): VDFDocumentSymbol | undefined {
 		const documentSymbolsPath: VDFDocumentSymbol[] = []
-		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findAll"]> => {
+		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findRecursive"]> => {
 			for (const documentSymbol of documentSymbols) {
 				if (documentSymbol.children) {
 					documentSymbolsPath.push(documentSymbol)
@@ -26,10 +26,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 				}
 
 				if (callback(documentSymbol)) {
-					return {
-						result: documentSymbol,
-						path: documentSymbolsPath
-					}
+					return documentSymbol
 				}
 			}
 		}
@@ -37,7 +34,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		return iterateDocumentSymbols(this)
 	}
 
-	public getDocumentSymbolAtPosition(position: Position): ReturnType<VDFDocumentSymbols["findAll"]> {
-		return this.findAll(value => value.range.contains(position))
+	public getDocumentSymbolAtPosition(position: Position): VDFDocumentSymbol | undefined {
+		return this.findRecursive(value => value.range.contains(position))
 	}
 }

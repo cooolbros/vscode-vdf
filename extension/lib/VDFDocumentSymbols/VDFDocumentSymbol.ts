@@ -31,7 +31,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	/**
 	 * VDF Document Symbol OS Tag e.g. [$WIN32]
 	 */
-	public readonly osTag: `[${string}]` | null
+	public readonly conditional: `[${string}]` | null
 
 	/**
 	 * VDF Document Symbol Primitive Value
@@ -61,12 +61,12 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly children?: VDFDocumentSymbols
 
-	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, osTag: `[${string}]` | null, range: VDFRange, value: string | VDFDocumentSymbols, valueRange?: VDFRange) {
-		this.name = `${key}${osTag ? " " + osTag : ""}`
+	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: string | VDFDocumentSymbols, valueRange?: VDFRange) {
+		this.name = `${key}${conditional ? " " + conditional : ""}`
 		this.key = key
 		this.nameRange = nameRange
 		this.kind = kind
-		this.osTag = osTag
+		this.conditional = conditional
 		this.range = range
 		this.selectionRange = range
 

@@ -6,7 +6,7 @@ export class VDFRange implements Range {
 	public start: VDFPosition
 	public end: VDFPosition
 
-	constructor(start: VDFPosition, end: VDFPosition) {
+	constructor(start: VDFPosition, end: VDFPosition = start) {
 		Range.create(start, end)
 		this.start = start
 		this.end = end
