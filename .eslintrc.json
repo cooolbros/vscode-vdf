@@ -74,6 +74,12 @@
             "error",
             "windows"
         ],
+        "no-constant-condition": [
+            "error",
+            {
+                "checkLoops": false
+            }
+        ],
         "quotes": [
             "error",
             "double"
