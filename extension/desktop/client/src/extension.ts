@@ -3,7 +3,6 @@ import { extractVPKFileToWorkspace } from "$lib/commands/extractVPKFileToWorkspa
 import { importPopfileTemplates } from "$lib/commands/importPopfileTemplates"
 import { JSONToVDF } from "$lib/commands/JSONToVDF"
 import { showReferences } from "$lib/commands/showReferences"
-import { sortVDF } from "$lib/commands/sortVDF"
 import { VDFToJSON } from "$lib/commands/VDFToJSON"
 import { languageClientsInfo } from "$lib/languageClientsInfo"
 import { join } from "path"
@@ -25,7 +24,6 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.sortVDF", sortVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// VPK Protocol
