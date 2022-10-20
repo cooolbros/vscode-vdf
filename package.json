@@ -23,7 +23,6 @@
   },
   "activationEvents": [
     "onCommand:vscode-vdf.copyKeyValuePath",
-    "onCommand:vscode-vdf.formatVDF",
     "onCommand:vscode-vdf.JSONToVDF",
     "onCommand:vscode-vdf.showReferences",
     "onCommand:vscode-vdf.sortVDF",
@@ -46,11 +45,6 @@
         "title": "Extract file to workspace",
         "command": "vscode-vdf.extractVPKFileToWorkspace",
         "icon": "$(file-add)"
-      },
-      {
-        "category": "VDF",
-        "title": "Format VDF",
-        "command": "vscode-vdf.formatVDF"
       },
       {
         "category": "Popfile",

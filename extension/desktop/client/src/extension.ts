@@ -1,6 +1,5 @@
 import { copyKeyValuePath } from "$lib/commands/copyKeyValuePath"
 import { extractVPKFileToWorkspace } from "$lib/commands/extractVPKFileToWorkspace"
-import { formatVDF } from "$lib/commands/formatVDF"
 import { importPopfileTemplates } from "$lib/commands/importPopfileTemplates"
 import { JSONToVDF } from "$lib/commands/JSONToVDF"
 import { showReferences } from "$lib/commands/showReferences"
@@ -23,7 +22,6 @@ export function activate(context: ExtensionContext): void {
 
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.formatVDF", formatVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
