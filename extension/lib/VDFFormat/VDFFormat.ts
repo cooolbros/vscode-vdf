@@ -4,8 +4,8 @@ import { VDFStringifyOptions } from "$lib/VDF/VDFStringifyOptions"
 import { getVDFFormatDocumentSymbols } from "./getVDFFormatDocumentSymbols"
 import { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 
-export function VDFFormat(str: string): string {
-	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str))
+export function VDFFormat(str: string, options: VDFStringifyOptions): string {
+	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str), options)
 }
 
 function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[], options?: Partial<VDFStringifyOptions>): string {

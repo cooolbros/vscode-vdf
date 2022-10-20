@@ -53,6 +53,7 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 
 				index++
 			}
+			index++ // Skip closing double quote
 		}
 		else if (this.str[index] == "/" && index < this.str.length && this.str[index + 1] == "/") {
 			while (index <= this.str.length && this.str[index] != "\n") {
