@@ -3,6 +3,6 @@
  */
 export class InvalidTokenSequenceError extends Error {
 	constructor(...tokens: string[]) {
-		super(`Invalid token sequence! ("${tokens.join("\", \"")}")`)
+		super(`Invalid token sequence! ("${tokens.map((token) => token.replace("\n", "\\n")).join("\", \"")}")`)
 	}
 }

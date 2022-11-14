@@ -65,6 +65,7 @@ export class VDFTokeniser {
 		while (index < this.str.length && (VDFTokeniser.whiteSpaceIgnore.has(this.str[index]) || this.str[index] == "/")) {
 			if (this.str[index] == "\n") {
 				line++
+				character = 0
 			}
 			else if (this.str[index] == "/") {
 				const i1 = index + 1

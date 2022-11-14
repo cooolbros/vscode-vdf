@@ -1,8 +1,8 @@
 import { VDFIndentation } from "$lib/VDF/VDFIndentation"
 import { VDFNewLine } from "$lib/VDF/VDFNewLine"
-import { VDFStringifyOptions } from "$lib/VDF/VDFStringifyOptions"
+import type { VDFStringifyOptions } from "$lib/VDF/VDFStringifyOptions"
 import { getVDFFormatDocumentSymbols } from "./getVDFFormatDocumentSymbols"
-import { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
+import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 
 export function VDFFormat(str: string, options: VDFStringifyOptions): string {
 	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str), options)

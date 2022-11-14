@@ -1,5 +1,5 @@
 import { Position, Range } from "vscode-languageserver"
-import { VDFPosition } from "./VDFPosition"
+import type { VDFPosition } from "./VDFPosition"
 
 export class VDFRange implements Range {
 
@@ -7,7 +7,7 @@ export class VDFRange implements Range {
 	public end: VDFPosition
 
 	constructor(start: VDFPosition, end: VDFPosition = start) {
-		Range.create(start, end)
+		Range.create(start.line, start.character, end.line, end.character)
 		this.start = start
 		this.end = end
 	}

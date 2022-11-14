@@ -61,7 +61,7 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 			}
 		}
 		else {
-			while (index <= this.str.length && !VDFFormatTokeniser.whiteSpaceIgnore.has(this.str[index])) {
+			while (index <= this.str.length && !VDFFormatTokeniser.whiteSpaceIgnore_skipNewLines.has(this.str[index])) {
 
 				if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
 					if (start == index) {

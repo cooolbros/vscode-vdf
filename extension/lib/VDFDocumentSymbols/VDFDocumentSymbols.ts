@@ -1,5 +1,5 @@
-import { Position } from "vscode-languageserver"
-import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
+import type { Position } from "vscode-languageserver"
+import type { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 
@@ -13,16 +13,14 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 	}
 
 	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol) => boolean): VDFDocumentSymbol | undefined {
-		const documentSymbolsPath: VDFDocumentSymbol[] = []
+
 		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findRecursive"]> => {
 			for (const documentSymbol of documentSymbols) {
 				if (documentSymbol.children) {
-					documentSymbolsPath.push(documentSymbol)
 					const result = iterateDocumentSymbols(documentSymbol.children)
 					if (result != undefined) {
 						return result
 					}
-					documentSymbolsPath.pop()
 				}
 
 				if (callback(documentSymbol)) {
@@ -35,6 +33,6 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 	}
 
 	public getDocumentSymbolAtPosition(position: Position): VDFDocumentSymbol | undefined {
-		return this.findRecursive(value => value.range.contains(position))
+		return this.findRecursive(documentSymbol => documentSymbol.range.contains(position))
 	}
 }

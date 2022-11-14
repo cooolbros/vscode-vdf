@@ -1,6 +1,7 @@
-import { DocumentSymbol, SymbolKind } from "vscode-languageserver"
+import { VDFPosition } from "$lib/VDF/VDFPosition"
+import type { DocumentSymbol, SymbolKind } from "vscode-languageserver"
 import { VDFRange } from "../VDF/VDFRange"
-import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
+import type { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
 /**
  * VDFDocumentSymbol
@@ -38,10 +39,25 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly detail?: string
 
+	private readonly detailQuoted?: boolean
+
 	/**
 	 * VDF Document Symbol Primitive Value Range
 	 */
-	public readonly detailRange?: VDFRange
+	private readonly detailRange?: VDFRange
+
+	public get innerDetailRange(): VDFRange {
+		return this.detailQuoted
+			? new VDFRange(
+				new VDFPosition(this.detailRange!.start.line, this.detailRange!.start.character + 1),
+				new VDFPosition(this.detailRange!.end.line, this.detailRange!.end.character - 1)
+			)
+			: this.detailRange!
+	}
+
+	public get outerDetailRange(): VDFRange {
+		return this.detailRange!
+	}
 
 	/**
 	 * The range enclosing this symbol not including leading/trailing whitespace but everything else
@@ -61,7 +77,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly children?: VDFDocumentSymbols
 
-	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: string | VDFDocumentSymbols, valueRange?: VDFRange) {
+	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: { detail: string, range: VDFRange, quoted: boolean } | VDFDocumentSymbols) {
 		this.name = `${key}${conditional ? " " + conditional : ""}`
 		this.key = key
 		this.nameRange = nameRange
@@ -70,15 +86,15 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 		this.range = range
 		this.selectionRange = range
 
-		if (typeof value == "string") {
-			this.detail = value
+		if ("detail" in value) {
+			this.detail = value.detail
+			this.detailRange = value.range
+			this.detailQuoted = value.quoted
 			this.children = undefined
 		}
 		else {
 			this.detail = undefined
 			this.children = value
 		}
-
-		this.detailRange = valueRange
 	}
 }

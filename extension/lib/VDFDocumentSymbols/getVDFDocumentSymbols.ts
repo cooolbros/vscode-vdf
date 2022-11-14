@@ -47,8 +47,7 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 
 			let conditional: `[${string}]` | undefined
 			let children: VDFDocumentSymbols | undefined
-			let detail: string | undefined
-			let detailQuoted: 0 | 1
+			let detail: [string, 0 | 1] | undefined
 			let detailRange: VDFRange | undefined
 
 			if (valueToken == "{") {
@@ -61,9 +60,9 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 				if (value == null) {
 					throw new UnexpectedTokenError("EOF", "token", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 				}
-				if (VDFTokeniser.whiteSpaceTokenTerminate.has(value)) {
-					throw new UnexpectedTokenError(`"${value}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
-				}
+				// if (VDFTokeniser.whiteSpaceTokenTerminate.has(value)) {
+				// 	throw new UnexpectedTokenError(`"${value}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
+				// }
 
 				if (value == null) {
 					throw new UnexpectedTokenError("EOF", "\"{\"", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -75,8 +74,11 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 				}
 				else {
 					// String
-					[detail, detailQuoted] = VDFParserTools.convert.token(value)
-					detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted))
+					detail = VDFParserTools.convert.token(value)
+					detailRange = new VDFRange(
+						new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detail[1]),
+						new VDFPosition(tokeniser.line, tokeniser.character - detail[1])
+					)
 
 					const conditional2 = tokeniser.next(true)
 					if (conditional2 != null && VDFParserTools.is.conditional(conditional2)) {
@@ -87,8 +89,11 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 			}
 			else {
 				// String
-				[detail, detailQuoted] = VDFParserTools.convert.token(valueToken)
-				detailRange = new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detailQuoted), new VDFPosition(tokeniser.line, tokeniser.character - detailQuoted))
+				detail = VDFParserTools.convert.token(valueToken)
+				detailRange = new VDFRange(
+					new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detail[1]),
+					new VDFPosition(tokeniser.line, tokeniser.character - detail[1])
+				)
 
 				// Conditional
 				const lookAhead = tokeniser.next(true)
@@ -107,8 +112,7 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 				children != undefined ? SymbolKind.Object : SymbolKind.String,
 				conditional ?? null,
 				selectionRange,
-				detail ?? children!,
-				detailRange
+				detail ? { detail: detail[0], range: detailRange!, quoted: detail[1] == 1 } : children!,
 			))
 		}
 
