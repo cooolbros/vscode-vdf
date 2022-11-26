@@ -76,7 +76,7 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 					// String
 					detail = VDFParserTools.convert.token(value)
 					detailRange = new VDFRange(
-						new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detail[1]),
+						new VDFPosition(tokeniser.line, tokeniser.character - detail[0].length - detail[1]),
 						new VDFPosition(tokeniser.line, tokeniser.character - detail[1])
 					)
 
@@ -91,7 +91,7 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 				// String
 				detail = VDFParserTools.convert.token(valueToken)
 				detailRange = new VDFRange(
-					new VDFPosition(tokeniser.line, tokeniser.character - detail.length - detail[1]),
+					new VDFPosition(tokeniser.line, tokeniser.character - detail[0].length - detail[1]),
 					new VDFPosition(tokeniser.line, tokeniser.character - detail[1])
 				)
 
