@@ -91,8 +91,8 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 				// String
 				detail = VDFParserTools.convert.token(valueToken)
 				detailRange = new VDFRange(
-					new VDFPosition(tokeniser.line, tokeniser.character - detail[0].length - detail[1]),
-					new VDFPosition(tokeniser.line, tokeniser.character - detail[1])
+					new VDFPosition(tokeniser.line, tokeniser.character - detail[0].length - detail[1] * 2),
+					new VDFPosition(tokeniser.line, tokeniser.character)
 				)
 
 				// Conditional

@@ -46,17 +46,17 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	private readonly detailRange?: VDFRange
 
-	public get innerDetailRange(): VDFRange {
+	public get innerDetailRange(): VDFRange | undefined {
 		return this.detailQuoted
 			? new VDFRange(
 				new VDFPosition(this.detailRange!.start.line, this.detailRange!.start.character + 1),
 				new VDFPosition(this.detailRange!.end.line, this.detailRange!.end.character - 1)
 			)
-			: this.detailRange!
+			: this.detailRange
 	}
 
-	public get outerDetailRange(): VDFRange {
-		return this.detailRange!
+	public get outerDetailRange(): VDFRange | undefined {
+		return this.detailRange
 	}
 
 	/**
