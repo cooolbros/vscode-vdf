@@ -33,33 +33,6 @@ export function merge(obj1: any, obj2: any): any {
 	return obj1
 }
 
-export type HUDRoot = string | 0
-
-/**
- * Resolve root folder of an absolute HUD file path
- * @param uri File uri containing object.
- * @returns The root of the HUD folder as a file path string (`C:/...`) or 0 if the HUD root directory is not found
- */
-export function getHUDRoot({ uri }: { uri: string }): HUDRoot {
-
-	const filePath = (<T extends string>(str: string, search: T): str is `${T}${string}` => str.startsWith(search))(uri, "git:/")
-		? gitUriToFilePath(uri)
-		: fileURLToPath(uri)
-
-	let folderPath = path.dirname(filePath)
-	let folderPathReference = filePath
-
-	while (folderPath != folderPathReference) {
-		if (fs.existsSync(path.join(folderPath, "info.vdf"))) {
-			return folderPath
-		}
-		folderPath = path.dirname(folderPath)
-		folderPathReference = path.dirname(folderPathReference)
-	}
-
-	return 0
-}
-
 export function gitUriToFilePath(uri: `git:/${string}`): string {
 	return JSON.parse(new URL(uri).searchParams.keys().next().value)["path"]
 }
