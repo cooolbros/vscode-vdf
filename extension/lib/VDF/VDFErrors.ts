@@ -1,4 +1,4 @@
-import { VDFRange } from "./VDFRange"
+import type { VDFRange } from "./VDFRange"
 
 /**
  * Generic Error of VDF type
@@ -21,6 +21,15 @@ export abstract class VDFSyntaxError extends Error {
 	constructor(message: string, range: VDFRange) {
 		super(message)
 		this.range = range
+	}
+}
+
+/**
+ *
+ */
+export class UnexpectedCharacterError extends VDFSyntaxError {
+	constructor(unexpected: "\\n", expected: "\"\"\"", range: VDFRange) {
+		super(`Unexpected ${unexpected}! Expected ${expected}`, range)
 	}
 }
 

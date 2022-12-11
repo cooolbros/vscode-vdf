@@ -1,4 +1,4 @@
-import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedTokenError } from "./VDFErrors"
+import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedCharacterError } from "./VDFErrors"
 import { VDFPosition } from "./VDFPosition"
 import { VDFRange } from "./VDFRange"
 
@@ -78,6 +78,7 @@ export class VDFTokeniser {
 					character = 0
 				}
 				else {
+					index++
 					break
 				}
 			}
@@ -90,9 +91,13 @@ export class VDFTokeniser {
 		if (index >= this.str.length) {
 			if (this._EOFRead) {
 				const position = new VDFPosition(line, character)
-				throw new UnexpectedTokenError("EOF", "token", new VDFRange(position, position))
+				throw new EndOfStreamError("token", new VDFRange(position, position))
 			}
-			this._EOFRead = true
+			// The VDF Parser will need to read the last token twice, once for checking conditional
+			// and then again for checking that the last key is null
+			if (!lookAhead) {
+				this._EOFRead = true
+			}
 			return null
 		}
 
@@ -109,6 +114,7 @@ export class VDFTokeniser {
 				}
 
 				if (this.str[index] == "\n") {
+					throw new UnexpectedCharacterError("\\n", "\"\"\"", new VDFRange(tokenStartPosition, new VDFPosition(line, character)))
 					line++
 					character = 0
 				}
@@ -124,6 +130,7 @@ export class VDFTokeniser {
 				}
 				index++
 			}
+			// Skip closing double quote
 			index++
 			character++
 		}
@@ -133,6 +140,7 @@ export class VDFTokeniser {
 				if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
 					if (start == index) {
 						index++
+						character++
 					}
 					break
 				}

@@ -16,7 +16,7 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 	 */
 	const parseObject = (obj: boolean): VDFDocumentSymbols => {
 
-		const documentSymbols: VDFDocumentSymbols = new VDFDocumentSymbols()
+		const documentSymbols = new VDFDocumentSymbols()
 
 		const objectTerminator = obj ? "}" : null
 		while (true) {
@@ -39,7 +39,7 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 			const valueToken = tokeniser.next()
 
 			if (valueToken == null) {
-				throw new UnexpectedTokenError("EOF", "token", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				throw new EndOfStreamError("value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 			}
 			if (VDFTokeniser.whiteSpaceTokenTerminate.has(keyToken)) {
 				throw new UnexpectedTokenError(`"${keyToken}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -58,15 +58,9 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 
 				const value = tokeniser.next()
 				if (value == null) {
-					throw new UnexpectedTokenError("EOF", "token", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+					throw new EndOfStreamError("value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 				}
-				// if (VDFTokeniser.whiteSpaceTokenTerminate.has(value)) {
-				// 	throw new UnexpectedTokenError(`"${value}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
-				// }
 
-				if (value == null) {
-					throw new UnexpectedTokenError("EOF", "\"{\"", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
-				}
 
 				if (value == "{") {
 					// Object
@@ -74,6 +68,12 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 				}
 				else {
 					// String
+
+					// VDFTokeniser.whiteSpaceTokenTerminate.has(value)
+					if (value == "}") {
+						throw new UnexpectedTokenError("\"}\"", "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - 1), new VDFPosition(tokeniser.line, tokeniser.character)))
+					}
+
 					detail = VDFParserTools.convert.token(value)
 					detailRange = new VDFRange(
 						new VDFPosition(tokeniser.line, tokeniser.character - detail[0].length - detail[1]),
@@ -89,6 +89,11 @@ export function getVDFDocumentSymbols(str: string): VDFDocumentSymbols {
 			}
 			else {
 				// String
+
+				if (VDFTokeniser.whiteSpaceTokenTerminate.has(valueToken)) {
+					throw new UnexpectedTokenError(`"${valueToken}"`, "value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character - valueToken.length), new VDFPosition(tokeniser.line, tokeniser.character)))
+				}
+
 				detail = VDFParserTools.convert.token(valueToken)
 				detailRange = new VDFRange(
 					new VDFPosition(tokeniser.line, tokeniser.character - detail[0].length - detail[1] * 2),
