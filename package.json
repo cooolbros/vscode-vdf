@@ -19,18 +19,8 @@
     "url": "https://github.com/cooolbros/vscode-vdf"
   },
   "engines": {
-    "vscode": "^1.72.0"
+    "vscode": "^1.74.0"
   },
-  "activationEvents": [
-    "onCommand:vscode-vdf.copyKeyValuePath",
-    "onCommand:vscode-vdf.JSONToVDF",
-    "onCommand:vscode-vdf.showReferences",
-    "onCommand:vscode-vdf.VDFToJSON",
-    "onCustomEditor:vscode-vdf.VTFEditor",
-    "onLanguage:hudanimations",
-    "onLanguage:popfile",
-    "onLanguage:vdf"
-  ],
   "main": "./dist/desktop/extension.js",
   "contributes": {
     "commands": [
