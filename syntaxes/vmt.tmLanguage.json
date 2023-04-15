@@ -1,0 +1,43 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Valve Material Type",
+    "patterns": [
+        {
+            "match": "(\"#base\"|#base)\\s+(\".*?\"|\\S+)$",
+            "captures": {
+                "1": {
+                    "name": "keyword.control"
+                },
+                "2": {
+                    "name": "string"
+                }
+            }
+        },
+        {
+            "name": "comment",
+            "match": "//.*$"
+        },
+        {
+            "name": "constant.character",
+            "match": "\\[.*\\]"
+        },
+        {
+            "name": "variable",
+            "match": "(\".*?\"|\\w+)\\s+(\".*?\"|\\w+)",
+            "captures": {
+                "1": {
+                    "name": "variable"
+                },
+                "2": {
+                    "name": "string.quoted.double"
+                }
+            }
+        },
+        {
+            "name": "variable",
+            "match": "(\".*?\"|\\b\\w+\\b)"
+        }
+    ],
+    "repository": {},
+    "scopeName": "source.vmt"
+}
