@@ -1,6 +1,5 @@
-import { VDFPosition } from "$lib/VDF/VDFPosition"
 import type { DocumentSymbol, SymbolKind } from "vscode-languageserver"
-import { VDFRange } from "../VDF/VDFRange"
+import type { VDFRange } from "../VDF/VDFRange"
 import type { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
 /**
@@ -39,25 +38,10 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly detail?: string
 
-	private readonly detailQuoted?: boolean
-
 	/**
 	 * VDF Document Symbol Primitive Value Range
 	 */
-	private readonly detailRange?: VDFRange
-
-	public get innerDetailRange(): VDFRange | undefined {
-		return this.detailQuoted
-			? new VDFRange(
-				new VDFPosition(this.detailRange!.start.line, this.detailRange!.start.character + 1),
-				new VDFPosition(this.detailRange!.end.line, this.detailRange!.end.character - 1)
-			)
-			: this.detailRange
-	}
-
-	public get outerDetailRange(): VDFRange | undefined {
-		return this.detailRange
-	}
+	public readonly detailRange?: VDFRange
 
 	/**
 	 * The range enclosing this symbol not including leading/trailing whitespace but everything else
@@ -77,7 +61,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly children?: VDFDocumentSymbols
 
-	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: { detail: string, range: VDFRange, quoted: boolean } | VDFDocumentSymbols) {
+	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: { detail: string, range: VDFRange } | VDFDocumentSymbols) {
 		this.name = `${key}${conditional ? " " + conditional : ""}`
 		this.key = key
 		this.nameRange = nameRange
@@ -89,11 +73,11 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 		if ("detail" in value) {
 			this.detail = value.detail
 			this.detailRange = value.range
-			this.detailQuoted = value.quoted
 			this.children = undefined
 		}
 		else {
 			this.detail = undefined
+			this.detailRange = undefined
 			this.children = value
 		}
 	}

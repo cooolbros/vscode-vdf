@@ -1,8 +1,8 @@
-import { VDFIndentation } from "./VDFIndentation"
-import { VDFNewLine } from "./VDFNewLine"
+import type { VDFNewLine } from "../VDF/VDFNewLine"
+import type { VDFIndentation } from "./VDFIndentation"
 
 export interface VDFStringifyOptions {
 	indentation: VDFIndentation
-	tabSize: number
 	newLine: VDFNewLine
+	tabSize: number
 }

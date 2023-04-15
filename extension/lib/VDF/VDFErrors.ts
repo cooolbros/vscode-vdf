@@ -18,44 +18,32 @@ import type { VDFRange } from "./VDFRange"
  */
 export abstract class VDFSyntaxError extends Error {
 	public range: VDFRange
-	constructor(message: string, range: VDFRange) {
-		super(message)
+	constructor(unexpected: string, expected: string[], range: VDFRange) {
+		super(`Unexpected ${unexpected}. Expected ${expected.join(" | ")}.`)
 		this.range = range
 	}
 }
 
-/**
- *
- */
 export class UnexpectedCharacterError extends VDFSyntaxError {
-	constructor(unexpected: "\\n", expected: "\"\"\"", range: VDFRange) {
-		super(`Unexpected ${unexpected}! Expected ${expected}`, range)
+	constructor(unexpected: string, expected: string[], range: VDFRange) {
+		super(unexpected, expected, range)
 	}
 }
 
-/**
- *
- */
-export class UnexpectedTokenError extends VDFSyntaxError {
-	constructor(unexpected: `"${string}"` | "EOF", expected: string, range: VDFRange) {
-		super(`Unexpected ${unexpected}! Expected ${expected}`, range)
-	}
-}
-
-/**
- * File ends with \
- */
 export class UnclosedEscapeSequenceError extends VDFSyntaxError {
 	constructor(range: VDFRange) {
-		super("Unclosed escape sequence! Expected char", range)
+		super("Unclosed escape sequence", ["char"], range)
 	}
 }
 
-/**
- * Unexpected End of File
- */
-export class EndOfStreamError extends UnexpectedTokenError {
-	constructor(expected: string, range: VDFRange) {
+export class EndOfStreamError extends VDFSyntaxError {
+	constructor(expected: string[], range: VDFRange) {
 		super("EOF", expected, range)
+	}
+}
+
+export class UnexpectedTokenError extends VDFSyntaxError {
+	constructor(unexpected: `'${string}'` | "EOF", expected: string[], range: VDFRange) {
+		super(unexpected, expected, range)
 	}
 }

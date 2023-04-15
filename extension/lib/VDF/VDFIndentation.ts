@@ -1,4 +1,4 @@
-export enum VDFIndentation {
+export const enum VDFIndentation {
 	Tabs,
 	Spaces
 }

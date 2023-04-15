@@ -18,7 +18,7 @@ export class VDFPosition implements Position {
 		if (value.line < this.line) {
 			return false
 		}
-		return this.character < value.character
+		return this.character <= value.character
 	}
 
 	public isAfter(value: Position): boolean {
@@ -28,6 +28,6 @@ export class VDFPosition implements Position {
 		if (value.line < this.line) {
 			return true
 		}
-		return this.character > value.character
+		return this.character >= value.character
 	}
 }

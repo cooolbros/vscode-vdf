@@ -1,4 +1,4 @@
-export enum VDFNewLine {
+export const enum VDFNewLine {
 	LF = 1,
 	CRLF = 2
 }

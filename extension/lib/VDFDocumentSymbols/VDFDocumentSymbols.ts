@@ -3,32 +3,39 @@ import type { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 
-	public forAll(callback: (documentSymbol: VDFDocumentSymbol) => void): void {
-		for (const documentSymbol of this) {
-			if (documentSymbol.children) {
-				documentSymbol.children.forAll(callback)
-			}
-			callback(documentSymbol)
-		}
-	}
-
-	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol) => boolean): VDFDocumentSymbol | undefined {
-
-		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): ReturnType<VDFDocumentSymbols["findRecursive"]> => {
+	public forAll(callback: (documentSymbol: VDFDocumentSymbol, objectPath: Lowercase<string>[]) => void): void {
+		const objectPath: Lowercase<string>[] = []
+		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): void => {
 			for (const documentSymbol of documentSymbols) {
 				if (documentSymbol.children) {
+					objectPath.push(<Lowercase<string>>documentSymbol.key.toLowerCase())
+					iterateDocumentSymbols(documentSymbol.children)
+					objectPath.pop()
+				}
+				callback(documentSymbol, objectPath)
+			}
+		}
+		iterateDocumentSymbols(this)
+	}
+
+	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol, objectPath: string[]) => boolean): VDFDocumentSymbol | undefined {
+		const objectPath: string[] = []
+		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): VDFDocumentSymbol | undefined => {
+			for (const documentSymbol of documentSymbols) {
+				if (documentSymbol.children) {
+					objectPath.push(documentSymbol.key.toLowerCase())
 					const result = iterateDocumentSymbols(documentSymbol.children)
 					if (result != undefined) {
 						return result
 					}
+					objectPath.pop()
 				}
 
-				if (callback(documentSymbol)) {
+				if (callback(documentSymbol, objectPath)) {
 					return documentSymbol
 				}
 			}
 		}
-
 		return iterateDocumentSymbols(this)
 	}
 

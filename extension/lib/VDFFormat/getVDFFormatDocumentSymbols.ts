@@ -1,112 +1,129 @@
-import { EndOfStreamError } from "$lib/VDF/VDFErrors"
-import { VDFParserTools } from "$lib/VDF/VDFParserTools"
-import { VDFPosition } from "$lib/VDF/VDFPosition"
-import { VDFRange } from "$lib/VDF/VDFRange"
-import { VDFTokeniser } from "$lib/VDF/VDFTokeniser"
-import { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
-import { InvalidTokenSequenceError } from "./VDFFormatErrors"
-import { VDFFormatTokeniser } from "./VDFFormatTokeniser"
+import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
+import { VDFFormatTokeniser, VDFFormatTokenType } from "./VDFFormatTokeniser"
 
 export function getVDFFormatDocumentSymbols(str: string): VDFFormatDocumentSymbol[] {
 
 	const tokeniser = new VDFFormatTokeniser(str)
 
-	const parseObject = (key: string, isObject: boolean): VDFFormatDocumentSymbol[] => {
+	const parseObject = (isObject: boolean): VDFFormatDocumentSymbol[] => {
 
 		const documentSymbols: VDFFormatDocumentSymbol[] = []
 
-		const objectTerminator = isObject ? "}" : null
+		const objectTerminator = isObject
+			? { type: VDFFormatTokenType.ControlCharacter, value: "}" }
+			: null
+
 		while (true) {
 
 			const currentToken = tokeniser.next(false, true)
 
-			if (currentToken == objectTerminator) {
+			if (currentToken != null && objectTerminator != null ? (currentToken.type == objectTerminator.type && currentToken.value == objectTerminator.value) : currentToken == objectTerminator) {
 				break
 			}
 			if (currentToken == null) {
-				throw new EndOfStreamError("key", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				throw new Error()
 			}
 
 			const documentSymbol: VDFFormatDocumentSymbol = {}
 
-			if (VDFParserTools.is.comment(currentToken)) {
-				// Block comment
-				documentSymbol.blockComment = VDFParserTools.convert.comment(currentToken)
-			}
-			else {
-				if (VDFTokeniser.whiteSpaceTokenTerminate.has(currentToken)) {
-					throw new InvalidTokenSequenceError(currentToken)
+			switch (currentToken.type) {
+				case VDFFormatTokenType.Comment: {
+					documentSymbol.blockComment = currentToken.value.trim()
+					break
 				}
-				documentSymbol.key = VDFParserTools.convert.token(currentToken)[0]
-				let value = tokeniser.next(false, true)
-
-				if (value == null) {
-					throw new EndOfStreamError("value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
-				}
-
-				if (VDFParserTools.is.comment(value)) {
-					documentSymbol.inLineComment = VDFParserTools.convert.comment(value)
-					value = tokeniser.next(false, true)
-					if (value == "{") {
-						documentSymbol.value = parseObject(documentSymbol.key, true)
+				case VDFFormatTokenType.String: {
+					documentSymbol.key = currentToken.value
+					let valueToken = tokeniser.next(false, true)
+					if (valueToken == null) {
+						throw new Error()
 					}
-					else {
-						throw new InvalidTokenSequenceError(documentSymbol.key, documentSymbol.inLineComment, `${value}`)
-					}
-				}
-				else if (VDFParserTools.is.conditional(value)) {
-					documentSymbol.conditional = value
-					value = tokeniser.next(false, true)
-					if (value == null) {
-						throw new EndOfStreamError("value", new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
-					}
-					if (VDFParserTools.is.comment(value)) {
-						documentSymbol.inLineComment = VDFParserTools.convert.comment(value)
-						value = tokeniser.next(false, true)
 
-						if (value == null) {
-							throw new Error("\"{\" required after conditional + comment sequence")
+					switch (valueToken.type) {
+						case VDFFormatTokenType.Comment: {
+							documentSymbol.inLineComment = valueToken.value.trim()
+							const nextToken = tokeniser.next(false, true)
+							if (nextToken?.type == VDFFormatTokenType.ControlCharacter && nextToken.value == "{") {
+								documentSymbol.value = parseObject(true)
+							}
+							else {
+								throw new Error()
+							}
+							break
 						}
+						case VDFFormatTokenType.Conditional: {
+							documentSymbol.conditional = <`[${string}]`>valueToken.value
+							valueToken = tokeniser.next(false, true)
+							if (valueToken == null) {
+								throw new Error()
+							}
+							switch (valueToken.type) {
+								case VDFFormatTokenType.Comment: {
+									documentSymbol.inLineComment = valueToken.value.trim()
+									valueToken = tokeniser.next(false, true)
+									if (valueToken == null) {
+										throw new Error()
+									}
+									if (valueToken.type == VDFFormatTokenType.ControlCharacter && valueToken.value == "{") {
+										documentSymbol.value = parseObject(true)
+									}
+									else {
+										throw new Error()
+									}
+									break
+								}
+								case VDFFormatTokenType.ControlCharacter: {
+									if (valueToken.value == "{") {
+										documentSymbol.value = parseObject(true)
+										break
+									}
+									else {
+										throw new Error()
+									}
+								}
+								case VDFFormatTokenType.String: {
+									documentSymbol.value = valueToken.value
+								}
+							}
+							break
+						}
+						case VDFFormatTokenType.ControlCharacter: {
+							if (valueToken.value == "{") {
+								documentSymbol.value = parseObject(true)
+								break
+							}
+							else {
+								throw new Error()
+							}
+						}
+						case VDFFormatTokenType.String: {
+							documentSymbol.value = valueToken.value
 
-						if (value == "{") {
-							documentSymbol.value = parseObject(documentSymbol.key, true)
-						}
-						else {
-							throw new InvalidTokenSequenceError(documentSymbol.key, documentSymbol.conditional, documentSymbol.inLineComment, value)
-						}
-					}
-					else if (value == "{") {
-						documentSymbol.value = parseObject(documentSymbol.key, true)
-					}
-					else {
-						documentSymbol.value = VDFParserTools.convert.token(value)[0]
-					}
-				}
-				else if (value == "{") {
-					documentSymbol.value = parseObject(documentSymbol.key, true)
-				}
-				else {
-					if (value == null || VDFTokeniser.whiteSpaceTokenTerminate.has(value)) {
-						throw new InvalidTokenSequenceError(documentSymbol.key, value)
-					}
-					documentSymbol.value = VDFParserTools.convert.token(value)[0]
-					let lookAhead = tokeniser.next(true, false)
-
-					if (lookAhead != null) {
-						if (VDFParserTools.is.comment(lookAhead)) {
-							documentSymbol.inLineComment = VDFParserTools.convert.comment(lookAhead)
-							tokeniser.next() // Skip comment
-						}
-						else if (VDFParserTools.is.conditional(lookAhead)) {
-							documentSymbol.conditional = lookAhead
-							tokeniser.next(false, true)	// Skip OS Tag
-							lookAhead = tokeniser.next(true, false)
-							if (lookAhead != null && VDFParserTools.is.comment(lookAhead)) {
-								documentSymbol.inLineComment = VDFParserTools.convert.comment(lookAhead)
-								tokeniser.next()
+							const nextToken = tokeniser.next(true, false)
+							switch (nextToken?.type) {
+								case VDFFormatTokenType.Conditional: {
+									documentSymbol.conditional = <`[${string}]`>nextToken.value
+									tokeniser.next(false, false)
+									const lookAheadToken = tokeniser.next(true, false)
+									if (lookAheadToken?.type == VDFFormatTokenType.Comment) {
+										documentSymbol.inLineComment = lookAheadToken.value.trim()
+										tokeniser.next(false, false)
+									}
+									break
+								}
+								case VDFFormatTokenType.Comment: {
+									documentSymbol.inLineComment = nextToken.value.trim()
+									tokeniser.next()
+								}
 							}
 						}
 					}
+
+					break
+				}
+				case VDFFormatTokenType.Conditional:
+				case VDFFormatTokenType.ControlCharacter:
+				case VDFFormatTokenType.NewLine: {
+					throw new Error()
 				}
 			}
 
@@ -116,6 +133,5 @@ export function getVDFFormatDocumentSymbols(str: string): VDFFormatDocumentSymbo
 		return documentSymbols
 	}
 
-	return parseObject("document", false)
+	return parseObject(false)
 }
-

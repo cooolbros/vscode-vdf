@@ -1,23 +1,60 @@
-import { EndOfStreamError, UnexpectedTokenError } from "$lib/VDF/VDFErrors"
+import { UnexpectedTokenError } from "$lib/VDF/VDFErrors"
 import { VDFPosition } from "$lib/VDF/VDFPosition"
 import { VDFRange } from "$lib/VDF/VDFRange"
 import { VDFTokeniser } from "$lib/VDF/VDFTokeniser"
 
+export const enum VDFFormatTokenType {
+	String,
+	Conditional,
+	ControlCharacter,
+	NewLine,
+	Comment
+}
+
+export interface VDFFormatToken {
+	type: VDFFormatTokenType
+	value: string
+}
+
 /**
  * A modified VDFTokeniser that returns comments and newline characters
  */
-export class VDFFormatTokeniser extends VDFTokeniser {
+export class VDFFormatTokeniser {
 
+	/**
+	 * ```ts
+	 * readonly [" ", "\t", "\r"]
+	 * ```
+	 */
 	public static readonly whiteSpaceIgnore = new Set([" ", "\t", "\r"])
+
+	/**
+	 * ```ts
+	 * readonly [" ", "\t", "\r", "\n"]
+	 * ```
+	 */
 	public static readonly whiteSpaceIgnore_skipNewLines = new Set([...VDFFormatTokeniser.whiteSpaceIgnore, "\n"])
 
-	// private static readonly whiteSpaceIgnoreFormat: string[] = [" ", "\t", "\r"]
+	private readonly str: string
+
+	/**
+	 * Zero-based offset position
+	 */
+	public index = 0
+
+	// EOF
+	private _EOFRead = false
 
 	constructor(str: string) {
-		super(str)
+		this.str = str
+
+		// UTF-16 LE
+		if (str.substring(0, 1).charCodeAt(0) == 65279) {
+			this.next()
+		}
 	}
 
-	public next(lookAhead = false, skipNewlines = false): string | null {
+	public next(peek = false, skipNewlines = false): VDFFormatToken | null {
 
 		let index = this.index
 
@@ -31,62 +68,91 @@ export class VDFFormatTokeniser extends VDFTokeniser {
 
 		if (index >= this.str.length) {
 			if (this._EOFRead) {
-				const position = new VDFPosition(0, 0)
-				throw new UnexpectedTokenError("EOF", "token", new VDFRange(position))
+				throw new UnexpectedTokenError("EOF", ["token"], new VDFRange(new VDFPosition(0, 0)))
 			}
 			this._EOFRead = true
 			return null
 		}
 
-		const start = index
+		let token: VDFFormatToken
 
-		if (this.str[index] == "\n") {
-			index++
-		}
-		else if (this.str[index] == "\"") {
-			index++
-			while (this.str[index] != "\"") {
-
-				if (index >= this.str.length) {
-					throw new EndOfStreamError("closing double quote", new VDFRange(new VDFPosition(0, 0)))
+		switch (this.str[index]) {
+			case "{":
+			case "}": {
+				token = {
+					type: VDFFormatTokenType.ControlCharacter,
+					value: this.str[index]
 				}
-
 				index++
+				break
 			}
-			index++ // Skip closing double quote
-		}
-		else if (this.str[index] == "/" && index < this.str.length && this.str[index + 1] == "/") {
-			while (index <= this.str.length && this.str[index] != "\n") {
+			case "\n": {
+				token = {
+					type: VDFFormatTokenType.NewLine,
+					value: this.str[index]
+				}
 				index++
+				break
 			}
-		}
-		else {
-			while (index <= this.str.length && !VDFFormatTokeniser.whiteSpaceIgnore_skipNewLines.has(this.str[index])) {
-
-				if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
-					if (start == index) {
+			case "\"": {
+				index++
+				const start = index
+				while (this.str[index] != "\"") {
+					if (index >= this.str.length || this.str[index] == "\n") {
+						throw new Error()
+					}
+					else if (this.str[index] == "\\") {
+						if (index >= this.str.length) {
+							throw new Error()
+						}
 						index++
+					}
+					index++
+				}
+				const end = index
+				index++
+				token = {
+					type: VDFFormatTokenType.String,
+					value: this.str.slice(start, end)
+				}
+				break
+			}
+			/* eslint-disable no-fallthrough */
+			// @ts-ignore
+			case "/": {
+				if (this.str[index + 1] == "/") {
+					index += 2 // Skip //
+					const start = index
+					while (index < this.str.length && this.str[index] != "\n") {
+						index++
+					}
+					const end = index
+					token = {
+						type: VDFFormatTokenType.Comment,
+						value: this.str.slice(start, end).trim() // Remove '\r'
 					}
 					break
 				}
-
-				index++
+			}
+			default: {
+				const start = index
+				while (index < this.str.length && !VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
+					if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
+						break
+					}
+					index++
+				}
+				const end = index
+				const value = this.str.slice(start, end)
+				token = {
+					type: value.startsWith("[") && value.endsWith("]") ? VDFFormatTokenType.Conditional : VDFFormatTokenType.String,
+					value: value
+				}
+				break
 			}
 		}
 
-		const end = index
-
-		const token = this.str.slice(start, end)
-
-		if (lookAhead) {
-			// this._peek = {
-			// 	token,
-			// 	index,
-			// 	line: 0,
-			// 	character: 0,
-			// }
-		}
-		else {
+		if (!peek) {
 			this.index = index
 		}
 
