@@ -1,17 +1,25 @@
+import { VDF } from "$lib/VDF/VDF"
+import { VDFIndentation } from "$lib/VDF/VDFIndentation"
+import { VDFNewLine } from "$lib/VDF/VDFNewLine"
+import type { VDFStringifyOptions } from "$lib/VDF/VDFStringifyOptions"
 import { EndOfLine, languages, Range, TextEditor, TextEditorEdit } from "vscode"
-import { VDFIndentation } from "../../../shared/VDF/dist/models/VDFIndentation"
-import { VDFNewLine } from "../../../shared/VDF/dist/models/VDFNewLine"
-import { VDF } from "../../../shared/VDF/dist/VDF"
+
 
 export function JSONToVDF(editor: TextEditor, edit: TextEditorEdit): void {
+
 	const { document } = editor
-	const indentation = !editor.options.insertSpaces ? VDFIndentation.Tabs : VDFIndentation.Spaces
-	const newLine = document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF
+
+	const options: VDFStringifyOptions = {
+		indentation: editor.options.insertSpaces ? VDFIndentation.Spaces : VDFIndentation.Tabs,
+		newLine: document.eol == EndOfLine.CRLF ? VDFNewLine.CRLF : VDFNewLine.LF,
+		tabSize: typeof editor.options.tabSize == "number" ? editor.options.tabSize : 4,
+	}
+
 	if (!editor.selection.isEmpty) {
-		edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), { indentation, newLine }))
+		edit.replace(editor.selection, VDF.stringify(JSON.parse(document.getText(editor.selection)), options))
 	}
 	else {
-		edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), { indentation, newLine }))
+		edit.replace(new Range(0, 0, document.lineCount, 0), VDF.stringify(JSON.parse(document.getText()), options))
 		languages.setTextDocumentLanguage(document, "vdf")
 	}
 }

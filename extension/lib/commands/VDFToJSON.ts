@@ -1,5 +1,5 @@
+import { VDF } from "$lib/VDF/VDF"
 import { languages, Range, TextEditor, TextEditorEdit } from "vscode"
-import { VDF } from "../../../shared/VDF/dist/VDF"
 
 export function VDFToJSON(editor: TextEditor, edit: TextEditorEdit): void {
 	const { document } = editor

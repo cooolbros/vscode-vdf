@@ -1,40 +1,71 @@
-import { VDFDocumentSymbol } from "$lib/VDFDocumentSymbols/VDFDocumentSymbol"
+import { VSCodeLanguageClientFileSystem } from "$lib/client/VSCodeLanguageClientFileSystem"
+import { getHUDRoot } from "$lib/utils/getHUDRoot"
+import { getVDFDocumentSymbols } from "$lib/VDFDocumentSymbols/getVDFDocumentSymbols"
+import type { VDFDocumentSymbol } from "$lib/VDFDocumentSymbols/VDFDocumentSymbol"
+import type { VDFDocumentSymbols } from "$lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { basename, relative, sep } from "path"
-import { TextEditor, window } from "vscode"
-import { getHUDRoot } from "../../../shared/tools"
-import { getVDFDocumentSymbols } from "../../../shared/VDF/dist/getVDFDocumentSymbols"
+import { Position, TextEditor, Uri, window } from "vscode"
 
-export function copyKeyValuePath(editor: TextEditor): void {
+export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
 	const languageId = editor.document.languageId
 	if (languageId != "vdf" && languageId != "popfile") {
 		return
 	}
 
-	const filePath = ((): string => {
+	const filePath = await (async (): Promise<string> => {
 		const fsPath = editor.document.uri.fsPath
-		const hudRoot = getHUDRoot({ uri: editor.document.uri.toString() })
+		const hudRoot = await getHUDRoot({ uri: editor.document.uri.toString() }, new VSCodeLanguageClientFileSystem())
 		if (hudRoot) {
-			return relative(hudRoot, fsPath)
+			return relative(Uri.parse(hudRoot).fsPath, fsPath)
 		}
 		return basename(fsPath)
 	})()
 
-	const position = editor.selection.start
+	function findDocumentSymbolPath(documentSymbols: VDFDocumentSymbols, position: Position): VDFDocumentSymbol[] | null {
 
-	const documentSymbolResult = ((): VDFDocumentSymbol | null => {
-		const documentSymbols = getVDFDocumentSymbols(editor.document.getText())
-		return documentSymbols.getDocumentSymbolAtPosition(position)
-	})()
+		const objectPath: VDFDocumentSymbol[] = []
+
+		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): VDFDocumentSymbol[] | null => {
+			for (const documentSymbol of documentSymbols) {
+
+				objectPath.push(documentSymbol)
+
+				if (documentSymbol.children) {
+
+					const result = iterateDocumentSymbols(documentSymbol.children)
+					if (result) {
+						return result
+					}
+				}
+
+				if (documentSymbol.range.contains(position)) {
+					return objectPath
+				}
+
+				objectPath.pop()
+			}
+
+			return null
+		}
+
+		return iterateDocumentSymbols(documentSymbols)
+	}
+
+	const documentSymbolResult = findDocumentSymbolPath(
+		getVDFDocumentSymbols(editor.document.getText(), { allowMultilineStrings: false }),
+		editor.selection.start
+	)
 
 	if (documentSymbolResult) {
+
 		const documentSymbolsPath = [
-			...documentSymbolResult.path.map(documentSymbol => documentSymbol.key),
-			documentSymbolResult.result.key,
-			...(documentSymbolResult.result.detailRange?.contains(position) ? [
-				documentSymbolResult.result.detail!
+			...documentSymbolResult.map(documentSymbol => documentSymbol.key),
+			...(documentSymbolResult.at(-1)?.detailRange?.contains(editor.selection.start) ? [
+				documentSymbolResult.at(-1)!.detail!
 			] : [])
 		].map(i => /\s/.test(i) ? `"${i}"` : i)
+
 		const result = `${filePath.split(sep).join("/")} ${documentSymbolsPath.join(" > ")}`
 
 		window.showInputBox({ value: result })
