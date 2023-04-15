@@ -57,67 +57,133 @@
         "command": "vscode-vdf.VDFToJSON"
       }
     ],
-    "configuration": {
-      "title": "VDF",
-      "properties": {
-        "vscode-vdf.autoCompletionKind": {
-          "description": "Controls the method of providing autocompletion file items.",
-          "type": "string",
-          "enum": [
-            "incremental",
-            "all"
-          ],
-          "enumDescriptions": [
-            "Show only files in suggested folder and suggest child items when a folder is selected.",
-            "Suggest all files recursively."
-          ],
-          "default": "incremental"
-        },
-        "vscode-vdf.hudAnimations.extraTabs": {
-          "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
-          "type": "number",
-          "default": 1,
-          "minimum": 1
-        },
-        "vscode-vdf.hudAnimations.layoutScope": {
-          "description": "Controls the scope to compare token lengths to when formatting HUD animations.",
-          "type": "string",
-          "enum": [
-            "event",
-            "file"
-          ],
-          "default": "event"
-        },
-        "vscode-vdf.hudAnimations.referencesCodeLens.showOnAllEvents": {
-          "description": "Enable/disable references CodeLens on all events in HUD Animations files.",
-          "type": "boolean",
-          "default": false
-        },
-        "vscode-vdf.referencesCodeLens.showOnAllElements": {
-          "description": "Enable/disable references CodeLens on all elements in VDF files.",
-          "type": "boolean",
-          "default": false
-        },
-        "vscode-vdf.teamFortress2Folder": {
-          "description": "Path to Team Fortress 2 Folder",
-          "type": "string",
-          "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
-        },
-        "vscode-vdf.updateDiagnosticsEvent": {
-          "description": "Controls when to update file diagnostics",
-          "type": "string",
-          "enum": [
-            "type",
-            "save"
-          ],
-          "enumDescriptions": [
-            "Update file diagnostics in real time.",
-            "Update file diagnostics when the file is saved."
-          ],
-          "default": "type"
+    "configuration": [
+      {
+        "title": "VSCode VDF",
+        "properties": {
+          "vscode-vdf.filesAutoCompletionKind": {
+            "type": "string",
+            "description": "Controls the behaviour of suggesting autocompletion file items.",
+            "enum": [
+              "incremental",
+              "all"
+            ],
+            "enumDescriptions": [
+              "Show only files in suggested folder and suggest child items when a folder is selected.",
+              "Suggest all files recursively."
+            ],
+            "default": "incremental"
+          },
+          "vscode-vdf.teamFortress2Folder": {
+            "type": "string",
+            "markdownDescription": "Path to `Team Fortress 2` folder",
+            "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+          },
+          "vscode-vdf.updateDiagnosticsEvent": {
+            "type": "string",
+            "enum": [
+              "type",
+              "save"
+            ],
+            "enumDescriptions": [
+              "Update file diagnostics in real time.",
+              "Update file diagnostics when the file is saved."
+            ],
+            "description": "Controls when to update file diagnostics",
+            "default": "type"
+          }
+        }
+      },
+      {
+        "title": "HUD Animations",
+        "properties": {
+          "vscode-vdf.hudanimations.format.insertNewlineAfterEvents": {
+            "type": "boolean",
+            "description": "Whehter to insert a newline after events when formatting.",
+            "default": true
+          },
+          "vscode-vdf.hudanimations.format.layoutScope": {
+            "type": "string",
+            "description": "Controls the scope to align tokens with when formatting HUD animations.",
+            "enum": [
+              "event",
+              "file"
+            ],
+            "enumDescriptions": [
+              "Align tokens with only tokens in event",
+              "Align tokens with all tokens in file"
+            ],
+            "default": "event"
+          },
+          "vscode-vdf.hudanimations.format.tabs": {
+            "type": "number",
+            "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
+            "minimum": 1,
+            "default": 1
+          }
+        }
+      },
+      {
+        "title": "Popfile",
+        "properties": {
+          "vscode-vdf.popfile.format.insertNewlineBeforeObjects": {
+            "type": "boolean",
+            "description": "Whether to insert a newline before objects when formatting.",
+            "default": true
+          },
+          "vscode-vdf.popfile.format.quotes": {
+            "type": "boolean",
+            "description": "Whether to surround tokens with double quotes when formatting.",
+            "default": false
+          },
+          "vscode-vdf.popfile.format.tabs": {
+            "type": "number",
+            "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+            "default": -1
+          }
+        }
+      },
+      {
+        "title": "VMT",
+        "properties": {
+          "vscode-vdf.vmt.format.insertNewlineBeforeObjects": {
+            "type": "boolean",
+            "description": "Whether to insert a newline before objects when formatting.",
+            "default": false
+          },
+          "vscode-vdf.vmt.format.quotes": {
+            "type": "boolean",
+            "description": "Whether to surround tokens with double quotes when formatting.",
+            "default": true
+          },
+          "vscode-vdf.vmt.format.tabs": {
+            "type": "number",
+            "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+            "default": 1
+          }
+        }
+      },
+      {
+        "title": "VDF",
+        "properties": {
+          "vscode-vdf.vdf.format.insertNewlineBeforeObjects": {
+            "type": "boolean",
+            "description": "Whether to insert a newline before objects when formatting.",
+            "default": false
+          },
+          "vscode-vdf.vdf.format.quotes": {
+            "type": "boolean",
+            "description": "Whether to surround tokens with double quotes when formatting.",
+            "default": true
+          },
+          "vscode-vdf.vdf.format.tabs": {
+            "type": "number",
+            "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+            "default": 1
+          }
         }
       }
-    },
+    ],
     "customEditors": [
       {
         "viewType": "vscode-vdf.VTFEditor",
@@ -221,7 +287,8 @@
     "vscode-languageserver": "^8.0.2",
     "vscode-languageserver-textdocument": "^1.0.7",
     "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "webpack-cli": "^4.10.0",
+    "zod": "^3.20.2"
   },
   "__metadata": {
     "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",

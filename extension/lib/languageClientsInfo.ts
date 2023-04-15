@@ -1,14 +1,18 @@
 export const languageClientsInfo = <const>{
 	hudanimations: {
-		id: "hudanimations-language-server",
-		name: "HUD Animations Language Server"
+		id: "hudanimations",
+		name: "HUD Animations"
 	},
 	popfile: {
-		id: "popfile-language-server",
-		name: "Popfile Language Server"
+		id: "popfile",
+		name: "Popfile"
+	},
+	vmt: {
+		id: "vmt",
+		name: "VMT"
 	},
 	vdf: {
-		id: "vdf-language-server",
-		name: "VDF Language Server"
+		id: "vdf",
+		name: "VDF"
 	}
 }
