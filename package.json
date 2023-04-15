@@ -208,6 +208,11 @@
         "path": "./syntaxes/popfile.tmLanguage.json"
       },
       {
+        "language": "vmt",
+        "scopeName": "source.vmt",
+        "path": "./syntaxes/vmt.tmLanguage.json"
+      },
+      {
         "language": "vdf",
         "scopeName": "source.vdf",
         "path": "./syntaxes/vdf.tmLanguage.json"
@@ -217,22 +222,20 @@
       {
         "id": "hudanimations",
         "aliases": [
-          "Valve HUD Animations",
-          "hudanimations"
+          "Valve HUD Animations"
         ],
         "extensions": [
           ".hudanimations"
         ],
         "filenamePatterns": [
-          "hudanimations*.txt"
+          "*hudanimations*.txt"
         ],
         "configuration": "./language-configuration/hudanimations-language-configuration.json"
       },
       {
         "id": "popfile",
         "aliases": [
-          "Popfile",
-          "popfile"
+          "Popfile"
         ],
         "extensions": [
           ".pop"
@@ -240,18 +243,31 @@
         "configuration": "./language-configuration/popfile-language-configuration.json"
       },
       {
+        "id": "vmt",
+        "aliases": [
+          "Valve Material type"
+        ],
+        "extensions": [
+          ".vmt"
+        ],
+        "configuration": "./language-configuration/vdf-language-configuration.json"
+      },
+      {
         "id": "vdf",
         "aliases": [
-          "Valve KeyValues",
+          "VDF",
           "vdf"
         ],
         "extensions": [
           ".res",
-          ".vdf",
-          ".vmt"
+          ".vdf"
         ],
         "filenames": [
           "hudanimations_manifest.txt"
+        ],
+        "filenamePatterns": [
+          "chat_*.txt",
+          "tf_*.txt"
         ],
         "configuration": "./language-configuration/vdf-language-configuration.json"
       }
@@ -273,19 +289,24 @@
     "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
+    "@types/node": "^16.14.2",
     "@types/string-similarity": "^4.0.0",
-    "@types/vscode-webview": "^1.57.0",
+    "@types/vscode": "^1.74.0",
+    "@types/vscode-webview": "^1.57.1",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
+    "@typescript-eslint/parser": "^5.47.1",
+    "eslint": "^8.30.0",
     "string-similarity": "^4.0.4",
     "tga-js": "^1.1.1",
-    "ts-loader": "^9.4.1",
+    "ts-loader": "^9.4.2",
     "ts-node": "^10.9.1",
-    "typescript": "^4.8.4",
-    "vscode-languageclient": "^8.0.2",
-    "vscode-languageserver": "^8.0.2",
-    "vscode-languageserver-textdocument": "^1.0.7",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "zod": "^3.20.2"
+    "typescript": "^4.9.4",
+    "vscode-languageclient": "^8.1.0",
+    "vscode-languageserver": "^8.1.0",
+    "vscode-languageserver-textdocument": "^1.0.8",
+    "webpack": "^5.79.0",
+    "webpack-cli": "^5.0.1",
+    "zod": "^3.21.4"
   },
   "__metadata": {
     "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",

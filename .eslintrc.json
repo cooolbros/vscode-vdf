@@ -80,6 +80,7 @@
                 "checkLoops": false
             }
         ],
+        "no-inner-declarations": "off",
         "quotes": [
             "error",
             "double"

@@ -46,10 +46,6 @@ VDF/Valve KeyValues language support for VSCode
  - Import #base templates into popfile
  - Rename Templates (file wide)
 
-### TODO
- - Add settings for formatting preference
- - Add support for renaming clientscheme entries (project wide)
- - Code lens for clientscheme references
 
 Github: https://github.com/cooolbros/vscode-vdf
 
