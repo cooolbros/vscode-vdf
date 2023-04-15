@@ -1,15 +1,15 @@
 {
-	"[jsonc]": {
-		"editor.formatOnPaste": false,
-		"editor.formatOnSave": false,
-		"editor.insertSpaces": true
-	},
-	"files.exclude": {
-		"**/.DS_Store": true,
-		"**/.git": true,
-		"**/.hg": true,
-		"**/.svn": true,
-		"**/CVS": true,
-		"**/Thumbs.db": true
-	}
+    "[json][jsonc]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4
+    },
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/.git": true,
+        "**/.hg": true,
+        "**/.svn": true,
+        "**/CVS": true,
+        "**/Thumbs.db": true
+    },
+    "typescript.tsdk": "node_modules\\typescript\\lib"
 }

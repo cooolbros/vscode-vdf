@@ -1,131 +1,131 @@
 {
-	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-	"name": "Valve HUD Animations",
-	"patterns": [
-		{
-			"match": "//.*",
-			"name": "comment"
-		},
-		{
-			"name": "keyword",
-			"match": "(?i)(\"event\"|event)\\s+(\".*?\"|\\S+)",
-			"captures": {
-				"0": {
-					"name": "entity.name.function"
-				},
-				"1": {
-					"name": "keyword"
-				}
-			}
-		},
-		{
-			"match": "(?i)(RunEventChild)\\s+(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
-			"captures": {
-				"0": {
-					"name": "entity.name.function"
-				},
-				"1": {
-					"name": "keyword"
-				},
-				"2": {
-					"name": "variable"
-				}
-			}
-		},
-		{
-			"match": "(?i)(RunEvent|StopEvent)\\s+(\".*\"|\\w+)",
-			"captures": {
-				"0": {
-					"name": "entity.name.function"
-				},
-				"1": {
-					"name": "keyword"
-				}
-			}
-		},
-		{
-			"match": "(?i)(StopPanelAnimations)\\s+\\w+",
-			"captures": {
-				"0": {
-					"name": "variable"
-				},
-				"1": {
-					"name": "keyword"
-				}
-			}
-		},
-		{
-			"match": "(?i)(Animate)\\s+(\".*?\"|\\S+)\\s+(\\S+)\\s+(\".*?\"|\\S+)\\s+(\\w+)",
-			"captures": {
-				"0": {},
-				"1": {
-					"name": "keyword"
-				},
-				"2": {
-					"name": "variable"
-				},
-				"3": {
-					"name": "keyword.control"
-				},
-				"4": {
-					"name": "string"
-				},
-				"5": {
-					"name": "keyword.control"
-				},
-				"6": {
-					"name": "constant.numeric"
-				}
-			}
-		},
-		{
-			"match": "(?i)(SetVisible)\\s+(\".*?\"|\\S+)",
-			"captures": {
-				"0": {},
-				"1": {
-					"name": "keyword"
-				},
-				"2": {
-					"name": "variable"
-				}
-			}
-		},
-		{
-			"match": "(?i)(FireCommand|PlaySound)\\s+([\\d.]+)\\s+(\".*?\"|\\S+)",
-			"captures": {
-				"0": {},
-				"1": {
-					"name": "keyword"
-				},
-				"2": {
-					"name": "constant.numeric"
-				},
-				"3": {
-					"name": "string"
-				}
-			}
-		},
-		{
-			"match": "(?i)(SetInputEnabled)\\s+(\".*?\"|\\S+)",
-			"captures": {
-				"0": {},
-				"1": {
-					"name": "keyword"
-				},
-				"2": {
-					"name": "variable"
-				}
-			}
-		},
-		{
-			"match": "[\\d\\.]+",
-			"name": "constant.numeric"
-		},
-		{
-			"match": "\\[.*\\]",
-			"name": "constant.character"
-		}
-	],
-	"repository": {},
-	"scopeName": "source.hudanimations"
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Valve HUD Animations",
+    "patterns": [
+        {
+            "match": "//.*",
+            "name": "comment"
+        },
+        {
+            "name": "keyword",
+            "match": "(?i)(\"event\"|event)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {
+                    "name": "entity.name.function"
+                },
+                "1": {
+                    "name": "keyword"
+                }
+            }
+        },
+        {
+            "match": "(?i)(RunEventChild)\\s+(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {
+                    "name": "entity.name.function"
+                },
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "(?i)(RunEvent|StopEvent)\\s+(\".*\"|\\w+)",
+            "captures": {
+                "0": {
+                    "name": "entity.name.function"
+                },
+                "1": {
+                    "name": "keyword"
+                }
+            }
+        },
+        {
+            "match": "(?i)(StopPanelAnimations)\\s+\\w+",
+            "captures": {
+                "0": {
+                    "name": "variable"
+                },
+                "1": {
+                    "name": "keyword"
+                }
+            }
+        },
+        {
+            "match": "(?i)(Animate)\\s+(\".*?\"|\\S+)\\s+(\\S+)\\s+(\".*?\"|\\S+)\\s+(\\w+)",
+            "captures": {
+                "0": {},
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "variable"
+                },
+                "3": {
+                    "name": "keyword.control"
+                },
+                "4": {
+                    "name": "string"
+                },
+                "5": {
+                    "name": "keyword.control"
+                },
+                "6": {
+                    "name": "constant.numeric"
+                }
+            }
+        },
+        {
+            "match": "(?i)(SetVisible)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {},
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "(?i)(FireCommand|PlaySound)\\s+([\\d.]+)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {},
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "constant.numeric"
+                },
+                "3": {
+                    "name": "string"
+                }
+            }
+        },
+        {
+            "match": "(?i)(SetInputEnabled)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {},
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "[\\d\\.]+",
+            "name": "constant.numeric"
+        },
+        {
+            "match": "\\[.*\\]",
+            "name": "constant.character"
+        }
+    ],
+    "repository": {},
+    "scopeName": "source.hudanimations"
 }
