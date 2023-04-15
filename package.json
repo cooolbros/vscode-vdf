@@ -273,12 +273,9 @@
     "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
-    "@types/node": "^18.7.23",
-    "@types/vscode": "^1.72.0",
+    "@types/string-similarity": "^4.0.0",
     "@types/vscode-webview": "^1.57.0",
-    "@typescript-eslint/eslint-plugin": "^5.39.0",
-    "@typescript-eslint/parser": "^5.39.0",
-    "eslint": "^8.24.0",
+    "string-similarity": "^4.0.4",
     "tga-js": "^1.1.1",
     "ts-loader": "^9.4.1",
     "ts-node": "^10.9.1",
