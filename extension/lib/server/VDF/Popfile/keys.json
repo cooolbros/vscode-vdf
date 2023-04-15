@@ -1,0 +1,414 @@
+{
+    "doneoutput": {
+        "values": [
+            {
+                "label": "Target",
+                "kind": 7
+            },
+            {
+                "label": "Action",
+                "kind": 7
+            }
+        ]
+    },
+    "itemattributes": {
+        "values": [
+            {
+                "label": "airblast pushback scale",
+                "kind": 5
+            },
+            {
+                "label": "arrow mastery",
+                "kind": 5
+            },
+            {
+                "label": "attack projectiles",
+                "kind": 5
+            },
+            {
+                "label": "Blast radius decreased",
+                "kind": 5
+            },
+            {
+                "label": "bullets per shot bonus",
+                "kind": 5
+            },
+            {
+                "label": "clip size bonus",
+                "kind": 5
+            },
+            {
+                "label": "clip size penalty",
+                "kind": 5
+            },
+            {
+                "label": "clip size upgrade atomic",
+                "kind": 5
+            },
+            {
+                "label": "cloak consume rate increased",
+                "kind": 5
+            },
+            {
+                "label": "critboost on kill",
+                "kind": 5
+            },
+            {
+                "label": "damage bonus",
+                "kind": 5
+            },
+            {
+                "label": "damage causes airblast",
+                "kind": 5
+            },
+            {
+                "label": "damage penalty",
+                "kind": 5
+            },
+            {
+                "label": "effect bar recharge rate increased",
+                "kind": 5
+            },
+            {
+                "label": "faster reload rate",
+                "kind": 5
+            },
+            {
+                "label": "fire rate bonus",
+                "kind": 5
+            },
+            {
+                "label": "fire rate penalty",
+                "kind": 5
+            },
+            {
+                "label": "flame life bonus",
+                "kind": 5
+            },
+            {
+                "label": "ItemName",
+                "kind": 5
+            },
+            {
+                "label": "multiple sentries",
+                "kind": 5
+            },
+            {
+                "label": "projectile penetration",
+                "kind": 5
+            },
+            {
+                "label": "projectile spread angle penalty",
+                "kind": 5
+            },
+            {
+                "label": "Reload time decreased",
+                "kind": 5
+            },
+            {
+                "label": "scattergun knockback mult",
+                "kind": 5
+            },
+            {
+                "label": "uber duration bonus",
+                "kind": 5
+            },
+            {
+                "label": "ubercharge rate bonus",
+                "kind": 5
+            },
+            {
+                "label": "use large smoke explosion",
+                "kind": 5
+            }
+        ]
+    },
+    "mission": {
+        "values": [
+            {
+                "label": "BeginAtWave",
+                "kind": 5
+            },
+            {
+                "label": "CooldownTime",
+                "kind": 5
+            },
+            {
+                "label": "DesiredCount",
+                "kind": 5
+            },
+            {
+                "label": "InitialCooldown",
+                "kind": 5
+            },
+            {
+                "label": "Objective",
+                "kind": 5
+            },
+            {
+                "label": "RunForThisManyWaves",
+                "kind": 5
+            },
+            {
+                "label": "Where",
+                "kind": 5
+            }
+        ]
+    },
+    "population": {
+        "values": [
+            {
+                "label": "Mission",
+                "kind": 7
+            },
+            {
+                "label": "Templates",
+                "kind": 7
+            },
+            {
+                "label": "AddSentryBusterWhenDamageDealtExceeds",
+                "kind": 5
+            },
+            {
+                "label": "AddSentryBusterWhenKillCountExceeds",
+                "kind": 5
+            },
+            {
+                "label": "Advanced",
+                "kind": 5
+            },
+            {
+                "label": "CanBotsAttackWhileInSpawnRoom",
+                "kind": 5
+            },
+            {
+                "label": "IsEndless",
+                "kind": 5
+            },
+            {
+                "label": "RespawnWaveTime",
+                "kind": 5
+            },
+            {
+                "label": "StartingCurrency",
+                "kind": 5
+            }
+        ]
+    },
+    "startwaveoutput": {
+        "values": [
+            {
+                "label": "Target",
+                "kind": 7
+            },
+            {
+                "label": "Action",
+                "kind": 7
+            }
+        ]
+    },
+    "tank": {
+        "values": [
+            {
+                "label": "OnBombDroppedOutput",
+                "kind": 7
+            },
+            {
+                "label": "OnKilledOutput",
+                "kind": 7
+            },
+            {
+                "label": "Health",
+                "kind": 5
+            },
+            {
+                "label": "Name",
+                "kind": 5
+            },
+            {
+                "label": "Skin",
+                "kind": 5
+            },
+            {
+                "label": "Speed",
+                "kind": 5
+            },
+            {
+                "label": "StartingPathTrackNode",
+                "kind": 5
+            }
+        ]
+    },
+    "tfbot": {
+        "values": [
+            {
+                "label": "Attributes",
+                "kind": 5
+            },
+            {
+                "label": "Class",
+                "kind": 5
+            },
+            {
+                "label": "Health",
+                "kind": 5
+            },
+            {
+                "label": "Item",
+                "kind": 5
+            },
+            {
+                "label": "MaxVisionRange",
+                "kind": 5
+            },
+            {
+                "label": "Name",
+                "kind": 5
+            },
+            {
+                "label": "Scale",
+                "kind": 5
+            },
+            {
+                "label": "Skill",
+                "kind": 5
+            },
+            {
+                "label": "Tag",
+                "kind": 5
+            },
+            {
+                "label": "Template",
+                "kind": 5
+            }
+        ]
+    },
+    "wave": {
+        "values": [
+            {
+                "label": "DoneOutput",
+                "kind": 7
+            },
+            {
+                "label": "StartWaveOutput",
+                "kind": 7
+            },
+            {
+                "label": "Checkpoint",
+                "kind": 5
+            },
+            {
+                "label": "WaitWhenDone",
+                "kind": 5
+            },
+            {
+                "label": "WaveSpawn",
+                "kind": 5
+            }
+        ]
+    },
+    "waveschedule": {
+        "values": [
+            {
+                "label": "Mission",
+                "kind": 7
+            },
+            {
+                "label": "Templates",
+                "kind": 7
+            },
+            {
+                "label": "AddSentryBusterWhenDamageDealtExceeds",
+                "kind": 5
+            },
+            {
+                "label": "AddSentryBusterWhenKillCountExceeds",
+                "kind": 5
+            },
+            {
+                "label": "Advanced",
+                "kind": 5
+            },
+            {
+                "label": "CanBotsAttackWhileInSpawnRoom",
+                "kind": 5
+            },
+            {
+                "label": "IsEndless",
+                "kind": 5
+            },
+            {
+                "label": "RespawnWaveTime",
+                "kind": 5
+            },
+            {
+                "label": "StartingCurrency",
+                "kind": 5
+            }
+        ]
+    },
+    "wavespawn": {
+        "values": [
+            {
+                "label": "RandomChoice",
+                "kind": 7
+            },
+            {
+                "label": "Squad",
+                "kind": 7
+            },
+            {
+                "label": "Tank",
+                "kind": 7
+            },
+            {
+                "label": "TFBot",
+                "kind": 7
+            },
+            {
+                "label": "FirstSpawnOutput",
+                "kind": 5
+            },
+            {
+                "label": "MaxActive",
+                "kind": 5
+            },
+            {
+                "label": "SpawnCount",
+                "kind": 5
+            },
+            {
+                "label": "Support",
+                "kind": 5
+            },
+            {
+                "label": "TotalCount",
+                "kind": 5
+            },
+            {
+                "label": "TotalCurrency",
+                "kind": 5
+            },
+            {
+                "label": "WaitBeforeStarting",
+                "kind": 5
+            },
+            {
+                "label": "WaitBetweenSpawns",
+                "kind": 5
+            },
+            {
+                "label": "WaitForAllDead",
+                "kind": 5
+            },
+            {
+                "label": "WaitForAllSpawned",
+                "kind": 5
+            },
+            {
+                "label": "Where",
+                "kind": 5
+            }
+        ]
+    }
+}
