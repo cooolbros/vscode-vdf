@@ -1,8 +1,5 @@
-import { copyFileSync, mkdirSync } from "fs"
-import { dirname, join } from "path"
-import { URLSearchParams } from "url"
+import { join } from "path"
 import { TextEditor, Uri, window, workspace, WorkspaceFolder } from "vscode"
-import { VPK } from "../../../shared/tools/dist/VPK"
 
 export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<void> {
 
@@ -16,20 +13,14 @@ export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<voi
 		: null
 
 	if (!currentWorkspace) {
-		window.showErrorMessage("Cannot find workspace folder")
+		window.showErrorMessage("No workspace folder.")
 		return
 	}
 
-	const workspaceFolder = currentWorkspace.uri.fsPath
+	const source = editor.document.uri
+	const target = Uri.file(join(currentWorkspace.uri.fsPath, source.fsPath))
 
-	const uri = editor.document.uri
-	const vpk = new VPK(workspace.getConfiguration("vscode-vdf").get("teamFortress2Folder")!)
-	const params = new URLSearchParams(uri.query)
+	await workspace.fs.copy(source, target)
 
-	const result = await vpk.extract(params.get("vpk")!, uri.fsPath)
-
-	mkdirSync(join(workspaceFolder, dirname(uri.fsPath)), { recursive: true })
-	copyFileSync(result!, join(workspaceFolder, uri.fsPath))
-
-	window.showTextDocument(Uri.file(join(workspaceFolder, uri.fsPath)))
+	window.showTextDocument(target)
 }
