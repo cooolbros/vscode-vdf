@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "fs"
 import { writeFile } from "fs/promises"
 import { dirname, join } from "path"
 import { CancellationToken, commands, CustomDocumentBackup, CustomDocumentBackupContext, CustomDocumentEditEvent, CustomDocumentOpenContext, CustomEditorProvider, Disposable, Event, EventEmitter, ExtensionContext, Uri, WebviewPanel, WebviewPanelOnDidChangeViewStateEvent, window, workspace } from "vscode"
-import { VTFBackup } from "./VTF"
+import type { VTFBackup } from "./VTF"
 import { VTFDocument } from "./VTFDocument"
 
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
@@ -310,6 +310,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 								<tr><td>Format:</td><td>${document.imageFormat}</td></tr>
 								<tr><td>Width:</td><td>${document.width}</td></tr>
 								<tr><td>Height:</td><td>${document.height}</td></tr>
+								<tr><td>Flags:</td><td>${document.getFlags()}</td></tr>
 							</table>
 						</fieldset>
 					</div>
@@ -333,7 +334,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 						</fieldset>
 					</div>
 				</div>
-				<script src="${createWebviewUri(join(this.context.extensionPath, "client", "node_modules", "tga-js", "dist", "umd", "tga.js"))}"></script>
+				<script src="${createWebviewUri(join(this.context.extensionPath, "node_modules", "tga-js", "dist", "umd", "tga.js"))}"></script>
 				<script>
 					const tga = new TgaLoader()
 					tga.open("${createWebviewUri(document.tgaPath)}", () => {

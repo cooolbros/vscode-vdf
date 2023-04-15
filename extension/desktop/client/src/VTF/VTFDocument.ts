@@ -1,5 +1,6 @@
 import { exec } from "child_process"
-import { existsSync, FSWatcher, mkdirSync, readFileSync, rmSync, watch, WatchEventType } from "fs"
+import { existsSync, FSWatcher, rmSync, watch } from "fs"
+import { mkdir, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { basename, join } from "path"
 import { promisify } from "util"
@@ -118,23 +119,22 @@ export class VTFDocument implements CustomDocument {
 	 */
 	public static async create(extensionPath: string, uri: Uri, backup?: VTFBackup): Promise<VTFDocument> {
 
-		let vtfPath: string
-		let buf: Buffer
-		if (uri.scheme == "git") {
-			vtfPath = join(tmpdir(), basename(uri.fsPath))
-			buf = Buffer.from(await workspace.fs.readFile(uri))
-		}
-		else {
-			vtfPath = uri.fsPath
-			buf = readFileSync(vtfPath)
+		const vtfPath = uri.scheme == "file" ? uri.fsPath : join(tmpdir(), basename(uri.fsPath))
+
+		const buf = Buffer.from(await workspace.fs.readFile(uri))
+
+		if (uri.scheme == "vpk") {
+			// File does not exist on disk
+			await writeFile(vtfPath, buf)
 		}
 
 		const teamFortress2Folder: string = workspace.getConfiguration("vscode-vdf", uri).get("teamFortress2Folder")!
 
 		const tgaFolder = join(extensionPath, ".TGA")
 		if (!existsSync(tgaFolder)) {
-			mkdirSync(tgaFolder)
+			await mkdir(tgaFolder)
 		}
+
 		const tgaPath = join(tgaFolder, basename(uri.fsPath).split(".vtf").join(".tga"))
 
 		const extract = VTFDocument.extractVTF(teamFortress2Folder, vtfPath, tgaPath)
@@ -151,7 +151,7 @@ export class VTFDocument implements CustomDocument {
 	 * @param tgaPath TGA Path
 	 * @param backup VTF Document Backup
 	 */
-	constructor(uri: Uri, buf: Buffer, tgaPath: string, backup?: VTFBackup) {
+	private constructor(uri: Uri, buf: Buffer, tgaPath: string, backup?: VTFBackup) {
 
 		this.uri = uri
 		this.onVTFDidChangeEventEmitter = new EventEmitter<VTFPropertyChangeEvent>()
@@ -159,8 +159,8 @@ export class VTFDocument implements CustomDocument {
 
 		// VTF
 		this.VTF = new VTF(buf, backup)
-		if (this.uri.scheme != "git") {
-			this.watcher = watch(this.uri.fsPath, (event: WatchEventType, filename: string) => {
+		if (this.uri.scheme == "file") {
+			this.watcher = watch(this.uri.fsPath, () => {
 				this.updateVTF()
 			})
 		}
@@ -210,12 +210,18 @@ export class VTFDocument implements CustomDocument {
 	 * @param tgaPath Absolute path to output TGA
 	 */
 	private static async extractVTF(teamFortress2Folder: string, vtfPath: string, tgaPath: string): Promise<void> {
-		await promisify(exec)(`"${join(teamFortress2Folder, "bin/vtf2tga.exe")}" ${[
+		const args = `"${join(teamFortress2Folder, "bin/vtf2tga.exe")}" ${[
 			"-i",
 			`"${vtfPath}"`,
 			"-o",
 			`"${tgaPath}"`,
-		].join(" ")}`)
+		].join(" ")}`
+
+		const std = await promisify(exec)(args)
+
+		if (std.stderr) {
+			window.showErrorMessage(std.stderr)
+		}
 	}
 
 	/**
