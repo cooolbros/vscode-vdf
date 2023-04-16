@@ -378,7 +378,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			}
 		}
 		catch (error: any) {
-			this.connection.console.log(new Error(`[addDefinitions] Error found while adding definitions from '${uri}'`, { cause: error }).stack!)
+			this.connection.console.log(`[VGUILanguageServer.addDefinitions]: Error while adding definitions from "${uri}":\n${error.stack!}`)
 		}
 	}
 

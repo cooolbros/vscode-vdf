@@ -513,7 +513,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					return []
 				}
 
-				const colourDefinitions = await this.connection.sendRequest<{ [key: string]: string }>("servers/sendRequest", ["vdf", "workspace/colourDefinitions", hudRoot, 0])
+				const colourDefinitions = await this.connection.sendRequest<{ [key: string]: string }>("servers/sendRequest", ["vdf", "workspace/definitions", { hudRoot: hudRoot, type: 0 }])
 
 				const items: CompletionItem[] = []
 
@@ -589,8 +589,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 						: sounds
 				}
 				else {
-					this.connection.console.log("ALL")
-
 					const sounds = await filesCompletion.all(
 						this.connection,
 						this.fileSystem,
