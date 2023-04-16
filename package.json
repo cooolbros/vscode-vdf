@@ -1,317 +1,317 @@
 {
-  "name": "vscode-vdf",
-  "displayName": "VSCode VDF",
-  "description": "VDF language support for VSCode",
-  "version": "2.1.0",
-  "publisher": "pfwobcke",
-  "icon": "icon.png",
-  "galleryBanner": {
-    "color": "#161616",
-    "theme": "dark"
-  },
-  "categories": [
-    "Formatters",
-    "Linters",
-    "Programming Languages"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cooolbros/vscode-vdf"
-  },
-  "engines": {
-    "vscode": "^1.74.0"
-  },
-  "main": "./dist/desktop/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "category": "VDF",
-        "title": "Copy Key/Value Path To Clipboard",
-        "command": "vscode-vdf.copyKeyValuePath"
-      },
-      {
-        "category": "VPK",
-        "title": "Extract file to workspace",
-        "command": "vscode-vdf.extractVPKFileToWorkspace",
-        "icon": "$(file-add)"
-      },
-      {
-        "category": "Popfile",
-        "title": "Import #base templates into current popfile",
-        "command": "vscode-vdf.importPopfileTemplates",
-        "when": "editorLangId == popfile"
-      },
-      {
-        "category": "VDF",
-        "title": "Convert JSON to VDF",
-        "command": "vscode-vdf.JSONToVDF"
-      },
-      {
-        "category": "VDF",
-        "title": "Show References",
-        "command": "vscode-vdf.showReferences"
-      },
-      {
-        "category": "VDF",
-        "title": "Convert VDF to JSON",
-        "command": "vscode-vdf.VDFToJSON"
-      }
+    "name": "vscode-vdf",
+    "displayName": "VSCode VDF",
+    "description": "VDF language support for VSCode",
+    "version": "2.1.0",
+    "publisher": "pfwobcke",
+    "icon": "icon.png",
+    "galleryBanner": {
+        "color": "#161616",
+        "theme": "dark"
+    },
+    "categories": [
+        "Formatters",
+        "Linters",
+        "Programming Languages"
     ],
-    "configuration": [
-      {
-        "title": "VSCode VDF",
-        "properties": {
-          "vscode-vdf.filesAutoCompletionKind": {
-            "type": "string",
-            "description": "Controls the behaviour of suggesting autocompletion file items.",
-            "enum": [
-              "incremental",
-              "all"
-            ],
-            "enumDescriptions": [
-              "Show only files in suggested folder and suggest child items when a folder is selected.",
-              "Suggest all files recursively."
-            ],
-            "default": "incremental"
-          },
-          "vscode-vdf.teamFortress2Folder": {
-            "type": "string",
-            "markdownDescription": "Path to `Team Fortress 2` folder",
-            "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
-          },
-          "vscode-vdf.updateDiagnosticsEvent": {
-            "type": "string",
-            "enum": [
-              "type",
-              "save"
-            ],
-            "enumDescriptions": [
-              "Update file diagnostics in real time.",
-              "Update file diagnostics when the file is saved."
-            ],
-            "description": "Controls when to update file diagnostics",
-            "default": "type"
-          }
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cooolbros/vscode-vdf"
+    },
+    "engines": {
+        "vscode": "^1.74.0"
+    },
+    "main": "./dist/desktop/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "category": "VDF",
+                "title": "Copy Key/Value Path To Clipboard",
+                "command": "vscode-vdf.copyKeyValuePath"
+            },
+            {
+                "category": "VPK",
+                "title": "Extract file to workspace",
+                "command": "vscode-vdf.extractVPKFileToWorkspace",
+                "icon": "$(file-add)"
+            },
+            {
+                "category": "Popfile",
+                "title": "Import #base templates into current popfile",
+                "command": "vscode-vdf.importPopfileTemplates",
+                "when": "editorLangId == popfile"
+            },
+            {
+                "category": "VDF",
+                "title": "Convert JSON to VDF",
+                "command": "vscode-vdf.JSONToVDF"
+            },
+            {
+                "category": "VDF",
+                "title": "Show References",
+                "command": "vscode-vdf.showReferences"
+            },
+            {
+                "category": "VDF",
+                "title": "Convert VDF to JSON",
+                "command": "vscode-vdf.VDFToJSON"
+            }
+        ],
+        "configuration": [
+            {
+                "title": "VSCode VDF",
+                "properties": {
+                    "vscode-vdf.filesAutoCompletionKind": {
+                        "type": "string",
+                        "description": "Controls the behaviour of suggesting autocompletion file items.",
+                        "enum": [
+                            "incremental",
+                            "all"
+                        ],
+                        "enumDescriptions": [
+                            "Show only files in suggested folder and suggest child items when a folder is selected.",
+                            "Suggest all files recursively."
+                        ],
+                        "default": "incremental"
+                    },
+                    "vscode-vdf.teamFortress2Folder": {
+                        "type": "string",
+                        "markdownDescription": "Path to `Team Fortress 2` folder",
+                        "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+                    },
+                    "vscode-vdf.updateDiagnosticsEvent": {
+                        "type": "string",
+                        "enum": [
+                            "type",
+                            "save"
+                        ],
+                        "enumDescriptions": [
+                            "Update file diagnostics in real time.",
+                            "Update file diagnostics when the file is saved."
+                        ],
+                        "description": "Controls when to update file diagnostics",
+                        "default": "type"
+                    }
+                }
+            },
+            {
+                "title": "HUD Animations",
+                "properties": {
+                    "vscode-vdf.hudanimations.format.insertNewlineAfterEvents": {
+                        "type": "boolean",
+                        "description": "Whehter to insert a newline after events when formatting.",
+                        "default": true
+                    },
+                    "vscode-vdf.hudanimations.format.layoutScope": {
+                        "type": "string",
+                        "description": "Controls the scope to align tokens with when formatting HUD animations.",
+                        "enum": [
+                            "event",
+                            "file"
+                        ],
+                        "enumDescriptions": [
+                            "Align tokens with only tokens in event",
+                            "Align tokens with all tokens in file"
+                        ],
+                        "default": "event"
+                    },
+                    "vscode-vdf.hudanimations.format.tabs": {
+                        "type": "number",
+                        "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
+                        "minimum": 1,
+                        "default": 1
+                    }
+                }
+            },
+            {
+                "title": "Popfile",
+                "properties": {
+                    "vscode-vdf.popfile.format.insertNewlineBeforeObjects": {
+                        "type": "boolean",
+                        "description": "Whether to insert a newline before objects when formatting.",
+                        "default": true
+                    },
+                    "vscode-vdf.popfile.format.quotes": {
+                        "type": "boolean",
+                        "description": "Whether to surround tokens with double quotes when formatting.",
+                        "default": false
+                    },
+                    "vscode-vdf.popfile.format.tabs": {
+                        "type": "number",
+                        "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+                        "default": -1
+                    }
+                }
+            },
+            {
+                "title": "VMT",
+                "properties": {
+                    "vscode-vdf.vmt.format.insertNewlineBeforeObjects": {
+                        "type": "boolean",
+                        "description": "Whether to insert a newline before objects when formatting.",
+                        "default": false
+                    },
+                    "vscode-vdf.vmt.format.quotes": {
+                        "type": "boolean",
+                        "description": "Whether to surround tokens with double quotes when formatting.",
+                        "default": true
+                    },
+                    "vscode-vdf.vmt.format.tabs": {
+                        "type": "number",
+                        "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+                        "default": 1
+                    }
+                }
+            },
+            {
+                "title": "VDF",
+                "properties": {
+                    "vscode-vdf.vdf.format.insertNewlineBeforeObjects": {
+                        "type": "boolean",
+                        "description": "Whether to insert a newline before objects when formatting.",
+                        "default": false
+                    },
+                    "vscode-vdf.vdf.format.quotes": {
+                        "type": "boolean",
+                        "description": "Whether to surround tokens with double quotes when formatting.",
+                        "default": true
+                    },
+                    "vscode-vdf.vdf.format.tabs": {
+                        "type": "number",
+                        "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+                        "default": 1
+                    }
+                }
+            }
+        ],
+        "customEditors": [
+            {
+                "viewType": "vscode-vdf.VTFEditor",
+                "displayName": "VTF Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.vtf"
+                    }
+                ],
+                "priority": "default"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "hudanimations",
+                "scopeName": "source.hudanimations",
+                "path": "./syntaxes/hudanimations.tmLanguage.json"
+            },
+            {
+                "language": "popfile",
+                "scopeName": "source.popfile",
+                "path": "./syntaxes/popfile.tmLanguage.json"
+            },
+            {
+                "language": "vmt",
+                "scopeName": "source.vmt",
+                "path": "./syntaxes/vmt.tmLanguage.json"
+            },
+            {
+                "language": "vdf",
+                "scopeName": "source.vdf",
+                "path": "./syntaxes/vdf.tmLanguage.json"
+            }
+        ],
+        "languages": [
+            {
+                "id": "hudanimations",
+                "aliases": [
+                    "Valve HUD Animations"
+                ],
+                "extensions": [
+                    ".hudanimations"
+                ],
+                "filenamePatterns": [
+                    "*hudanimations*.txt"
+                ],
+                "configuration": "./language-configuration/hudanimations-language-configuration.json"
+            },
+            {
+                "id": "popfile",
+                "aliases": [
+                    "Popfile"
+                ],
+                "extensions": [
+                    ".pop"
+                ],
+                "configuration": "./language-configuration/popfile-language-configuration.json"
+            },
+            {
+                "id": "vmt",
+                "aliases": [
+                    "Valve Material type"
+                ],
+                "extensions": [
+                    ".vmt"
+                ],
+                "configuration": "./language-configuration/vdf-language-configuration.json"
+            },
+            {
+                "id": "vdf",
+                "aliases": [
+                    "VDF",
+                    "vdf"
+                ],
+                "extensions": [
+                    ".res",
+                    ".vdf"
+                ],
+                "filenames": [
+                    "hudanimations_manifest.txt"
+                ],
+                "filenamePatterns": [
+                    "chat_*.txt",
+                    "tf_*.txt"
+                ],
+                "configuration": "./language-configuration/vdf-language-configuration.json"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "vscode-vdf.extractVPKFileToWorkspace",
+                    "group": "navigation",
+                    "when": "resourceScheme == vpk && workspaceFolderCount > 0"
+                }
+            ]
         }
-      },
-      {
-        "title": "HUD Animations",
-        "properties": {
-          "vscode-vdf.hudanimations.format.insertNewlineAfterEvents": {
-            "type": "boolean",
-            "description": "Whehter to insert a newline after events when formatting.",
-            "default": true
-          },
-          "vscode-vdf.hudanimations.format.layoutScope": {
-            "type": "string",
-            "description": "Controls the scope to align tokens with when formatting HUD animations.",
-            "enum": [
-              "event",
-              "file"
-            ],
-            "enumDescriptions": [
-              "Align tokens with only tokens in event",
-              "Align tokens with all tokens in file"
-            ],
-            "default": "event"
-          },
-          "vscode-vdf.hudanimations.format.tabs": {
-            "type": "number",
-            "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
-            "minimum": 1,
-            "default": 1
-          }
-        }
-      },
-      {
-        "title": "Popfile",
-        "properties": {
-          "vscode-vdf.popfile.format.insertNewlineBeforeObjects": {
-            "type": "boolean",
-            "description": "Whether to insert a newline before objects when formatting.",
-            "default": true
-          },
-          "vscode-vdf.popfile.format.quotes": {
-            "type": "boolean",
-            "description": "Whether to surround tokens with double quotes when formatting.",
-            "default": false
-          },
-          "vscode-vdf.popfile.format.tabs": {
-            "type": "number",
-            "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
-            "default": -1
-          }
-        }
-      },
-      {
-        "title": "VMT",
-        "properties": {
-          "vscode-vdf.vmt.format.insertNewlineBeforeObjects": {
-            "type": "boolean",
-            "description": "Whether to insert a newline before objects when formatting.",
-            "default": false
-          },
-          "vscode-vdf.vmt.format.quotes": {
-            "type": "boolean",
-            "description": "Whether to surround tokens with double quotes when formatting.",
-            "default": true
-          },
-          "vscode-vdf.vmt.format.tabs": {
-            "type": "number",
-            "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
-            "default": 1
-          }
-        }
-      },
-      {
-        "title": "VDF",
-        "properties": {
-          "vscode-vdf.vdf.format.insertNewlineBeforeObjects": {
-            "type": "boolean",
-            "description": "Whether to insert a newline before objects when formatting.",
-            "default": false
-          },
-          "vscode-vdf.vdf.format.quotes": {
-            "type": "boolean",
-            "description": "Whether to surround tokens with double quotes when formatting.",
-            "default": true
-          },
-          "vscode-vdf.vdf.format.tabs": {
-            "type": "number",
-            "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
-            "default": 1
-          }
-        }
-      }
-    ],
-    "customEditors": [
-      {
-        "viewType": "vscode-vdf.VTFEditor",
-        "displayName": "VTF Editor",
-        "selector": [
-          {
-            "filenamePattern": "*.vtf"
-          }
-        ],
-        "priority": "default"
-      }
-    ],
-    "grammars": [
-      {
-        "language": "hudanimations",
-        "scopeName": "source.hudanimations",
-        "path": "./syntaxes/hudanimations.tmLanguage.json"
-      },
-      {
-        "language": "popfile",
-        "scopeName": "source.popfile",
-        "path": "./syntaxes/popfile.tmLanguage.json"
-      },
-      {
-        "language": "vmt",
-        "scopeName": "source.vmt",
-        "path": "./syntaxes/vmt.tmLanguage.json"
-      },
-      {
-        "language": "vdf",
-        "scopeName": "source.vdf",
-        "path": "./syntaxes/vdf.tmLanguage.json"
-      }
-    ],
-    "languages": [
-      {
-        "id": "hudanimations",
-        "aliases": [
-          "Valve HUD Animations"
-        ],
-        "extensions": [
-          ".hudanimations"
-        ],
-        "filenamePatterns": [
-          "*hudanimations*.txt"
-        ],
-        "configuration": "./language-configuration/hudanimations-language-configuration.json"
-      },
-      {
-        "id": "popfile",
-        "aliases": [
-          "Popfile"
-        ],
-        "extensions": [
-          ".pop"
-        ],
-        "configuration": "./language-configuration/popfile-language-configuration.json"
-      },
-      {
-        "id": "vmt",
-        "aliases": [
-          "Valve Material type"
-        ],
-        "extensions": [
-          ".vmt"
-        ],
-        "configuration": "./language-configuration/vdf-language-configuration.json"
-      },
-      {
-        "id": "vdf",
-        "aliases": [
-          "VDF",
-          "vdf"
-        ],
-        "extensions": [
-          ".res",
-          ".vdf"
-        ],
-        "filenames": [
-          "hudanimations_manifest.txt"
-        ],
-        "filenamePatterns": [
-          "chat_*.txt",
-          "tf_*.txt"
-        ],
-        "configuration": "./language-configuration/vdf-language-configuration.json"
-      }
-    ],
-    "menus": {
-      "editor/title": [
-        {
-          "command": "vscode-vdf.extractVPKFileToWorkspace",
-          "group": "navigation",
-          "when": "resourceScheme == vpk && workspaceFolderCount > 0"
-        }
-      ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "dev": "webpack --watch --mode development",
+        "build": "webpack",
+        "lint": "eslint . --ext .ts"
+    },
+    "devDependencies": {
+        "@types/node": "^16.14.2",
+        "@types/string-similarity": "^4.0.0",
+        "@types/vscode": "^1.74.0",
+        "@types/vscode-webview": "^1.57.1",
+        "@typescript-eslint/eslint-plugin": "^5.47.1",
+        "@typescript-eslint/parser": "^5.47.1",
+        "eslint": "^8.30.0",
+        "string-similarity": "^4.0.4",
+        "tga-js": "^1.1.1",
+        "ts-loader": "^9.4.2",
+        "ts-node": "^10.9.1",
+        "typescript": "^4.9.4",
+        "vscode-languageclient": "^8.1.0",
+        "vscode-languageserver": "^8.1.0",
+        "vscode-languageserver-textdocument": "^1.0.8",
+        "webpack": "^5.79.0",
+        "webpack-cli": "^5.0.1",
+        "zod": "^3.21.4"
+    },
+    "__metadata": {
+        "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
+        "publisherDisplayName": "pfwobcke",
+        "publisherId": "0bca7cad-ed90-49e6-88a6-828825345806",
+        "isPreReleaseVersion": false
     }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "dev": "webpack --watch --mode development",
-    "build": "webpack",
-    "lint": "eslint . --ext .ts"
-  },
-  "devDependencies": {
-    "@types/node": "^16.14.2",
-    "@types/string-similarity": "^4.0.0",
-    "@types/vscode": "^1.74.0",
-    "@types/vscode-webview": "^1.57.1",
-    "@typescript-eslint/eslint-plugin": "^5.47.1",
-    "@typescript-eslint/parser": "^5.47.1",
-    "eslint": "^8.30.0",
-    "string-similarity": "^4.0.4",
-    "tga-js": "^1.1.1",
-    "ts-loader": "^9.4.2",
-    "ts-node": "^10.9.1",
-    "typescript": "^4.9.4",
-    "vscode-languageclient": "^8.1.0",
-    "vscode-languageserver": "^8.1.0",
-    "vscode-languageserver-textdocument": "^1.0.8",
-    "webpack": "^5.79.0",
-    "webpack-cli": "^5.0.1",
-    "zod": "^3.21.4"
-  },
-  "__metadata": {
-    "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
-    "publisherDisplayName": "pfwobcke",
-    "publisherId": "0bca7cad-ed90-49e6-88a6-828825345806",
-    "isPreReleaseVersion": false
-  }
 }
