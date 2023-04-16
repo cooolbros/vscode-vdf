@@ -13,7 +13,7 @@ import type { VDFDocumentSymbol } from "$lib/VDFDocumentSymbols/VDFDocumentSymbo
 import { VDFDocumentSymbols } from "$lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { VDFFormat } from "$lib/VDFFormat/VDFFormat"
 import type { VDFFormatStringifyOptions } from "$lib/VDFFormat/VDFFormatStringifyOptions"
-import { basename, dirname, relative } from "path/posix"
+import { posix } from "path"
 import { findBestMatch } from "string-similarity"
 import { CodeAction, CodeActionKind, CodeActionParams, CodeLens, CodeLensParams, ColorInformation, ColorPresentation, ColorPresentationParams, Command, CompletionItem, CompletionItemKind, CompletionParams, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentColorParams, DocumentFormattingParams, DocumentLink, DocumentLinkParams, Location, Position, PrepareRenameParams, Range, ReferenceParams, RenameParams, ServerCapabilities, TextDocumentChangeEvent, TextEdit, WorkspaceEdit } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
@@ -117,10 +117,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 			if (documentSymbolKey == "#base" && documentSymbol.detail != "") {
 
-				const folder = dirname(uri)
+				const folder = posix.dirname(uri)
 				const detail = encodeBaseValue(documentSymbol.detail!.toLowerCase())
 				const baseUri = `${folder}/${detail}`
-				const newPath = relative(folder, baseUri)
+				const newPath = posix.relative(folder, baseUri)
 
 				if (baseUri == uri) {
 					diagnostics.push({
@@ -267,7 +267,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			return documentDefinitionReferences
 		}
 
-		const folderUri = dirname(uri)
+		const folderUri = posix.dirname(uri)
 		const baseFileUris: string[] = []
 
 		// Recursively remove old references
@@ -375,7 +375,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					}
 
 					if (this.VDFLanguageServerConfiguration.vpkRootPath) {
-						const vpkBaseUri = `vpk:///${this.VDFLanguageServerConfiguration.vpkRootPath}/${basename(baseUri)}?vpk=misc`
+						const vpkBaseUri = `vpk:///${this.VDFLanguageServerConfiguration.vpkRootPath}/${posix.basename(baseUri)}?vpk=misc`
 						if (await this.fileSystem.exists(vpkBaseUri)) {
 							return vpkBaseUri
 						}
@@ -418,7 +418,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					}
 				}
 
-				const baseFolderUri = dirname(baseUri)
+				const baseFolderUri = posix.dirname(baseUri)
 
 				const baseUris = baseDocumentSymbols
 					.filter((documentSymbol): documentSymbol is VDFDocumentSymbol & { detail: string } => documentSymbol.key == "#base" && documentSymbol.detail != undefined)
@@ -567,8 +567,8 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					}
 
 					const completionItems = filesAutoCompletionKind == "incremental"
-						? filesCompletion.incremental(this.connection, this.fileSystem, "", dirname(params.textDocument.uri), value, this.VDFLanguageServerConfiguration.completion.extensions, false)
-						: filesCompletion.all(this.connection, this.fileSystem, "", dirname(params.textDocument.uri), this.VDFLanguageServerConfiguration.completion.extensions, false)
+						? filesCompletion.incremental(this.connection, this.fileSystem, "", posix.dirname(params.textDocument.uri), value, this.VDFLanguageServerConfiguration.completion.extensions, false)
+						: filesCompletion.all(this.connection, this.fileSystem, "", posix.dirname(params.textDocument.uri), this.VDFLanguageServerConfiguration.completion.extensions, false)
 
 					for (const completionItem of await completionItems) {
 						set.add(completionItem)
@@ -761,7 +761,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 			const fileName = encodeBaseValue(link.data.value.toLowerCase())
 
-			const fileUri = `${dirname(link.data.uri)}/${fileName}`
+			const fileUri = `${posix.dirname(link.data.uri)}/${fileName}`
 
 			if (await this.fileSystem.exists(fileUri)) {
 				documentLink.target = fileUri

@@ -9,7 +9,7 @@ import { VDFPosition } from "$lib/VDF/VDFPosition"
 import { VDFRange } from "$lib/VDF/VDFRange"
 import type { VDFDocumentSymbol } from "$lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "$lib/VDFDocumentSymbols/VDFDocumentSymbols"
-import { dirname, extname, normalize, relative } from "path/posix"
+import { posix } from "path"
 import { CodeActionKind, CodeLens, CodeLensParams, Color, CompletionItem, CompletionItemKind, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentLink, Location, PrepareRenameParams, Range, ReferenceParams, TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
@@ -89,13 +89,13 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					resolve: async (documentLink: DocumentLinkData): Promise<DocumentLink> => {
 						const hudRoot = this.documentHUDRoots.get(documentLink.data.uri)
 						if (hudRoot) {
-							const vmtPath = `${hudRoot}/${normalize(`materials/vgui/${documentLink.data.value}.vmt`)}`
+							const vmtPath = `${hudRoot}/${posix.normalize(`materials/vgui/${documentLink.data.value}.vmt`)}`
 							if (await this.fileSystem.exists(vmtPath)) {
 								documentLink.target = vmtPath
 								return documentLink
 							}
 						}
-						documentLink.target = `vpk:///${normalize(`materials/vgui/${documentLink.data.value.toLowerCase()}.vmt`)}?vpk=misc`
+						documentLink.target = `vpk:///${posix.normalize(`materials/vgui/${documentLink.data.value.toLowerCase()}.vmt`)}?vpk=misc`
 						return documentLink
 					}
 				},
@@ -156,7 +156,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 							}
 						}
 
-						const vpkFilePath = `vpk:///${normalize(`${encodeBaseValue(documentLink.data.value.toLowerCase())}`)}?vpk=misc`
+						const vpkFilePath = `vpk:///${posix.normalize(`${encodeBaseValue(documentLink.data.value.toLowerCase())}`)}?vpk=misc`
 						if (await this.fileSystem.exists(vpkFilePath)) {
 							documentLink.target = vpkFilePath
 						}
@@ -261,7 +261,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 								promises.push(...iterateDirectory(entryUri))
 							}
 						}
-						else if (type == 1 && extname(entry) == ".res") {
+						else if (type == 1 && posix.extname(entry) == ".res") {
 							const file = this.fileSystem.readFile(entryUri)
 							promises.push(file)
 							file
@@ -306,7 +306,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					return documentSymbols
 				})()
 
-			const folderUri = dirname(uri)
+			const folderUri = posix.dirname(uri)
 			const baseFiles: string[] = []
 
 			// Add definition file even if no definitions are declared, since they can be added later e.g. If the entry file has only #base statements
@@ -492,7 +492,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 
 			const folder = "materials/vgui"
 			const detail = encodeBaseValue(documentSymbol.detail!.toLowerCase())
-			const newPath = relative(folder, `${folder}/${detail}`)
+			const newPath = posix.relative(folder, `${folder}/${detail}`)
 
 			if (detail != newPath) {
 				return {
