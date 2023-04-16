@@ -10,10 +10,6 @@ export class LanguageServerFileSystem implements VSCodeVDFFileSystem {
 		this.connection = connection
 	}
 
-	public async normalize(uri: string): Promise<string> {
-		return this.connection.sendRequest("vscode-vdf/path/normalize", uri)
-	}
-
 	public async exists(uri: string): Promise<boolean> {
 		return this.connection.sendRequest("vscode-vdf/fs/exists", uri)
 	}

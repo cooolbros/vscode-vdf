@@ -1,12 +1,7 @@
 import type { VSCodeVDFFileSystem } from "$lib/types/VSCodeVDFFileSystem"
-import { normalize } from "path"
 import { FileStat, FileType, Uri, workspace } from "vscode"
 
 export class VSCodeLanguageClientFileSystem implements VSCodeVDFFileSystem {
-
-	public async normalize(uri: string): Promise<string> {
-		return Uri.file(normalize(Uri.parse(uri).fsPath)).toString()
-	}
 
 	public async exists(uri: string): Promise<boolean> {
 		try {

@@ -5,10 +5,6 @@ export function initLanguageClientFileSystem(languageClient: BaseLanguageClient)
 
 	const fileSystem = new VSCodeLanguageClientFileSystem()
 
-	languageClient.onRequest("vscode-vdf/path/normalize", async (uri: string) => {
-		return fileSystem.normalize(uri)
-	})
-
 	languageClient.onRequest("vscode-vdf/fs/exists", async (uri: string) => {
 		return fileSystem.exists(uri)
 	})
