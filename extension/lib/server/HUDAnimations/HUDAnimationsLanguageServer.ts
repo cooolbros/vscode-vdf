@@ -383,14 +383,20 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		this.documentsDefinitionReferences.set(uri, documentDefinitionReferences)
 
+		// Ignore error if the VDF language server is not started yet.
+		// findHUDDefinitionReferences will await the request and
+		// call onDefinitionReferences again
+
 		Promise.all(filesReferencesPromises).then(() => {
 			for (const definitionUri in filesReferences) {
 				this.connection.sendRequest("servers/sendRequest", ["vdf", "files/setReferences", { uri: definitionUri, references: filesReferences[definitionUri] }])
+					.catch((error: any) => this.connection.console.log(error.message))
 			}
 		})
 
 		if (workspaceReferences) {
 			this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/setReferences", workspaceReferences])
+				.catch((error: any) => this.connection.console.log(error.message))
 		}
 
 		this.codeLensRefresh()

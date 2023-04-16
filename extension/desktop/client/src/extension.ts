@@ -60,13 +60,7 @@ export function activate(context: ExtensionContext): void {
 		const serverOptions: ServerOptions = {
 			run: {
 				module: serverModule,
-				transport: TransportKind.ipc,
-				options: {
-					execArgv: [
-						"--nolazy",
-						"--inspect=6009"
-					]
-				}
+				transport: TransportKind.ipc
 			},
 			debug: {
 				module: serverModule,
