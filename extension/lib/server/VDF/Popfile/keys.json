@@ -250,6 +250,10 @@
                 "kind": 5
             },
             {
+                "label": "ClassIcon",
+                "kind": 5
+            },
+            {
                 "label": "Health",
                 "kind": 5
             },

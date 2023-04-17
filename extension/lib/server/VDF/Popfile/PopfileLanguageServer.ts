@@ -1,5 +1,6 @@
 import type { DocumentLinkData } from "$lib/types/DocumentLinkData"
 import { decimalToHexadecimal, hexadecimalToDecimal, hexadecimalToRgb, rgbToHexadecimal } from "$lib/utils/colours"
+import { posix } from "path"
 import { Color, CompletionItem, CompletionItemKind, Connection, Diagnostic, DocumentLink } from "vscode-languageserver"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
@@ -127,6 +128,32 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 	}
 
 	protected async getCompletionValues(uri: string, key: string): Promise<CompletionItem[] | null> {
+
+		if (key == "classicon") {
+
+			const teamFortress2DirectoryUri = `file:///${this.documentsConfiguration.get(uri).teamFortress2Folder}`
+
+			const tfUri = `${teamFortress2DirectoryUri}/tf/materials/hud`
+			const downloadUri = `${teamFortress2DirectoryUri}/tf/download/materials/hud`
+			const customUris = (await this.fileSystem.readDirectory(`${teamFortress2DirectoryUri}/tf/custom`))
+				.filter(([, type]) => type == 2)
+				.map(([name]) => `${teamFortress2DirectoryUri}/tf/custom/${name}`)
+			const vpiUri = "vpk:///materials/hud?vpk=misc"
+
+			const promises = [tfUri, downloadUri, ...customUris, vpiUri].map(async (path) => {
+				return this.fileSystem.readDirectory(path)
+					.then((items) => {
+						return items
+							.filter(([name]) => name.startsWith("leaderboard_class_") && name.endsWith(".vmt"))
+							.map(([name]) => ({ label: posix.parse(name).name.slice(18), kind: CompletionItemKind.File }))
+					})
+					.catch(() => [])
+			})
+			const results = await Promise.all(promises)
+			const allFiles = results.flatMap((files) => files)
+			return [...new Set(allFiles)]
+		}
+
 		return null
 	}
 }
