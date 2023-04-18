@@ -1,5 +1,6 @@
 .TGA
 .vscode-test
+.vscode-test-web
 dist
 node_modules
 out
