@@ -3,6 +3,9 @@ import { FileStat, FileType, Uri, workspace } from "vscode"
 
 export class VSCodeLanguageClientFileSystem implements VSCodeVDFFileSystem {
 
+	private readonly UTF8Decoder = new TextDecoder("utf-8")
+	private readonly UTF16LEDecoder = new TextDecoder("utf-16le")
+
 	public async exists(uri: string): Promise<boolean> {
 		try {
 			await workspace.fs.stat(Uri.parse(uri))
@@ -20,9 +23,9 @@ export class VSCodeLanguageClientFileSystem implements VSCodeVDFFileSystem {
 	public async readFile(uri: string): Promise<string> {
 		const arr = await workspace.fs.readFile(Uri.parse(uri))
 		if (arr[0] == 255 && arr[1] == 254) {
-			return Buffer.from(arr).toString("utf16le")
+			return this.UTF16LEDecoder.decode(arr)
 		}
-		return arr.toString()
+		return this.UTF8Decoder.decode(arr)
 	}
 
 	public async readFileBinary(uri: string): Promise<Uint8Array> {

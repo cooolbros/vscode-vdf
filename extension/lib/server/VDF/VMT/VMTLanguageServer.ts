@@ -62,7 +62,7 @@ export class VMTLanguageServer extends VDFLanguageServer {
 				{
 					parse: (value: string): Color | null => {
 						if (/\[\s?[\d.]+\s+[\d.]+\s+[\d.]+\s?\]/.test(value)) {
-							const colour = value.split(/\s+/)
+							const colour = value.split(/[\s[\]]+/)
 							return {
 								red: parseFloat(colour[1]),
 								green: parseFloat(colour[2]),

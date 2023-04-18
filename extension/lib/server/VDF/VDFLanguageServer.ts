@@ -438,8 +438,6 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			}
 		}
 
-		this.connection.console.log(JSON.stringify(baseFileUris))
-
 		for (const baseFileUri of baseFileUris) {
 
 			await addBaseDefinitions(baseFileUri)

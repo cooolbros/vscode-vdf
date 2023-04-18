@@ -2,7 +2,6 @@ import type { VSCodeVDFFileSystem } from "$lib/types/VSCodeVDFFileSystem"
 import { extname, parse } from "path"
 import { CompletionItem, CompletionItemKind, Connection } from "vscode-languageserver"
 
-
 export class CompletionItemSet {
 	public readonly items: CompletionItem[] = []
 	public add(value: CompletionItem): void {
@@ -39,7 +38,7 @@ export async function incremental(
 		return set.items
 	}
 	catch (error: any) {
-		connection.console.log(error)
+		connection.console.log(error.stack)
 		return set.items
 	}
 }
@@ -78,6 +77,7 @@ export async function all(
 		return set.items
 	}
 	catch (error: any) {
+		connection.console.log(error.stack)
 		return set.items
 	}
 }

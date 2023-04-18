@@ -274,11 +274,11 @@ export class VGUILanguageServer extends VDFLanguageServer {
 										return
 									}
 								})
-								.catch(this.connection.console.log)
+								.catch((error) => this.connection.console.log(error.stack))
 						}
 					}
 				})
-				.catch(this.connection.console.log)
+				.catch((error) => this.connection.console.log(error.stack))
 
 			return promises
 		}
