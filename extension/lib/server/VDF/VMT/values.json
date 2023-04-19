@@ -1,0 +1,37 @@
+{
+    "$ignorez": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$nolod": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$translucent": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$vertexalpha": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$vertexcolor": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    }
+}

@@ -1,0 +1,38 @@
+{
+    "unlitgeneric": {
+        "values": [
+            {
+                "label": "$baseTexture",
+                "kind": 5
+            },
+            {
+                "label": "$color",
+                "kind": 5
+            },
+            {
+                "label": "$ignorez",
+                "kind": 5
+            },
+            {
+                "label": "$nolod",
+                "kind": 5
+            },
+            {
+                "label": "$translucent",
+                "kind": 5
+            },
+            {
+                "label": "$vertexalpha",
+                "kind": 5
+            },
+            {
+                "label": "$vertexcolor",
+                "kind": 5
+            },
+            {
+                "label": "%keywords",
+                "kind": 5
+            }
+        ]
+    }
+}

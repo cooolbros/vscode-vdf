@@ -1,10 +1,13 @@
 import type { DocumentLinkData } from "$lib/types/DocumentLinkData"
 import { encodeBaseValue } from "$lib/utils/encodeBaseValue"
+import * as filesCompletion from "$lib/utils/filesCompletion"
 import { getHUDRoot } from "$lib/utils/getHUDRoot"
 import { normalizeUri } from "$lib/utils/normalizeUri"
-import type { Color, CompletionItem, Connection, Diagnostic, DocumentLink, TextDocumentChangeEvent } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, Connection, Diagnostic, DocumentLink, TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { VDFLanguageServer } from "../VDFLanguageServer"
+import keys from "./keys.json"
+import values from "./values.json"
 
 export class VMTLanguageServer extends VDFLanguageServer {
 
@@ -16,10 +19,25 @@ export class VMTLanguageServer extends VDFLanguageServer {
 		super(name, languageId, connection, {
 			keyHash: (key) => key,
 			schema: {
-				keys: {},
-				values: {},
+				keys: keys,
+				values: values,
 			},
-			completion: {},
+			completion: {
+				root: [
+					{
+						label: "LightmappedGeneric",
+						kind: CompletionItemKind.Class
+					},
+					{
+						label: "UnlitGeneric",
+						kind: CompletionItemKind.Class
+					},
+					{
+						label: "VertexlitGeneric",
+						kind: CompletionItemKind.Class
+					}
+				]
+			},
 			definitionReferences: [],
 			links: [
 				{
@@ -112,7 +130,39 @@ export class VMTLanguageServer extends VDFLanguageServer {
 		return null
 	}
 
-	protected async getCompletionValues(uri: string, key: string): Promise<CompletionItem[] | null> {
+	protected async getCompletionValues(uri: string, key: string, value: string): Promise<CompletionItem[] | null> {
+
+		if (key == "$basetexture") {
+
+			const hudRoot = this.documentHUDRoots.get(uri)
+			const configuration = this.documentsConfiguration.get(uri)
+
+			const set = new filesCompletion.CompletionItemSet()
+
+			if (configuration.filesAutoCompletionKind == "incremental") {
+				if (hudRoot) {
+					for (const item of await filesCompletion.incremental(this.connection, this.fileSystem, "", `${hudRoot}/materials`, value, [".vtf"], true)) {
+						set.add(item)
+					}
+				}
+				for (const item of await filesCompletion.incremental(this.connection, this.fileSystem, "?vpk=textures", "vpk:///materials", value, [".vtf"], true)) {
+					set.add(item)
+				}
+			}
+			else {
+				if (hudRoot) {
+					for (const item of await filesCompletion.all(this.connection, this.fileSystem, "", `${hudRoot}/materials`, [".vtf"], true)) {
+						set.add(item)
+					}
+				}
+				for (const item of await filesCompletion.all(this.connection, this.fileSystem, "?vpk=textures", "vpk:///materials", [".vtf"], true)) {
+					set.add(item)
+				}
+			}
+
+			return set.items
+		}
+
 		return null
 	}
 }
