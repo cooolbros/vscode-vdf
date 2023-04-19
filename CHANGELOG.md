@@ -1,16 +1,23 @@
 # Change Log
 
-## [2.2.0]
- - Add copy Key/Value path to clipboard command (`VDF: Copy Key/Value Path To Clipboard`)
+## [3.0.0]
+ - Rewrite: Unify all VDF based languages functionality
+ - Add support for VSCode web
+ - Add Copy Key/Value path to clipboard command (`VDF: Copy Key/Value Path To Clipboard`)
+ - Add Extract VPK file command (`VPK: Extract file to workspace`)
+ - Add Import external bot templates into Popfile command (`Popfile: Import #base templates into current popfile`)
+ - Add more document links
  - Add setting to update file diagnostics on file save (`vscode-vdf.updateDiagnosticsEvent`)
- - Add VTF Editor
+ - Add VPK file system support
+ - Add VTF Viewer/Editor
  - Fix document links error when viewing a git diff
  - Fix VDF diagnostics not detecting missing closing braces at end of file
- - Popfile: Add command to import external bot templates into Popfile
-
-## [2.1.1]
- - Add VPK protocol
- - Add VPK extractor
+ - Fix VDF formatter including multiple double quotes when key has a conditional
+ - Fix VDF formatter interfering with ASCII comments
+ - Remove format VDF command (Use `Format Document` instead)
+ - Remove sort VDF command
+ - Remove useless hover
+ - Update Popfile syntax highlighting
  - Update VDF syntax highlighting
 
 ## [2.1.0]
