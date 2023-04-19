@@ -1,5 +1,8 @@
 # Change Log
 
+## [4.0.2]
+ - VTF viewer fix
+
 ## [4.0.1]
  - Update Changelog
 
