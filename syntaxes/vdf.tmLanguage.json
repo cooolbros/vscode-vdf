@@ -3,7 +3,7 @@
     "name": "Valve KeyValues",
     "patterns": [
         {
-            "match": "(\"#base\"|#base)\\s+(\".*?\"|\\S+)$",
+            "match": "^\\s*(\"#base\"|#base)\\s+(\".*?\"|\\S+)",
             "captures": {
                 "1": {
                     "name": "keyword.control"
