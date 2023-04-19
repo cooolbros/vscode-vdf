@@ -4,48 +4,62 @@
 
 VDF/Valve KeyValues language support for VSCode
 
+![](demo.gif)
+
 ### Features
  - Syntax highlighting
  - File formatting
+ - Autocompletion for key/values
+ - Go To Definition/Find References for key/values
+ - View/Edit VTF files
  - Convert VDF to JSON
  - Convert JSON to VDF
- - Jump/Peek definition for #base files
- - Code actions for non-normalized file paths
- - View/Edit VTF files
 
-### Features (HUD Specific)
+### Features (HUD)
  - Definition Provider
     - All Clientscheme properties
     - labelText
     - pin_to_sibling
     - image
-    - customfontfiles
+ - Codelens for Clientscheme references
  - Autocompletion for element properties:
     - ImagePanel => image, scaleImage, etc...
     - CExLabel => labelText, font, textAlignment, fgcolor, etc...
  - Autocompletion for property values
-    - font => Will suggest from clientscheme
     - textAlignment => center, north, east, south, west
+    - font => Will suggest from clientscheme
+    - labelText => Will suggest from chat_english.txt and tf_english.txt
  - Autocompletion for #base paths
  - Autocompletion for image paths
  - Autocompletion for pin_to_sibling elements
  - Rename HUD elements
 
-### Features (HUD Animations Specific)
+### Features (HUD Animations)
  - Autocompletion for keywords, HUD elements (from associated files), common properties, clientscheme values, interpolators
+ - Warning for duplicate/unused events
  - Codelens for event references
- - Reference provider for events
- - Rename provider for events
+ - Go To Definition/Find References for events
+ - Rename events
  - Syntax highlighting for HUD Animations
 
-### Features (Popfile Specific)
- - Autocompletion for Templates
- - Autocompletion for Attributes, BehaviorModifiers, Class, Skill, Objective, etc...
+### Features (Popfile)
  - Definition Provider
-   - Templates
- - Import #base templates into popfile
+    - Templates
+ - Autocompletion for Attributes, BehaviorModifiers, Class, Skill, Objective, etc...
+ - Autocompletion for property values:
+    - Template => Will suggest from Templates
+    - ClassIcon => Will suggest files
+ - Colour picker for "set item tint rgb"
+ - Link to ClassIcon
+ - Import #base templates into Popfile
  - Rename Templates (file wide)
 
+### Features (VMT)
+ - Autocompletion for common key/values
+ - Autocompletion for property values:
+    - $baseTexture => Will suggest texture files
+ - Colour picker for $color (Supports int and float colours)
+ - Link to $baseTexture
 
 Github: https://github.com/cooolbros/vscode-vdf
 
