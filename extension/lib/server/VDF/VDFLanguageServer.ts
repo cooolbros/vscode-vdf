@@ -531,7 +531,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					const value = this.VDFLanguageServerConfiguration.schema.keys[k]
 					// @ts-ignore
 					return [
-						...(value.references ? value.references.flatMap(include) : []),
+						...(value.reference ? value.reference.flatMap(include) : []),
 						...value.values
 					]
 				}
