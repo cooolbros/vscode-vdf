@@ -1,3 +1,4 @@
+node_modules/**
 !node_modules/tga-js/dist/umd/tga.js
 .eslintrc.json
 .gitignore
@@ -8,5 +9,4 @@
 **/*.ts
 **/tsconfig.json
 extension/**
-node_modules/**
 syntaxes/generate_popfile.tmLanguage.js
