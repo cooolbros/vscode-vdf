@@ -1,6 +1,12 @@
 # Change Log
 
-## [3.0.0]
+## [4.0.1]
+ - Update Changelog
+
+## [4.0.0]
+ - Full release version 3.0.0
+
+## [3.0.0] (Pre-Release)
  - Rewrite: Unify all VDF based languages functionality
  - Add support for VSCode web
  - Add Copy Key/Value path to clipboard command (`VDF: Copy Key/Value Path To Clipboard`)
