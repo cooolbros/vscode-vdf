@@ -284,7 +284,7 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "npm run build",
         "dev": "webpack --watch --mode development",
         "build": "webpack",
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
