@@ -290,6 +290,9 @@
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
         "lint": "eslint . --ext .ts"
     },
+    "dependencies": {
+        "tga-js": "^1.1.1"
+    },
     "devDependencies": {
         "@types/node": "^16.14.2",
         "@types/string-similarity": "^4.0.0",
@@ -301,7 +304,6 @@
         "eslint": "^8.30.0",
         "path-browserify": "^1.0.1",
         "string-similarity": "^4.0.4",
-        "tga-js": "^1.1.1",
         "ts-loader": "^9.4.2",
         "ts-node": "^10.9.1",
         "typescript": "^4.9.4",
