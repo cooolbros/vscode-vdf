@@ -310,7 +310,6 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 								<tr><td>Format:</td><td>${document.imageFormat}</td></tr>
 								<tr><td>Width:</td><td>${document.width}</td></tr>
 								<tr><td>Height:</td><td>${document.height}</td></tr>
-								<tr><td>Flags:</td><td>${document.getFlags()}</td></tr>
 							</table>
 						</fieldset>
 					</div>
