@@ -60,7 +60,7 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.blockComment != undefined) {
-				str += `${getIndentation(level)}//${documentSymbol.blockComment != "" ? blockCommentAfterSlash : ""}${documentSymbol.blockComment}`
+				str += `${getIndentation(level)}//${documentSymbol.blockComment != "" && documentSymbol.blockComment[0] != "/" ? blockCommentAfterSlash : ""}${documentSymbol.blockComment}`
 				if (level != 0 || i < len || _options.insertFinalNewline) {
 					str += eol
 				}
