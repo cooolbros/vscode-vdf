@@ -51,8 +51,8 @@ export class DocumentDefinitionReferences {
 
 	public deleteDefinitionsOfTypes(types: Set<number>): void {
 		for (const type of types) {
-			for (const thing of this.ofType(type).values()) {
-				thing.deleteDefinitionLocation()
+			for (const definitionReference of this.ofType(type).values()) {
+				definitionReference.deleteDefinitionLocation()
 			}
 		}
 	}
