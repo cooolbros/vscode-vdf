@@ -1,3 +1,8 @@
 export function normalizeUri(uri: string): string {
-	return new URL(uri).href
+	try {
+		return new URL(uri).href
+	}
+	catch (error) {
+		return uri
+	}
 }
