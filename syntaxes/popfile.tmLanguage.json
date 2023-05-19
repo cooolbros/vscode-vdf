@@ -43,7 +43,7 @@
         },
         {
             "name": "constant.numeric",
-            "match": "\\b(\\d+)\\b"
+            "match": "\\b([\\d\\.]+)\\b"
         },
         {
             "name": "variable",
