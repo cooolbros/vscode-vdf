@@ -43,8 +43,11 @@ export class DocumentDefinitionReferences {
 
 	public deleteDefinitions(): void {
 		for (const [, typeDefinitionReferences] of this.documentDefinitionReferences) {
-			for (const [, definitionReference] of typeDefinitionReferences) {
+			for (const [key, definitionReference] of typeDefinitionReferences) {
 				definitionReference.deleteDefinitionLocation()
+				if (!definitionReference.hasReferences()) {
+					typeDefinitionReferences.delete(key)
+				}
 			}
 		}
 	}
@@ -128,6 +131,21 @@ export class DefinitionReference {
 	// #endregion
 
 	// #region References
+
+	public hasReferences(): boolean {
+
+		if (this.references.size == 0) {
+			return false
+		}
+
+		for (const ranges of this.references.values()) {
+			if (ranges.length > 0) {
+				return true
+			}
+		}
+
+		return false
+	}
 
 	public *getReferences(): Iterable<{ uri: string, range: VDFRange }> {
 		for (const [uri, ranges] of this.references) {
