@@ -198,7 +198,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				if (!definitionLocation) {
 
 					const diagnostic: Diagnostic & { data?: { codeAction: CodeAction } } = {
-						message: `Cannot find name '${documentSymbol.detail}'.`,
+						message: `Cannot find ${this.VDFLanguageServerConfiguration.definitionReferences[type].name} '${documentSymbol.detail}'.`,
 						range: documentSymbol.detailRange!,
 						severity: DiagnosticSeverity.Warning,
 					}

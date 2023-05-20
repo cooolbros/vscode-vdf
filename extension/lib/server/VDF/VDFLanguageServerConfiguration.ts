@@ -37,6 +37,11 @@ export interface VDFLanguageServerConfiguration {
 
 export interface VDFDefinitionReferencesConfiguration {
 	/**
+	 * Display Name
+	 */
+	readonly name: string
+
+	/**
 	 * Parent keys
 	 */
 	readonly parentKeys: string[]

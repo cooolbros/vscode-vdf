@@ -36,12 +36,14 @@ export class VGUILanguageServer extends VDFLanguageServer {
 
 	private static readonly HUDDefinitionReferences: VGUIDefinitionReferencesConfiguration[] = [
 		...Object.entries(clientscheme).map(([key, values], index) => ({
+			name: key.substring(0, key.length - 1).toLowerCase(),
 			type: index,
 			files: ["resource/clientscheme.res"],
 			parentKeys: ["Scheme".toLowerCase(), key.toLowerCase()],
 			referenceKeys: new Set<string>(values)
 		})),
 		{
+			name: "string",
 			type: VGUIDefinitionType.Language,
 			files: ["resource/chat_english.txt", "resource/tf_english.txt"],
 			parentKeys: ["lang", "Tokens".toLowerCase()],
@@ -73,6 +75,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			},
 			definitionReferences: [
 				{
+					name: "element",
 					parentKeys: [],
 					definitionChildren: true,
 					referenceKeys: new Set([

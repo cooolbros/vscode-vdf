@@ -34,6 +34,7 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 			},
 			definitionReferences: [
 				{
+					name: "template",
 					parentKeys: [
 						"Templates".toLowerCase()
 					],
@@ -42,6 +43,7 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 					])
 				},
 				{
+					name: "wavespawn",
 					parentKeys: [
 						"Wave".toLowerCase(),
 					],
