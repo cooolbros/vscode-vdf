@@ -408,9 +408,9 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			if (documentSymbol.children) {
 				return
 			}
-			VGUILanguageServer.HUDDefinitionReferences.find((definitionReference, index) => {
+			VGUILanguageServer.HUDDefinitionReferences.find((definitionReference) => {
 				if (documentSymbolMatchesReferences(definitionReference, this.VDFLanguageServerConfiguration.keyHash(documentSymbol.key.toLowerCase()))) {
-					const definitionReferencesValue = documentDefinitionReferences.get([index, documentSymbol.detail!])
+					const definitionReferencesValue = documentDefinitionReferences.get([definitionReference.type, documentSymbol.detail!])
 					definitionReferencesValue.addReference(uri, documentSymbol.detailRange!)
 					return true
 				}
@@ -758,7 +758,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					const codeLens: CodeLens[] = []
 
 					for (const fileDefinitionType of fileDefinitionTypes) {
-						for (const [, definitionReference] of hudScheme.ofType(fileDefinitionType)!) {
+						for (const [, definitionReference] of hudScheme.ofType(fileDefinitionType)) {
 							const definitionLocation = definitionReference.getDefinitionLocation()
 
 							if (definitionLocation?.uri == uri) {
