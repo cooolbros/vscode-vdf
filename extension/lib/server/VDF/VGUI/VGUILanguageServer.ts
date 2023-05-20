@@ -186,7 +186,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			],
 			rename: {
 				type: 0,
-				key: "fieldName".toLowerCase()
+				keys: new Set(["fieldName".toLowerCase()])
 			}
 		})
 

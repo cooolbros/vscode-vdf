@@ -186,7 +186,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				if (definitionReferenceIndex > -1) {
 					return definitionReferenceIndex
 				}
-				if (documentSymbolKey == this.VDFLanguageServerConfiguration.rename?.key) {
+				if (this.VDFLanguageServerConfiguration.rename?.keys.has(documentSymbolKey)) {
 					return this.VDFLanguageServerConfiguration.rename.type
 				}
 				return null
@@ -926,7 +926,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		}
 
 		// Permit renaming by arbitrary keys
-		if (key == this.VDFLanguageServerConfiguration.rename?.key) {
+		if (this.VDFLanguageServerConfiguration.rename?.keys.has(key)) {
 			this.oldName = [this.VDFLanguageServerConfiguration.rename.type, documentSymbol.detail!.toLowerCase(), documentSymbol.detailRange!]
 			return documentSymbol.detailRange!
 		}

@@ -31,7 +31,7 @@ export interface VDFLanguageServerConfiguration {
 	}[]
 	readonly rename?: {
 		type: number,
-		key: string
+		keys: Set<string>
 	}
 }
 
