@@ -588,10 +588,12 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 				for (const [type, definitionReferencesConfiguration] of this.VDFLanguageServerConfiguration.definitionReferences.entries()) {
 					if (definitionReferencesConfiguration.referenceKeys.has(key)) {
-						return [...this.documentsDefinitionReferences.get(params.textDocument.uri)!.ofType(type).values()].map(i => ({
-							label: i.key,
-							kind: CompletionItemKind.Variable
-						}))
+						return [...this.documentsDefinitionReferences.get(params.textDocument.uri)!.ofType(type).values()]
+							.filter((definitionReference) => definitionReference.getDefinitionLocation() != undefined)
+							.map((definitionReference) => ({
+								label: definitionReference.key,
+								kind: CompletionItemKind.Variable
+							}))
 					}
 				}
 
