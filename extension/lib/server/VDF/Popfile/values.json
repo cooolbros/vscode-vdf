@@ -1,4 +1,11 @@
 {
+    "advanced": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
     "attributes": {
         "kind": 13,
         "values": [
@@ -66,13 +73,34 @@
             "Spy"
         ]
     },
+    "eventpopfile": {
+        "kind": 13,
+        "values": [
+            "Halloween"
+        ]
+    },
+    "fixedrespawnwavetime": {
+        "kind": 12,
+        "values": [
+            "Yes",
+            "No"
+        ]
+    },
     "objective": {
         "kind": 13,
         "values": [
-            "Engineer",
+            "DestroySentries",
+            "SeekAndDestroy",
             "Sniper",
             "Spy",
-            "DestroySentries"
+            "Engineer"
+        ]
+    },
+    "randomspawn": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
         ]
     },
     "skill": {
@@ -82,6 +110,14 @@
             "Normal",
             "Hard",
             "Expert"
+        ]
+    },
+    "support": {
+        "kind": 13,
+        "values": [
+            "0",
+            "1",
+            "Limited"
         ]
     },
     "weaponrestrictions": {

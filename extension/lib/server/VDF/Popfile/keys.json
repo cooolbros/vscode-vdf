@@ -1,15 +1,69 @@
 {
-    "doneoutput": {
+    "default": {
         "values": [
             {
-                "label": "Target",
+                "label": "CharacterAttributes",
                 "kind": 7
             },
             {
-                "label": "Action",
+                "label": "ItemAttributes",
+                "kind": 7
+            },
+            {
+                "label": "Attributes",
+                "kind": 5
+            },
+            {
+                "label": "BehaviorModifiers",
+                "kind": 5
+            },
+            {
+                "label": "Item",
+                "kind": 5
+            },
+            {
+                "label": "MaxVisionRange",
+                "kind": 5
+            },
+            {
+                "label": "Skill",
+                "kind": 5
+            },
+            {
+                "label": "WeaponRestrictions",
+                "kind": 5
+            }
+        ]
+    },
+    "doneoutput": {
+        "reference": [
+            "startwaveoutput"
+        ],
+        "values": []
+    },
+    "EventChangeAttributes": {
+        "values": [
+            {
+                "label": "Default",
+                "kind": 7
+            },
+            {
+                "label": "RevertGateBotsBehavior",
                 "kind": 7
             }
         ]
+    },
+    "firstspawnoutput": {
+        "reference": [
+            "startwaveoutput"
+        ],
+        "values": []
+    },
+    "initwaveoutput": {
+        "reference": [
+            "startwaveoutput"
+        ],
+        "values": []
     },
     "itemattributes": {
         "values": [
@@ -123,6 +177,12 @@
             }
         ]
     },
+    "lastspawnoutput": {
+        "reference": [
+            "startwaveoutput"
+        ],
+        "values": []
+    },
     "mission": {
         "values": [
             {
@@ -182,6 +242,10 @@
                 "kind": 5
             },
             {
+                "label": "EventPopfile",
+                "kind": 5
+            },
+            {
                 "label": "IsEndless",
                 "kind": 5
             },
@@ -191,6 +255,56 @@
             },
             {
                 "label": "StartingCurrency",
+                "kind": 5
+            }
+        ]
+    },
+    "revertgatebotsbehavior": {
+        "reference": [
+            "default"
+        ],
+        "values": []
+    },
+    "sentrygun": {
+        "values": [
+            {
+                "label": "Level",
+                "kind": 5
+            }
+        ]
+    },
+    "squad": {
+        "values": [
+            {
+                "label": "Mob",
+                "kind": 7
+            },
+            {
+                "label": "RandomChoice",
+                "kind": 7
+            },
+            {
+                "label": "SentryGun",
+                "kind": 7
+            },
+            {
+                "label": "Squad",
+                "kind": 7
+            },
+            {
+                "label": "Tank",
+                "kind": 7
+            },
+            {
+                "label": "TFBot",
+                "kind": 7
+            },
+            {
+                "label": "FormationSize",
+                "kind": 5
+            },
+            {
+                "label": "ShouldPreserveSquad",
                 "kind": 5
             }
         ]
@@ -242,7 +356,31 @@
     "tfbot": {
         "values": [
             {
+                "label": "CharacterAttributes",
+                "kind": 7
+            },
+            {
+                "label": "EventChangeAttributes",
+                "kind": 7
+            },
+            {
+                "label": "ItemAttributes",
+                "kind": 7
+            },
+            {
                 "label": "Attributes",
+                "kind": 5
+            },
+            {
+                "label": "AutoJumpMin",
+                "kind": 5
+            },
+            {
+                "label": "AutoJumpMax",
+                "kind": 5
+            },
+            {
+                "label": "BehaviorModifiers",
                 "kind": 5
             },
             {
@@ -282,7 +420,15 @@
                 "kind": 5
             },
             {
+                "label": "TeleportWhere",
+                "kind": 5
+            },
+            {
                 "label": "Template",
+                "kind": 5
+            },
+            {
+                "label": "WeaponRestrictions",
                 "kind": 5
             }
         ]
@@ -298,15 +444,23 @@
                 "kind": 7
             },
             {
+                "label": "WaveSpawn",
+                "kind": 7
+            },
+            {
+                "label": "Description",
+                "kind": 5
+            },
+            {
                 "label": "Checkpoint",
                 "kind": 5
             },
             {
-                "label": "WaitWhenDone",
+                "label": "Sound",
                 "kind": 5
             },
             {
-                "label": "WaveSpawn",
+                "label": "WaitWhenDone",
                 "kind": 5
             }
         ]
@@ -319,6 +473,10 @@
             },
             {
                 "label": "Templates",
+                "kind": 7
+            },
+            {
+                "label": "Wave",
                 "kind": 7
             },
             {
@@ -338,6 +496,10 @@
                 "kind": 5
             },
             {
+                "label": "EventPopfile",
+                "kind": 5
+            },
+            {
                 "label": "IsEndless",
                 "kind": 5
             },
@@ -354,7 +516,31 @@
     "wavespawn": {
         "values": [
             {
+                "label": "Mob",
+                "kind": 7
+            },
+            {
+                "label": "DoneOutput",
+                "kind": 7
+            },
+            {
+                "label": "FirstSpawnOutput",
+                "kind": 7
+            },
+            {
+                "label": "LastSpawnOutput",
+                "kind": 7
+            },
+            {
                 "label": "RandomChoice",
+                "kind": 7
+            },
+            {
+                "label": "SentryGun",
+                "kind": 7
+            },
+            {
+                "label": "StartWaveOutput",
                 "kind": 7
             },
             {
@@ -370,7 +556,15 @@
                 "kind": 7
             },
             {
-                "label": "FirstSpawnOutput",
+                "label": "DoneWarningSound",
+                "kind": 5
+            },
+            {
+                "label": "FirstSpawnWarningSound",
+                "kind": 5
+            },
+            {
+                "label": "LastSpawnWarningSound",
                 "kind": 5
             },
             {
@@ -378,7 +572,19 @@
                 "kind": 5
             },
             {
+                "label": "Name",
+                "kind": 5
+            },
+            {
+                "label": "RandomSpawn",
+                "kind": 5
+            },
+            {
                 "label": "SpawnCount",
+                "kind": 5
+            },
+            {
+                "label": "StartWaveWarningSound",
                 "kind": 5
             },
             {
@@ -399,6 +605,10 @@
             },
             {
                 "label": "WaitBetweenSpawns",
+                "kind": 5
+            },
+            {
+                "label": "WaitBetweenSpawnsAfterDeath",
                 "kind": 5
             },
             {
