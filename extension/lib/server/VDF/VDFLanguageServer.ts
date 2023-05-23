@@ -532,11 +532,11 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					// @ts-ignore
 					return [
 						...(value.reference ? value.reference.flatMap(include) : []),
-						...value.values
+						...value.values.filter((value) => value.multiple || !documentSymbol.children?.some((d) => d.key.toLowerCase() == value.label.toLowerCase()))
 					]
 				}
 
-				return include(type).filter((item) => !documentSymbol.children?.some((i) => i.key.toLowerCase() == item.label.toLowerCase()))
+				return include(type)
 			}
 			else {
 				// Suggest value

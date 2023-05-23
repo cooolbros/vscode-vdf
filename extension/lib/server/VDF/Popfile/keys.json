@@ -7,11 +7,13 @@
             },
             {
                 "label": "ItemAttributes",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Attributes",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             },
             {
                 "label": "BehaviorModifiers",
@@ -19,7 +21,8 @@
             },
             {
                 "label": "Item",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             },
             {
                 "label": "MaxVisionRange",
@@ -239,27 +242,33 @@
         "values": [
             {
                 "label": "Mob",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "RandomChoice",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "SentryGun",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Squad",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Tank",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "TFBot",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "FormationSize",
@@ -327,11 +336,13 @@
             },
             {
                 "label": "ItemAttributes",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Attributes",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             },
             {
                 "label": "AutoJumpMin",
@@ -359,7 +370,8 @@
             },
             {
                 "label": "Item",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             },
             {
                 "label": "MaxVisionRange",
@@ -383,7 +395,8 @@
             },
             {
                 "label": "TeleportWhere",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             },
             {
                 "label": "Template",
@@ -407,7 +420,8 @@
             },
             {
                 "label": "WaveSpawn",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Description",
@@ -431,7 +445,8 @@
         "values": [
             {
                 "label": "Mission",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Templates",
@@ -439,7 +454,8 @@
             },
             {
                 "label": "Wave",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "AddSentryBusterWhenDamageDealtExceeds",
@@ -499,7 +515,8 @@
             },
             {
                 "label": "SentryGun",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "StartWaveOutput",
@@ -507,15 +524,18 @@
             },
             {
                 "label": "Squad",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "Tank",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "TFBot",
-                "kind": 7
+                "kind": 7,
+                "multiple": true
             },
             {
                 "label": "DoneWarningSound",

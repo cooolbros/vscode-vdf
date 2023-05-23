@@ -8,7 +8,7 @@ export interface VDFLanguageServerConfiguration {
 	vpkRootPath?: string
 	keyHash(key: string): string
 	schema: {
-		keys: { [key: string]: { reference?: string[], values: { label: string, kind: number /* CompletionItemKind */ }[] } },
+		keys: { [key: string]: { reference?: string[], values: { label: string, kind: number /* CompletionItemKind */, multiple?: boolean }[] } },
 		values: { [key: string]: { kind: number /* CompletionItemKind */, enumIndex?: boolean, values: string[] } }
 	}
 	completion: {
