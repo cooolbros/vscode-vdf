@@ -216,48 +216,10 @@
         ]
     },
     "population": {
-        "values": [
-            {
-                "label": "Mission",
-                "kind": 7
-            },
-            {
-                "label": "Templates",
-                "kind": 7
-            },
-            {
-                "label": "AddSentryBusterWhenDamageDealtExceeds",
-                "kind": 5
-            },
-            {
-                "label": "AddSentryBusterWhenKillCountExceeds",
-                "kind": 5
-            },
-            {
-                "label": "Advanced",
-                "kind": 5
-            },
-            {
-                "label": "CanBotsAttackWhileInSpawnRoom",
-                "kind": 5
-            },
-            {
-                "label": "EventPopfile",
-                "kind": 5
-            },
-            {
-                "label": "IsEndless",
-                "kind": 5
-            },
-            {
-                "label": "RespawnWaveTime",
-                "kind": 5
-            },
-            {
-                "label": "StartingCurrency",
-                "kind": 5
-            }
-        ]
+        "reference": [
+            "waveschedule"
+        ],
+        "values": []
     },
     "revertgatebotsbehavior": {
         "reference": [
