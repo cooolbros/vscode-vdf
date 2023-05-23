@@ -1,5 +1,13 @@
 # Change Log
 
+## [4.1.0]
+ - Add more Popfile key/values
+ - Fix crash when opening Untitled files
+ - Fix not suggesting Popfile subtree keys
+ - Fix suggesting deleted definitions
+ - Improve some warning messages
+ - Update Popfile syntax highlighting
+
 ## [4.0.2]
  - VTF viewer fix
 
