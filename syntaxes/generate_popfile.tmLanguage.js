@@ -11,7 +11,7 @@ function sort_set(iterable) {
 	return [...new Set(iterable)].sort()
 }
 
-const entity_name_type_enum = sort_set(Object.keys(VALUES).map(lower))
+const entity_name_type_enum = sort_set([...Object.keys(VALUES).map(lower), "where"])
 const keyword = sort_set(Object.entries(KEYS).flatMap(([k, v]) => [lower(k), ...v.values.map((value) => lower(value.label))]))
 const variable_other_enummember = sort_set([...Object.values(VALUES).flatMap((value) => value.values.map(lower)), "spawnbot.*"])
 
@@ -56,15 +56,15 @@ console.log(JSON.stringify({
 		},
 		{
 			"name": "variable.other.enummember",
-			"match": `(?i)\\b(${variable_other_enummember.join("|")})\\b`
+			"match": `(?i)(?<=\\s)(${variable_other_enummember.join("|")})(?=\\s)`
 		},
 		{
 			"name": "constant.numeric",
-			"match": "\\b(\\d+)\\b"
+			"match": "(?<=\\s)([\\d\\.-]+)(?=\\s)"
 		},
 		{
 			"name": "variable",
-			"match": "\\b(\\w+)\\b"
+			"match": "(?i)(?<=\\s)([a-z\\d_\\\\/\\.']+)(?=\\s)"
 		}
 	],
 	"repository": {},
