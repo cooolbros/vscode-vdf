@@ -102,7 +102,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 			const selectionRange = new VDFRange(keyRange.start, endPosition)
 
 			documentSymbols.push(new VDFDocumentSymbol(
-				key,
+				key || "\"\"",
 				keyRange,
 				typeof value == "object" ? SymbolKind.Object : SymbolKind.String,
 				conditional ?? null,
