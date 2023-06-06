@@ -10,7 +10,7 @@ import { VDFRange } from "$lib/VDF/VDFRange"
 import type { VDFDocumentSymbol } from "$lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "$lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { posix } from "path"
-import { CodeActionKind, CodeLens, CodeLensParams, Color, CompletionItem, CompletionItemKind, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentLink, Location, PrepareRenameParams, Range, ReferenceParams, TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeActionKind, CodeLens, CodeLensParams, Color, CompletionItem, CompletionItemKind, CompletionParams, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentLink, Location, PrepareRenameParams, Range, ReferenceParams, TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -480,6 +480,29 @@ export class VGUILanguageServer extends VDFLanguageServer {
 	protected onDidClose(e: TextDocumentChangeEvent<TextDocument>): void {
 		super.onDidClose(e)
 		this.documentHUDRoots.delete(e.document.uri)
+	}
+
+	protected async onCompletion(params: CompletionParams): Promise<CompletionItem[] | null> {
+
+		const uri = params.textDocument.uri
+
+		const hudRoot = this.documentHUDRoots.get(uri)
+
+		if (!hudRoot) {
+			return super.onCompletion(params)
+		}
+
+		const hudScheme = this.HUDSchemes.get(hudRoot)
+		if (!hudScheme) {
+			return super.onCompletion(params)
+		}
+
+		const definitionFile = hudScheme.getDefinitionFile(uri)
+		if (!definitionFile) {
+			return super.onCompletion(params)
+		}
+
+		return null
 	}
 
 	protected async validateDocumentSymbol(uri: string, documentSymbol: VDFDocumentSymbol, objectPath: string[]): Promise<Diagnostic | null> {
