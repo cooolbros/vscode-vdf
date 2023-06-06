@@ -345,7 +345,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				}
 
 				if (documentSymbolMatchesReferences(definitionReferenceConfiguration, this.VDFLanguageServerConfiguration.keyHash(documentSymbol.key.toLowerCase()))) {
-					const definitionReferencesValue = documentDefinitionReferences.get([index, documentSymbol.detail!])
+					const definitionReferencesValue = documentDefinitionReferences.get([
+						index,
+						definitionReferenceConfiguration.transform ? definitionReferenceConfiguration.transform(documentSymbol.detail) : documentSymbol.detail
+					])
 					definitionReferencesValue.addReference(uri, documentSymbol.detailRange!)
 					return true
 				}

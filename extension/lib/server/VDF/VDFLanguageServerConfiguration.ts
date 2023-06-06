@@ -60,4 +60,10 @@ export interface VDFDefinitionReferencesConfiguration {
 	 * Set of keys where the value references this definition
 	 */
 	readonly referenceKeys: Set<string>
+
+	/**
+	 * Transform the reference value before referencing definition
+	 * @param value
+	 */
+	transform?(value: string): string
 }

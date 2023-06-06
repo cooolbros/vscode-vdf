@@ -50,7 +50,10 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			referenceKeys: new Set<string>([
 				"labelText".toLowerCase(),
 				"title"
-			])
+			]),
+			transform(value: string): string {
+				return value.substring(1)	// Remove '#'
+			},
 		}
 	]
 
@@ -413,7 +416,10 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			}
 			VGUILanguageServer.HUDDefinitionReferences.find((definitionReference) => {
 				if (documentSymbolMatchesReferences(definitionReference, this.VDFLanguageServerConfiguration.keyHash(documentSymbol.key.toLowerCase()))) {
-					const definitionReferencesValue = documentDefinitionReferences.get([definitionReference.type, documentSymbol.detail!])
+					const definitionReferencesValue = documentDefinitionReferences.get([
+						definitionReference.type,
+						definitionReference.transform ? definitionReference.transform(documentSymbol.detail!) : documentSymbol.detail!
+					])
 					definitionReferencesValue.addReference(uri, documentSymbol.detailRange!)
 					return true
 				}
