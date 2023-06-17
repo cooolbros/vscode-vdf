@@ -43,7 +43,7 @@ export class EndOfStreamError extends VDFSyntaxError {
 }
 
 export class UnexpectedTokenError extends VDFSyntaxError {
-	constructor(unexpected: `'${string}'` | "EOF", expected: string[], range: VDFRange) {
+	constructor(unexpected: `'${string}'`, expected: string[], range: VDFRange) {
 		super(unexpected, expected, range)
 	}
 }
