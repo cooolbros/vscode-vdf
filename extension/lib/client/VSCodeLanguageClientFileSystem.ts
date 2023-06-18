@@ -28,8 +28,8 @@ export class VSCodeLanguageClientFileSystem implements VSCodeVDFFileSystem {
 		return this.UTF8Decoder.decode(arr)
 	}
 
-	public async readFileBinary(uri: string): Promise<Uint8Array> {
-		return workspace.fs.readFile(Uri.parse(uri))
+	public async readFileBinary(uri: string, begin?: number, end?: number): Promise<Uint8Array> {
+		return (await workspace.fs.readFile(Uri.parse(uri))).subarray(begin, end)
 	}
 
 	public async readDirectory(uri: string): Promise<[string, FileType][]> {

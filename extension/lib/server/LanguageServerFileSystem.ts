@@ -22,8 +22,12 @@ export class LanguageServerFileSystem implements VSCodeVDFFileSystem {
 		return this.connection.sendRequest("vscode-vdf/fs/readFile", uri)
 	}
 
-	public async readFileBinary(uri: string): Promise<Uint8Array> {
-		return this.connection.sendRequest("vscode-vdf/fs/readFileBinary", uri)
+	public async readFileBinary(uri: string, begin?: number, end?: number): Promise<Uint8Array> {
+		const response: ReturnType<Buffer["toJSON"]> | Uint8Array = await this.connection.sendRequest("vscode-vdf/fs/readFileBinary", { uri, begin, end })
+		if ("type" in response) {
+			return new Uint8Array(response.data)
+		}
+		return response
 	}
 
 	public async readDirectory(uri: string): Promise<[string, FileType][]> {

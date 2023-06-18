@@ -17,8 +17,8 @@ export function initLanguageClientFileSystem(languageClient: BaseLanguageClient)
 		return fileSystem.readFile(uri)
 	})
 
-	languageClient.onRequest("vscode-vdf/fs/readFileBinary", async (uri: string) => {
-		return fileSystem.readFileBinary(uri)
+	languageClient.onRequest("vscode-vdf/fs/readFileBinary", async ({ uri, begin, end }: { uri: string, begin?: number, end?: number }) => {
+		return fileSystem.readFileBinary(uri, begin, end)
 	})
 
 	languageClient.onRequest("vscode-vdf/fs/readDirectory", async (uri: string) => {
