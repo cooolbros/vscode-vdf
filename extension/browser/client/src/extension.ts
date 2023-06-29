@@ -1,4 +1,3 @@
-import "$lib/client/HUDAnimationsDecoration"
 import { initHUDAnimationsLanguageClientDecorations } from "$lib/client/HUDAnimationsDecoration"
 import { initLanguageClientFileSystem } from "$lib/client/LanguageClientFileSystem"
 import { initLanguageClientRequests } from "$lib/client/LanguageClientRequests"
