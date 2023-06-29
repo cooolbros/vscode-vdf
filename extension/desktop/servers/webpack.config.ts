@@ -5,7 +5,11 @@ import type { Configuration } from "webpack"
 export const desktopServersConfiguration: Configuration = {
 	mode: "production",
 	target: "node",
-	entry: Object.fromEntries(readdirSync(__dirname, { withFileTypes: true }).filter(i => i.isDirectory()).map((server) => [`${server.name.toLowerCase()}`, join(__dirname, `${server.name}/src/server.ts`)])),
+	entry: Object.fromEntries(
+		readdirSync(__dirname, { withFileTypes: true })
+			.filter(i => i.isDirectory())
+			.map((server) => [`${server.name.toLowerCase()}`, join(__dirname, `${server.name}/src/server.ts`)])
+	),
 	output: {
 		path: join(process.cwd(), "dist/desktop/servers"),
 		libraryTarget: "commonjs2"
