@@ -1,10 +1,13 @@
 import { z } from "zod"
 
-const VDFFormatConfigurationSchema = z.object({
+const VDFLanguageConfigurationSchema = z.object({
 	format: z.object({
 		insertNewlineBeforeObjects: z.boolean(),
 		quotes: z.boolean(),
 		tabs: z.number().min(-1),
+	}),
+	suggest: z.object({
+		enable: z.boolean()
 	})
 })
 
@@ -18,10 +21,13 @@ export const VSCodeVDFConfigurationSchema = z.object({
 			layoutScope: z.enum(["event", "file"]),
 			tabs: z.number().min(1)
 		}),
+		suggest: z.object({
+			enable: z.boolean()
+		})
 	}),
-	popfile: VDFFormatConfigurationSchema,
-	vmt: VDFFormatConfigurationSchema,
-	vdf: VDFFormatConfigurationSchema,
+	popfile: VDFLanguageConfigurationSchema,
+	vmt: VDFLanguageConfigurationSchema,
+	vdf: VDFLanguageConfigurationSchema,
 })
 
 export type VSCodeVDFConfiguration = z.infer<typeof VSCodeVDFConfigurationSchema>

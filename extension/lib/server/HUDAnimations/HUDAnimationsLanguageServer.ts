@@ -93,7 +93,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		this.oldName = null
 
-		this.connection.onCompletion(this.onCompletion.bind(this))
+		this.connection.onCompletion(async (params) => {
+			if (!this.documentsConfiguration.get(params.textDocument.uri)[this.languageId].suggest.enable) {
+				return null
+			}
+			return this.onCompletion(params)
+		})
 		this.connection.onDefinition(this.onDefinition.bind(this))
 		this.connection.onReferences(this.onReferences.bind(this))
 		this.connection.onReferences(this.onReferences.bind(this))

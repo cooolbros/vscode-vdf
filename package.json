@@ -121,6 +121,11 @@
                         "description": "Controls the number of tabs to insert after a token when formatting HUD animations.",
                         "minimum": 1,
                         "default": 1
+                    },
+                    "vscode-vdf.hudanimations.suggest.enable": {
+                        "type": "boolean",
+                        "description": "Enabled/disable autocomplete suggestions.",
+                        "default": true
                     }
                 }
             },
@@ -141,6 +146,11 @@
                         "type": "number",
                         "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
                         "default": -1
+                    },
+                    "vscode-vdf.popfile.suggest.enable": {
+                        "type": "boolean",
+                        "description": "Enabled/disable autocomplete suggestions.",
+                        "default": true
                     }
                 }
             },
@@ -161,6 +171,11 @@
                         "type": "number",
                         "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
                         "default": 1
+                    },
+                    "vscode-vdf.vmt.suggest.enable": {
+                        "type": "boolean",
+                        "description": "Enabled/disable autocomplete suggestions.",
+                        "default": true
                     }
                 }
             },
@@ -181,6 +196,11 @@
                         "type": "number",
                         "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
                         "default": 1
+                    },
+                    "vscode-vdf.vdf.suggest.enable": {
+                        "type": "boolean",
+                        "description": "Enabled/disable autocomplete suggestions.",
+                        "default": true
                     }
                 }
             }
