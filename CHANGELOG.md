@@ -1,5 +1,11 @@
 # Change Log
 
+## [4.2.0]
+ - Fix document symbols error when using snippets
+ - Disable autocompletion in VGUI scheme definition files
+ - Add setting to enable/disable autocompletion (`vscode-vdf.[language].suggest.enable`)
+ - Updated the localization files
+
 ## [4.1.0]
  - Add more Popfile key/values
  - Fix crash when opening Untitled files
