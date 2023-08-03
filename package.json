@@ -338,6 +338,8 @@
     },
     "workspaces": [
         "apps/*",
+        "apps/extension/browser/*",
+        "apps/extension/desktop/*",
         "packages/*"
     ],
     "__metadata": {
