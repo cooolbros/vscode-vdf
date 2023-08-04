@@ -1,0 +1,8 @@
+{
+    "name": "desktop-client",
+    "scripts": {
+        "dev": "webpack --watch --mode none",
+        "build": "webpack",
+        "lint": "eslint . --ext .ts"
+    }
+}

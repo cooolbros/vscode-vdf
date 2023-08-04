@@ -1,24 +1,21 @@
 import { join } from "path"
 import type { Configuration } from "webpack"
 
-export const desktopClientConfiguration: Configuration = {
+export default {
 	mode: "production",
 	target: "node",
 	entry: {
 		extension: join(__dirname, "src/extension.ts")
 	},
 	output: {
-		path: join(process.cwd(), "dist/desktop"),
+		path: join(__dirname, "dist"),
 		libraryTarget: "commonjs2"
 	},
 	externals: {
 		vscode: "commonjs vscode"
 	},
 	resolve: {
-		extensions: [".js", ".ts"],
-		alias: {
-			"$lib": join(process.cwd(), "extension/lib")
-		}
+		extensions: [".js", ".ts"]
 	},
 	module: {
 		rules: [
@@ -33,4 +30,4 @@ export const desktopClientConfiguration: Configuration = {
 			}
 		]
 	}
-}
+} satisfies Configuration
