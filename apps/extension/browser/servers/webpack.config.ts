@@ -2,24 +2,21 @@ import { readdirSync } from "fs"
 import { join } from "path"
 import type { Configuration } from "webpack"
 
-export const browserServersConfiguration: Configuration = {
+export default {
 	mode: "production",
 	target: "webworker",
 	entry: Object.fromEntries(
 		readdirSync(__dirname, { withFileTypes: true })
-			.filter(i => i.isDirectory())
+			.filter(i => i.isDirectory() && !i.name.startsWith(".") && i.name != "dist")
 			.map((server) => [`${server.name.toLowerCase()}`, join(__dirname, `${server.name}/src/server.ts`)])
 	),
 	output: {
-		path: join(process.cwd(), "dist/browser/servers"),
+		path: join(__dirname, "dist"),
 		libraryTarget: "var",
 		library: "serverExportVar",
 	},
 	resolve: {
 		extensions: [".js", ".ts"],
-		alias: {
-			"$lib": join(process.cwd(), "extension/lib")
-		},
 		fallback: {
 			"path": require.resolve("path-browserify")
 		}
@@ -40,4 +37,4 @@ export const browserServersConfiguration: Configuration = {
 	performance: {
 		hints: false
 	}
-}
+} satisfies Configuration

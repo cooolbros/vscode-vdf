@@ -1,6 +1,6 @@
-import { VGUILanguageServer } from "$lib/server/VDF/VGUI/VGUILanguageServer"
+import { VMTLanguageServer } from "lib/server/VDF/VMT/VMTLanguageServer"
 import { BrowserMessageReader, BrowserMessageWriter, createConnection } from "vscode-languageserver/browser"
 
 const connection = createConnection(new BrowserMessageReader(self), new BrowserMessageWriter(self))
 
-const server = new VGUILanguageServer("VDF", "vdf", connection)
+const server = new VMTLanguageServer("VMT", "vmt", connection)
