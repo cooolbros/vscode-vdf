@@ -1,14 +1,14 @@
 import { join } from "path"
 import type { Configuration } from "webpack"
 
-export const browserClientConfiguration: Configuration = {
+export default {
 	mode: "production",
 	target: "webworker",
 	entry: {
 		extension: join(__dirname, "src/extension.ts")
 	},
 	output: {
-		path: join(process.cwd(), "dist/browser"),
+		path: join(__dirname, "dist"),
 		libraryTarget: "commonjs"
 	},
 	externals: {
@@ -16,9 +16,6 @@ export const browserClientConfiguration: Configuration = {
 	},
 	resolve: {
 		extensions: [".js", ".ts"],
-		alias: {
-			"$lib": join(process.cwd(), "extension/lib")
-		},
 		fallback: {
 			"path": require.resolve("path-browserify")
 		}
@@ -39,4 +36,4 @@ export const browserClientConfiguration: Configuration = {
 	performance: {
 		hints: false
 	}
-}
+} satisfies Configuration
