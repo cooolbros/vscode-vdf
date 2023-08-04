@@ -54,7 +54,7 @@ export function activate(context: ExtensionContext): void {
 			return
 		}
 
-		const serverModule = context.asAbsolutePath(join("dist/desktop/servers", `${languageId}.js`))
+		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
 
 		const serverOptions: ServerOptions = {
 			run: {
