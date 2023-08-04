@@ -21,8 +21,8 @@
     "engines": {
         "vscode": "^1.74.0"
     },
-    "main": "./dist/desktop/extension.js",
-    "browser": "./dist/browser/extension.js",
+    "main": "./apps/extension/desktop/client/dist/extension.js",
+    "browser": "./apps/extension/browser/client/dist/extension.js",
     "contributes": {
         "commands": [
             {
