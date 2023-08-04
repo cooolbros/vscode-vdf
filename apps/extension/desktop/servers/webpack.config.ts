@@ -2,23 +2,20 @@ import { readdirSync } from "fs"
 import { join } from "path"
 import type { Configuration } from "webpack"
 
-export const desktopServersConfiguration: Configuration = {
+export default {
 	mode: "production",
 	target: "node",
 	entry: Object.fromEntries(
 		readdirSync(__dirname, { withFileTypes: true })
-			.filter(i => i.isDirectory())
+			.filter(i => i.isDirectory() && !i.name.startsWith(".") && i.name != "dist")
 			.map((server) => [`${server.name.toLowerCase()}`, join(__dirname, `${server.name}/src/server.ts`)])
 	),
 	output: {
-		path: join(process.cwd(), "dist/desktop/servers"),
+		path: join(__dirname, "dist"),
 		libraryTarget: "commonjs2"
 	},
 	resolve: {
-		extensions: [".js", ".ts"],
-		alias: {
-			"$lib": join(process.cwd(), "extension/lib")
-		}
+		extensions: [".js", ".ts"]
 	},
 	module: {
 		rules: [
@@ -33,4 +30,4 @@ export const desktopServersConfiguration: Configuration = {
 			}
 		]
 	}
-}
+} satisfies Configuration
