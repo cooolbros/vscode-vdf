@@ -40,7 +40,7 @@ export function activate(context: ExtensionContext): void {
 			return
 		}
 
-		const serverModule = Uri.joinPath(context.extensionUri, "dist/browser/servers", `${languageId}.js`).toString(true)
+		const serverModule = Uri.joinPath(context.extensionUri, "apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
 
 		const clientOptions: LanguageClientOptions = {
 			documentSelector: [
