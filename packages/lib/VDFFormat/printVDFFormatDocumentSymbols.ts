@@ -51,7 +51,7 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 
 		for (const documentSymbol of documentSymbols) {
 			if (documentSymbol.key && !Array.isArray(documentSymbol.value)) {
-				longestKeyLength = Math.max(longestKeyLength, documentSymbol.key.length + (!_options.quotes && !documentSymbol.key.length || /\s/.test(documentSymbol.key) ? 2 : 0))
+				longestKeyLength = Math.max(longestKeyLength, documentSymbol.key.length + (!_options.quotes && (!documentSymbol.key.length || /\s/.test(documentSymbol.key)) ? 2 : 0))
 			}
 		}
 
@@ -92,7 +92,7 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 					}
 				}
 				else {
-					str += `${getIndentation(level)}${getToken(documentSymbol.key)}${getWhitespace(longestKeyLength, documentSymbol.key.length + (!_options.quotes && !documentSymbol.key.length || /\s/.test(documentSymbol.key) ? 2 : 0))}${getToken(documentSymbol.value)}`
+					str += `${getIndentation(level)}${getToken(documentSymbol.key)}${getWhitespace(longestKeyLength, documentSymbol.key.length + (!_options.quotes && (!documentSymbol.key.length || /\s/.test(documentSymbol.key)) ? 2 : 0))}${getToken(documentSymbol.value)}`
 					if (documentSymbol.conditional != undefined) {
 						str += ` ${documentSymbol.conditional}`
 					}
