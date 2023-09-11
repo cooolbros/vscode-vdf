@@ -1,5 +1,8 @@
 # Change Log
 
+## [4.2.2]
+ - Fix formatting error (#9)
+
 ## [4.2.0]
  - Fix document symbols error when using snippets
  - Disable autocompletion in VGUI scheme definition files
