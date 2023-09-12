@@ -284,7 +284,8 @@
                     ".vdf"
                 ],
                 "filenames": [
-                    "hudanimations_manifest.txt"
+                    "hudanimations_manifest.txt",
+                    "mod_textures.txt"
                 ],
                 "filenamePatterns": [
                     "chat_*.txt",
