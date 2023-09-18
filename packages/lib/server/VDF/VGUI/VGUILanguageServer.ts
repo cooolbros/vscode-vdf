@@ -120,7 +120,13 @@ export class VGUILanguageServer extends VDFLanguageServer {
 							return true
 						}
 
-						const tfUri = `${this.documentsConfiguration.get(uri).teamFortress2Folder}/tf/${encodeBaseValue(documentSymbol.detail!)}`
+						const configuration = this.documentsConfiguration.get(uri)
+						if (!configuration) {
+							// Document closed
+							return false
+						}
+
+						const tfUri = `${configuration.teamFortress2Folder}/tf/${encodeBaseValue(documentSymbol.detail!)}`
 						if (await this.fileSystem.exists(tfUri)) {
 							return true
 						}
