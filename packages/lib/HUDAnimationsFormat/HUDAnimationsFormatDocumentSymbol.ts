@@ -7,6 +7,7 @@ export interface HUDAnimationsFormatDocumentSymbol {
 
 export interface HUDAnimationsFormatEventDocumentSymbol {
 	name: string
+	conditional?: string
 	comment?: string
 	animations: (Animation | { comment?: string })[]
 }

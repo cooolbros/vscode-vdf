@@ -250,7 +250,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		for (const event of documentSymbols) {
 
 			// Check duplicate events
-			const eventName = event.name.toLowerCase()
+			const eventName = event.eventName.toLowerCase()
 			if (events.has(eventName)) {
 				diagnostics.push({
 					message: "Unreachable code detected.",
@@ -310,7 +310,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		for (const event of documentSymbols) {
 
-			const eventName = event.name.toLowerCase()
+			const eventName = event.eventName.toLowerCase()
 
 			const definitionReference = documentDefinitionReferences.has(eventName)
 				? documentDefinitionReferences.get(eventName)!
@@ -321,7 +321,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				})()
 
 			if (!definitionReference.getDefinitionLocation()) {
-				definitionReference.setDefinitionLocation({ definitionLocation: { uri: uri, range: event.nameRange }, value: null })
+				definitionReference.setDefinitionLocation({ definitionLocation: { uri: uri, range: event.eventNameRange }, value: null })
 			}
 
 			for (const statement of event.children) {
@@ -329,7 +329,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				if (hudRoot && statement.type == HUDAnimationStatementType.Animate || statement.type == HUDAnimationStatementType.RunEventChild) {
 
 					// @ts-ignore
-					const eventFile: string | string[] | undefined = eventFiles[event.name.toLowerCase()]
+					const eventFile: string | string[] | undefined = eventFiles[event.eventName.toLowerCase()]
 					if (eventFile) {
 
 						for (const relativePath of typeof eventFile == "object" ? eventFile : [eventFile]) {
@@ -465,7 +465,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				}
 
 				// @ts-ignore
-				const eventFile: string | string[] | undefined = eventFiles[eventDocumentSymbol.name.toLowerCase()]
+				const eventFile: string | string[] | undefined = eventFiles[eventDocumentSymbol.eventName.toLowerCase()]
 				if (!eventFile) {
 					return []
 				}
@@ -559,7 +559,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			}
 
 			const events = async (text?: string): Promise<CompletionItem[]> => {
-				const events = documentSymbols!.map((documentSymbol) => ({ label: documentSymbol.name, kind: CompletionItemKind.Event }))
+				const events = documentSymbols!.map((documentSymbol) => ({ label: documentSymbol.eventName, kind: CompletionItemKind.Event }))
 				return text
 					? events.filter(startsWithFilter(text))
 					: events
@@ -773,9 +773,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					}
 
 					// @ts-ignore
-					const eventFile: string | string[] | undefined = eventFiles[eventDocumentSymbol.name.toLowerCase()]
+					const eventFile: string | string[] | undefined = eventFiles[eventDocumentSymbol.eventName.toLowerCase()]
 					if (!eventFile) {
-						this.connection.console.log(`No eventFile found for ${eventDocumentSymbol.name}`)
+						this.connection.console.log(`No eventFile found for ${eventDocumentSymbol.eventName}`)
 						return null
 					}
 
@@ -813,10 +813,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				if (documentSymbol.eventRange.contains(params.position)) {
 					const eventName = documentSymbol.event.toLowerCase()
 					for (const event of documentSymbols) {
-						if (event.name.toLowerCase() == eventName) {
+						if (event.eventName.toLowerCase() == eventName) {
 							return {
 								uri: params.textDocument.uri,
-								range: event.nameRange
+								range: event.eventNameRange
 							} satisfies Definition
 						}
 					}
@@ -1050,7 +1050,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		for (const event of documentSymbols) {
 
-			const eventName = event.name.toLowerCase()
+			const eventName = event.eventName.toLowerCase()
 
 			if (eventName in eventFiles) {
 
@@ -1058,7 +1058,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				const eventFile = eventFiles[eventName]
 
 				decorations.push({
-					range: event.nameRange,
+					range: event.conditional?.range ?? event.eventNameRange,
 					renderOptions: {
 						after: {
 							contentText: Array.isArray(eventFile) ? eventFile.join(", ") : eventFile

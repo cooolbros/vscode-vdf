@@ -37,6 +37,16 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 						throw new Error(eventName.type.toString())
 					}
 
+					let conditional: string | undefined
+					const conditionalToken = tokeniser.next(true, true)
+					if (conditionalToken?.type == VDFFormatTokenType.Conditional) {
+						conditional = conditionalToken.value
+						tokeniser.next(false, true)
+					}
+					else {
+						conditional = undefined
+					}
+
 					let comment: string | undefined
 					const nextToken = tokeniser.next(true, false)
 					if (nextToken?.type == VDFFormatTokenType.Comment) {
@@ -49,6 +59,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 
 					documentSymbol.event = {
 						name: eventName.value,
+						conditional: conditional,
 						comment: comment,
 						animations: parseEvent()
 					}

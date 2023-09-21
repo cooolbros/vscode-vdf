@@ -193,6 +193,9 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 		}
 		else if (documentSymbol.event != undefined) {
 			str += `event ${print(documentSymbol.event.name)}`
+			if (documentSymbol.event.conditional != undefined) {
+				str += ` ${documentSymbol.event.conditional}`
+			}
 			if (documentSymbol.event.comment != undefined) {
 				str += `    ${printComment(documentSymbol.event.comment)}`
 			}
