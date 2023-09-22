@@ -223,6 +223,7 @@
             "Slider",
             "TextEntry",
             "TFSectionedListPanel",
+            "URLLabel",
             "VideoPanel"
         ]
     },
