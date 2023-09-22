@@ -320,7 +320,19 @@
             "south-west",
             "south",
             "west"
-        ]
+        ],
+        "fix": {
+            "center-east": "east",
+            "center-west": "west",
+            "centereast": "east",
+            "centerwest": "west",
+            "left": "west",
+            "northeast": "north-east",
+            "northwest": "north-west",
+            "right": "east",
+            "southeast": "south-east",
+            "southwest": "south-west"
+        }
     },
     "use_proportional_insets": {
         "kind": 12,

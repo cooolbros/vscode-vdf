@@ -181,6 +181,25 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${valueData.values.join("' | '")}'`,
 					range: documentSymbol.detailRange!,
 					severity: DiagnosticSeverity.Warning,
+					...((valueData.fix && documentSymbolValue in valueData.fix) && {
+						data: {
+							codeAction: {
+								title: `Change ${documentSymbol.key} to '${valueData.fix[documentSymbolValue]}'`,
+								edit: {
+									changes: {
+										[uri]: [
+											{
+												newText: valueData.fix[documentSymbolValue],
+												range: documentSymbol.detailRange!
+											}
+										]
+									}
+								},
+								isPreferred: true,
+								kind: CodeActionKind.QuickFix
+							}
+						}
+					})
 				}
 
 				diagnostics.push(diagnostic)

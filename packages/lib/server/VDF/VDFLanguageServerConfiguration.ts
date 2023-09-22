@@ -9,7 +9,7 @@ export interface VDFLanguageServerConfiguration {
 	keyHash(key: string): string
 	schema: {
 		keys: { [key: string]: { reference?: string[], values: { label: string, kind: number /* CompletionItemKind */, multiple?: boolean }[] } },
-		values: { [key: string]: { kind: number /* CompletionItemKind */, enumIndex?: boolean, values: string[] } }
+		values: { [key: string]: { kind: number /* CompletionItemKind */, enumIndex?: boolean, values: string[], fix?: { [key: string]: string } } }
 	}
 	completion: {
 		root?: CompletionItem[]
