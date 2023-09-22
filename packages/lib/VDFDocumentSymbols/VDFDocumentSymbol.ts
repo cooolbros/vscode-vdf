@@ -9,12 +9,14 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 
 	/**
 	 * User visible document symbol name e.g. xpos [$WIN32]
+	 * @deprecated Use {@link key}
 	 */
 	public readonly name: string
 
 	/**
-	 * Documentsymbol VDF key e.g. xpos\
-	 * This key does not contain the OS Tag, instead access VDFDocumentSymbol.osTag
+	 * Documentsymbol VDF key e.g. xpos
+	 *
+	 * This key does not contain the conditional, instead access {@link conditional}
 	 */
 	public readonly key: string
 
@@ -29,7 +31,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	public readonly kind: SymbolKind
 
 	/**
-	 * VDF Document Symbol OS Tag e.g. [$WIN32]
+	 * VDF Document Symbol Conditional e.g. [$WIN32]
 	 */
 	public readonly conditional: `[${string}]` | null
 
