@@ -307,7 +307,9 @@
     "scripts": {
         "vscode:prepublish": "npm run build",
         "dev": "turbo run dev",
+        "dev:docs": "turbo run dev --filter=docs",
         "build": "turbo run build",
+        "build:docs": "turbo run build --filter=docs",
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
         "lint": "turbo run lint"
     },
