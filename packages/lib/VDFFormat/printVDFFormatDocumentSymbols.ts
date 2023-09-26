@@ -24,11 +24,11 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 		? (level: number): string => tab.repeat(level)
 		: (level: number): string => space.repeat(level * _options.tabSize)
 
-	const getWhitespace: (longest: number, current: number) => string = _options.tabs == -1
+	const getWhitespace: (longest: number, current: number) => string = _options.tabs == 0
 		? (): string => space
 		: tabIndentation
 			? _options.quotes
-				? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 1 + _options.tabs)
+				? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + _options.tabs)
 				: (longest: number, current: number): string => tab.repeat(Math.floor((longest / 4) - Math.floor(current / 4)) + 1 + _options.tabs)
 			: _options.quotes
 				? (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - ((longest + 2) % 4)) + (_options.tabs * _options.tabSize))
