@@ -1,5 +1,13 @@
 # Change Log
 
+## [4.2.3]
+ - Add support for `mod_textures.txt`
+ - Fix crash related to document links
+ - Add support for conditional events in HUD animations
+ - Add code action for `textAlignment` values
+ - Various fixes
+ - Add key/values
+
 ## [4.2.2]
  - Fix formatting error (#9)
 
