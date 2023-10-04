@@ -1,6 +1,6 @@
 # Change Log
 
-## [4.2.3]
+## [4.3.0]
  - Add support for `mod_textures.txt`
  - Fix crash related to document links
  - Add support for conditional events in HUD animations
