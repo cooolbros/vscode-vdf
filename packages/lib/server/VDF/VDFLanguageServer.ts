@@ -265,8 +265,6 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 					diagnostics.push(diagnostic)
 				}
-
-				return null
 			}
 
 			const diagnostic = await this.validateDocumentSymbol(uri, documentSymbol, objectPath)
