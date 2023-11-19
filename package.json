@@ -145,7 +145,7 @@
                     "vscode-vdf.popfile.format.tabs": {
                         "type": "number",
                         "markdownDescription": "How many tabs to insert between keys and values when formatting. `0` = Insert a single space",
-                        "default": -1
+                        "default": 0
                     },
                     "vscode-vdf.popfile.suggest.enable": {
                         "type": "boolean",
