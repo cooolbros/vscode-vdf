@@ -206,7 +206,11 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			}
 
 			const type = ((): number | null => {
-				const definitionReferenceIndex = this.VDFLanguageServerConfiguration.definitionReferences.findIndex((definitionReferenceConfiguration) => definitionReferenceConfiguration.referenceKeys.has(documentSymbolKey))
+				const definitionReferenceIndex = this.VDFLanguageServerConfiguration.definitionReferences
+					.findIndex((definitionReferenceConfiguration) => {
+						return definitionReferenceConfiguration.referenceKeys.has(documentSymbolKey)
+					})
+
 				if (definitionReferenceIndex > -1) {
 					return definitionReferenceIndex
 				}
