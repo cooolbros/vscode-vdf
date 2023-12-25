@@ -118,6 +118,24 @@
             }
         },
         {
+            "match": "(?i)(StopAnimation)\\s+(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {},
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "variable"
+                },
+                "3": {
+                    "name": "keyword.control"
+                },
+                "4": {
+                    "name": "constant.numeric"
+                }
+            }
+        },
+        {
             "match": "[\\d\\.]+",
             "name": "constant.numeric"
         },

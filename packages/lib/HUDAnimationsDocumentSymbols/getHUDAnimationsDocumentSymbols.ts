@@ -3,7 +3,7 @@ import { VDFPosition } from "lib/VDF/VDFPosition"
 import { VDFRange } from "lib/VDF/VDFRange"
 import { VDFToken, VDFTokenType } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
-import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, HUDAnimationsStatementDocumentSymbol, Interpolator, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetInputEnabledDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol } from "./HUDAnimationsDocumentSymbol"
+import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, HUDAnimationsStatementDocumentSymbol, Interpolator, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetInputEnabledDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol } from "./HUDAnimationsDocumentSymbol"
 import { HUDAnimationsDocumentSymbols, HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
 export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocumentSymbols {
@@ -293,6 +293,18 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				statement = new StopPanelAnimationsDocumentSymbol(
 					{
 						element: readStringValue(),
+						delay: readNumber(),
+						conditional: readConditional(),
+					},
+					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
+				)
+				break
+			}
+			case "stopanimation": {
+				statement = new StopAnimationDocumentSymbol(
+					{
+						element: readStringValue(),
+						property: readStringValue(),
 						delay: readNumber(),
 						conditional: readConditional(),
 					},

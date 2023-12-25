@@ -61,6 +61,9 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 			case HUDAnimationStatementType.StopPanelAnimations: {
 				return ["StopPanelAnimations".length, len(animation.element), len(animation.delay)]
 			}
+			case HUDAnimationStatementType.StopAnimation: {
+				return ["StopAnimation".length, len(animation.element), len(animation.property), len(animation.delay)]
+			}
 		}
 	}
 
@@ -149,6 +152,13 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 			case HUDAnimationStatementType.StopPanelAnimations: {
 				s += `    StopPanelAnimations${space.repeat(maxKeyLengths[i++] - "StopPanelAnimations".length + spaces)}`
 				s += `${print(animation.element)}${space.repeat(maxKeyLengths[i++] - len(animation.element) + spaces)}`
+				s += `${print(animation.delay)}`
+				return s
+			}
+			case HUDAnimationStatementType.StopAnimation: {
+				s += `    StopAnimation${space.repeat(maxKeyLengths[i++] - "StopAnimation".length + spaces)}`
+				s += `${print(animation.element)}${space.repeat(maxKeyLengths[i++] - len(animation.element) + spaces)}`
+				s += `${print(animation.property)}${space.repeat(maxKeyLengths[i++] - len(animation.property) + spaces)}`
 				s += `${print(animation.delay)}`
 				return s
 			}

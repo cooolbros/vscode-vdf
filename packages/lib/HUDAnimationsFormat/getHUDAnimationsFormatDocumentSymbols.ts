@@ -1,6 +1,6 @@
 import { AccelInterpolator, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FlickerInterpolator, GainInterpolator, HUDAnimationStatementType, LinearInterpolator, PulseInterpolator, SplineInterpolator } from "lib/HUDAnimationsDocumentSymbols/HUDAnimationsDocumentSymbol"
 import { VDFFormatToken, VDFFormatTokeniser, VDFFormatTokenType } from "lib/VDFFormat/VDFFormatTokeniser"
-import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatDocumentSymbol, PlaySound, RunEvent, RunEventChild, SetInputEnabled, SetVisible, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatDocumentSymbol"
+import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatDocumentSymbol, PlaySound, RunEvent, RunEventChild, SetInputEnabled, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatDocumentSymbol"
 
 export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimationsFormatDocumentSymbol[] {
 
@@ -238,6 +238,15 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 				statement = <StopPanelAnimations>{
 					type: HUDAnimationStatementType.StopPanelAnimations,
 					element: readStringValue(),
+					delay: readStringValue(),
+				}
+				break
+			}
+			case "stopanimation": {
+				statement = <StopAnimation>{
+					type: HUDAnimationStatementType.StopAnimation,
+					element: readStringValue(),
+					property: readStringValue(),
 					delay: readStringValue(),
 				}
 				break

@@ -36,7 +36,8 @@ export const enum HUDAnimationStatementType {
 	RunEventChild,
 	SetInputEnabled,
 	PlaySound,
-	StopPanelAnimations
+	StopPanelAnimations,
+	StopAnimation
 }
 
 abstract class HUDAnimationsStatementDocumentSymbolBase implements DocumentSymbol {
@@ -266,4 +267,15 @@ export class StopPanelAnimationsDocumentSymbol extends HUDAnimationsStatementDoc
 	}
 }
 
-export type HUDAnimationsStatementDocumentSymbol = AnimateDocumentSymbol | RunEventDocumentSymbol | StopEventDocumentSymbol | SetVisibleDocumentSymbol | FireCommandDocumentSymbol | RunEventChildDocumentSymbol | SetInputEnabledDocumentSymbol | PlaySoundDocumentSymbol | StopPanelAnimationsDocumentSymbol
+export class StopAnimationDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
+	public readonly type = HUDAnimationStatementType.StopAnimation
+	constructor(
+		{ element, property, delay, conditional }: { element: string, property: string, delay: number, conditional?: string },
+		range: VDFRange
+	) {
+		super(`StopAnimation ${element} ${property} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+	}
+
+}
+
+export type HUDAnimationsStatementDocumentSymbol = AnimateDocumentSymbol | RunEventDocumentSymbol | StopEventDocumentSymbol | SetVisibleDocumentSymbol | FireCommandDocumentSymbol | RunEventChildDocumentSymbol | SetInputEnabledDocumentSymbol | PlaySoundDocumentSymbol | StopPanelAnimationsDocumentSymbol | StopAnimationDocumentSymbol

@@ -108,6 +108,13 @@ export interface StopPanelAnimations extends StatementBase {
 	delay: string
 }
 
+export interface StopAnimation extends StatementBase {
+	type: HUDAnimationStatementType.StopAnimation
+	element: string
+	property: string
+	delay: string
+}
+
 type Animations = {
 	"Animate": Animate
 	"RunEvent": RunEvent
@@ -118,6 +125,7 @@ type Animations = {
 	"SetInputEnabled": SetInputEnabled
 	"PlaySound": PlaySound
 	"StopPanelAnimations": StopPanelAnimations
+	"StopAnimation": StopAnimation
 }
 
 export type Animation = Animations[keyof Animations]
