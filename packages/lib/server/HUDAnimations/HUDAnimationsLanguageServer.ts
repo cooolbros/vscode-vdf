@@ -250,8 +250,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		for (const event of documentSymbols) {
 
 			// Check duplicate events
-			const eventName = event.eventName.toLowerCase()
-			if (events.has(eventName)) {
+			const eventKey = JSON.stringify({ event: event.eventName.toLowerCase(), conditional: event.conditional?.value.toLowerCase() })
+			if (events.has(eventKey)) {
 				diagnostics.push({
 					message: "Unreachable code detected.",
 					range: event.range,
@@ -262,7 +262,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				})
 			}
 			else {
-				events.add(eventName)
+				events.add(eventKey)
 			}
 
 			for (const statement of event.children) {
