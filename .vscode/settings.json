@@ -3,6 +3,9 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 4
     },
+    "files.associations": {
+        "*.mdx": "markdown"
+    },
     "files.exclude": {
         "**/.DS_Store": true,
         "**/.git": true,

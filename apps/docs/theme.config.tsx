@@ -1,6 +1,11 @@
 import type { DocsThemeConfig } from "nextra-theme-docs"
 
 export default {
+	head: (
+		<>
+			<link rel="shortcut icon" type="image/png" href="https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png" />
+		</>
+	),
 	docsRepositoryBase: "https://github.com/cooolbros/vscode-vdf/tree/main/apps/docs",
 	footer: {
 		text: (
