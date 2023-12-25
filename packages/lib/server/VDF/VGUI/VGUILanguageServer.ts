@@ -482,9 +482,8 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		if (definitionFile) {
 			this.updateDefinitions(hudScheme, definitionFile)
 		}
-		else {
-			this.updateReferences(hudScheme, e.document.uri, documentSymbols)
-		}
+
+		this.updateReferences(hudScheme, e.document.uri, documentSymbols)
 
 		return result
 	}
