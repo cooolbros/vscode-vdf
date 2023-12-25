@@ -48,10 +48,10 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 					}
 
 					let comment: string | undefined
-					const nextToken = tokeniser.next(true, false)
+					const nextToken = tokeniser.next(true, true)
 					if (nextToken?.type == VDFFormatTokenType.Comment) {
 						comment = nextToken.value
-						tokeniser.next(false, false)
+						tokeniser.next(false, true)
 					}
 					else {
 						comment = undefined
