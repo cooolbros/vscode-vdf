@@ -1,7 +1,7 @@
 // @ts-check
 
-const KEYS = require("../extension/lib/server/VDF/Popfile/keys.json")
-const VALUES = require("../extension/lib/server/VDF/Popfile/values.json")
+const KEYS = require("../packages/lib/server/VDF/Popfile/keys.json")
+const VALUES = require("../packages/lib/server/VDF/Popfile/values.json")
 
 function lower(/** @type {string} */str) {
 	return str.toLowerCase()
