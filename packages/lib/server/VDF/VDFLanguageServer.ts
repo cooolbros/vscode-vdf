@@ -601,7 +601,8 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 						set.add(completionItem)
 					}
 
-					return set.items
+					const name = posix.basename(params.textDocument.uri)
+					return set.items.filter((item) => item.label != name)
 				}
 
 				if (key in this.VDFLanguageServerConfiguration.schema.values) {
