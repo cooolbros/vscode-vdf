@@ -91,9 +91,9 @@ export class VPK {
 					i += 4
 
 					// Terminator
-					const terminator = buffer.readUInt8(i)
-					if (terminator != 255) {
-						throw new Error(`Unexpected terminator! Expected 255, got ${terminator}`)
+					const terminator = buffer.readUint16LE(i)
+					if (terminator != 65535) {
+						throw new Error(`Unexpected terminator! Expected 65535, got ${terminator}`)
 					}
 					i += 2
 
