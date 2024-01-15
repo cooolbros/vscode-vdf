@@ -144,8 +144,8 @@
                     },
                     "vscode-vdf.popfile.format.tabs": {
                         "type": "number",
-                        "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
-                        "default": -1
+                        "markdownDescription": "How many tabs to insert between keys and values when formatting. `0` = Insert a single space",
+                        "default": 0
                     },
                     "vscode-vdf.popfile.suggest.enable": {
                         "type": "boolean",
@@ -169,7 +169,7 @@
                     },
                     "vscode-vdf.vmt.format.tabs": {
                         "type": "number",
-                        "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+                        "markdownDescription": "How many tabs to insert between keys and values when formatting. `0` = Insert a single space",
                         "default": 1
                     },
                     "vscode-vdf.vmt.suggest.enable": {
@@ -194,7 +194,7 @@
                     },
                     "vscode-vdf.vdf.format.tabs": {
                         "type": "number",
-                        "markdownDescription": "How many tabs to insert betweens keys and values when formatting. `-1` = Insert a single space",
+                        "markdownDescription": "How many tabs to insert between keys and values when formatting. `0` = Insert a single space",
                         "default": 1
                     },
                     "vscode-vdf.vdf.suggest.enable": {
