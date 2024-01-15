@@ -24,7 +24,7 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 		? (level: number): string => tab.repeat(level)
 		: (level: number): string => space.repeat(level * _options.tabSize)
 
-	const getWhitespace: (longest: number, current: number) => string = _options.tabs == 0
+	const getWhitespace: (longest: number, current: number) => string = _options.tabs == -1
 		? (): string => space
 		: tabIndentation
 			? _options.quotes
