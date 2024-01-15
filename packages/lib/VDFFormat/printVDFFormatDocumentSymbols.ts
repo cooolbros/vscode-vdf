@@ -31,11 +31,11 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 				case "true-true":
 					return (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + _options.tabs)
 				case "true-false":
-					return (longest: number, current: number): string => tab.repeat(Math.floor((longest / 4) - Math.floor(current / 4)) + 1 + _options.tabs)
+					return (longest: number, current: number): string => tab.repeat(Math.floor((longest / 4) - Math.floor(current / 4)) + _options.tabs)
 				case "false-true":
-					return (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - ((longest + 2) % 4)) + (_options.tabs * _options.tabSize))
+					return (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (0 - ((longest + 2) % 4)) + (_options.tabs * _options.tabSize))
 				case "false-false":
-					return (longest: number, current: number): string => space.repeat(longest - current + (4 - (longest % 4)) + (_options.tabs * _options.tabSize))
+					return (longest: number, current: number): string => space.repeat(longest - current + (0 - (longest % 4)) + (_options.tabs * _options.tabSize))
 			}
 		})()
 
