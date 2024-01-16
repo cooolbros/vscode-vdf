@@ -15,6 +15,8 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 		tabSize: options?.tabSize ?? 4,
 	}
 
+	console.log(_options)
+
 	const tab = "\t"
 	const space = " "
 	const eol = _options.newLine == VDFNewLine.CRLF ? "\r\n" : "\n"
@@ -27,15 +29,23 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 	const getWhitespace: (longest: number, current: number) => string = _options.tabs == -1
 		? (): string => space
 		: ((): (longest: number, current: number) => string => {
-			switch (<const>`${tabIndentation}-${_options.quotes}`) {
-				case "true-true":
-					return (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + _options.tabs)
-				case "true-false":
-					return (longest: number, current: number): string => tab.repeat(Math.floor((longest / 4) - Math.floor(current / 4)) + _options.tabs)
-				case "false-true":
-					return (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (0 - ((longest + 2) % 4)) + (_options.tabs * _options.tabSize))
-				case "false-false":
-					return (longest: number, current: number): string => space.repeat(longest - current + (0 - (longest % 4)) + (_options.tabs * _options.tabSize))
+			const quotesLength = Number(_options.quotes) * 2
+			switch (tabIndentation) {
+				case true:
+					return (longest: number, current: number): string => tab.repeat(
+						0
+						/* Floor the character length difference between the longest and current to get the tabs required */ + Math.floor(((longest + quotesLength) / 4) - Math.floor((current + quotesLength) / 4))
+						/* Add another tab to account for keys that are already a multiple of the tab size (such as "blue_active_xpos_minmode" for tab size 4), and prevent syntax error */ + 1
+						/* Add the configured tabs */ + _options.tabs
+					)
+				case false:
+					return (longest: number, current: number): string => space.repeat(
+						0
+						/* Round the longest key length up to the nearest multiple of the tab size (e.g. 4) */ + (Math.ceil((longest + quotesLength) / _options.tabSize) * _options.tabSize)
+						/* Add another tab to account for keys that are already a multiple of the tab size (such as "blue_active_xpos_minmode" for tab size 4), and prevent syntax error */ + _options.tabSize
+						/* Subtract the current key length */ - (current + quotesLength)
+						/* Add the configured tabs */ + (_options.tabs * _options.tabSize)
+					)
 			}
 		})()
 
