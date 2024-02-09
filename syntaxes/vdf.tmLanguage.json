@@ -14,16 +14,16 @@
             }
         },
         {
-            "name": "comment",
-            "match": "//.*$"
+            "match": "//.*$",
+            "name": "comment"
         },
         {
-            "name": "constant.character",
-            "match": "\\[.*\\]"
+            "match": "\\[.*\\]",
+            "name": "constant.character"
         },
         {
-            "name": "variable",
             "match": "(\".*?\"|\\w+)\\s+(\".*?\"|\\w+)",
+            "name": "variable",
             "captures": {
                 "1": {
                     "name": "variable"
@@ -34,8 +34,8 @@
             }
         },
         {
-            "name": "variable",
-            "match": "(\".*?\"|\\b\\w+\\b)"
+            "match": "(\".*?\"|\\b\\w+\\b)",
+            "name": "variable"
         }
     ],
     "repository": {},
