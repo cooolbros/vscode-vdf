@@ -4,7 +4,7 @@ import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymb
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { basename, relative, sep } from "path"
-import { Position, TextEditor, Uri, window } from "vscode"
+import { env, Position, TextEditor, Uri, window } from "vscode"
 
 export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
@@ -49,7 +49,7 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 			return null
 		}
 
-		return iterateDocumentSymbols(documentSymbols)
+		return iterateDocumentSymbols(documentSymbols.find((documentSymbol) => documentSymbol.key != "#base")?.children ?? documentSymbols)
 	}
 
 	const documentSymbolResult = findDocumentSymbolPath(
@@ -68,6 +68,7 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
 		const result = `${filePath.split(sep).join("/")} ${documentSymbolsPath.join(" > ")}`
 
+		await env.clipboard.writeText(result)
 		window.showInputBox({ value: result })
 	}
 	else {
