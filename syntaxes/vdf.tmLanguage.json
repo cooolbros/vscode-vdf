@@ -22,19 +22,25 @@
             "name": "constant.character"
         },
         {
-            "match": "(\".*?\"|\\w+)\\s+(\".*?\"|\\w+)",
+            "match": "(\".*?\"|\\w+)\\s+(\".*\"|\\w+)",
             "name": "variable",
             "captures": {
                 "1": {
                     "name": "variable"
                 },
                 "2": {
-                    "name": "string.quoted.double"
+                    "name": "string.quoted.double",
+                    "patterns": [
+                        {
+                            "match": "\\\\[\"\\\\/bfnrt]",
+                            "name": "constant.character.escape"
+                        }
+                    ]
                 }
             }
         },
         {
-            "match": "(\".*?\"|\\b\\w+\\b)",
+            "match": "(\".*\"|\\b\\w+\\b)",
             "name": "variable"
         }
     ],
