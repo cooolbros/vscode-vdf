@@ -129,9 +129,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 				if (baseUri == uri) {
 					diagnostics.push({
-						message: "#base file references itself.",
 						range: documentSymbol.detailRange!,
-						severity: DiagnosticSeverity.Warning
+						severity: DiagnosticSeverity.Warning,
+						code: "base-self-reference",
+						message: "#base file references itself.",
 					})
 
 					return
@@ -139,9 +140,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 				if (detail != newPath) {
 					diagnostics.push({
-						message: "Unnecessary relative file path.",
 						range: documentSymbol.detailRange!,
 						severity: DiagnosticSeverity.Warning,
+						code: "useless-path",
+						message: "Unnecessary relative file path.",
 						data: {
 							codeAction: {
 								title: "Normalize file path.",
@@ -178,9 +180,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				}
 
 				const diagnostic: Diagnostic & { data?: { codeAction: CodeAction } } = {
-					message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${valueData.values.join("' | '")}'`,
 					range: documentSymbol.detailRange!,
 					severity: DiagnosticSeverity.Warning,
+					code: "invalid-value",
+					message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${valueData.values.join("' | '")}'`,
 					...((valueData.fix && documentSymbolValue in valueData.fix) && {
 						data: {
 							codeAction: {
@@ -226,9 +229,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				if (!definitionLocation) {
 
 					const diagnostic: Diagnostic & { data?: { codeAction: CodeAction } } = {
-						message: `Cannot find ${this.VDFLanguageServerConfiguration.definitionReferences[type].name} '${documentSymbol.detail}'.`,
 						range: documentSymbol.detailRange!,
 						severity: DiagnosticSeverity.Warning,
+						code: "missing-reference",
+						message: `Cannot find ${this.VDFLanguageServerConfiguration.definitionReferences[type].name} '${documentSymbol.detail}'.`,
 					}
 
 					const definitionKeys: string[] = []

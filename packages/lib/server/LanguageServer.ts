@@ -164,10 +164,10 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 					range: diagnostics.range,
 					severity: DiagnosticSeverity.Error,
 					code: diagnostics.constructor.name,
-					source: "VDF",
+					source: this.languageId,
 					message: diagnostics.message
 				}
-			] : diagnostics
+			] : diagnostics.map((diagnostic) => ({ ...diagnostic, source: this.languageId }))
 		})
 	}
 

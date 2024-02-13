@@ -533,9 +533,10 @@ export class VGUILanguageServer extends VDFLanguageServer {
 
 			if (detail != newPath) {
 				return {
-					message: "Unnecessary relative file path.",
 					range: documentSymbol.detailRange!,
 					severity: DiagnosticSeverity.Warning,
+					code: "useless-path",
+					message: "Unnecessary relative file path.",
 					data: {
 						codeAction: {
 							title: "Normalize file path.",
@@ -561,9 +562,10 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			const elementName = objectPath.at(-1)
 			if (elementName && documentSymbol.detail!.toLowerCase() == elementName.toLowerCase()) {
 				return {
-					message: `Element '${elementName}' is pinned to itself.`,
 					range: documentSymbol.detailRange!,
 					severity: DiagnosticSeverity.Warning,
+					code: "pin-self-reference",
+					message: `Element '${elementName}' is pinned to itself.`,
 				}
 			}
 		}

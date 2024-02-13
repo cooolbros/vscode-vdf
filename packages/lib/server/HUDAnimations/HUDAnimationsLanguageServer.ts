@@ -253,9 +253,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			const eventKey = JSON.stringify({ event: event.eventName.toLowerCase(), conditional: event.conditional?.value.toLowerCase() })
 			if (events.has(eventKey)) {
 				diagnostics.push({
-					message: "Unreachable code detected.",
 					range: event.range,
 					severity: DiagnosticSeverity.Hint,
+					code: "duplicate-event",
+					message: "Unreachable code detected.",
 					tags: [
 						DiagnosticTag.Unnecessary
 					]
@@ -272,9 +273,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 						const referencedEventName = statement.event.toLowerCase()
 						if (!documentDefinitionReferences.has(referencedEventName)) {
 							diagnostics.push({
-								message: `Cannot find event '${statement.event}'.`,
 								range: statement.eventRange,
 								severity: DiagnosticSeverity.Warning,
+								code: "missing-reference",
+								message: `Cannot find event '${statement.event}'.`,
 							})
 						}
 						break
