@@ -275,7 +275,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 							diagnostics.push({
 								range: statement.eventRange,
 								severity: DiagnosticSeverity.Warning,
-								code: "missing-reference",
+								code: "invalid-reference",
 								message: `Cannot find event '${statement.event}'.`,
 							})
 						}

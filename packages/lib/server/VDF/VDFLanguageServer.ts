@@ -202,7 +202,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					diagnostics.push({
 						range: documentSymbol.detailRange!,
 						severity: DiagnosticSeverity.Warning,
-						code: "missing-reference",
+						code: "invalid-reference",
 						message: `Cannot find ${this.VDFLanguageServerConfiguration.definitionReferences[type].name} '${documentSymbol.detail}'.`,
 						data: {
 							documentSymbol: documentSymbol,
@@ -678,7 +678,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					})
 					break
 				}
-				case "missing-reference": {
+				case "invalid-reference": {
 					if (type == undefined) {
 						break
 					}
