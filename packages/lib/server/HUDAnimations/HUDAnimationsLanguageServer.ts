@@ -12,7 +12,7 @@ import type { VDFToken } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
-import { CodeLens, CodeLensParams, CompletionItem, CompletionItemKind, CompletionParams, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbolRequest, Location, PrepareRenameParams, Range, ReferenceParams, RenameParams, ServerCapabilities, TextDocumentChangeEvent, TextDocumentIdentifier, TextEdit, WorkspaceEdit } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeActionParams, CodeLens, CodeLensParams, Command, CompletionItem, CompletionItemKind, CompletionParams, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentFormattingParams, DocumentLink, DocumentLinkParams, DocumentSymbolRequest, Location, PrepareRenameParams, Range, ReferenceParams, RenameParams, ServerCapabilities, TextDocumentChangeEvent, TextDocumentIdentifier, TextEdit, WorkspaceEdit } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { LanguageServer } from "../LanguageServer"
@@ -102,6 +102,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.connection.onDefinition(this.onDefinition.bind(this))
 		this.connection.onReferences(this.onReferences.bind(this))
 		this.connection.onReferences(this.onReferences.bind(this))
+		this.connection.onCodeAction(this.onCodeAction.bind(this))
 		this.connection.onCodeLens(this.onCodeLens.bind(this))
 		this.connection.onDocumentLinks(this.onDocumentLinks.bind(this))
 		this.connection.onDocumentLinkResolve(this.onDocumentLinkResolve.bind(this))
@@ -124,6 +125,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			},
 			definitionProvider: true,
 			referencesProvider: true,
+			codeActionProvider: true,
 			codeLensProvider: {
 				resolveProvider: false
 			},
@@ -259,7 +261,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					message: "Unreachable code detected.",
 					tags: [
 						DiagnosticTag.Unnecessary
-					]
+					],
+					data: {
+						documentSymbol: event
+					}
 				})
 			}
 			else {
@@ -852,6 +857,53 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		}
 
 		return [...definitionReferenceInfo.getReferences()]
+	}
+
+	protected onCodeAction(params: CodeActionParams): (Command | CodeAction)[] {
+
+		const diagnosticDataSchema = z.object({
+			documentSymbol: z.any().transform((arg) => <VDFDocumentSymbol>arg),
+		})
+
+		const uri = params.textDocument.uri
+
+		const codeActions: (Command | CodeAction)[] = []
+
+		for (const diagnostic of params.context.diagnostics) {
+
+			const result = diagnosticDataSchema.safeParse(diagnostic.data)
+			if (!result.success) {
+				// No possible code actions
+				this.connection.console.log(`No possible code actions for ${JSON.stringify(diagnostic)}`)
+				continue
+			}
+
+			const { documentSymbol } = result.data
+
+			switch (diagnostic.code) {
+				case "duplicate-event": {
+					codeActions.push({
+						title: "Remove duplicate event",
+						kind: CodeActionKind.QuickFix,
+						diagnostics: [diagnostic],
+						isPreferred: true,
+						edit: {
+							changes: {
+								[uri]: [
+									{
+										range: documentSymbol.range,
+										newText: "",
+									}
+								]
+							}
+						}
+					})
+					break
+				}
+			}
+		}
+
+		return codeActions
 	}
 
 	protected onCodeLens(params: CodeLensParams): CodeLens[] | null {
