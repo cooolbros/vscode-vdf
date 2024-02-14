@@ -10,7 +10,7 @@ import { VDFRange } from "lib/VDF/VDFRange"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { posix } from "path"
-import { CodeActionKind, CodeLens, CodeLensParams, Color, CompletionItem, CompletionItemKind, CompletionParams, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentLink, Location, PrepareRenameParams, Range, ReferenceParams, TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeLens, CodeLensParams, Color, CompletionItem, CompletionItemKind, CompletionParams, Connection, Definition, DefinitionParams, Diagnostic, DiagnosticSeverity, DocumentLink, Location, PrepareRenameParams, Range, ReferenceParams, TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -538,21 +538,8 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					code: "useless-path",
 					message: "Unnecessary relative file path.",
 					data: {
-						codeAction: {
-							title: "Normalize file path.",
-							edit: {
-								changes: {
-									[uri]: [
-										{
-											newText: newPath, // This is lower case
-											range: documentSymbol.detailRange!
-										}
-									]
-								}
-							},
-							isPreferred: true,
-							kind: CodeActionKind.QuickFix
-						}
+						documentSymbol: documentSymbol,
+						newText: newPath
 					}
 				}
 			}

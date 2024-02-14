@@ -107,10 +107,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		this.documentsColours.delete(e.document.uri)
 	}
 
-	protected async validateTextDocument(uri: string, documentSymbols: VDFDocumentSymbols): Promise<(Diagnostic & { data?: { codeAction: CodeAction } })[]> {
+	protected async validateTextDocument(uri: string, documentSymbols: VDFDocumentSymbols): Promise<Diagnostic[]> {
 
 		const definitionReferences = await this.onDefinitionReferences(uri)
-		const diagnostics: (Diagnostic & { data?: { codeAction: CodeAction } })[] = []
+		const diagnostics: Diagnostic[] = []
 
 		documentSymbols.forAll(async (documentSymbol, objectPath) => {
 
@@ -145,21 +145,8 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 						code: "useless-path",
 						message: "Unnecessary relative file path.",
 						data: {
-							codeAction: {
-								title: "Normalize file path.",
-								edit: {
-									changes: {
-										[uri]: [
-											{
-												newText: newPath, // This is lower case
-												range: documentSymbol.detailRange!
-											}
-										]
-									}
-								},
-								isPreferred: true,
-								kind: CodeActionKind.QuickFix
-							}
+							documentSymbol: documentSymbol,
+							newText: newPath
 						}
 					})
 				}
@@ -179,30 +166,15 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					}
 				}
 
-				const diagnostic: Diagnostic & { data?: { codeAction: CodeAction } } = {
+				const diagnostic: Diagnostic = {
 					range: documentSymbol.detailRange!,
 					severity: DiagnosticSeverity.Warning,
 					code: "invalid-value",
 					message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${valueData.values.join("' | '")}'`,
-					...((valueData.fix && documentSymbolValue in valueData.fix) && {
-						data: {
-							codeAction: {
-								title: `Change ${documentSymbol.key} to '${valueData.fix[documentSymbolValue]}'`,
-								edit: {
-									changes: {
-										[uri]: [
-											{
-												newText: valueData.fix[documentSymbolValue],
-												range: documentSymbol.detailRange!
-											}
-										]
-									}
-								},
-								isPreferred: true,
-								kind: CodeActionKind.QuickFix
-							}
-						}
-					})
+					data: {
+						documentSymbol: documentSymbol,
+						newText: valueData.fix?.[documentSymbolValue],
+					}
 				}
 
 				diagnostics.push(diagnostic)
@@ -227,51 +199,16 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				const definitionLocation = definitionReferences.get([type, documentSymbol.detail!]).getDefinitionLocation()
 
 				if (!definitionLocation) {
-
-					const diagnostic: Diagnostic & { data?: { codeAction: CodeAction } } = {
+					diagnostics.push({
 						range: documentSymbol.detailRange!,
 						severity: DiagnosticSeverity.Warning,
 						code: "missing-reference",
 						message: `Cannot find ${this.VDFLanguageServerConfiguration.definitionReferences[type].name} '${documentSymbol.detail}'.`,
-					}
-
-					const definitionKeys: string[] = []
-
-					for (const definitionReference of definitionReferences.ofType(type).values()) {
-						if (definitionReference.getDefinitionLocation() != undefined) {
-							definitionKeys.push(definitionReference.key)
+						data: {
+							documentSymbol: documentSymbol,
+							type: type
 						}
-					}
-
-					if (definitionKeys.length) {
-
-						const match = findBestMatch(
-							documentSymbol.detail!,
-							definitionKeys
-						)
-
-						const suggestedValue = definitionReferences.get([type, match.bestMatch.target]).key
-
-						diagnostic.data = {
-							codeAction: {
-								title: `Change ${documentSymbol.key} to '${suggestedValue}'`,
-								edit: {
-									changes: {
-										[uri]: [
-											{
-												newText: suggestedValue,
-												range: documentSymbol.detailRange!
-											}
-										]
-									}
-								},
-								isPreferred: true,
-								kind: CodeActionKind.QuickFix
-							}
-						}
-					}
-
-					diagnostics.push(diagnostic)
+					})
 				}
 			}
 
@@ -696,9 +633,124 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 	}
 
 	protected onCodeAction(params: CodeActionParams): (Command | CodeAction)[] {
-		return params.context.diagnostics
-			.filter(diagnostic => diagnostic.data?.codeAction != undefined)
-			.map(diagnostic => diagnostic.data.codeAction)
+
+		const diagnosticDataSchema = z.object({
+			documentSymbol: z.any().transform((arg) => <VDFDocumentSymbol>arg),
+			newText: z.string().optional(),
+			type: z.number().optional(),
+		})
+
+		const uri = params.textDocument.uri
+
+		const codeActions: (Command | CodeAction)[] = []
+
+		for (const diagnostic of params.context.diagnostics) {
+
+			const result = diagnosticDataSchema.safeParse(diagnostic.data)
+			if (!result.success) {
+				// No possible code actions
+				this.connection.console.log(`No possible code actions for ${JSON.stringify(diagnostic)}`)
+				continue
+			}
+
+			const { documentSymbol, newText, type } = result.data
+
+			switch (diagnostic.code) {
+				case "invalid-value": {
+					if (newText == undefined) {
+						break
+					}
+					codeActions.push({
+						title: `Change ${documentSymbol.key} to '${newText}'`,
+						kind: CodeActionKind.QuickFix,
+						diagnostics: [diagnostic],
+						isPreferred: true,
+						edit: {
+							changes: {
+								[uri]: [
+									{
+										range: documentSymbol.detailRange!,
+										newText: newText,
+									}
+								]
+							}
+						}
+					})
+					break
+				}
+				case "missing-reference": {
+					if (type == undefined) {
+						break
+					}
+
+					const definitionReferences = this.documentsDefinitionReferences.get(params.textDocument.uri)
+					if (!definitionReferences) {
+						break
+					}
+
+					const definitionKeys: string[] = []
+					for (const definitionReference of definitionReferences.ofType(type).values()) {
+						if (definitionReference.getDefinitionLocation() != undefined) {
+							definitionKeys.push(definitionReference.key)
+						}
+					}
+
+					if (!definitionKeys.length) {
+						break
+					}
+
+					const match = findBestMatch(
+						documentSymbol.detail!,
+						definitionKeys
+					)
+
+					const suggestedValue = definitionReferences.get([type, match.bestMatch.target]).key
+
+					codeActions.push({
+						title: `Change ${documentSymbol.key} to '${suggestedValue}'`,
+						kind: CodeActionKind.QuickFix,
+						diagnostics: [diagnostic],
+						isPreferred: true,
+						edit: {
+							changes: {
+								[uri]: [
+									{
+										range: documentSymbol.detailRange!,
+										newText: suggestedValue,
+									}
+								]
+							}
+						},
+					})
+
+					break
+				}
+				case "useless-path": {
+					if (newText == undefined) {
+						break
+					}
+					codeActions.push({
+						title: "Normalize file path",
+						kind: CodeActionKind.QuickFix,
+						diagnostics: [diagnostic],
+						isPreferred: true,
+						edit: {
+							changes: {
+								[uri]: [
+									{
+										range: documentSymbol.detailRange!,
+										newText: newText,
+									}
+								]
+							}
+						}
+					})
+					break
+				}
+			}
+		}
+
+		return codeActions
 	}
 
 	protected onCodeLens(params: CodeLensParams): CodeLens[] | null {
