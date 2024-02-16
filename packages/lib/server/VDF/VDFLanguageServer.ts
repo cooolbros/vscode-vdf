@@ -166,7 +166,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 					}
 				}
 
-				const diagnostic: Diagnostic = {
+				diagnostics.push({
 					range: documentSymbol.detailRange!,
 					severity: DiagnosticSeverity.Warning,
 					code: "invalid-value",
@@ -175,9 +175,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 						documentSymbol: documentSymbol,
 						newText: valueData.fix?.[documentSymbolValue],
 					}
-				}
-
-				diagnostics.push(diagnostic)
+				})
 			}
 
 			const type = ((): number | null => {
@@ -1069,7 +1067,6 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 		return { changes }
 	}
-
 
 	private async onDocumentSymbolKeys(params: unknown): Promise<string[] | null> {
 

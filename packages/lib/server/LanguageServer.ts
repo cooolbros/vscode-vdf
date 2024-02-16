@@ -63,14 +63,14 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
 		this.documentsConfiguration.add(e.document.uri)
 
-		let documentSymbols
+		let documentSymbols: T
 		let diagnostics: VDFSyntaxError | Diagnostic[] = []
 		try {
 			documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.getText())
 			this.documentsSymbols.set(e.document.uri, documentSymbols)
 			diagnostics = await this.validateTextDocument(e.document.uri, documentSymbols)
 		}
-		catch (error: any) {
+		catch (error: unknown) {
 			documentSymbols = this.languageServerConfiguration.defaultDocumentSymbols()
 			this.documentsSymbols.set(e.document.uri, documentSymbols)
 			if (error instanceof VDFSyntaxError) {
