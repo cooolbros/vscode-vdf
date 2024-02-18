@@ -19,7 +19,7 @@
         "url": "https://github.com/cooolbros/vscode-vdf"
     },
     "engines": {
-        "vscode": "^1.74.0"
+        "vscode": "^1.86.2"
     },
     "main": "./apps/extension/desktop/client/dist/extension.js",
     "browser": "./apps/extension/browser/client/dist/extension.js",
