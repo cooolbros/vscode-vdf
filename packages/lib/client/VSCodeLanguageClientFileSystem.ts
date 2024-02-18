@@ -1,5 +1,5 @@
 import type { VSCodeVDFFileSystem } from "lib/types/VSCodeVDFFileSystem"
-import { FileStat, FileType, Uri, workspace } from "vscode"
+import { FileType, Uri, workspace, type FileStat } from "vscode"
 
 export class VSCodeLanguageClientFileSystem implements VSCodeVDFFileSystem {
 

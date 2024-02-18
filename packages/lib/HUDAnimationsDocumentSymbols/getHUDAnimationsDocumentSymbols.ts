@@ -1,9 +1,9 @@
 import { EndOfStreamError, UnexpectedCharacterError, UnexpectedTokenError } from "lib/VDF/VDFErrors"
 import { VDFPosition } from "lib/VDF/VDFPosition"
 import { VDFRange } from "lib/VDF/VDFRange"
-import { VDFToken, VDFTokenType } from "lib/VDF/VDFToken"
+import { VDFTokenType, type VDFToken } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
-import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, HUDAnimationsStatementDocumentSymbol, Interpolator, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetInputEnabledDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol } from "./HUDAnimationsDocumentSymbol"
+import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetInputEnabledDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
 import { HUDAnimationsDocumentSymbols, HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
 export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocumentSymbols {

@@ -1,7 +1,7 @@
 import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedCharacterError } from "./VDFErrors"
 import { VDFPosition } from "./VDFPosition"
 import { VDFRange } from "./VDFRange"
-import { VDFToken, VDFTokenType } from "./VDFToken"
+import { VDFTokenType, type VDFToken } from "./VDFToken"
 import type { VDFTokeniserOptions } from "./VDFTokeniserOptions"
 
 export class VDFTokeniser {

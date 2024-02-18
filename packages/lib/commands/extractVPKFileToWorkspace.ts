@@ -1,5 +1,5 @@
 import { join } from "path"
-import { TextEditor, Uri, window, workspace, WorkspaceFolder } from "vscode"
+import { Uri, window, workspace, type TextEditor, type WorkspaceFolder } from "vscode"
 
 export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<void> {
 

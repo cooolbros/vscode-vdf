@@ -1,4 +1,4 @@
-import { commands, Location, Position, Range, TextEditor, TextEditorEdit, Uri } from "vscode"
+import { Location, Position, Range, Uri, commands, type TextEditor, type TextEditorEdit } from "vscode"
 
 export async function showReferences(editor: TextEditor, edit: TextEditorEdit, ...params: any[]): Promise<void> {
 

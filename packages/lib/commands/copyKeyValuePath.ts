@@ -4,7 +4,7 @@ import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymb
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { basename, relative, sep } from "path"
-import { env, Position, TextEditor, Uri, window } from "vscode"
+import { env, Position, Uri, window, type TextEditor } from "vscode"
 
 export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 

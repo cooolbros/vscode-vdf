@@ -1,7 +1,7 @@
 import type { DocumentLinkData } from "lib/types/DocumentLinkData"
 import { decimalToHexadecimal, hexadecimalToDecimal, hexadecimalToRgb, rgbToHexadecimal } from "lib/utils/colours"
 import { posix } from "path"
-import { Color, CompletionItem, CompletionItemKind, Connection, Diagnostic, DocumentLink } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection } from "vscode-languageserver"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"

@@ -1,4 +1,4 @@
-import { DecorationInstanceRenderOptions, DecorationOptions, Disposable, Position, Range, window } from "vscode"
+import { Disposable, Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 
 const hudAnimationsEventDecorationType = window.createTextEditorDecorationType({

@@ -1,11 +1,11 @@
+import { existsSync, readFileSync } from "fs"
 import { VDFPosition } from "lib/VDF/VDFPosition"
-import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymbols"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
-import { existsSync, readFileSync } from "fs"
+import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymbols"
 import path, { dirname } from "path"
 import { fileURLToPath } from "url"
-import { EndOfLine, Position, TextEditor, TextEditorEdit, Uri } from "vscode"
+import { EndOfLine, Position, Uri, type TextEditor, type TextEditorEdit } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
 
 

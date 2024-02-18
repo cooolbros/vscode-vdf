@@ -1,4 +1,4 @@
-import { Disposable, Event, EventEmitter, FileChangeEvent, FileStat, FileSystemError, FileSystemProvider, FileType, Uri } from "vscode"
+import { Disposable, EventEmitter, FileSystemError, FileType, Uri, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider } from "vscode"
 import { z } from "zod"
 import type { VPK } from "./VPK"
 import type { VPKManager } from "./VPKManager"

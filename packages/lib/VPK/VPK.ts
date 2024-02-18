@@ -1,6 +1,6 @@
 import { open } from "fs/promises"
 import { basename, dirname } from "path"
-import { FilePermission, FileStat, FileSystemError, FileType, Uri } from "vscode"
+import { FilePermission, FileSystemError, FileType, Uri, type FileStat } from "vscode"
 
 type VPKTree = Map<string, VPKEntry>
 type VPKEntry = VPKTree | VPKFile

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from "fs"
 import { writeFile } from "fs/promises"
 import { dirname, join } from "path"
-import { CancellationToken, commands, CustomDocumentBackup, CustomDocumentBackupContext, CustomDocumentEditEvent, CustomDocumentOpenContext, CustomEditorProvider, Disposable, Event, EventEmitter, ExtensionContext, Uri, WebviewPanel, WebviewPanelOnDidChangeViewStateEvent, window, workspace } from "vscode"
+import { Disposable, EventEmitter, Uri, commands, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type ExtensionContext, type WebviewPanel, type WebviewPanelOnDidChangeViewStateEvent } from "vscode"
 import type { VTFBackup } from "./VTF"
 import { VTFDocument } from "./VTFDocument"
 

@@ -1,11 +1,11 @@
 import { exec } from "child_process"
-import { existsSync, FSWatcher, rmSync, watch } from "fs"
+import { existsSync, rmSync, watch, type FSWatcher } from "fs"
 import { mkdir, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { basename, join } from "path"
 import { promisify } from "util"
-import { CustomDocument, EventEmitter, StatusBarAlignment, StatusBarItem, Uri, window, workspace } from "vscode"
-import { VTF, VTFBackup } from "./VTF"
+import { EventEmitter, StatusBarAlignment, Uri, window, workspace, type CustomDocument, type StatusBarItem } from "vscode"
+import { VTF, type VTFBackup } from "./VTF"
 
 export interface VTFPropertyChangeEvent {
 	scale?: number

@@ -7,8 +7,8 @@ import { showReferences } from "lib/commands/showReferences"
 import { VDFToJSON } from "lib/commands/VDFToJSON"
 import { languageClientsInfo } from "lib/languageClientsInfo"
 import { VSCodeVDFLanguageIDSchema } from "lib/types/VSCodeVDFLanguageID"
-import { commands, ExtensionContext, TextDocument, Uri, window, workspace } from "vscode"
-import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/browser"
+import { commands, Uri, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
 const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: LanguageClient } = {}
 
