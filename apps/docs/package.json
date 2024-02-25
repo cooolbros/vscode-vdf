@@ -6,6 +6,7 @@
         "lint": "next lint"
     },
     "devDependencies": {
+        "@napi-rs/simple-git-linux-x64-gnu": "^0.1.16",
         "@types/react": "^18.2.22",
         "autoprefixer": "^10.4.16",
         "next": "^13.5.2",
