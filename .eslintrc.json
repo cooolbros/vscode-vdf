@@ -57,7 +57,7 @@
         "@typescript-eslint/no-non-null-assertion": [
             "off"
         ],
-        "@typescript-eslint/no-parameter-properties": [
+        "@typescript-eslint/parameter-properties": [
             "error"
         ],
         "@typescript-eslint/promise-function-async": [
