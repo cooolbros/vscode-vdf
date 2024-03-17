@@ -155,14 +155,14 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		switch (type.toLowerCase()) {
 			case "animate": {
 				const elementToken = readString()
-				const property = readString()
+				const propertyToken = readString()
 				const valueToken = readString()
 				statement = new AnimateDocumentSymbol(
 					{
 						element: elementToken.value,
 						elementRange: elementToken.range,
-						property: property.value,
-						propertyRange: property.range,
+						property: propertyToken.value,
+						propertyRange: propertyToken.range,
 						value: valueToken.value,
 						valueRange: valueToken.range,
 						interpolator: ((): Interpolator => {
