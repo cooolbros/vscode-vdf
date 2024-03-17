@@ -97,12 +97,12 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		)
 	}
 
-	function readString(): VDFToken {
+	function readString(check = true): VDFToken {
 		const token = tokeniser.next()
 		if (token == null) {
 			throw new EndOfStreamError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
-		if (token.type != VDFTokenType.String) {
+		if (check && token.type != VDFTokenType.String) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["string"], token.range)
 		}
 		return token
@@ -113,7 +113,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 	}
 
 	function readNumber(): number {
-		const token = readString()
+		const token = readString(false)
 		if (/[^\d.]/.test(token.value)) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["number"], token.range)
 		}
