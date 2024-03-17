@@ -435,8 +435,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			const eventDocumentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.range.contains(params.position))
 
 			let line = document.getText({ start: { line: params.position.line, character: 0 }, end: params.position })
+
+			// When editor.autoClosingQuotes, line ends with '"'
+			// Remove last character from line so it can parse
 			if (line.endsWith("\"")) {
-				line = line.slice(0, line.length - 2)
+				line = line.slice(0, line.length - 1)
 			}
 
 			if (!eventDocumentSymbol && !line.includes("event")) {
