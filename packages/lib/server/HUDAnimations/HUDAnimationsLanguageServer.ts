@@ -30,6 +30,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"SetInputEnabled",
 		"PlaySound",
 		"StopPanelAnimations",
+		"SetFont",
+		"SetTexture",
+		"SetString",
 	]
 
 	private static readonly properties = <const>[

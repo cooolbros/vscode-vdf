@@ -64,6 +64,15 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 			case HUDAnimationStatementType.StopAnimation: {
 				return ["StopAnimation".length, len(animation.element), len(animation.property), len(animation.delay)]
 			}
+			case HUDAnimationStatementType.SetFont: {
+				return ["SetFont".length, len(animation.element), len(animation.property), len(animation.value), len(animation.delay)]
+			}
+			case HUDAnimationStatementType.SetTexture: {
+				return ["SetTexture".length, len(animation.element), len(animation.property), len(animation.value), len(animation.delay)]
+			}
+			case HUDAnimationStatementType.SetString: {
+				return ["SetString".length, len(animation.element), len(animation.property), len(animation.value), len(animation.delay)]
+			}
 		}
 	}
 
@@ -159,6 +168,30 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 				s += `    StopAnimation${space.repeat(maxKeyLengths[i++] - "StopAnimation".length + spaces)}`
 				s += `${print(animation.element)}${space.repeat(maxKeyLengths[i++] - len(animation.element) + spaces)}`
 				s += `${print(animation.property)}${space.repeat(maxKeyLengths[i++] - len(animation.property) + spaces)}`
+				s += `${print(animation.delay)}`
+				return s
+			}
+			case HUDAnimationStatementType.SetFont: {
+				s += `    SetFont${space.repeat(maxKeyLengths[i++] - "SetFont".length + spaces)}`
+				s += `${print(animation.element)}${space.repeat(maxKeyLengths[i++] - len(animation.element) + spaces)}`
+				s += `${print(animation.property)}${space.repeat(maxKeyLengths[i++] - len(animation.property) + spaces)}`
+				s += `${print(animation.value)}${space.repeat(maxKeyLengths[i++] - len(animation.value) + spaces)}`
+				s += `${print(animation.delay)}`
+				return s
+			}
+			case HUDAnimationStatementType.SetTexture: {
+				s += `    SetTexture${space.repeat(maxKeyLengths[i++] - "SetTexture".length + spaces)}`
+				s += `${print(animation.element)}${space.repeat(maxKeyLengths[i++] - len(animation.element) + spaces)}`
+				s += `${print(animation.property)}${space.repeat(maxKeyLengths[i++] - len(animation.property) + spaces)}`
+				s += `${print(animation.value)}${space.repeat(maxKeyLengths[i++] - len(animation.value) + spaces)}`
+				s += `${print(animation.delay)}`
+				return s
+			}
+			case HUDAnimationStatementType.SetString: {
+				s += `    SetString${space.repeat(maxKeyLengths[i++] - "SetString".length + spaces)}`
+				s += `${print(animation.element)}${space.repeat(maxKeyLengths[i++] - len(animation.element) + spaces)}`
+				s += `${print(animation.property)}${space.repeat(maxKeyLengths[i++] - len(animation.property) + spaces)}`
+				s += `${print(animation.value)}${space.repeat(maxKeyLengths[i++] - len(animation.value) + spaces)}`
 				s += `${print(animation.delay)}`
 				return s
 			}

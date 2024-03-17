@@ -136,6 +136,24 @@
             }
         },
         {
+            "match": "(?i)(SetFont|SetTexture|SetString)\\s+(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)\\s+(\".*?\"|\\S+)",
+            "captures": {
+                "0": {},
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "variable"
+                },
+                "3": {
+                    "name": "keyword.control"
+                },
+                "4": {
+                    "name": "string"
+                }
+            }
+        },
+        {
             "match": "[\\d\\.]+",
             "name": "constant.numeric"
         },

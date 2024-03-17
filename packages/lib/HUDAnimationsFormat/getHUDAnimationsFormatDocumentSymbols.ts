@@ -1,6 +1,6 @@
 import { AccelInterpolator, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FlickerInterpolator, GainInterpolator, HUDAnimationStatementType, LinearInterpolator, PulseInterpolator, SplineInterpolator } from "lib/HUDAnimationsDocumentSymbols/HUDAnimationsDocumentSymbol"
 import { VDFFormatTokenType, VDFFormatTokeniser, type VDFFormatToken } from "lib/VDFFormat/VDFFormatTokeniser"
-import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatDocumentSymbol, PlaySound, RunEvent, RunEventChild, SetInputEnabled, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatDocumentSymbol"
+import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatDocumentSymbol, PlaySound, RunEvent, RunEventChild, SetFont, SetInputEnabled, SetString, SetTexture, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatDocumentSymbol"
 
 export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimationsFormatDocumentSymbol[] {
 
@@ -248,6 +248,36 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 					element: readStringValue(),
 					property: readStringValue(),
 					delay: readStringValue(),
+				}
+				break
+			}
+			case "setfont": {
+				statement = <SetFont>{
+					type: HUDAnimationStatementType.SetFont,
+					element: readStringValue(),
+					property: readStringValue(),
+					value: readStringValue(),
+					delay: readNumberValue(),
+				}
+				break
+			}
+			case "settexture": {
+				statement = <SetTexture>{
+					type: HUDAnimationStatementType.SetTexture,
+					element: readStringValue(),
+					property: readStringValue(),
+					value: readStringValue(),
+					delay: readNumberValue(),
+				}
+				break
+			}
+			case "setstring": {
+				statement = <SetString>{
+					type: HUDAnimationStatementType.SetString,
+					element: readStringValue(),
+					property: readStringValue(),
+					value: readStringValue(),
+					delay: readNumberValue(),
 				}
 				break
 			}

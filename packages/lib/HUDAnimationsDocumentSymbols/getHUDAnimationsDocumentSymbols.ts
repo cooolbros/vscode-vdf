@@ -3,7 +3,7 @@ import { VDFPosition } from "lib/VDF/VDFPosition"
 import { VDFRange } from "lib/VDF/VDFRange"
 import { VDFTokenType, type VDFToken } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
-import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetInputEnabledDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
+import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetFontDocumentSymbol, SetInputEnabledDocumentSymbol, SetStringDocumentSymbol, SetTextureDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
 import { HUDAnimationsDocumentSymbols, HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
 export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocumentSymbols {
@@ -305,6 +305,66 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 					{
 						element: readStringValue(),
 						property: readStringValue(),
+						delay: readNumber(),
+						conditional: readConditional(),
+					},
+					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
+				)
+				break
+			}
+			case "setfont": {
+				const elementToken = readString()
+				const propertyToken = readString()
+				const valueToken = readString()
+
+				statement = new SetFontDocumentSymbol(
+					{
+						element: elementToken.value,
+						elementRange: elementToken.range,
+						property: propertyToken.value,
+						propertyRange: propertyToken.range,
+						value: valueToken.value,
+						valueRange: valueToken.range,
+						delay: readNumber(),
+						conditional: readConditional(),
+					},
+					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
+				)
+				break
+			}
+			case "settexture": {
+				const elementToken = readString()
+				const propertyToken = readString()
+				const valueToken = readString()
+
+				statement = new SetTextureDocumentSymbol(
+					{
+						element: elementToken.value,
+						elementRange: elementToken.range,
+						property: propertyToken.value,
+						propertyRange: propertyToken.range,
+						value: valueToken.value,
+						valueRange: valueToken.range,
+						delay: readNumber(),
+						conditional: readConditional(),
+					},
+					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
+				)
+				break
+			}
+			case "setstring": {
+				const elementToken = readString()
+				const propertyToken = readString()
+				const valueToken = readString()
+
+				statement = new SetStringDocumentSymbol(
+					{
+						element: elementToken.value,
+						elementRange: elementToken.range,
+						property: propertyToken.value,
+						propertyRange: propertyToken.range,
+						value: valueToken.value,
+						valueRange: valueToken.range,
 						delay: readNumber(),
 						conditional: readConditional(),
 					},

@@ -37,7 +37,10 @@ export const enum HUDAnimationStatementType {
 	SetInputEnabled,
 	PlaySound,
 	StopPanelAnimations,
-	StopAnimation
+	StopAnimation,
+	SetFont,
+	SetTexture,
+	SetString
 }
 
 abstract class HUDAnimationsStatementDocumentSymbolBase implements DocumentSymbol {
@@ -278,4 +281,70 @@ export class StopAnimationDocumentSymbol extends HUDAnimationsStatementDocumentS
 
 }
 
-export type HUDAnimationsStatementDocumentSymbol = AnimateDocumentSymbol | RunEventDocumentSymbol | StopEventDocumentSymbol | SetVisibleDocumentSymbol | FireCommandDocumentSymbol | RunEventChildDocumentSymbol | SetInputEnabledDocumentSymbol | PlaySoundDocumentSymbol | StopPanelAnimationsDocumentSymbol | StopAnimationDocumentSymbol
+export class SetFontDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
+	public readonly type = HUDAnimationStatementType.SetFont
+	public readonly element: string
+	public readonly elementRange: VDFRange
+	public readonly property: string
+	public readonly propertyRange: VDFRange
+	public readonly value: string
+	public readonly valueRange: VDFRange
+	constructor(
+		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional?: string },
+		range: VDFRange
+	) {
+		super(`SetFont ${element} ${property} ${value} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+		this.element = element
+		this.elementRange = elementRange
+		this.property = property
+		this.propertyRange = propertyRange
+		this.value = value
+		this.valueRange = valueRange
+	}
+}
+
+export class SetTextureDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
+	public readonly type = HUDAnimationStatementType.SetTexture
+	public readonly element: string
+	public readonly elementRange: VDFRange
+	public readonly property: string
+	public readonly propertyRange: VDFRange
+	public readonly value: string
+	public readonly valueRange: VDFRange
+	constructor(
+		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional?: string },
+		range: VDFRange
+	) {
+		super(`SetTexture ${element} ${property} ${value} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+		this.element = element
+		this.elementRange = elementRange
+		this.property = property
+		this.propertyRange = propertyRange
+		this.value = value
+		this.valueRange = valueRange
+	}
+}
+
+export class SetStringDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
+	public readonly type = HUDAnimationStatementType.SetString
+	public readonly element: string
+	public readonly elementRange: VDFRange
+	public readonly property: string
+	public readonly propertyRange: VDFRange
+	public readonly value: string
+	public readonly valueRange: VDFRange
+	constructor(
+		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional?: string },
+		range: VDFRange
+	) {
+		super(`SetString ${element} ${property} ${value} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+		this.element = element
+		this.elementRange = elementRange
+		this.property = property
+		this.propertyRange = propertyRange
+		this.value = value
+		this.valueRange = valueRange
+	}
+}
+
+export type HUDAnimationsStatementDocumentSymbol = AnimateDocumentSymbol | RunEventDocumentSymbol | StopEventDocumentSymbol | SetVisibleDocumentSymbol | FireCommandDocumentSymbol | RunEventChildDocumentSymbol | SetInputEnabledDocumentSymbol | PlaySoundDocumentSymbol | StopPanelAnimationsDocumentSymbol | StopAnimationDocumentSymbol | SetFontDocumentSymbol | SetTextureDocumentSymbol | SetStringDocumentSymbol

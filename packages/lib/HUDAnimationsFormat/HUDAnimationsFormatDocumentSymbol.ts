@@ -115,6 +115,30 @@ export interface StopAnimation extends StatementBase {
 	delay: string
 }
 
+export interface SetFont extends StatementBase {
+	type: HUDAnimationStatementType.SetFont
+	element: string
+	property: string
+	value: string
+	delay: string
+}
+
+export interface SetTexture extends StatementBase {
+	type: HUDAnimationStatementType.SetTexture
+	element: string
+	property: string
+	value: string
+	delay: string
+}
+
+export interface SetString extends StatementBase {
+	type: HUDAnimationStatementType.SetString
+	element: string
+	property: string
+	value: string
+	delay: string
+}
+
 type Animations = {
 	"Animate": Animate
 	"RunEvent": RunEvent
@@ -126,6 +150,9 @@ type Animations = {
 	"PlaySound": PlaySound
 	"StopPanelAnimations": StopPanelAnimations
 	"StopAnimation": StopAnimation
+	"SetFont": SetFont
+	"SetTexture": SetTexture
+	"SetString": SetString
 }
 
 export type Animation = Animations[keyof Animations]
