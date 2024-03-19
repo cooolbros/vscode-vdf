@@ -166,7 +166,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			try {
 				const manifestDocumentSymbols = await this.connection.sendRequest<VDFDocumentSymbols>("servers/sendRequest", ["vdf", DocumentSymbolRequest.method, { textDocument: TextDocumentIdentifier.create(hudAnimationsManifestPath) }])
 
-				const hudanimations_manifest = manifestDocumentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "hudanimations_manifest")
+				const hudanimations_manifest = manifestDocumentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
 				if (!hudanimations_manifest || hudanimations_manifest.children == undefined) {
 					return null
 				}
