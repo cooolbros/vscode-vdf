@@ -750,6 +750,21 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					}
 					break
 				}
+				case "setfont":
+				case "settexture":
+				case "setstring": {
+					switch (tokens.length) {
+						case 1: {
+							return elements()
+						}
+						case 2: {
+							return line.endsWith(tokens[1].value)
+								? elements(tokens[1].value.toLowerCase())
+								: []
+						}
+					}
+					break
+				}
 			}
 
 			return null
