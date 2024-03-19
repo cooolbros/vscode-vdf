@@ -923,7 +923,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			case HUDAnimationStatementType.SetFont: {
 				const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
 				return this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/definition", { hudRoot, type: 2, key: documentSymbol.value.toLowerCase() }])
-				break
 			}
 			default:
 				break
