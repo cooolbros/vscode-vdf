@@ -56,7 +56,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"ypos"
 	]
 
-	private static readonly schemeProperties = [
+	private static readonly colourProperties = [
 		"Ammo2Color",
 		"BgColor",
 		"FgColor",
@@ -388,7 +388,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 				if (workspaceReferences) {
 					// Scheme
-					if (statement.type == HUDAnimationStatementType.Animate && HUDAnimationsLanguageServer.schemeProperties.includes(statement.property.toLowerCase())) {
+					if (statement.type == HUDAnimationStatementType.Animate && HUDAnimationsLanguageServer.colourProperties.includes(statement.property.toLowerCase())) {
 						workspaceReferences.references[uri] ??= []
 						workspaceReferences.references[uri].push({ type: 0, key: statement.value, range: statement.valueRange })
 					}
@@ -518,13 +518,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					: properties
 			}
 
-			const values = async (text?: string): Promise<CompletionItem[]> => {
-
-				const property = tokens[2].value.toLowerCase()
-
-				if (!HUDAnimationsLanguageServer.schemeProperties.includes(property)) {
-					return []
-				}
+			// Workspace Clientscheme Colours
+			const colours = async (text?: string): Promise<CompletionItem[]> => {
 
 				const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
 				if (!hudRoot) {
@@ -641,13 +636,19 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 								: properties()
 						}
 						case 3: {
-							return line.endsWith(tokens[2].value)
-								? properties(tokens[2].value.toLowerCase())
-								: values()
+							if (line.endsWith(tokens[2].value)) {
+								return properties(tokens[2].value.toLowerCase())
+							}
+
+							if (HUDAnimationsLanguageServer.colourProperties.includes(tokens[2].value.toLowerCase())) {
+								return colours()
+							}
+
+							break
 						}
 						case 4: {
 							return line.endsWith(tokens[3].value)
-								? values(tokens[3].value.toLowerCase())
+								? colours(tokens[3].value.toLowerCase())
 								: interpolators()
 						}
 						case 5: {
