@@ -64,6 +64,17 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"MenuColor"
 	].map((property) => property.toLowerCase())
 
+	private static readonly fontProperties = [
+		"delta_item_font_big",
+		"delta_item_font",
+		"font",
+		"ItemFont",
+		"ItemFontPulsing",
+		"NumberFont",
+		"TextFont",
+		"TFFont"
+	].map((property) => property.toLowerCase())
+
 	private static readonly interpolators = <const>[
 		"Linear",
 		"Accel",
@@ -518,6 +529,13 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					: properties
 			}
 
+			const fontProperties = async (text?: string): Promise<CompletionItem[]> => {
+				const properties = HUDAnimationsLanguageServer.fontProperties.map((property) => ({ label: property, kind: CompletionItemKind.Keyword }))
+				return text
+					? properties.filter(startsWithFilter(text))
+					: properties
+			}
+
 			// Workspace Clientscheme Colours
 			const colours = async (text?: string): Promise<CompletionItem[]> => {
 
@@ -551,6 +569,29 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 						label: key,
 						kind: CompletionItemKind.Color,
 						documentation: hex,
+					})
+				}
+
+				return text
+					? items.filter(startsWithFilter(text))
+					: items
+			}
+
+			const fonts = async (text?: string): Promise<CompletionItem[]> => {
+
+				const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
+				if (!hudRoot) {
+					return []
+				}
+
+				const fontDefinitions = await this.connection.sendRequest<{ [key: string]: string }>("servers/sendRequest", ["vdf", "workspace/definitions", { hudRoot: hudRoot, type: 2 }])
+
+				const items: CompletionItem[] = []
+
+				for (const key in fontDefinitions) {
+					items.push({
+						label: key,
+						kind: CompletionItemKind.Text,
 					})
 				}
 
@@ -751,7 +792,29 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					}
 					break
 				}
-				case "setfont":
+				case "setfont": {
+					switch (tokens.length) {
+						case 1: {
+							return elements()
+						}
+						case 2: {
+							return line.endsWith(tokens[1].value)
+								? elements(tokens[1].value.toLowerCase())
+								: fontProperties()
+						}
+						case 3: {
+							return line.endsWith(tokens[2].value)
+								? fontProperties(tokens[2].value.toLowerCase())
+								: fonts()
+						}
+						case 4: {
+							return line.endsWith(tokens[3].value)
+								? fonts(tokens[3].value.toLowerCase())
+								: [] // Delay
+						}
+					}
+					break
+				}
 				case "settexture":
 				case "setstring": {
 					switch (tokens.length) {
