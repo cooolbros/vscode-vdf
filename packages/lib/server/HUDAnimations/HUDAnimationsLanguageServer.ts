@@ -62,7 +62,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"FgColor",
 		"ItemColor",
 		"MenuColor"
-	].map((property) => property.toLowerCase())
+	]
 
 	private static readonly fontProperties = [
 		"delta_item_font_big",
@@ -73,7 +73,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"NumberFont",
 		"TextFont",
 		"TFFont"
-	].map((property) => property.toLowerCase())
+	]
 
 	private static readonly interpolators = <const>[
 		"Linear",
@@ -399,9 +399,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 				if (workspaceReferences) {
 					// Scheme
-					if (statement.type == HUDAnimationStatementType.Animate && HUDAnimationsLanguageServer.colourProperties.includes(statement.property.toLowerCase())) {
+					if (statement.type == HUDAnimationStatementType.Animate && HUDAnimationsLanguageServer.colourProperties.some((i) => i.toLowerCase() == statement.property.toLowerCase())) {
 						workspaceReferences.references[uri] ??= []
 						workspaceReferences.references[uri].push({ type: 0, key: statement.value, range: statement.valueRange })
+					}
+
+					if (statement.type == HUDAnimationStatementType.SetFont && HUDAnimationsLanguageServer.fontProperties.some((i) => i.toLowerCase() == statement.property.toLowerCase())) {
+						workspaceReferences.references[uri] ??= []
+						workspaceReferences.references[uri].push({ type: 2, key: statement.value, range: statement.valueRange })
 					}
 				}
 			}
@@ -681,7 +686,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 								return properties(tokens[2].value.toLowerCase())
 							}
 
-							if (HUDAnimationsLanguageServer.colourProperties.includes(tokens[2].value.toLowerCase())) {
+							if (HUDAnimationsLanguageServer.colourProperties.some((i) => i.toLowerCase() == tokens[2].value.toLowerCase())) {
 								return colours()
 							}
 
@@ -913,6 +918,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 						}
 					}
 				}
+				break
+			}
+			case HUDAnimationStatementType.SetFont: {
+				const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
+				return this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/definition", { hudRoot, type: 2, key: documentSymbol.value.toLowerCase() }])
 				break
 			}
 			default:
