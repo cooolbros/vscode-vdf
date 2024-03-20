@@ -1,7 +1,13 @@
 import { Position, Range } from "vscode-languageserver"
-import type { VDFPosition } from "./VDFPosition"
+import { z } from "zod"
+import { VDFPosition } from "./VDFPosition"
 
 export class VDFRange implements Range {
+
+	public static readonly schema = z.object({
+		start: VDFPosition.schema,
+		end: VDFPosition.schema,
+	}).transform((arg) => new VDFRange(arg.start, arg.end))
 
 	public start: VDFPosition
 	public end: VDFPosition

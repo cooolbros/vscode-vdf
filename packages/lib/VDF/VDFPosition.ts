@@ -1,6 +1,12 @@
 import { Position } from "vscode-languageserver"
+import { z } from "zod"
 
 export class VDFPosition implements Position {
+
+	public static readonly schema = z.object({
+		line: z.number(),
+		character: z.number(),
+	}).transform((arg) => new VDFPosition(arg.line, arg.character))
 
 	public line: number
 	public character: number
