@@ -8,7 +8,6 @@ import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymb
 import { VDFFormat } from "lib/VDFFormat/VDFFormat"
 import type { VDFFormatStringifyOptions } from "lib/VDFFormat/VDFFormatStringifyOptions"
 import { documentLinkDataSchema, type DocumentLinkData } from "lib/types/DocumentLinkData"
-import { rangeSchema } from "lib/types/Range"
 import { DefinitionReference, DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences, type DocumentsDefinitionReferences } from "lib/utils/definitionReferences"
 import { encodeBaseValue } from "lib/utils/encodeBaseValue"
 import * as filesCompletion from "lib/utils/filesCompletion"
@@ -1126,7 +1125,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				z.object({
 					type: z.number(),
 					key: z.string(),
-					range: rangeSchema
+					range: VDFRange.schema
 				}).array()
 			)
 		}).parseAsync(params)

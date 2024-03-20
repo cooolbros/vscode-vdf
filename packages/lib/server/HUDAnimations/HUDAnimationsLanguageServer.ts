@@ -8,7 +8,6 @@ import type { VDFToken } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
-import type { rangeSchema } from "lib/types/Range"
 import { DefinitionReference } from "lib/utils/definitionReferences"
 import * as filesCompletion from "lib/utils/filesCompletion"
 import { getHUDRoot } from "lib/utils/getHUDRoot"
@@ -322,7 +321,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			this.documentHUDRoots.set(uri, hudRoot)
 		}
 
-		const filesReferences: { [definitionUri: string]: { [referenceUri: string]: { type: number, key: string, range: z.infer<typeof rangeSchema> }[] } } = {}
+		const filesReferences: { [definitionUri: string]: { [referenceUri: string]: { type: number, key: string, range: VDFRange }[] } } = {}
 		const filesReferencesPromises: Promise<void>[] = []
 
 		if (hudRoot !== null) {

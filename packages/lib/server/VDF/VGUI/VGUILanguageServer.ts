@@ -3,7 +3,6 @@ import { VDFRange } from "lib/VDF/VDFRange"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import type { DocumentLinkData } from "lib/types/DocumentLinkData"
-import { rangeSchema } from "lib/types/Range"
 import { DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences } from "lib/utils/definitionReferences"
 import { encodeBaseValue } from "lib/utils/encodeBaseValue"
 import * as filesCompletion from "lib/utils/filesCompletion"
@@ -899,7 +898,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 				z.object({
 					type: z.number(),
 					key: z.string(),
-					range: rangeSchema
+					range: VDFRange.schema
 				}).array()
 			)
 		}).parse(params)
