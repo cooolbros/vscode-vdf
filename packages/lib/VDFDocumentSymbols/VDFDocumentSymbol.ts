@@ -1,11 +1,33 @@
 import type { DocumentSymbol, SymbolKind } from "vscode-languageserver"
-import type { VDFRange } from "../VDF/VDFRange"
-import type { VDFDocumentSymbols } from "./VDFDocumentSymbols"
+import { z } from "zod"
+import { VDFRange } from "../VDF/VDFRange"
+import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
 /**
  * VDFDocumentSymbol
  */
 export class VDFDocumentSymbol implements DocumentSymbol {
+
+	// https://github.com/colinhacks/zod?tab=readme-ov-file#zodtype-with-zodeffects
+	public static readonly schema: z.ZodType<VDFDocumentSymbol, z.ZodTypeDef, any> = z.object({
+		name: z.string(),
+		key: z.string(),
+		nameRange: VDFRange.schema,
+		kind: z.number().min(1).max(26).transform((arg) => <SymbolKind>arg),
+		conditional: z.string().startsWith("[").endsWith("]").nullable(),
+		range: VDFRange.schema,
+		selectionRange: VDFRange.schema,
+		detail: z.string().optional(),
+		detailRange: VDFRange.schema.optional(),
+		children: z.lazy(() => VDFDocumentSymbols.schema.optional())
+	}).transform((arg) => new VDFDocumentSymbol(
+		arg.key,
+		arg.nameRange,
+		arg.kind,
+		<`[${string}]` | null>arg.conditional,
+		arg.range,
+		arg.children != undefined ? arg.children : { detail: arg.detail!, range: arg.detailRange! }
+	))
 
 	/**
 	 * User visible document symbol name e.g. xpos [$WIN32]

@@ -1,7 +1,10 @@
 import type { Position } from "vscode-languageserver"
-import type { VDFDocumentSymbol } from "./VDFDocumentSymbol"
+import { z } from "zod"
+import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
+
+	public static readonly schema = z.lazy(() => VDFDocumentSymbol.schema.array().transform((arg) => new VDFDocumentSymbols(...arg)))
 
 	public forAll(callback: (documentSymbol: VDFDocumentSymbol, objectPath: Lowercase<string>[]) => void): void {
 		const objectPath: Lowercase<string>[] = []
