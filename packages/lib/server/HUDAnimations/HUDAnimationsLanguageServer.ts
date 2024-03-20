@@ -8,7 +8,7 @@ import type { VDFToken } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
 import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
-import { DefinitionReference } from "lib/utils/definitionReferences"
+import { DefinitionReference, DocumentDefinitionReferences } from "lib/utils/definitionReferences"
 import * as filesCompletion from "lib/utils/filesCompletion"
 import { getHUDRoot } from "lib/utils/getHUDRoot"
 import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, DocumentSymbolRequest, Location, Range, TextDocumentIdentifier, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -88,7 +88,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 	protected readonly name: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["name"], "HUD Animations">
 	protected readonly languageId: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["languageId"], "hudanimations">
 	private readonly documentHUDRoots: Map<string, string | null>
-	private readonly documentsDefinitionReferences: Map<string, Map<string, DefinitionReference>>
+	private readonly documentsDefinitionReferences: Map<string, DocumentDefinitionReferences>
 
 	private oldName: string | null
 
@@ -102,7 +102,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.name = name
 		this.languageId = languageId
 		this.documentHUDRoots = new Map<string, string | null>()
-		this.documentsDefinitionReferences = new Map<string, Map<string, DefinitionReference>>()
+		this.documentsDefinitionReferences = new Map<string, DocumentDefinitionReferences>()
 
 		this.oldName = null
 
@@ -289,7 +289,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					case HUDAnimationStatementType.RunEvent:
 					case HUDAnimationStatementType.StopEvent: {
 						const referencedEventName = statement.event.toLowerCase()
-						if (!documentDefinitionReferences.has(referencedEventName)) {
+						if (documentDefinitionReferences.get([0, referencedEventName]).getDefinitionLocation() == undefined) {
 							diagnostics.push({
 								range: statement.eventRange,
 								severity: DiagnosticSeverity.Warning,
@@ -306,9 +306,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		return diagnostics
 	}
 
-	protected async onDefinitionReferences(uri: string, workspaceReferences?: { hudRoot: string, references: { [key: string]: { type: number, key: string, range: VDFRange }[] } }): Promise<Map<string, DefinitionReference>> {
+	protected async onDefinitionReferences(uri: string, workspaceReferences?: { hudRoot: string, references: { [key: string]: { type: number, key: string, range: VDFRange }[] } }): Promise<DocumentDefinitionReferences> {
 
-		const documentDefinitionReferences = new Map<string, DefinitionReference>()
+		const documentDefinitionReferences = new DocumentDefinitionReferences(1)
 
 		const documentSymbols = this.documentsSymbols.get(uri)
 		if (!documentSymbols) {
@@ -332,13 +332,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 			const eventName = event.eventName.toLowerCase()
 
-			const definitionReference = documentDefinitionReferences.has(eventName)
-				? documentDefinitionReferences.get(eventName)!
-				: ((): DefinitionReference => {
-					const definitionReference = new DefinitionReference([0, eventName])
-					documentDefinitionReferences.set(eventName, definitionReference)
-					return definitionReference
-				})()
+			const definitionReference = documentDefinitionReferences.get([0, eventName])
 
 			if (!definitionReference.getDefinitionLocation()) {
 				definitionReference.setDefinitionLocation({ definitionLocation: { uri: uri, range: event.eventNameRange }, value: null })
@@ -383,17 +377,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				}
 
 				if (statement.type == HUDAnimationStatementType.RunEvent || statement.type == HUDAnimationStatementType.StopEvent || statement.type == HUDAnimationStatementType.RunEventChild) {
-					const referencedEventName = statement.event.toLowerCase()
-
-					const definitionReference = documentDefinitionReferences.has(referencedEventName)
-						? documentDefinitionReferences.get(referencedEventName)!
-						: ((): DefinitionReference => {
-							const definitionReference = new DefinitionReference([0, referencedEventName])
-							documentDefinitionReferences.set(referencedEventName, definitionReference)
-							return definitionReference
-						})()
-
-					definitionReference.addReference(uri, statement.eventRange)
+					documentDefinitionReferences
+						.get([0, statement.event.toLowerCase()])
+						.addReference(uri, statement.eventRange)
 				}
 
 				if (workspaceReferences) {
@@ -938,7 +924,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		}
 
 		let definitionReferenceInfo: DefinitionReference | null = null
-		for (const [, definitionReference] of documentDefinitionReferences) {
+		for (const [, , definitionReference] of documentDefinitionReferences) {
 			if (definitionReference.getDefinitionLocation()?.uri == params.textDocument.uri && definitionReference.getDefinitionLocation()?.range.contains(params.position)) {
 				definitionReferenceInfo = definitionReference
 				break
@@ -1008,7 +994,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		const codeLens: CodeLens[] = []
 
-		for (const [, definitionReference] of definitionReferences) {
+		for (const [, , definitionReference] of definitionReferences) {
 
 			const definitionLocation = definitionReference.getDefinitionLocation()
 
@@ -1129,7 +1115,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			return null
 		}
 
-		for (const [key, definitionReference] of documentDefinitionReferences) {
+		for (const [, key, definitionReference] of documentDefinitionReferences) {
 
 			const definitionLocation = definitionReference.getDefinitionLocation()
 			if (definitionLocation?.uri == params.textDocument.uri && definitionLocation?.range.contains(params.position)) {
@@ -1161,7 +1147,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			return null
 		}
 
-		for (const [key, definitionReference] of documentDefinitionReferences) {
+		for (const [, key, definitionReference] of documentDefinitionReferences) {
 
 			if (key == this.oldName) {
 
