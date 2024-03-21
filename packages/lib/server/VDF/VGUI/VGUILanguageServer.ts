@@ -451,6 +451,12 @@ export class VGUILanguageServer extends VDFLanguageServer {
 				this.connection.console.log(error.stack!)
 			}
 		}
+
+		if (e.document.uri == `${hudRoot}/scripts/hudanimations_manifest.txt`) {
+			this.connection.sendRequest("servers/sendRequest", ["hudanimations", "workspace/setManifest", { hudRoot, documentSymbols: this.documentsSymbols.get(e.document.uri)! }])
+				.then((value) => console.log(value))
+				.catch((error) => console.log(error))
+		}
 	}
 
 	protected async onDidChangeContent(e: TextDocumentChangeEvent<TextDocument>): Promise<boolean> {
@@ -483,6 +489,12 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		}
 
 		this.updateReferences(hudScheme, e.document.uri, documentSymbols)
+
+		if (e.document.uri == `${hudRoot}/scripts/hudanimations_manifest.txt`) {
+			this.connection.sendRequest("servers/sendRequest", ["hudanimations", "workspace/setManifest", { hudRoot, documentSymbols }])
+				.then((value) => console.log(value))
+				.catch((error) => console.log(error))
+		}
 
 		return result
 	}

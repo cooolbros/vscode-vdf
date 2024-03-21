@@ -7,7 +7,7 @@ import type { VDFRange } from "lib/VDF/VDFRange"
 import type { VDFToken } from "lib/VDF/VDFToken"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
 import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
-import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
+import { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { DefinitionReference, DocumentDefinitionReferences } from "lib/utils/definitionReferences"
 import * as filesCompletion from "lib/utils/filesCompletion"
 import { getHUDRoot } from "lib/utils/getHUDRoot"
@@ -88,6 +88,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 	protected readonly name: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["name"], "HUD Animations">
 	protected readonly languageId: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["languageId"], "hudanimations">
 	private readonly documentHUDRoots: Map<string, string | null>
+	private readonly workspaceHUDAnimationsManifests: Map<string, Set<string>>
 	private readonly documentsDefinitionReferences: Map<string, DocumentDefinitionReferences>
 
 	private oldName: string | null
@@ -102,6 +103,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.name = name
 		this.languageId = languageId
 		this.documentHUDRoots = new Map<string, string | null>()
+		this.workspaceHUDAnimationsManifests = new Map<string, Set<string>>()
 		this.documentsDefinitionReferences = new Map<string, DocumentDefinitionReferences>()
 
 		this.oldName = null
@@ -124,6 +126,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.connection.onRenameRequest(this.onRenameRequest.bind(this))
 
 		this.connection.onRequest("workspace/open", this.onWorkspaceOpen.bind(this))
+		this.connection.onRequest("workspace/setManifest", this.onWorkspaceSetManifest.bind(this))
 		this.connection.onRequest("textDocument/decoration", this.onDecoration.bind(this))
 	}
 
@@ -195,6 +198,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			return
 		}
 
+		this.workspaceHUDAnimationsManifests.set(hudRoot, new Set(files))
+
 		const workspaceReferences: { hudRoot: string, references: { [key: string]: { type: number, key: string, range: VDFRange }[] } } = { hudRoot, references: {} }
 
 		for (const file of files) {
@@ -216,6 +221,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 				if (!uri) {
 					continue
+				}
+
+				const document = this.documents.get(uri)
+				if (document) {
+					// Send new diagnostics now that workspaceHUDAnimationsManifests is set
+					this.onDidChangeContent({ document })
 				}
 
 				if (!this.documentsSymbols.has(uri)) {
@@ -255,9 +266,54 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		return result
 	}
 
+	protected onDidClose(e: TextDocumentChangeEvent<TextDocument>): void {
+		super.onDidClose(e)
+		this.documentsDefinitionReferences.delete(e.document.uri)
+	}
+
 	protected async validateTextDocument(uri: string, documentSymbols: HUDAnimationsDocumentSymbols): Promise<Diagnostic[]> {
 
-		const documentDefinitionReferences = await this.onDefinitionReferences(uri)
+		const hudRoot = this.documentHUDRoots.get(uri)
+
+		const [documentDefinitionReferences, allEvents] = await Promise.all([
+			this.onDefinitionReferences(uri),
+			(async (): Promise<Set<string>[]> => {
+				if (!hudRoot) {
+					return []
+				}
+
+				const absolutePaths = await Promise.all(
+					[...(this.workspaceHUDAnimationsManifests.get(hudRoot) ?? [])]
+						.map(async (relativePath) => {
+							const fileUri = `${hudRoot}/${relativePath}`
+							if (await this.fileSystem.exists(fileUri)) {
+								return fileUri
+							}
+							else {
+								const vpkUri = `vpk:///${relativePath}?vpk=misc`
+								if (await this.fileSystem.exists(vpkUri)) {
+									return vpkUri
+								}
+							}
+							return null
+						})
+				).then((value) => value.filter((v): v is string => Boolean(v) && v != uri))
+
+				const eventNames = await Promise.all(
+					absolutePaths.map(async (absolutePath) => {
+						let documentSymbols = this.documentsSymbols.get(absolutePath)
+						if (!documentSymbols) {
+							documentSymbols = getHUDAnimationsDocumentSymbols(await this.fileSystem.readFile(absolutePath))
+							this.documentsSymbols.set(absolutePath, documentSymbols)
+						}
+
+						return new Set(documentSymbols.map((value) => value.eventName.toLowerCase()))
+					})
+				)
+
+				return eventNames
+			})()
+		])
 
 		const diagnostics: Diagnostic[] = []
 		const events = new Set<string>()
@@ -289,7 +345,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					case HUDAnimationStatementType.RunEvent:
 					case HUDAnimationStatementType.StopEvent: {
 						const referencedEventName = statement.event.toLowerCase()
-						if (documentDefinitionReferences.get([0, referencedEventName]).getDefinitionLocation() == undefined) {
+						if (documentDefinitionReferences.get([0, referencedEventName]).getDefinitionLocation() == undefined && allEvents.every((set) => !set.has(referencedEventName))) {
 							diagnostics.push({
 								range: statement.eventRange,
 								severity: DiagnosticSeverity.Warning,
@@ -894,13 +950,61 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			case HUDAnimationStatementType.RunEventChild: {
 				if (documentSymbol.eventRange.contains(params.position)) {
 					const eventName = documentSymbol.event.toLowerCase()
-					for (const event of documentSymbols) {
-						if (event.eventName.toLowerCase() == eventName) {
-							return {
+
+					const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
+					const files = hudRoot ? this.workspaceHUDAnimationsManifests.get(hudRoot) : null
+
+					if (!files) {
+						return documentSymbols
+							.filter((event) => event.eventName == eventName)
+							.map((event): Location => ({
 								uri: params.textDocument.uri,
 								range: event.eventNameRange
-							} satisfies Definition
+							}))
+					}
+					else {
+						const locations: Location[] = []
+						const absolutePaths = await Promise.all(
+							[...files]
+								.map(async (relativePath) => {
+									const fileUri = `${hudRoot}/${relativePath}`
+									if (await this.fileSystem.exists(fileUri)) {
+										return fileUri
+									}
+									else {
+										const vpkUri = `vpk:///${relativePath}?vpk=misc`
+										if (await this.fileSystem.exists(vpkUri)) {
+											return vpkUri
+										}
+									}
+									return null
+								})
+						).then((value) => value.filter((v): v is string => Boolean(v)))
+
+						const eventNames = await Promise.all(
+							absolutePaths.map(async (absolutePath) => {
+								let documentSymbols = this.documentsSymbols.get(absolutePath)
+								if (!documentSymbols) {
+									documentSymbols = getHUDAnimationsDocumentSymbols(await this.fileSystem.readFile(absolutePath))
+									this.documentsSymbols.set(absolutePath, documentSymbols)
+								}
+
+								return { uri: absolutePath, documentSymbols: documentSymbols }
+							})
+						)
+
+						for (const { uri, documentSymbols } of eventNames) {
+							for (const event of documentSymbols) {
+								if (event.eventName.toLowerCase() == eventName) {
+									locations.push({
+										uri: uri,
+										range: event.eventNameRange
+									})
+								}
+							}
 						}
+
+						return locations
 					}
 				}
 				break
@@ -1207,5 +1311,21 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 	private async onWorkspaceOpen(params: unknown): Promise<void> {
 		const { hudRoot } = z.object({ hudRoot: z.string() }).parse(params)
 		await this.findHUDDefinitionReferences(hudRoot)
+	}
+
+	private async onWorkspaceSetManifest(params: unknown): Promise<void> {
+		const { hudRoot, documentSymbols } = z.object({ hudRoot: z.string(), documentSymbols: VDFDocumentSymbols.schema }).parse(params)
+
+		const files = documentSymbols
+			.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
+			?.children
+			?.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "file" && documentSymbol.detail != undefined)
+			.map((documentSymbol) => documentSymbol.detail!)
+			?? []
+
+		this.workspaceHUDAnimationsManifests.set(
+			hudRoot,
+			new Set(files)
+		)
 	}
 }
