@@ -13,6 +13,9 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 
 	constructor(name: PopfileLanguageServer["name"], languageId: PopfileLanguageServer["languageId"], connection: Connection) {
 		super(name, languageId, connection, {
+			getVDFTokeniserOptions(uri) {
+				return { allowMultilineStrings: true }
+			},
 			vpkRootPath: "scripts/population",
 			keyHash: (key) => key,
 			schema: {

@@ -34,7 +34,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 	constructor(name: VDFLanguageServer["name"], languageId: VDFLanguageServer["languageId"], connection: Connection, configuration: VDFLanguageServerConfiguration) {
 		super(name, languageId, connection, {
 			servers: configuration.servers,
-			parseDocumentSymbols: (uri, str) => getVDFDocumentSymbols(str),
+			parseDocumentSymbols: (uri, str) => getVDFDocumentSymbols(str, this.VDFLanguageServerConfiguration.getVDFTokeniserOptions(uri)),
 			defaultDocumentSymbols: () => new VDFDocumentSymbols()
 		})
 

@@ -17,6 +17,9 @@ export class VMTLanguageServer extends VDFLanguageServer {
 
 	constructor(name: VMTLanguageServer["name"], languageId: VMTLanguageServer["languageId"], connection: Connection) {
 		super(name, languageId, connection, {
+			getVDFTokeniserOptions(uri) {
+				return { allowMultilineStrings: false }
+			},
 			keyHash: (key) => key,
 			schema: {
 				keys: keys,
