@@ -278,7 +278,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 							file
 								.then((text) => {
 									try {
-										const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(text)
+										const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(entryUri, text)
 										this.updateReferences(documentDefinitionReferences, entryUri, documentSymbols)
 									}
 									catch (error: any) {
@@ -312,7 +312,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 
 			const documentSymbols = this.documentsSymbols.get(uri)
 				?? await (async (): Promise<VDFDocumentSymbols> => {
-					const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(await this.fileSystem.readFile(uri), { allowMultilineStrings })
+					const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(uri, await this.fileSystem.readFile(uri), { allowMultilineStrings })
 					this.documentsSymbols.set(uri, documentSymbols)
 					return documentSymbols
 				})()

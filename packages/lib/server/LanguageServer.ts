@@ -66,7 +66,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		let documentSymbols: T
 		let diagnostics: VDFSyntaxError | Diagnostic[] = []
 		try {
-			documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.getText())
+			documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
 			this.documentsSymbols.set(e.document.uri, documentSymbols)
 			diagnostics = await this.validateTextDocument(e.document.uri, documentSymbols)
 		}
@@ -97,7 +97,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		const shouldSendDiagnostics = documentConfiguration.updateDiagnosticsEvent == "type"
 
 		try {
-			const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.getText())
+			const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
 			this.documentsSymbols.set(e.document.uri, documentSymbols)
 			const diagnostics = await this.validateTextDocument(e.document.uri, documentSymbols)
 			if (shouldSendDiagnostics) {
@@ -132,7 +132,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		}
 
 		try {
-			this.languageServerConfiguration.parseDocumentSymbols(e.document.getText())
+			this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
 			this.connection.sendDiagnostics({
 				uri: e.document.uri,
 				diagnostics: []
@@ -174,7 +174,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 	private async onDocumentSymbol(params: DocumentSymbolParams): Promise<DocumentSymbol[] | undefined> {
 
 		if (!this.documentsSymbols.has(params.textDocument.uri)) {
-			this.documentsSymbols.set(params.textDocument.uri, this.languageServerConfiguration.parseDocumentSymbols(await this.fileSystem.readFile(params.textDocument.uri)))
+			this.documentsSymbols.set(params.textDocument.uri, this.languageServerConfiguration.parseDocumentSymbols(params.textDocument.uri, await this.fileSystem.readFile(params.textDocument.uri)))
 		}
 
 		return this.documentsSymbols.get(params.textDocument.uri)

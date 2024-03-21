@@ -34,7 +34,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 	constructor(name: VDFLanguageServer["name"], languageId: VDFLanguageServer["languageId"], connection: Connection, configuration: VDFLanguageServerConfiguration) {
 		super(name, languageId, connection, {
 			servers: configuration.servers,
-			parseDocumentSymbols: getVDFDocumentSymbols,
+			parseDocumentSymbols: (uri, str) => getVDFDocumentSymbols(str),
 			defaultDocumentSymbols: () => new VDFDocumentSymbols()
 		})
 
@@ -354,7 +354,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				const baseDocumentSymbols = this.documentsSymbols.has(baseUri)
 					? this.documentsSymbols.get(baseUri)!
 					: await (async (): Promise<VDFDocumentSymbols> => {
-						const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(await this.fileSystem.readFile(baseUri))
+						const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(baseUri, await this.fileSystem.readFile(baseUri))
 						this.documentsSymbols.set(baseUri, documentSymbols)
 						return documentSymbols
 					})()
@@ -1072,7 +1072,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		const { uri } = await z.object({ uri: z.string() }).parseAsync(params)
 
 		const documentSymbols = this.documentsSymbols.get(uri)
-			?? this.languageServerConfiguration.parseDocumentSymbols(await this.fileSystem.readFile(uri))
+			?? this.languageServerConfiguration.parseDocumentSymbols(uri, await this.fileSystem.readFile(uri))
 
 		const keys: string[] = []
 
@@ -1096,7 +1096,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 			try {
 				const documentSymbols = this.documentsSymbols.get(uri)
-					?? this.languageServerConfiguration.parseDocumentSymbols(await this.fileSystem.readFile(uri))
+					?? this.languageServerConfiguration.parseDocumentSymbols(uri, await this.fileSystem.readFile(uri))
 
 				const documentSymbol = documentSymbols.findRecursive((documentSymbol) => documentSymbol.key.toLowerCase() == key)
 				if (!documentSymbol) {
