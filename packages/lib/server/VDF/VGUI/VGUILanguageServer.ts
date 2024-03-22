@@ -9,7 +9,6 @@ import * as filesCompletion from "lib/utils/filesCompletion"
 import { getHUDRoot } from "lib/utils/getHUDRoot"
 import { normalizeUri } from "lib/utils/normalizeUri"
 import { posix } from "path"
-import { basename } from "path/posix"
 import { CodeLens, Color, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentLink, Location, Range, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type PrepareRenameParams, type ReferenceParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
@@ -66,7 +65,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		super(name, languageId, connection, {
 			getVDFTokeniserOptions: (uri) => {
 				return {
-					allowMultilineStrings: /(tf|chat)_.*?\.txt/.test(basename(uri))
+					allowMultilineStrings: /(tf|chat)_.*?\.txt/.test(posix.basename(uri))
 				}
 			},
 			servers: ["hudanimations"],
