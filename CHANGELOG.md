@@ -1,5 +1,19 @@
 # Change Log
 
+## [4.4.0]
+ - Allow multiline strings in Popfiles and VGUI language files
+ - Add support for `StopAnimation`, `SetFont`, `SetTexture` and `SetString` animation commands
+ - Fix not checking VGUI specific warnings
+ - Fix scheme references in scheme files not updating
+ - Exclude current file from #base file autocompletion items
+ - Fix HUD Animations file labels
+ - Fix conditional events incorrectly being declared as unreachable
+ - Fix false positive warnings for HUD animations events that are defined in other files
+ - Add support for escape characters in strings in VDF syntax highlighting
+ - Include `appmanifest_*.acf` files
+ - Update `Copy Key/Value Path To Clipboard` command to exclude file header
+ - Update `Copy Key/Value Path To Clipboard` command to always copy the result to the clipboard
+
 ## [4.3.0]
  - Add support for `mod_textures.txt`
  - Fix crash related to document links
