@@ -1,9 +1,10 @@
+import type { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
 import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 import { VDFFormatTokeniser, VDFFormatTokenType } from "./VDFFormatTokeniser"
 
-export function getVDFFormatDocumentSymbols(str: string): VDFFormatDocumentSymbol[] {
+export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOptions): VDFFormatDocumentSymbol[] {
 
-	const tokeniser = new VDFFormatTokeniser(str)
+	const tokeniser = new VDFFormatTokeniser(str, options)
 
 	const parseObject = (isObject: boolean): VDFFormatDocumentSymbol[] => {
 

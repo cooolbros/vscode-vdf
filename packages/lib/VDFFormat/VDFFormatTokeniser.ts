@@ -2,6 +2,7 @@ import { EndOfStreamError } from "lib/VDF/VDFErrors"
 import { VDFPosition } from "lib/VDF/VDFPosition"
 import { VDFRange } from "lib/VDF/VDFRange"
 import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
+import type { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
 
 export const enum VDFFormatTokenType {
 	String,
@@ -35,6 +36,8 @@ export class VDFFormatTokeniser {
 	 */
 	public static readonly whiteSpaceIgnore_skipNewLines = new Set([...VDFFormatTokeniser.whiteSpaceIgnore, "\n"])
 
+	private readonly options: VDFTokeniserOptions
+
 	private readonly str: string
 
 	/**
@@ -45,8 +48,11 @@ export class VDFFormatTokeniser {
 	// EOF
 	private _EOFRead = false
 
-	constructor(str: string) {
+	constructor(str: string, options: VDFTokeniserOptions) {
 		this.str = str
+		this.options = {
+			allowMultilineStrings: options?.allowMultilineStrings ?? false
+		}
 
 		// UTF-16 LE
 		if (str.substring(0, 1).charCodeAt(0) == 65279) {
@@ -98,7 +104,10 @@ export class VDFFormatTokeniser {
 				index++
 				const start = index
 				while (this.str[index] != "\"") {
-					if (index >= this.str.length || this.str[index] == "\n") {
+					if (index >= this.str.length) {
+						throw new Error()
+					}
+					else if (this.str[index] == "\n" && !this.options.allowMultilineStrings) {
 						throw new Error()
 					}
 					else if (this.str[index] == "\\") {

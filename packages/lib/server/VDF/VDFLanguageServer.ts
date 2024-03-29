@@ -961,7 +961,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			return [
 				{
 					range: Range.create(0, 0, MAX_VALUE, MAX_VALUE),
-					newText: VDFFormat(document.getText(), options),
+					newText: VDFFormat(document.getText(), this.VDFLanguageServerConfiguration.getVDFTokeniserOptions(params.textDocument.uri), options),
 				}
 			]
 		}
