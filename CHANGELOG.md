@@ -1,5 +1,9 @@
 # Change Log
 
+## [4.5.0]
+ - Support multiline strings when formatting Popfiles
+ - Fix HUD animations files not parsing correctly
+
 ## [4.4.0]
  - Allow multiline strings in Popfiles and VGUI language files
  - Add support for `StopAnimation`, `SetFont`, `SetTexture` and `SetString` animation commands
