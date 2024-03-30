@@ -96,7 +96,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 	constructor(name: HUDAnimationsLanguageServer["name"], languageId: HUDAnimationsLanguageServer["languageId"], connection: Connection) {
 		super(name, languageId, connection, {
 			servers: ["vdf"],
-			parseDocumentSymbols: getHUDAnimationsDocumentSymbols,
+			parseDocumentSymbols: (uri, str) => getHUDAnimationsDocumentSymbols(str),
 			defaultDocumentSymbols: () => new HUDAnimationsDocumentSymbols()
 		})
 
