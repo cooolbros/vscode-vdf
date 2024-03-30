@@ -4,7 +4,7 @@ import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimations
 
 export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimationsFormatDocumentSymbol[] {
 
-	const tokeniser = new VDFFormatTokeniser(str)
+	const tokeniser = new VDFFormatTokeniser(str, { allowMultilineStrings: false })
 
 	function parseFile(): HUDAnimationsFormatDocumentSymbol[] {
 
