@@ -86,7 +86,12 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					parentKeys: [],
 					definitionChildren: true,
 					referenceKeys: new Set([
-						"pin_to_sibling"
+						"pin_to_sibling",
+						"navUp".toLowerCase(),
+						"navDown".toLowerCase(),
+						"navLeft".toLowerCase(),
+						"navRight".toLowerCase(),
+						"navToRelay".toLowerCase(),
 					])
 				}
 			],
