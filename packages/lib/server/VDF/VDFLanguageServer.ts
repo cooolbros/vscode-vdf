@@ -113,7 +113,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 		documentSymbols.forAll(async (documentSymbol, objectPath) => {
 
-			if (documentSymbol.children) {
+			if (!documentSymbol.detail || !documentSymbol.detailRange) {
 				return
 			}
 
@@ -122,13 +122,13 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			if (documentSymbolKey == "#base" && documentSymbol.detail != "") {
 
 				const folder = posix.dirname(uri)
-				const detail = encodeBaseValue(documentSymbol.detail!.toLowerCase())
+				const detail = encodeBaseValue(documentSymbol.detail.toLowerCase())
 				const baseUri = `${folder}/${detail}`
 				const newPath = posix.relative(folder, baseUri)
 
 				if (baseUri == uri) {
 					diagnostics.push({
-						range: documentSymbol.detailRange!,
+						range: documentSymbol.detailRange,
 						severity: DiagnosticSeverity.Warning,
 						code: "base-self-reference",
 						message: "#base file references itself.",
@@ -139,7 +139,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 				if (detail != newPath) {
 					diagnostics.push({
-						range: documentSymbol.detailRange!,
+						range: documentSymbol.detailRange,
 						severity: DiagnosticSeverity.Warning,
 						code: "useless-path",
 						message: "Unnecessary relative file path.",
@@ -155,7 +155,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 			if (documentSymbolKey in this.VDFLanguageServerConfiguration.schema.values) {
 
-				const documentSymbolValue = documentSymbol.detail!.toLowerCase()
+				const documentSymbolValue = documentSymbol.detail.toLowerCase()
 
 				const valueData = this.VDFLanguageServerConfiguration.schema.values[documentSymbolKey]
 
@@ -166,7 +166,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				}
 
 				diagnostics.push({
-					range: documentSymbol.detailRange!,
+					range: documentSymbol.detailRange,
 					severity: DiagnosticSeverity.Warning,
 					code: "invalid-value",
 					message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${valueData.values.join("' | '")}'`,
@@ -193,11 +193,11 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			})()
 
 			if (type != null) {
-				const definitionLocation = definitionReferences.get([type, documentSymbol.detail!]).getDefinitionLocation()
+				const definitionLocation = definitionReferences.get([type, documentSymbol.detail]).getDefinitionLocation()
 
 				if (!definitionLocation) {
 					diagnostics.push({
-						range: documentSymbol.detailRange!,
+						range: documentSymbol.detailRange,
 						severity: DiagnosticSeverity.Warning,
 						code: "invalid-reference",
 						message: `Cannot find ${this.VDFLanguageServerConfiguration.definitionReferences[type].name} '${documentSymbol.detail}'.`,
