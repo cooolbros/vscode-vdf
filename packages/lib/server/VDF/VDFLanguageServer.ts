@@ -192,7 +192,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				return null
 			})()
 
-			if (type != null) {
+			if (type != null && documentSymbol.detail != "") {
 				const definitionLocation = definitionReferences.get([type, documentSymbol.detail]).getDefinitionLocation()
 
 				if (!definitionLocation) {
