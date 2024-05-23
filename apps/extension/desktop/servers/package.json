@@ -4,5 +4,8 @@
         "dev": "webpack --watch --mode none",
         "build": "webpack",
         "lint": "eslint . --ext .ts"
+    },
+    "devDependencies": {
+        "lib": "workspace:^"
     }
 }

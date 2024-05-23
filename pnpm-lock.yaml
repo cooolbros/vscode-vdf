@@ -113,13 +113,29 @@ importers:
         specifier: ^3.3.3
         version: 3.4.3(ts-node@10.9.2(@types/node@18.19.26)(typescript@5.4.3))
 
-  apps/extension/browser/client: {}
+  apps/extension/browser/client:
+    devDependencies:
+      lib:
+        specifier: workspace:^
+        version: link:../../../../packages/lib
 
-  apps/extension/browser/servers: {}
+  apps/extension/browser/servers:
+    devDependencies:
+      lib:
+        specifier: workspace:^
+        version: link:../../../../packages/lib
 
-  apps/extension/desktop/client: {}
+  apps/extension/desktop/client:
+    devDependencies:
+      lib:
+        specifier: workspace:^
+        version: link:../../../../packages/lib
 
-  apps/extension/desktop/servers: {}
+  apps/extension/desktop/servers:
+    devDependencies:
+      lib:
+        specifier: workspace:^
+        version: link:../../../../packages/lib
 
   packages/lib: {}
 
