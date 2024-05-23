@@ -1,5 +1,5 @@
-import type { VSCodeVDFFileSystem } from "lib/types/VSCodeVDFFileSystem"
 import { Uri, workspace } from "vscode"
+import type { VSCodeVDFFileSystem } from "../types/VSCodeVDFFileSystem"
 import { VPK } from "./VPK"
 
 export class VPKManager {

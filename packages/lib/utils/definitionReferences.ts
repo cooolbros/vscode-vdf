@@ -1,6 +1,6 @@
-import type { VDFDefinitionReferencesConfiguration, VDFLanguageServerConfiguration } from "lib/server/VDF/VDFLanguageServerConfiguration"
-import type { VDFRange } from "lib/VDF/VDFRange"
-import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
+import type { VDFDefinitionReferencesConfiguration, VDFLanguageServerConfiguration } from "../server/VDF/VDFLanguageServerConfiguration"
+import type { VDFRange } from "../VDF/VDFRange"
+import type { VDFDocumentSymbol } from "../VDFDocumentSymbols/VDFDocumentSymbol"
 import { ArrayContainsArray } from "./ArrayContainsArray"
 
 export type DocumentsDefinitionReferences = Map<string, DocumentDefinitionReferences>
