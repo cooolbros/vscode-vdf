@@ -76,7 +76,9 @@ export class VDFFormatTokeniser {
 			if (this._EOFRead) {
 				throw new EndOfStreamError(["token"], new VDFRange(new VDFPosition(0, 0)))
 			}
-			this._EOFRead = true
+			if (!peek) {
+				this._EOFRead = true
+			}
 			return null
 		}
 
