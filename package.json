@@ -306,7 +306,7 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run build",
+        "vscode:prepublish": "pnpm build",
         "dev": "turbo run dev",
         "dev:docs": "turbo run dev --filter=docs",
         "build": "turbo run build",
