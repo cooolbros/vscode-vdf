@@ -13,7 +13,7 @@ jobs:
           node-version: latest
       - uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       - run: pnpm install
       - run: pnpm build:docs
       - uses: peaceiris/actions-gh-pages@v3
