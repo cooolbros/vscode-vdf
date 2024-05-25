@@ -11,8 +11,11 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: latest
-      - run: npm install
-      - run: npm run build:docs
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+      - run: pnpm install
+      - run: pnpm build:docs
       - uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
