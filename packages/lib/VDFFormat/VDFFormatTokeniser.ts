@@ -1,7 +1,7 @@
-import { EndOfStreamError } from "lib/VDF/VDFErrors"
-import { VDFPosition } from "lib/VDF/VDFPosition"
-import { VDFRange } from "lib/VDF/VDFRange"
-import { VDFTokeniser } from "lib/VDF/VDFTokeniser"
+import { EndOfStreamError } from "../VDF/VDFErrors"
+import { VDFPosition } from "../VDF/VDFPosition"
+import { VDFRange } from "../VDF/VDFRange"
+import { VDFTokeniser } from "../VDF/VDFTokeniser"
 import type { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
 
 export const enum VDFFormatTokenType {

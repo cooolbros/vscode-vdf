@@ -306,7 +306,7 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run build",
+        "vscode:prepublish": "pnpm build",
         "dev": "turbo run dev",
         "dev:docs": "turbo run dev --filter=docs",
         "build": "turbo run build",
@@ -340,12 +340,6 @@
         "webpack-cli": "^5.1.4",
         "zod": "^3.22.4"
     },
-    "workspaces": [
-        "apps/*",
-        "apps/extension/browser/*",
-        "apps/extension/desktop/*",
-        "packages/*"
-    ],
     "__metadata": {
         "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
         "publisherDisplayName": "pfwobcke",

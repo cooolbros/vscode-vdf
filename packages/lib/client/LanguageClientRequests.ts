@@ -1,8 +1,8 @@
-import type { languageClientsInfo } from "lib/languageClientsInfo"
-import { VSCodeVDFLanguageIDSchema } from "lib/types/VSCodeVDFLanguageID"
 import type { Disposable } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
+import type { languageClientsInfo } from "../languageClientsInfo"
+import { VSCodeVDFLanguageIDSchema } from "../types/VSCodeVDFLanguageID"
 
 const requestTypeSchema = z.string()
 

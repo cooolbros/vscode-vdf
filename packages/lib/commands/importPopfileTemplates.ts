@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from "fs"
-import { VDFPosition } from "lib/VDF/VDFPosition"
-import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
-import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
-import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymbols"
 import path, { dirname } from "path"
 import { fileURLToPath } from "url"
 import { EndOfLine, Position, Uri, type TextEditor, type TextEditorEdit } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
+import { VDFPosition } from "../VDF/VDFPosition"
+import type { VDFDocumentSymbol } from "../VDFDocumentSymbols/VDFDocumentSymbol"
+import type { VDFDocumentSymbols } from "../VDFDocumentSymbols/VDFDocumentSymbols"
+import { getVDFDocumentSymbols } from "../VDFDocumentSymbols/getVDFDocumentSymbols"
 
 
 const TFBotSquadRandomChoice = ["TFBot", "Squad", "RandomChoice"].map(i => i.toLowerCase())

@@ -1,5 +1,5 @@
-import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "lib/types/VSCodeVDFConfiguration"
 import { DidChangeConfigurationNotification, type Connection } from "vscode-languageserver"
+import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "../types/VSCodeVDFConfiguration"
 
 export class DocumentsConfiguration {
 

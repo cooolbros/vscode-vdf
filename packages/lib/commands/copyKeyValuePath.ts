@@ -1,10 +1,10 @@
-import { VSCodeLanguageClientFileSystem } from "lib/client/VSCodeLanguageClientFileSystem"
-import { getHUDRoot } from "lib/utils/getHUDRoot"
-import { getVDFDocumentSymbols } from "lib/VDFDocumentSymbols/getVDFDocumentSymbols"
-import type { VDFDocumentSymbol } from "lib/VDFDocumentSymbols/VDFDocumentSymbol"
-import type { VDFDocumentSymbols } from "lib/VDFDocumentSymbols/VDFDocumentSymbols"
 import { basename, relative, sep } from "path"
-import { env, Position, Uri, window, type TextEditor } from "vscode"
+import { Position, Uri, env, window, type TextEditor } from "vscode"
+import type { VDFDocumentSymbol } from "../VDFDocumentSymbols/VDFDocumentSymbol"
+import type { VDFDocumentSymbols } from "../VDFDocumentSymbols/VDFDocumentSymbols"
+import { getVDFDocumentSymbols } from "../VDFDocumentSymbols/getVDFDocumentSymbols"
+import { VSCodeLanguageClientFileSystem } from "../client/VSCodeLanguageClientFileSystem"
+import { getHUDRoot } from "../utils/getHUDRoot"
 
 export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
