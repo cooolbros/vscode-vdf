@@ -128,6 +128,34 @@ export class VDFTokeniser {
 				character++
 				break
 			}
+			case "[": {
+				const start = index
+				const startPosition = new VDFPosition(line, character)
+				while (this.str[index] != "]") {
+					if (index >= this.str.length) {
+						throw new EndOfStreamError(["']'"], new VDFRange(startPosition, new VDFPosition(line, character)))
+					}
+					if (this.str[index] == "\n") {
+						throw new UnexpectedCharacterError("'\\n'", ["']'"], new VDFRange(startPosition, new VDFPosition(line, character)))
+					}
+					index++
+					character++
+				}
+				index++
+				character++
+				const end = index
+				const endPosition = new VDFPosition(line, character)
+				const value = this.str.slice(start, end)
+				token = {
+					type: VDFTokenType.Conditional,
+					value: value,
+					range: new VDFRange(
+						startPosition,
+						endPosition
+					)
+				}
+				break
+			}
 			case "\"": {
 				index++
 				character++
@@ -188,7 +216,7 @@ export class VDFTokeniser {
 				const endPosition = new VDFPosition(line, character)
 				const value = this.str.slice(start, end)
 				token = {
-					type: value.startsWith("[") && value.endsWith("]") ? VDFTokenType.Conditional : VDFTokenType.String,
+					type: VDFTokenType.String,
 					value: value,
 					range: new VDFRange(
 						startPosition,
