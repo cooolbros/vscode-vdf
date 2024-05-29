@@ -38,7 +38,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				break
 			}
 			if (keyToken == null) {
-				throw new EndOfStreamError(["key"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				throw new EndOfStreamError(["key", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 			}
 
 			switch (keyToken.type) {
@@ -85,7 +85,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 							break
 						}
 						case VDFTokenType.Conditional: {
-							throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'"], valueToken.range)
+							throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'", "value"], valueToken.range)
 						}
 					}
 					break
