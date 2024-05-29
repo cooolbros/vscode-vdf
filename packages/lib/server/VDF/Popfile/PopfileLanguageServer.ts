@@ -1,7 +1,6 @@
 import { posix } from "path"
 import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection } from "vscode-languageserver"
 import type { DocumentLinkData } from "../../../types/DocumentLinkData"
-import { decimalToHexadecimal, hexadecimalToDecimal, hexadecimalToRgb, rgbToHexadecimal } from "../../../utils/colours"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"
@@ -109,16 +108,16 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 						"set item tint rgb"
 					]),
 					parse: (value: string): Color | null => {
-						const [r, g, b] = hexadecimalToRgb(decimalToHexadecimal(parseInt(value)))
+						const colour = parseInt(value)
 						return {
-							red: r / 255,
-							green: g / 255,
-							blue: b / 255,
+							red: ((colour >> 16) & 255) / 255,
+							green: ((colour >> 8) & 255) / 255,
+							blue: ((colour >> 0) & 255) / 255,
 							alpha: 255
 						}
 					},
 					stringify: (colour: Color): string => {
-						return hexadecimalToDecimal(rgbToHexadecimal(colour.red * 255, colour.green * 255, colour.blue * 255)).toString()
+						return (colour.red * 255 << 16 | colour.green * 255 << 8 | colour.blue * 255 << 0).toString()
 					}
 				}
 			]
