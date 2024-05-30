@@ -1,4 +1,4 @@
-import { EndOfStreamError } from "../VDF/VDFErrors"
+import { UnexpectedEndOfFileError } from "../VDF/VDFErrors"
 import { VDFPosition } from "../VDF/VDFPosition"
 import { VDFRange } from "../VDF/VDFRange"
 import { VDFTokeniser } from "../VDF/VDFTokeniser"
@@ -74,7 +74,7 @@ export class VDFFormatTokeniser {
 
 		if (index >= this.str.length) {
 			if (this._EOFRead) {
-				throw new EndOfStreamError(["token"], new VDFRange(new VDFPosition(0, 0)))
+				throw new UnexpectedEndOfFileError(["token"], new VDFRange(new VDFPosition(0, 0)))
 			}
 			if (!peek) {
 				this._EOFRead = true

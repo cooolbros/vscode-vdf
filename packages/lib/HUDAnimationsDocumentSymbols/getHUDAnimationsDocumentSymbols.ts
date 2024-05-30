@@ -1,4 +1,4 @@
-import { EndOfStreamError, UnexpectedCharacterError, UnexpectedTokenError } from "../VDF/VDFErrors"
+import { UnexpectedCharacterError, UnexpectedEndOfFileError, UnexpectedTokenError } from "../VDF/VDFErrors"
 import { VDFPosition } from "../VDF/VDFPosition"
 import { VDFRange } from "../VDF/VDFRange"
 import { VDFTokenType, type VDFToken } from "../VDF/VDFToken"
@@ -35,7 +35,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 		const eventName = tokeniser.next()
 		if (eventName == null) {
-			throw new EndOfStreamError(["event name"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+			throw new UnexpectedEndOfFileError(["event name"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
 		if (eventName.type != VDFTokenType.String) {
 			throw new UnexpectedTokenError(`'${eventName.value}'`, ["event name"], eventName.range)
@@ -45,7 +45,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 		let token = tokeniser.next()
 		if (token == null) {
-			throw new EndOfStreamError(["'{'", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+			throw new UnexpectedEndOfFileError(["'{'", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
 
 		switch (token.type) {
@@ -59,7 +59,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				conditional = token
 				token = tokeniser.next()
 				if (token == null) {
-					throw new EndOfStreamError(["'{'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+					throw new UnexpectedEndOfFileError(["'{'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 				}
 				if (token.type != VDFTokenType.ControlCharacter || token.value != "{") {
 					throw new UnexpectedTokenError(`'${token.value}'`, ["'{'"], token.range)
@@ -75,7 +75,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		while (true) {
 			const animationCommandToken = tokeniser.next()
 			if (animationCommandToken == null) {
-				throw new EndOfStreamError(["animation command", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				throw new UnexpectedEndOfFileError(["animation command", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 			}
 
 			if (animationCommandToken.type == VDFTokenType.String) {
@@ -100,7 +100,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 	function readString(check = true): VDFToken {
 		const token = tokeniser.next()
 		if (token == null) {
-			throw new EndOfStreamError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+			throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
 		if (check && token.type != VDFTokenType.String) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["string"], token.range)
@@ -124,7 +124,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 		const token = tokeniser.next()
 		if (token == null) {
-			throw new EndOfStreamError(["'0'", "'1'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+			throw new UnexpectedEndOfFileError(["'0'", "'1'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
 
 		if (token.value != "0" && token.value != "1") {
@@ -168,7 +168,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						interpolator: ((): Interpolator => {
 							const interpolator = tokeniser.next()
 							if (interpolator == null) {
-								throw new EndOfStreamError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+								throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 							}
 
 							if (interpolator.type != VDFTokenType.String) {

@@ -39,8 +39,8 @@ export class UnclosedEscapeSequenceError extends VDFSyntaxError {
 	}
 }
 
-export class EndOfStreamError extends VDFSyntaxError {
-	public readonly name = "EndOfStreamError"
+export class UnexpectedEndOfFileError extends VDFSyntaxError {
+	public readonly name = "UnexpectedEndOfFileError"
 	constructor(expected: string[], range: VDFRange) {
 		super("EOF", expected, range)
 	}

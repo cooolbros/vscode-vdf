@@ -1,4 +1,4 @@
-import { EndOfStreamError, UnclosedEscapeSequenceError, UnexpectedCharacterError } from "./VDFErrors"
+import { UnclosedEscapeSequenceError, UnexpectedCharacterError, UnexpectedEndOfFileError } from "./VDFErrors"
 import { VDFPosition } from "./VDFPosition"
 import { VDFRange } from "./VDFRange"
 import { VDFTokenType, type VDFToken } from "./VDFToken"
@@ -101,7 +101,7 @@ export class VDFTokeniser {
 		if (index >= this.str.length) {
 			if (this._EOFRead) {
 				const position = new VDFPosition(line, character)
-				throw new EndOfStreamError(["token"], new VDFRange(position, position))
+				throw new UnexpectedEndOfFileError(["token"], new VDFRange(position, position))
 			}
 			// The VDF Parser will need to read the last token twice, once for checking conditional
 			// and then again for checking that the last key is null
@@ -133,7 +133,7 @@ export class VDFTokeniser {
 				const startPosition = new VDFPosition(line, character)
 				while (this.str[index] != "]") {
 					if (index >= this.str.length) {
-						throw new EndOfStreamError(["']'"], new VDFRange(startPosition, new VDFPosition(line, character)))
+						throw new UnexpectedEndOfFileError(["']'"], new VDFRange(startPosition, new VDFPosition(line, character)))
 					}
 					if (this.str[index] == "\n") {
 						throw new UnexpectedCharacterError("'\\n'", ["']'"], new VDFRange(startPosition, new VDFPosition(line, character)))
@@ -163,7 +163,7 @@ export class VDFTokeniser {
 				const startPosition = new VDFPosition(line, character)
 				while (this.str[index] != "\"") {
 					if (index >= this.str.length) {
-						throw new EndOfStreamError(["'\"'"], new VDFRange(startPosition, new VDFPosition(line, character)))
+						throw new UnexpectedEndOfFileError(["'\"'"], new VDFRange(startPosition, new VDFPosition(line, character)))
 					}
 					if (this.str[index] == "\n") {
 						if (this.options.allowMultilineStrings) {

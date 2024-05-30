@@ -1,4 +1,4 @@
-import { EndOfStreamError, UnexpectedTokenError } from "./VDFErrors"
+import { UnexpectedEndOfFileError, UnexpectedTokenError } from "./VDFErrors"
 import { VDFIndentation } from "./VDFIndentation"
 import { VDFNewLine } from "./VDFNewLine"
 import { VDFPosition } from "./VDFPosition"
@@ -54,7 +54,7 @@ export class VDF {
 				}
 				if (keyToken == null) {
 					const endOfFilePosition = new VDFPosition(tokeniser.line, tokeniser.character)
-					throw new EndOfStreamError(["token"], new VDFRange(endOfFilePosition))
+					throw new UnexpectedEndOfFileError(["token"], new VDFRange(endOfFilePosition))
 				}
 
 				switch (keyToken.type) {
@@ -64,14 +64,14 @@ export class VDF {
 
 						let valueToken = tokeniser.next()
 						if (valueToken == null) {
-							throw new EndOfStreamError(["'{'", "value", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+							throw new UnexpectedEndOfFileError(["'{'", "value", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 						}
 
 						if (valueToken.type == VDFTokenType.Conditional) {
 							conditional = <`[${string}]`>valueToken.value
 							valueToken = tokeniser.next()
 							if (valueToken == null) {
-								throw new EndOfStreamError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+								throw new UnexpectedEndOfFileError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 							}
 						}
 

@@ -1,5 +1,5 @@
 import { SymbolKind } from "vscode-languageserver"
-import { EndOfStreamError, UnexpectedTokenError } from "../VDF/VDFErrors"
+import { UnexpectedEndOfFileError, UnexpectedTokenError } from "../VDF/VDFErrors"
 import { VDFPosition } from "../VDF/VDFPosition"
 import { VDFRange } from "../VDF/VDFRange"
 import { VDFTokenType } from "../VDF/VDFToken"
@@ -38,7 +38,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				break
 			}
 			if (keyToken == null) {
-				throw new EndOfStreamError(["key", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+				throw new UnexpectedEndOfFileError(["key", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 			}
 
 			switch (keyToken.type) {
@@ -48,14 +48,14 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 
 					let valueToken = tokeniser.next()
 					if (valueToken == null) {
-						throw new EndOfStreamError(["'{'", "value", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+						throw new UnexpectedEndOfFileError(["'{'", "value", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 					}
 
 					if (valueToken.type == VDFTokenType.Conditional) {
 						conditional = <`[${string}]`>valueToken.value
 						valueToken = tokeniser.next()
 						if (valueToken == null) {
-							throw new EndOfStreamError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+							throw new UnexpectedEndOfFileError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 						}
 					}
 
