@@ -163,7 +163,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 				{
 					range: diagnostics.range,
 					severity: DiagnosticSeverity.Error,
-					code: diagnostics.constructor.name,
+					code: diagnostics.name, // Don't use diagnostics.constructor.name because webpack obfuscates class names
 					source: this.languageId,
 					message: diagnostics.message
 				}

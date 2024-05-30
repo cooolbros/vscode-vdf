@@ -17,6 +17,7 @@ import type { VDFRange } from "./VDFRange"
  * ```
  */
 export abstract class VDFSyntaxError extends Error {
+	public abstract readonly name: string
 	public range: VDFRange
 	constructor(unexpected: string, expected: string[], range: VDFRange) {
 		super(`Unexpected ${unexpected}. Expected ${expected.join(" | ")}.`)
@@ -25,24 +26,28 @@ export abstract class VDFSyntaxError extends Error {
 }
 
 export class UnexpectedCharacterError extends VDFSyntaxError {
+	public readonly name = "UnexpectedCharacterError"
 	constructor(unexpected: string, expected: string[], range: VDFRange) {
 		super(unexpected, expected, range)
 	}
 }
 
 export class UnclosedEscapeSequenceError extends VDFSyntaxError {
+	public readonly name = "UnclosedEscapeSequenceError"
 	constructor(range: VDFRange) {
 		super("Unclosed escape sequence", ["char"], range)
 	}
 }
 
 export class EndOfStreamError extends VDFSyntaxError {
+	public readonly name = "EndOfStreamError"
 	constructor(expected: string[], range: VDFRange) {
 		super("EOF", expected, range)
 	}
 }
 
 export class UnexpectedTokenError extends VDFSyntaxError {
+	public readonly name = "UnexpectedTokenError"
 	constructor(unexpected: `'${string}'`, expected: string[], range: VDFRange) {
 		super(unexpected, expected, range)
 	}
