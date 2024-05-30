@@ -26,28 +26,28 @@ export abstract class VDFSyntaxError extends Error {
 }
 
 export class UnexpectedCharacterError extends VDFSyntaxError {
-	public readonly name = "UnexpectedCharacterError"
+	public readonly name = "unexpected-character"
 	constructor(unexpected: string, expected: string[], range: VDFRange) {
 		super(unexpected, expected, range)
 	}
 }
 
 export class UnclosedEscapeSequenceError extends VDFSyntaxError {
-	public readonly name = "UnclosedEscapeSequenceError"
+	public readonly name = "unclosed-escape-sequence"
 	constructor(range: VDFRange) {
 		super("Unclosed escape sequence", ["char"], range)
 	}
 }
 
 export class UnexpectedEndOfFileError extends VDFSyntaxError {
-	public readonly name = "UnexpectedEndOfFileError"
+	public readonly name = "unexpected-end-of-file"
 	constructor(expected: string[], range: VDFRange) {
 		super("EOF", expected, range)
 	}
 }
 
 export class UnexpectedTokenError extends VDFSyntaxError {
-	public readonly name = "UnexpectedTokenError"
+	public readonly name = "unexpected-token"
 	constructor(unexpected: `'${string}'`, expected: string[], range: VDFRange) {
 		super(unexpected, expected, range)
 	}
