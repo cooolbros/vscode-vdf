@@ -27,6 +27,10 @@ export default {
 						onlyCompileBundledFiles: true
 					}
 				}
+			},
+			{
+				resourceQuery: /raw/,
+				type: "asset/source",
 			}
 		]
 	}
