@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      tga-js:
-        specifier: ^1.1.1
-        version: 1.1.1
     devDependencies:
       '@turbo/gen':
         specifier: ^1.12.4
@@ -130,6 +126,9 @@ importers:
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
+      tga-js:
+        specifier: ^1.1.1
+        version: 1.1.1
 
   apps/extension/desktop/servers:
     devDependencies:

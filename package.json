@@ -314,9 +314,6 @@
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
         "lint": "turbo run lint"
     },
-    "dependencies": {
-        "tga-js": "^1.1.1"
-    },
     "devDependencies": {
         "@turbo/gen": "^1.12.4",
         "@types/node": "^18.17.1",
