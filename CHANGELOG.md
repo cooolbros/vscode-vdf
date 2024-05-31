@@ -1,5 +1,14 @@
 # Change Log
 
+## [4.6.0]
+ - Add support for nav keys (`navUp`, `navDown`, `navLeft`, `navRight`, `navToRelay`)
+ - Disable element reference warnings for empty string values
+ - Fix formatter error when file does not end with a newline
+ - Improve performance of `"set item tint rgb"` colour picker
+ - Add support for complex conditionals (e.g. `[$english || $spanish]`)
+ - Fix obfuscated diagnostic codes
+ - Add more expected values in parse errors
+
 ## [4.5.0]
  - Support multiline strings when formatting Popfiles
  - Fix HUD animations files not parsing correctly
