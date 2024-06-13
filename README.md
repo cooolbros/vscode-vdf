@@ -64,3 +64,5 @@ VDF/Valve KeyValues language support for VSCode
 Github: https://github.com/cooolbros/vscode-vdf
 
 VS Marketplace: https://marketplace.visualstudio.com/items?itemName=pfwobcke.vscode-vdf
+
+Open VSX Registry: https://open-vsx.org/extension/pfwobcke/vscode-vdf
