@@ -1,5 +1,5 @@
 import type { DocumentSymbol } from "vscode-languageserver"
-import type { languageClientsInfo } from "../languageClientsInfo"
+import type { languageClientsInfo } from "../types/languageClientsInfo"
 
 export interface LanguageServerConfiguration<T extends DocumentSymbol[]> {
 	servers?: (keyof typeof languageClientsInfo)[]
