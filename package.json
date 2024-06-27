@@ -328,7 +328,7 @@
         "string-similarity": "^4.0.4",
         "ts-loader": "^9.5.1",
         "ts-node": "^10.9.2",
-        "turbo": "^1.12.4",
+        "turbo": "^2.0.5",
         "typescript": "^5.3.3",
         "vscode-languageclient": "^9.0.1",
         "vscode-languageserver": "^9.0.1",
