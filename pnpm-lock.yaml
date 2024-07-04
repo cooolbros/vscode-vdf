@@ -108,18 +108,27 @@ importers:
       tailwindcss:
         specifier: ^3.3.3
         version: 3.4.3(ts-node@10.9.2(@types/node@18.19.26)(typescript@5.4.3))
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../packages/tsconfig
 
   apps/extension/browser/client:
     devDependencies:
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../../../packages/tsconfig
 
   apps/extension/browser/servers:
     devDependencies:
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../../../packages/tsconfig
 
   apps/extension/desktop/client:
     devDependencies:
@@ -129,14 +138,22 @@ importers:
       tga-js:
         specifier: ^1.1.1
         version: 1.1.1
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../../../packages/tsconfig
 
   apps/extension/desktop/servers:
     devDependencies:
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../../../packages/tsconfig
 
   packages/lib: {}
+
+  packages/tsconfig: {}
 
 packages:
 

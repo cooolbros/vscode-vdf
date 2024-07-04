@@ -6,6 +6,7 @@
         "lint": "eslint . --ext .ts"
     },
     "devDependencies": {
-        "lib": "workspace:^"
+        "lib": "workspace:^",
+        "tsconfig": "workspace:^"
     }
 }
