@@ -311,8 +311,7 @@
         "dev:docs": "turbo run dev --filter=docs",
         "build": "turbo run build",
         "build:docs": "turbo run build --filter=docs",
-        "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
-        "lint": "turbo run lint"
+        "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
     },
     "devDependencies": {
         "@turbo/gen": "^1.12.4",
@@ -320,10 +319,7 @@
         "@types/string-similarity": "^4.0.2",
         "@types/vscode": "^1.86.0",
         "@types/vscode-webview": "^1.57.5",
-        "@typescript-eslint/eslint-plugin": "^7.0.1",
-        "@typescript-eslint/parser": "^7.0.1",
         "@vscode/test-web": "^0.0.51",
-        "eslint": "^8.56.0",
         "path-browserify": "^1.0.1",
         "string-similarity": "^4.0.4",
         "ts-loader": "^9.5.1",

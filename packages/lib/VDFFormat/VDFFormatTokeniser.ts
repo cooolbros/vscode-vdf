@@ -128,8 +128,6 @@ export class VDFFormatTokeniser {
 				}
 				break
 			}
-			/* eslint-disable no-fallthrough */
-			// @ts-ignore
 			case "/": {
 				if (this.str[index + 1] == "/") {
 					index += 2 // Skip //

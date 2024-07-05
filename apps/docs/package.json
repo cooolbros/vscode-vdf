@@ -2,8 +2,7 @@
     "name": "docs",
     "scripts": {
         "dev": "next dev",
-        "build": "next build",
-        "lint": "next lint"
+        "build": "next build"
     },
     "devDependencies": {
         "@types/react": "^18.2.22",
