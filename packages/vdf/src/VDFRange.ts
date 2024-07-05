@@ -1,8 +1,7 @@
-import { Position, Range } from "vscode-languageserver"
 import { z } from "zod"
 import { VDFPosition } from "./VDFPosition"
 
-export class VDFRange implements Range {
+export class VDFRange {
 
 	public static readonly schema = z.object({
 		start: VDFPosition.schema,
@@ -13,13 +12,12 @@ export class VDFRange implements Range {
 	public end: VDFPosition
 
 	constructor(start: VDFPosition, end: VDFPosition = start) {
-		Range.create(start.line, start.character, end.line, end.character)
 		this.start = start
 		this.end = end
 	}
 
-	public contains(value: Range | Position): boolean {
-		if (Range.is(value)) {
+	public contains(value: VDFRange | VDFPosition): boolean {
+		if ("start" in value) {
 			return this.start.isBefore(value.start) && this.end.isAfter(value.end)
 		}
 		return this.start.isBefore(value) && this.end.isAfter(value)

@@ -1,7 +1,6 @@
-import { Position } from "vscode-languageserver"
 import { z } from "zod"
 
-export class VDFPosition implements Position {
+export class VDFPosition {
 
 	public static readonly schema = z.object({
 		line: z.number(),
@@ -12,12 +11,12 @@ export class VDFPosition implements Position {
 	public character: number
 
 	constructor(line: number, character: number) {
-		Position.create(line, character)
+
 		this.line = line
 		this.character = character
 	}
 
-	public isBefore(value: Position): boolean {
+	public isBefore(value: VDFPosition): boolean {
 		if (this.line < value.line) {
 			return true
 		}
@@ -27,7 +26,7 @@ export class VDFPosition implements Position {
 		return this.character <= value.character
 	}
 
-	public isAfter(value: Position): boolean {
+	public isAfter(value: VDFPosition): boolean {
 		if (this.line < value.line) {
 			return false
 		}

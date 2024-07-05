@@ -1,0 +1,12 @@
+{
+    "name": "vdf",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "dev": "tsc --watch",
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "tsconfig": "workspace:^"
+    }
+}

@@ -146,6 +146,12 @@ importers:
 
   packages/tsconfig: {}
 
+  packages/vdf:
+    devDependencies:
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
