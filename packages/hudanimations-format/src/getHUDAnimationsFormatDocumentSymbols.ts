@@ -1,5 +1,5 @@
-import { AccelInterpolator, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FlickerInterpolator, GainInterpolator, HUDAnimationStatementType, LinearInterpolator, PulseInterpolator, SplineInterpolator } from "../HUDAnimationsDocumentSymbols/HUDAnimationsDocumentSymbol"
-import { VDFFormatTokenType, VDFFormatTokeniser, type VDFFormatToken } from "../VDFFormat/VDFFormatTokeniser"
+import { AccelInterpolator, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FlickerInterpolator, GainInterpolator, HUDAnimationStatementType, LinearInterpolator, PulseInterpolator, SplineInterpolator } from "hudanimations-documentsymbols"
+import { VDFFormatTokenType, VDFFormatTokeniser, type VDFFormatToken } from "vdf-format"
 import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatDocumentSymbol, PlaySound, RunEvent, RunEventChild, SetFont, SetInputEnabled, SetString, SetTexture, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatDocumentSymbol"
 
 export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimationsFormatDocumentSymbol[] {

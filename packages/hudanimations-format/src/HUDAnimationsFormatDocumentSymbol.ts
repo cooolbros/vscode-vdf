@@ -1,4 +1,4 @@
-import type { HUDAnimationStatementType } from "../HUDAnimationsDocumentSymbols/HUDAnimationsDocumentSymbol"
+import type { HUDAnimationStatementType } from "hudanimations-documentsymbols"
 
 export interface HUDAnimationsFormatDocumentSymbol {
 	comment?: string

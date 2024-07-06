@@ -154,6 +154,18 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
 
+  packages/hudanimations-format:
+    devDependencies:
+      hudanimations-documentsymbols:
+        specifier: workspace:^
+        version: link:../hudanimations-documentsymbols
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+      vdf-format:
+        specifier: workspace:^
+        version: link:../vdf-format
+
   packages/lib: {}
 
   packages/tsconfig: {}

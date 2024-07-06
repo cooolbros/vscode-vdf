@@ -1,4 +1,4 @@
-import { HUDAnimationStatementType } from "../HUDAnimationsDocumentSymbols/HUDAnimationsDocumentSymbol"
+import { HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import type { Animation, HUDAnimationsFormatDocumentSymbol } from "./HUDAnimationsFormatDocumentSymbol"
 import type { HUDAnimationsFormatStringifyOptions } from "./HUDAnimationsFormatStringifyOptions"
 
