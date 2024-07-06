@@ -1,6 +1,6 @@
+import { VDFRange } from "vdf"
 import type { DocumentSymbol, SymbolKind } from "vscode-languageserver"
 import { z } from "zod"
-import { VDFRange } from "../VDF/VDFRange"
 import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
 /**

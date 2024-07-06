@@ -152,6 +152,18 @@ importers:
         specifier: workspace:^
         version: link:../tsconfig
 
+  packages/vdf-documentsymbols:
+    devDependencies:
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+      vdf:
+        specifier: workspace:^
+        version: link:../vdf
+      vscode-languageserver:
+        specifier: ^9.0.1
+        version: 9.0.1
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

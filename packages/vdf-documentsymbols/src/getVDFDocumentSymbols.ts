@@ -1,10 +1,5 @@
+import { UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFTokeniserOptions } from "vdf"
 import { SymbolKind } from "vscode-languageserver"
-import { UnexpectedEndOfFileError, UnexpectedTokenError } from "../VDF/VDFErrors"
-import { VDFPosition } from "../VDF/VDFPosition"
-import { VDFRange } from "../VDF/VDFRange"
-import { VDFTokenType } from "../VDF/VDFToken"
-import { VDFTokeniser } from "../VDF/VDFTokeniser"
-import type { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
 import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
