@@ -1,6 +1,5 @@
+import type { VDFRange, VDFToken } from "vdf"
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver"
-import type { VDFRange } from "../VDF/VDFRange"
-import type { VDFToken } from "../VDF/VDFToken"
 import type { HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
 export class HUDAnimationsEventDocumentSymbol implements DocumentSymbol {
