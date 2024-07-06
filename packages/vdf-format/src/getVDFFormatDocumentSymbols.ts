@@ -1,4 +1,4 @@
-import type { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
+import type { VDFTokeniserOptions } from "vdf"
 import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 import { VDFFormatTokeniser, VDFFormatTokenType } from "./VDFFormatTokeniser"
 

@@ -1,5 +1,4 @@
-import { VDFIndentation } from "../VDF/VDFIndentation"
-import { VDFNewLine } from "../VDF/VDFNewLine"
+import { VDFIndentation, VDFNewLine } from "vdf"
 import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 import type { VDFFormatStringifyOptions } from "./VDFFormatStringifyOptions"
 

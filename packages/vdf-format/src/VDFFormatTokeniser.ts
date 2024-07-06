@@ -1,8 +1,4 @@
-import { UnexpectedEndOfFileError } from "../VDF/VDFErrors"
-import { VDFPosition } from "../VDF/VDFPosition"
-import { VDFRange } from "../VDF/VDFRange"
-import { VDFTokeniser } from "../VDF/VDFTokeniser"
-import type { VDFTokeniserOptions } from "../VDF/VDFTokeniserOptions"
+import { UnexpectedEndOfFileError, VDFPosition, VDFRange, VDFTokeniser, type VDFTokeniserOptions } from "vdf"
 
 export const enum VDFFormatTokenType {
 	String,

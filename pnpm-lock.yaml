@@ -176,6 +176,15 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
 
+  packages/vdf-format:
+    devDependencies:
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+      vdf:
+        specifier: workspace:^
+        version: link:../vdf
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
