@@ -1,6 +1,6 @@
+import type { VDFTokeniserOptions } from "vdf"
+import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import type { Color, CompletionItem, DocumentLink } from "vscode-languageserver"
-import type { VDFTokeniserOptions } from "../../VDF/VDFTokeniserOptions"
-import type { VDFDocumentSymbol } from "../../VDFDocumentSymbols/VDFDocumentSymbol"
 import type { DocumentLinkData } from "../../types/DocumentLinkData"
 import type { languageClientsInfo } from "../../types/languageClientsInfo"
 

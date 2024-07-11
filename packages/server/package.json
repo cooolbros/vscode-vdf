@@ -1,0 +1,13 @@
+{
+    "name": "server",
+    "publishConfig": {
+        "directory": "src"
+    },
+    "devDependencies": {
+        "hudanimations-documentsymbols": "workspace:^",
+        "hudanimations-format": "workspace:^",
+        "vdf": "workspace:^",
+        "vdf-documentsymbols": "workspace:^",
+        "vdf-format": "workspace:^"
+    }
+}

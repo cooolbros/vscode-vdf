@@ -1,6 +1,6 @@
+import { VDFSyntaxError } from "vdf"
 import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
-import { VDFSyntaxError } from "../VDF/VDFErrors"
 import type { VSCodeVDFFileSystem } from "../types/VSCodeVDFFileSystem"
 import type { languageClientsInfo } from "../types/languageClientsInfo"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"

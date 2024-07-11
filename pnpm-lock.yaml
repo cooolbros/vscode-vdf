@@ -181,6 +181,25 @@ importers:
 
   packages/lib: {}
 
+  packages/server:
+    devDependencies:
+      hudanimations-documentsymbols:
+        specifier: workspace:^
+        version: link:../hudanimations-documentsymbols
+      hudanimations-format:
+        specifier: workspace:^
+        version: link:../hudanimations-format
+      vdf:
+        specifier: workspace:^
+        version: link:../vdf
+      vdf-documentsymbols:
+        specifier: workspace:^
+        version: link:../vdf-documentsymbols
+      vdf-format:
+        specifier: workspace:^
+        version: link:../vdf-format
+    publishDirectory: src
+
   packages/tsconfig: {}
 
   packages/vdf:
