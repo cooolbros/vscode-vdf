@@ -1,9 +1,5 @@
-import { EndOfLine, languages, Range, type TextEditor, type TextEditorEdit } from "vscode"
-import { VDF } from "../VDF/VDF"
-import { VDFIndentation } from "../VDF/VDFIndentation"
-import { VDFNewLine } from "../VDF/VDFNewLine"
-import type { VDFStringifyOptions } from "../VDF/VDFStringifyOptions"
-
+import { VDF, VDFIndentation, VDFNewLine, VDFStringifyOptions } from "vdf"
+import { EndOfLine, Range, languages, type TextEditor, type TextEditorEdit } from "vscode"
 
 export function JSONToVDF(editor: TextEditor, edit: TextEditorEdit): void {
 

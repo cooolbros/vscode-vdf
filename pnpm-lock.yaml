@@ -142,6 +142,19 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
 
+  packages/client:
+    devDependencies:
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+      vdf:
+        specifier: workspace:^
+        version: link:../vdf
+      vdf-documentsymbols:
+        specifier: workspace:^
+        version: link:../vdf-documentsymbols
+    publishDirectory: src
+
   packages/hudanimations-documentsymbols:
     devDependencies:
       tsconfig:
