@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  vscode-languageclient: ^9.0.1
+  vscode-languageserver: ^9.0.1
+
 importers:
 
   .:
@@ -97,7 +101,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageclient:
-        specifier: '*'
+        specifier: ^9.0.1
         version: 9.0.1
 
   apps/extension/browser/servers:
@@ -109,7 +113,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
-        specifier: '*'
+        specifier: ^9.0.1
         version: 9.0.1
 
   apps/extension/desktop/client:
@@ -124,7 +128,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageclient:
-        specifier: '*'
+        specifier: ^9.0.1
         version: 9.0.1
 
   apps/extension/desktop/servers:
@@ -136,7 +140,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
-        specifier: '*'
+        specifier: ^9.0.1
         version: 9.0.1
 
   packages/client:
@@ -151,7 +155,7 @@ importers:
         specifier: workspace:^
         version: link:../vdf-documentsymbols
       vscode-languageclient:
-        specifier: '*'
+        specifier: ^9.0.1
         version: 9.0.1
     publishDirectory: src
 
