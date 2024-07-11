@@ -6,6 +6,7 @@
     },
     "devDependencies": {
         "lib": "workspace:^",
-        "tsconfig": "workspace:^"
+        "tsconfig": "workspace:^",
+        "vscode-languageclient": "*"
     }
 }

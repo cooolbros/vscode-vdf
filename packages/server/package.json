@@ -4,8 +4,10 @@
         "directory": "src"
     },
     "devDependencies": {
+        "@types/string-similarity": "^4.0.2",
         "hudanimations-documentsymbols": "workspace:^",
         "hudanimations-format": "workspace:^",
+        "string-similarity": "^4.0.4",
         "vdf": "workspace:^",
         "vdf-documentsymbols": "workspace:^",
         "vdf-format": "workspace:^"
