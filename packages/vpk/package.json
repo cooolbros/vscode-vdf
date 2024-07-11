@@ -1,0 +1,6 @@
+{
+    "name": "vpk",
+    "publishConfig": {
+        "directory": "src"
+    }
+}
