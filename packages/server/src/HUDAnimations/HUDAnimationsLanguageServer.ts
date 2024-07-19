@@ -1,5 +1,5 @@
 import { HUDAnimationStatementType, HUDAnimationsDocumentSymbols, getHUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
-import { HUDAnimationsFormat, HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
+import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
 import { VDFRange, VDFToken, VDFTokeniser } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, DocumentSymbolRequest, Location, Range, TextDocumentIdentifier, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -1196,7 +1196,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			return [
 				{
 					range: Range.create(0, 0, MAX_VALUE, MAX_VALUE),
-					newText: HUDAnimationsFormat(document.getText(), options),
+					newText: formatHUDAnimations(document.getText(), options),
 				}
 			]
 		}
