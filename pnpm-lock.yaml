@@ -94,6 +94,9 @@ importers:
 
   apps/extension/browser/client:
     devDependencies:
+      client:
+        specifier: workspace:^
+        version: link:../../../../packages/client/src
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
@@ -118,6 +121,9 @@ importers:
 
   apps/extension/desktop/client:
     devDependencies:
+      client:
+        specifier: workspace:^
+        version: link:../../../../packages/client/src
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
