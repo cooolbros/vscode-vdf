@@ -1,14 +1,14 @@
-export const enum FileType {
+export const enum VPKFileType {
 	File = 1,
 	Directory = 2
 }
 
 export type VPKEntry = VPKFileEntry | VPKDirectoryEntry
 
-export type VPKFileEntry = { type: FileType.File, value: VPKFile }
+export type VPKFileEntry = { type: VPKFileType.File, value: VPKFile }
 export type VPKFile = { archiveIndex: number, entryOffset: number, entryLength: number }
 
-export type VPKDirectoryEntry = { type: FileType.Directory, value: VPKDirectory }
+export type VPKDirectoryEntry = { type: VPKFileType.Directory, value: VPKDirectory }
 export type VPKDirectory = Map<string, VPKEntry>
 
 /**
@@ -17,7 +17,7 @@ export type VPKDirectory = Map<string, VPKEntry>
 export class VPK {
 
 	private readonly decoder = new TextDecoder()
-	private readonly tree: VPKDirectoryEntry = { type: FileType.Directory, value: new Map() }
+	private readonly tree: VPKDirectoryEntry = { type: VPKFileType.Directory, value: new Map() }
 
 	constructor(data: DataView) {
 
@@ -57,10 +57,10 @@ export class VPK {
 						let entry = tree.value.get(folder)
 
 						if (entry == undefined) {
-							entry = { type: FileType.Directory, value: new Map<string, VPKEntry>() }
+							entry = { type: VPKFileType.Directory, value: new Map<string, VPKEntry>() }
 							tree.value.set(folder, entry)
 						}
-						else if (entry.type == FileType.File) {
+						else if (entry.type == VPKFileType.File) {
 							throw new Error(`Error parsing VPK: Found file entry while creating directory "${folderPath}"`)
 						}
 
@@ -99,7 +99,7 @@ export class VPK {
 
 					tree.value.set(
 						`${fileName}.${extension}`,
-						{ type: FileType.File, value: { archiveIndex, entryOffset, entryLength } }
+						{ type: VPKFileType.File, value: { archiveIndex, entryOffset, entryLength } }
 					)
 				}
 			}
@@ -111,7 +111,7 @@ export class VPK {
 
 		for (const folder of path.split("/")) {
 
-			if (tree.type == FileType.File) {
+			if (tree.type == VPKFileType.File) {
 				return null
 			}
 
