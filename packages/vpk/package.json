@@ -1,6 +1,4 @@
 {
     "name": "vpk",
-    "publishConfig": {
-        "directory": "src"
-    }
+    "main": "./src/index.ts"
 }
