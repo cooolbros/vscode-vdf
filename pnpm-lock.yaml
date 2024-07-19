@@ -240,7 +240,10 @@ importers:
         version: link:../vdf
 
   packages/vpk:
-    publishDirectory: src
+    devDependencies:
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
 
 packages:
 
