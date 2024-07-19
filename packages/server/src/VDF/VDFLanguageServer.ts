@@ -2,7 +2,7 @@ import { posix } from "path"
 import { findBestMatch } from "string-similarity"
 import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols, getVDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
-import { VDFFormat, type VDFFormatStringifyOptions } from "vdf-format"
+import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { CodeAction, CodeActionKind, CodeLens, ColorInformation, ColorPresentation, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentLink, Location, Position, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
@@ -955,7 +955,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			return [
 				{
 					range: Range.create(0, 0, MAX_VALUE, MAX_VALUE),
-					newText: VDFFormat(document.getText(), this.VDFLanguageServerConfiguration.getVDFTokeniserOptions(params.textDocument.uri), options),
+					newText: formatVDF(document.getText(), this.VDFLanguageServerConfiguration.getVDFTokeniserOptions(params.textDocument.uri), options),
 				}
 			]
 		}

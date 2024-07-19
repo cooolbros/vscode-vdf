@@ -1,6 +1,10 @@
-export { VDFFormat } from "./VDFFormat"
-export type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
+import type { VDFTokeniserOptions } from "vdf"
+import type { VDFFormatStringifyOptions } from "./VDFFormatStringifyOptions"
+import { getVDFFormatDocumentSymbols } from "./getVDFFormatDocumentSymbols"
+import { printVDFFormatDocumentSymbols } from "./printVDFFormatDocumentSymbols"
+
 export type { VDFFormatStringifyOptions } from "./VDFFormatStringifyOptions"
-export { VDFFormatTokenType, VDFFormatTokeniser, type VDFFormatToken } from "./VDFFormatTokeniser"
-export { getVDFFormatDocumentSymbols } from "./getVDFFormatDocumentSymbols"
-export { printVDFFormatDocumentSymbols } from "./printVDFFormatDocumentSymbols"
+
+export function formatVDF(str: string, tokeniserOptions: VDFTokeniserOptions, stringifyOptions: VDFFormatStringifyOptions): string {
+	return printVDFFormatDocumentSymbols(getVDFFormatDocumentSymbols(str, tokeniserOptions), stringifyOptions)
+}
