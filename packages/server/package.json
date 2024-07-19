@@ -8,6 +8,7 @@
         "hudanimations-documentsymbols": "workspace:^",
         "hudanimations-format": "workspace:^",
         "string-similarity": "^4.0.4",
+        "tsconfig": "workspace:^",
         "vdf": "workspace:^",
         "vdf-documentsymbols": "workspace:^",
         "vdf-format": "workspace:^"

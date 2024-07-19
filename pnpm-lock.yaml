@@ -199,6 +199,9 @@ importers:
       string-similarity:
         specifier: ^4.0.4
         version: 4.0.4
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
       vdf:
         specifier: workspace:^
         version: link:../vdf
