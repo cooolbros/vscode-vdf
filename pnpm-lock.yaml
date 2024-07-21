@@ -221,6 +221,13 @@ importers:
 
   packages/tsconfig: {}
 
+  packages/utils:
+    devDependencies:
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+    publishDirectory: src
+
   packages/vdf:
     devDependencies:
       tsconfig:
