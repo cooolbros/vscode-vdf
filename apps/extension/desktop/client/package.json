@@ -2,11 +2,15 @@
     "name": "desktop-client",
     "scripts": {
         "dev": "webpack --watch --mode none",
-        "build": "webpack",
-        "lint": "eslint . --ext .ts"
+        "build": "webpack"
     },
     "devDependencies": {
+        "client": "workspace:^",
         "lib": "workspace:^",
-        "tga-js": "^1.1.1"
+        "tga-js": "^1.1.1",
+        "tsconfig": "workspace:^",
+        "utils": "workspace:^",
+        "vpk": "workspace:^",
+        "vscode-languageclient": "*"
     }
 }

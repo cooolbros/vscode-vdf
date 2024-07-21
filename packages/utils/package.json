@@ -1,0 +1,9 @@
+{
+    "name": "utils",
+    "publishConfig": {
+        "directory": "src"
+    },
+    "devDependencies": {
+        "tsconfig": "workspace:^"
+    }
+}

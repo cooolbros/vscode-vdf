@@ -2,10 +2,12 @@
     "name": "browser-client",
     "scripts": {
         "dev": "webpack --watch --mode none",
-        "build": "webpack",
-        "lint": "eslint . --ext .ts"
+        "build": "webpack"
     },
     "devDependencies": {
-        "lib": "workspace:^"
+        "client": "workspace:^",
+        "lib": "workspace:^",
+        "tsconfig": "workspace:^",
+        "vscode-languageclient": "*"
     }
 }

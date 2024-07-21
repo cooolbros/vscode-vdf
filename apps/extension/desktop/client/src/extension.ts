@@ -1,22 +1,18 @@
-import { VPKFileSystemProvider } from "lib/VPK/VPKFileSystemProvider"
-import { VPKManager } from "lib/VPK/VPKManager"
-import { initHUDAnimationsLanguageClientDecorations } from "lib/client/HUDAnimationsDecoration"
-import { initLanguageClientFileSystem } from "lib/client/LanguageClientFileSystem"
-import { initLanguageClientRequests } from "lib/client/LanguageClientRequests"
-import { VSCodeLanguageClientFileSystem } from "lib/client/VSCodeLanguageClientFileSystem"
-import { JSONToVDF } from "lib/commands/JSONToVDF"
-import { VDFToJSON } from "lib/commands/VDFToJSON"
-import { copyKeyValuePath } from "lib/commands/copyKeyValuePath"
-import { extractVPKFileToWorkspace } from "lib/commands/extractVPKFileToWorkspace"
-import { showReferences } from "lib/commands/showReferences"
-import { VSCodeVDFLanguageIDSchema } from "lib/types/VSCodeVDFLanguageID"
+import { Client } from "client"
+import { VSCodeLanguageClientFileSystem } from "client/VSCodeLanguageClientFileSystem"
+import { JSONToVDF } from "client/commands/JSONToVDF"
+import { VDFToJSON } from "client/commands/VDFToJSON"
+import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
+import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
+import { showReferences } from "client/commands/showReferences"
 import { languageClientsInfo } from "lib/types/languageClientsInfo"
 import { join } from "path"
 import { commands, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
+import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 import { VTFEditor } from "./VTF/VTFEditor"
 
-const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: LanguageClient } = {}
+const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: Client } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -35,14 +31,12 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
 
 	// Workspace
-	const vpks = new VPKManager(new VSCodeLanguageClientFileSystem())
-	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(vpks), { isCaseSensitive: false, isReadonly: true }))
+	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(new VSCodeLanguageClientFileSystem()), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
 
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
-
-		const languageId: string = e.languageId
+		const languageId = e.languageId
 		if (((languageId): languageId is keyof typeof languageClientsInfo => languageId in languageClientsInfo)(languageId)) {
 			startServer(languageId)
 		}
@@ -56,47 +50,39 @@ export function activate(context: ExtensionContext): void {
 
 		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
 
-		const serverOptions: ServerOptions = {
-			run: {
-				module: serverModule,
-				transport: TransportKind.ipc
-			},
-			debug: {
-				module: serverModule,
-				transport: TransportKind.ipc,
-				options: {
-					execArgv: [
-						"--nolazy",
-						"--inspect=6009"
+		const client = languageClients[languageId] = new Client(
+			languageId,
+			new LanguageClient(
+				`${languageClientsInfo[languageId].id}-language-server`,
+				`${languageClientsInfo[languageId].name} Language Server`,
+				{
+					run: {
+						module: serverModule,
+						transport: TransportKind.ipc
+					},
+					debug: {
+						module: serverModule,
+						transport: TransportKind.ipc,
+						options: {
+							execArgv: [
+								"--nolazy",
+								"--inspect=6009"
+							]
+						}
+					}
+				} satisfies ServerOptions,
+				{
+					documentSelector: [
+						languageId
 					]
-				}
-			}
-		}
-
-		const clientOptions: LanguageClientOptions = {
-			documentSelector: [
-				languageId
-			]
-		}
-
-		const languageClient = languageClients[languageId] = new LanguageClient(
-			`${languageClientsInfo[languageId].id}-language-server`,
-			`${languageClientsInfo[languageId].name} Language Server`,
-			serverOptions,
-			clientOptions
+				} satisfies LanguageClientOptions
+			)
 		)
 
-		initLanguageClientFileSystem(languageClient)
-		context.subscriptions.push(initLanguageClientRequests(languageClients, languageClient))
+		context.subscriptions.push(client)
+		await client.start()
 
-		// Decorations
-		if (languageId == "hudanimations") {
-			context.subscriptions.push(initHUDAnimationsLanguageClientDecorations(languageClient))
-		}
-
-		await languageClient.start()
 		const servers = VSCodeVDFLanguageIDSchema.array().optional().parse(languageClient.initializeResult?.["servers"])
-
 		if (servers) {
 			for (const languageId of servers) {
 				try {
@@ -111,15 +97,4 @@ export function activate(context: ExtensionContext): void {
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)
 	workspace.onDidOpenTextDocument(onDidOpenTextDocument)
-}
-
-export async function deactivate(): Promise<void[]> {
-	const promises: Promise<void>[] = []
-	let languageId: keyof typeof languageClients
-	for (languageId in languageClients) {
-		if (languageClients[languageId] != null) {
-			promises.push(languageClients[languageId]!.stop())
-		}
-	}
-	return Promise.all(promises)
 }

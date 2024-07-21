@@ -1,0 +1,7 @@
+{
+    "name": "vpk",
+    "main": "./src/index.ts",
+    "devDependencies": {
+        "tsconfig": "workspace:^"
+    }
+}

@@ -1,4 +1,4 @@
-import { HUDAnimationsLanguageServer } from "lib/server/HUDAnimations/HUDAnimationsLanguageServer"
+import { HUDAnimationsLanguageServer } from "server/HUDAnimations/HUDAnimationsLanguageServer"
 import { createConnection, ProposedFeatures } from "vscode-languageserver/node"
 
 const connection = createConnection(ProposedFeatures.all)

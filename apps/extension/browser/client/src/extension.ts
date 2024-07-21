@@ -1,16 +1,13 @@
-import { initHUDAnimationsLanguageClientDecorations } from "lib/client/HUDAnimationsDecoration"
-import { initLanguageClientFileSystem } from "lib/client/LanguageClientFileSystem"
-import { initLanguageClientRequests } from "lib/client/LanguageClientRequests"
-import { copyKeyValuePath } from "lib/commands/copyKeyValuePath"
-import { JSONToVDF } from "lib/commands/JSONToVDF"
-import { showReferences } from "lib/commands/showReferences"
-import { VDFToJSON } from "lib/commands/VDFToJSON"
+import { Client } from "client"
+import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
+import { JSONToVDF } from "client/commands/JSONToVDF"
+import { showReferences } from "client/commands/showReferences"
+import { VDFToJSON } from "client/commands/VDFToJSON"
 import { languageClientsInfo } from "lib/types/languageClientsInfo"
-import { VSCodeVDFLanguageIDSchema } from "lib/types/VSCodeVDFLanguageID"
-import { commands, Uri, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, Uri, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
-const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: LanguageClient } = {}
+const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: Client } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -27,8 +24,7 @@ export function activate(context: ExtensionContext): void {
 	// Language Server
 
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
-
-		const languageId: string = e.languageId
+		const languageId = e.languageId
 		if (((languageId): languageId is keyof typeof languageClientsInfo => languageId in languageClientsInfo)(languageId)) {
 			startServer(languageId)
 		}
@@ -42,30 +38,24 @@ export function activate(context: ExtensionContext): void {
 
 		const serverModule = Uri.joinPath(context.extensionUri, "apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
 
-		const clientOptions: LanguageClientOptions = {
-			documentSelector: [
-				languageId
-			]
-		}
-
-		const languageClient = languageClients[languageId] = new LanguageClient(
-			`${languageClientsInfo[languageId].id}-language-server`,
-			`${languageClientsInfo[languageId].name} Language Server`,
-			clientOptions,
-			new Worker(serverModule)
+		const client = languageClients[languageId] = new Client(
+			languageId,
+			new LanguageClient(
+				`${languageClientsInfo[languageId].id}-language-server`,
+				`${languageClientsInfo[languageId].name} Language Server`,
+				{
+					documentSelector: [
+						languageId
+					]
+				} satisfies LanguageClientOptions,
+				new Worker(serverModule)
+			)
 		)
 
-		initLanguageClientFileSystem(languageClient)
-		context.subscriptions.push(initLanguageClientRequests(languageClients, languageClient))
+		context.subscriptions.push(client)
+		await client.start()
 
-		// Decorations
-		if (languageId == "hudanimations") {
-			context.subscriptions.push(initHUDAnimationsLanguageClientDecorations(languageClient))
-		}
-
-		await languageClient.start()
 		const servers = VSCodeVDFLanguageIDSchema.array().optional().parse(languageClient.initializeResult?.["servers"])
-
 		if (servers) {
 			for (const languageId of servers) {
 				try {
@@ -80,15 +70,4 @@ export function activate(context: ExtensionContext): void {
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)
 	workspace.onDidOpenTextDocument(onDidOpenTextDocument)
-}
-
-export async function deactivate(): Promise<void[]> {
-	const promises: Promise<void>[] = []
-	let languageId: keyof typeof languageClients
-	for (languageId in languageClients) {
-		if (languageClients[languageId] != null) {
-			promises.push(languageClients[languageId]!.stop())
-		}
-	}
-	return Promise.all(promises)
 }

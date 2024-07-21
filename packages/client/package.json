@@ -1,0 +1,12 @@
+{
+    "name": "client",
+    "publishConfig": {
+        "directory": "src"
+    },
+    "devDependencies": {
+        "tsconfig": "workspace:^",
+        "vdf": "workspace:^",
+        "vdf-documentsymbols": "workspace:^",
+        "vscode-languageclient": "*"
+    }
+}

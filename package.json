@@ -311,31 +311,28 @@
         "dev:docs": "turbo run dev --filter=docs",
         "build": "turbo run build",
         "build:docs": "turbo run build --filter=docs",
-        "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
-        "lint": "turbo run lint"
+        "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
     },
     "devDependencies": {
-        "@turbo/gen": "^1.12.4",
         "@types/node": "^18.17.1",
-        "@types/string-similarity": "^4.0.2",
         "@types/vscode": "^1.86.0",
         "@types/vscode-webview": "^1.57.5",
-        "@typescript-eslint/eslint-plugin": "^7.0.1",
-        "@typescript-eslint/parser": "^7.0.1",
         "@vscode/test-web": "^0.0.51",
-        "eslint": "^8.56.0",
         "path-browserify": "^1.0.1",
-        "string-similarity": "^4.0.4",
         "ts-loader": "^9.5.1",
         "ts-node": "^10.9.2",
         "turbo": "^2.0.5",
         "typescript": "^5.3.3",
-        "vscode-languageclient": "^9.0.1",
-        "vscode-languageserver": "^9.0.1",
         "vscode-languageserver-textdocument": "^1.0.11",
         "webpack": "^5.90.2",
         "webpack-cli": "^5.1.4",
         "zod": "^3.22.4"
+    },
+    "pnpm": {
+        "overrides": {
+            "vscode-languageclient": "^9.0.1",
+            "vscode-languageserver": "^9.0.1"
+        }
     },
     "__metadata": {
         "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",

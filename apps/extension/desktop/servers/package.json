@@ -2,10 +2,12 @@
     "name": "desktop-servers",
     "scripts": {
         "dev": "webpack --watch --mode none",
-        "build": "webpack",
-        "lint": "eslint . --ext .ts"
+        "build": "webpack"
     },
     "devDependencies": {
-        "lib": "workspace:^"
+        "lib": "workspace:^",
+        "server": "workspace:^",
+        "tsconfig": "workspace:^",
+        "vscode-languageserver": "*"
     }
 }
