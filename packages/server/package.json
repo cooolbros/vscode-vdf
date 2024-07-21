@@ -11,6 +11,7 @@
         "tsconfig": "workspace:^",
         "vdf": "workspace:^",
         "vdf-documentsymbols": "workspace:^",
-        "vdf-format": "workspace:^"
+        "vdf-format": "workspace:^",
+        "vscode-languageserver": "*"
     }
 }

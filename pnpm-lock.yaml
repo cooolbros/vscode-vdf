@@ -223,6 +223,9 @@ importers:
       vdf-format:
         specifier: workspace:^
         version: link:../vdf-format
+      vscode-languageserver:
+        specifier: ^9.0.1
+        version: 9.0.1
     publishDirectory: src
 
   packages/tsconfig: {}
