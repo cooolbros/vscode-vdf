@@ -133,6 +133,12 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
+      utils:
+        specifier: workspace:^
+        version: link:../../../../packages/utils/src
+      vpk:
+        specifier: workspace:^
+        version: link:../../../../packages/vpk
       vscode-languageclient:
         specifier: ^9.0.1
         version: 9.0.1
