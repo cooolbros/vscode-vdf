@@ -1,16 +1,16 @@
+import type { languageNames } from "utils/languageNames"
 import { VDFSyntaxError } from "vdf"
 import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import type { VSCodeVDFFileSystem } from "../types/VSCodeVDFFileSystem"
-import type { languageClientsInfo } from "../types/languageClientsInfo"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"
 import type { LanguageServerConfiguration } from "./LanguageServerConfiguration"
 import { LanguageServerFileSystem } from "./LanguageServerFileSystem"
 
 export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
-	protected readonly name: typeof languageClientsInfo[keyof typeof languageClientsInfo]["name"]
-	protected readonly languageId: typeof languageClientsInfo[keyof typeof languageClientsInfo]["id"]
+	protected readonly name: typeof languageNames[keyof typeof languageNames]
+	protected readonly languageId: keyof typeof languageNames
 	protected readonly connection: Connection
 	protected readonly fileSystem: VSCodeVDFFileSystem
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<T>

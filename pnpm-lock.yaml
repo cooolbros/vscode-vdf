@@ -103,6 +103,9 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
+      utils:
+        specifier: workspace:^
+        version: link:../../../../packages/utils/src
       vscode-languageclient:
         specifier: ^9.0.1
         version: 9.0.1
@@ -220,6 +223,9 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
+      utils:
+        specifier: workspace:^
+        version: link:../utils/src
       vdf:
         specifier: workspace:^
         version: link:../vdf

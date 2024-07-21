@@ -3,11 +3,11 @@ import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
-import { languageClientsInfo } from "lib/types/languageClientsInfo"
+import { languageNames } from "utils/languageNames"
 import { commands, Uri, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
-const languageClients: { -readonly [P in keyof typeof languageClientsInfo]?: Client } = {}
+const languageClients: { -readonly [P in keyof typeof languageNames]?: Client } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -25,12 +25,12 @@ export function activate(context: ExtensionContext): void {
 
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
 		const languageId = e.languageId
-		if (((languageId): languageId is keyof typeof languageClientsInfo => languageId in languageClientsInfo)(languageId)) {
+		if (((languageId): languageId is keyof typeof languageNames => languageId in languageNames)(languageId)) {
 			startServer(languageId)
 		}
 	}
 
-	const startServer = async (languageId: keyof typeof languageClientsInfo): Promise<void> => {
+	const startServer = async (languageId: keyof typeof languageNames): Promise<void> => {
 
 		if (languageClients[languageId]) {
 			return
@@ -41,8 +41,8 @@ export function activate(context: ExtensionContext): void {
 		const client = languageClients[languageId] = new Client(
 			languageId,
 			new LanguageClient(
-				`${languageClientsInfo[languageId].id}-language-server`,
-				`${languageClientsInfo[languageId].name} Language Server`,
+				`${languageId}-language-server`,
+				`${languageNames[languageId]} Language Server`,
 				{
 					documentSelector: [
 						languageId
