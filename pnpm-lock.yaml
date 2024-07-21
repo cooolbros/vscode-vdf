@@ -112,6 +112,9 @@ importers:
       lib:
         specifier: workspace:^
         version: link:../../../../packages/lib
+      server:
+        specifier: workspace:^
+        version: link:../../../../packages/server/src
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
