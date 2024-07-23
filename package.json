@@ -314,7 +314,7 @@
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
     },
     "devDependencies": {
-        "@types/node": "^18.17.1",
+        "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.86.0",
         "@types/vscode-webview": "^1.57.5",
         "@vscode/test-web": "^0.0.51",

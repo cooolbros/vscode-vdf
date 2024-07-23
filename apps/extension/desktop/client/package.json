@@ -5,6 +5,7 @@
         "build": "webpack"
     },
     "devDependencies": {
+        "@types/node": "^20.14.11",
         "client": "workspace:^",
         "tga-js": "^1.1.1",
         "tsconfig": "workspace:^",
