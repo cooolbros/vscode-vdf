@@ -5,6 +5,7 @@
         "build": "next build"
     },
     "devDependencies": {
+        "@types/node": "^20.14.11",
         "@types/react": "^18.2.22",
         "autoprefixer": "^10.4.16",
         "next": "^13.5.2",
