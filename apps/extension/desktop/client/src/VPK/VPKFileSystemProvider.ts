@@ -98,7 +98,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		return [...entry.value.entries()].map(([name, entry]) => <const>[name, entry.type == VPKFileType.File ? FileType.File : FileType.Directory])
 	}
 
-	createDirectory(uri: Uri): void {
+	createDirectory(): void {
 		throw FileSystemError.Unavailable()
 	}
 
