@@ -1,6 +1,6 @@
 import { extname, parse } from "path"
+import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import { CompletionItem, CompletionItemKind, type Connection } from "vscode-languageserver"
-import type { VSCodeVDFFileSystem } from "../types/VSCodeVDFFileSystem"
 
 export class CompletionItemSet {
 	public readonly items: CompletionItem[] = []

@@ -5,6 +5,7 @@
     },
     "devDependencies": {
         "tsconfig": "workspace:^",
+        "utils": "workspace:^",
         "vdf": "workspace:^",
         "vdf-documentsymbols": "workspace:^",
         "vscode-languageclient": "*"

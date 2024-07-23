@@ -124,6 +124,7 @@ export class VDFFormatTokeniser {
 				}
 				break
 			}
+			// @ts-ignore
 			case "/": {
 				if (this.str[index + 1] == "/") {
 					index += 2 // Skip //

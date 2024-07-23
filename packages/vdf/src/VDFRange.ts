@@ -1,7 +1,12 @@
 import { z } from "zod"
-import { VDFPosition } from "./VDFPosition"
+import { VDFPosition, type IPosition } from "./VDFPosition"
 
-export class VDFRange {
+export interface IRange {
+	start: VDFPosition
+	end: VDFPosition
+}
+
+export class VDFRange implements IRange {
 
 	public static readonly schema = z.object({
 		start: VDFPosition.schema,
@@ -16,7 +21,7 @@ export class VDFRange {
 		this.end = end
 	}
 
-	public contains(value: VDFRange | VDFPosition): boolean {
+	public contains(value: IRange | IPosition): boolean {
 		if ("start" in value) {
 			return this.start.isBefore(value.start) && this.end.isAfter(value.end)
 		}

@@ -1,6 +1,6 @@
 import { posix } from "path"
+import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection } from "vscode-languageserver"
-import type { DocumentLinkData } from "../../../types/DocumentLinkData"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"

@@ -1,3 +1,6 @@
+import { languageNames } from "utils/languageNames"
+import { type VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
+import { VSCodeVDFLanguageIDSchema } from "utils/types/VSCodeVDFLanguageID"
 import { Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
@@ -18,7 +21,7 @@ export class Client {
 	private readonly fileSystem: VSCodeVDFFileSystem
 	private readonly subscriptions: { dispose(): any }[]
 
-	constructor(languageId: string, client: BaseLanguageClient) {
+	constructor(languageClients: { -readonly [P in keyof typeof languageNames]?: Client }, client: BaseLanguageClient) {
 		this.client = client
 		this.fileSystem = new VSCodeLanguageClientFileSystem()
 		this.subscriptions = []
@@ -44,62 +47,61 @@ export class Client {
 		this.subscriptions.push(
 			this.client.onRequest("servers/sendRequest", async (params: unknown) => {
 
-				const [languageID, requestType, param] = await sendRequestParamsSchema.parseAsync(params)
+				const [languageID, requestType, param] = await Client.sendRequestParamsSchema.parseAsync(params)
 
 				const server = languageClients[languageID]
 				if (!server) {
 					throw new Error(`${languageID} language server not running.`)
 				}
 
-				return server.sendRequest(requestType, param)
+				return server.client.sendRequest(requestType, param)
 			})
 		)
 
-		if (languageId == "hudanimations") {
-			const hudAnimationsEventDecorationType = window.createTextEditorDecorationType({
-				after: {
-					margin: "0 0 0 0.5rem",
-					color: "#99999959",
+
+		const hudAnimationsEventDecorationType = window.createTextEditorDecorationType({
+			after: {
+				margin: "0 0 0 0.5rem",
+				color: "#99999959",
+			}
+		})
+
+		const editorDecorationss = new Map<string, DecorationOptions[]>()
+
+		this.subscriptions.push(
+			window.onDidChangeActiveTextEditor((editor) => {
+				if (!editor) {
+					return
 				}
-			})
 
-			const editorDecorationss = new Map<string, DecorationOptions[]>()
+				const decorations = editorDecorationss.get(editor.document.uri.toString())
+				if (decorations) {
+					editor.setDecorations(hudAnimationsEventDecorationType, decorations)
+				}
+			}),
+			this.client.onRequest("textDocument/decoration", ([uri, decorations]: [string, JSONDecorationOptions[]]) => {
 
-			this.subscriptions.push(
-				window.onDidChangeActiveTextEditor((editor) => {
-					if (!editor) {
-						return
+				const editor = window.visibleTextEditors.find((editor) => editor.document.uri.toString() == uri)
+				if (!editor) {
+					return
+				}
+
+				const editorDecorations = decorations.map((decoration) => {
+					const range = decoration.range
+					return {
+						range: new Range(new Position(range.start.line, range.start.character), new Position(range.end.line, range.end.character)),
+						renderOptions: decoration.renderOptions
 					}
-
-					const decorations = editorDecorationss.get(editor.document.uri.toString())
-					if (decorations) {
-						editor.setDecorations(hudAnimationsEventDecorationType, decorations)
-					}
-				}),
-				this.client.onRequest("textDocument/decoration", ([uri, decorations]: [string, JSONDecorationOptions[]]) => {
-
-					const editor = window.visibleTextEditors.find((editor) => editor.document.uri.toString() == uri)
-					if (!editor) {
-						return
-					}
-
-					const editorDecorations = decorations.map((decoration) => {
-						const range = decoration.range
-						return {
-							range: new Range(new Position(range.start.line, range.start.character), new Position(range.end.line, range.end.character)),
-							renderOptions: decoration.renderOptions
-						}
-					})
-
-					editorDecorationss.set(editor.document.uri.toString(), editorDecorations)
-
-					editor?.setDecorations(
-						hudAnimationsEventDecorationType,
-						editorDecorations
-					)
 				})
-			)
-		}
+
+				editorDecorationss.set(editor.document.uri.toString(), editorDecorations)
+
+				editor?.setDecorations(
+					hudAnimationsEventDecorationType,
+					editorDecorations
+				)
+			})
+		)
 	}
 
 	public async start(): Promise<void> {

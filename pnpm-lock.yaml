@@ -97,9 +97,6 @@ importers:
       client:
         specifier: workspace:^
         version: link:../../../../packages/client/src
-      lib:
-        specifier: workspace:^
-        version: link:../../../../packages/lib
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
@@ -112,9 +109,6 @@ importers:
 
   apps/extension/browser/servers:
     devDependencies:
-      lib:
-        specifier: workspace:^
-        version: link:../../../../packages/lib
       server:
         specifier: workspace:^
         version: link:../../../../packages/server/src
@@ -130,9 +124,6 @@ importers:
       client:
         specifier: workspace:^
         version: link:../../../../packages/client/src
-      lib:
-        specifier: workspace:^
-        version: link:../../../../packages/lib
       tga-js:
         specifier: ^1.1.1
         version: 1.1.1
@@ -151,9 +142,6 @@ importers:
 
   apps/extension/desktop/servers:
     devDependencies:
-      lib:
-        specifier: workspace:^
-        version: link:../../../../packages/lib
       server:
         specifier: workspace:^
         version: link:../../../../packages/server/src
@@ -169,6 +157,9 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
+      utils:
+        specifier: workspace:^
+        version: link:../utils/src
       vdf:
         specifier: workspace:^
         version: link:../vdf
@@ -203,8 +194,6 @@ importers:
       vdf-format:
         specifier: workspace:^
         version: link:../vdf-format
-
-  packages/lib: {}
 
   packages/server:
     devDependencies:
@@ -247,6 +236,12 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
+      vdf:
+        specifier: workspace:^
+        version: link:../vdf
+      vdf-documentsymbols:
+        specifier: workspace:^
+        version: link:../vdf-documentsymbols
     publishDirectory: src
 
   packages/vdf:

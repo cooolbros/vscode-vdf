@@ -1,14 +1,14 @@
 import { HUDAnimationStatementType, HUDAnimationsDocumentSymbols, getHUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
+import { getHUDRoot } from "utils/getHUDRoot"
 import { VDFRange, VDFTokeniser, type VDFToken } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, DocumentSymbolRequest, Location, Range, TextDocumentIdentifier, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
-import { DefinitionReference, DocumentDefinitionReferences } from "../../utils/definitionReferences"
-import * as filesCompletion from "../../utils/filesCompletion"
-import { getHUDRoot } from "../../utils/getHUDRoot"
 import { LanguageServer } from "../LanguageServer"
+import { DefinitionReference, DocumentDefinitionReferences } from "../definitionReferences"
+import * as filesCompletion from "../filesCompletion"
 import eventFiles from "./eventFiles.json"
 
 export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDocumentSymbols> {

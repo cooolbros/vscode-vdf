@@ -1,5 +1,5 @@
 import { dirname } from "path"
-import type { VSCodeVDFFileSystem } from "../types/VSCodeVDFFileSystem"
+import type { VSCodeVDFFileSystem } from "./types/VSCodeVDFFileSystem"
 
 /**
  * Resolve root folder of an absolute HUD file uri

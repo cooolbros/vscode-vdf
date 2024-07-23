@@ -51,7 +51,7 @@ export function activate(context: ExtensionContext): void {
 		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
 
 		const client = languageClients[languageId] = new Client(
-			languageId,
+			languageClients,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${languageNames[languageId]} Language Server`,
@@ -82,17 +82,17 @@ export function activate(context: ExtensionContext): void {
 		context.subscriptions.push(client)
 		await client.start()
 
-		const servers = VSCodeVDFLanguageIDSchema.array().optional().parse(languageClient.initializeResult?.["servers"])
-		if (servers) {
-			for (const languageId of servers) {
-				try {
-					startServer(languageId)
-				}
-				catch (error: any) {
-					window.showErrorMessage(error.message)
-				}
-			}
-		}
+		// const servers = VSCodeVDFLanguageIDSchema.array().optional().parse(languageClient.initializeResult?.["servers"])
+		// if (servers) {
+		// 	for (const languageId of servers) {
+		// 		try {
+		// 			startServer(languageId)
+		// 		}
+		// 		catch (error: any) {
+		// 			window.showErrorMessage(error.message)
+		// 		}
+		// 	}
+		// }
 	}
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)

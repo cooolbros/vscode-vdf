@@ -1,6 +1,7 @@
 import { open } from "fs/promises"
 import { join } from "path/posix"
 import { Lazy } from "utils/Lazy"
+import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import { VPK, VPKFileType } from "vpk"
 import { Disposable, EventEmitter, FilePermission, FileSystemError, FileType, Uri, workspace, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider } from "vscode"
 import { z } from "zod"
@@ -17,7 +18,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		let load: ((type: keyof VPKFileSystemProvider["vpks"]) => Promise<{ stat: FileStat, vpk: VPK }>) | null = async (type: keyof VPKFileSystemProvider["vpks"]) => {
 			const uri = Uri.file(join(workspace.getConfiguration("vscode-vdf")["teamFortress2Folder"], `tf/tf2_${type}_dir.vpk`)).toString()
 			const statPromise = fileSystem.stat(uri)
-			const vpkPromise = new Promise(async () => new VPK(new DataView((await fileSystem.readFileBinary(uri)).buffer)))
+			const vpkPromise = new Promise<VPK>(async () => new VPK(new DataView((await fileSystem.readFileBinary(uri)).buffer)))
 			return Promise
 				.all([statPromise, vpkPromise])
 				.then(([stat, vpk]) => ({

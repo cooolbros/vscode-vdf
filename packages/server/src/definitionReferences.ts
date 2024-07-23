@@ -1,6 +1,6 @@
-import type { VDFDefinitionReferencesConfiguration, VDFLanguageServerConfiguration } from "../server/VDF/VDFLanguageServerConfiguration"
-import type { VDFRange } from "../VDF/VDFRange"
-import type { VDFDocumentSymbol } from "../VDFDocumentSymbols/VDFDocumentSymbol"
+import type { VDFRange } from "vdf"
+import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import type { VDFDefinitionReferencesConfiguration, VDFLanguageServerConfiguration } from "./VDF/VDFLanguageServerConfiguration"
 
 /**
  * Check to see if one array contains all items of another array in order

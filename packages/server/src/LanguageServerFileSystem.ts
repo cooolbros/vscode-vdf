@@ -1,6 +1,6 @@
+import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import type { FileStat, FileType } from "vscode"
 import type { Connection } from "vscode-languageserver"
-import type { VSCodeVDFFileSystem } from "../types/VSCodeVDFFileSystem"
 
 export class LanguageServerFileSystem implements VSCodeVDFFileSystem {
 
