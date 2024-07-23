@@ -23,7 +23,8 @@ export class LanguageServerFileSystem implements VSCodeVDFFileSystem {
 	}
 
 	public async readFileBinary(uri: string, begin?: number, end?: number): Promise<Uint8Array> {
-		const response: ReturnType<Buffer["toJSON"]> | Uint8Array = await this.connection.sendRequest("vscode-vdf/fs/readFileBinary", { uri, begin, end })
+		// ReturnType<Buffer["toJSON"]>
+		const response: { type: "Buffer", data: number[] } | Uint8Array = await this.connection.sendRequest("vscode-vdf/fs/readFileBinary", { uri, begin, end })
 		if ("type" in response) {
 			return new Uint8Array(response.data)
 		}
