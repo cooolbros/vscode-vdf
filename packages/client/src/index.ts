@@ -1,6 +1,6 @@
 import { languageNames } from "utils/languageNames"
 import { type VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
-import { VSCodeVDFLanguageIDSchema } from "utils/types/VSCodeVDFLanguageID"
+import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
@@ -18,11 +18,13 @@ export class Client {
 	private static readonly sendRequestParamsSchema = z.tuple([VSCodeVDFLanguageIDSchema, z.string(), z.record(z.unknown())])
 
 	private readonly client: BaseLanguageClient
+	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly fileSystem: VSCodeVDFFileSystem
 	private readonly subscriptions: { dispose(): any }[]
 
-	constructor(languageClients: { -readonly [P in keyof typeof languageNames]?: Client }, client: BaseLanguageClient) {
+	constructor(languageClients: { -readonly [P in keyof typeof languageNames]?: Client }, startServer: (languageId: VSCodeVDFLanguageID) => void, client: BaseLanguageClient) {
 		this.client = client
+		this.startServer = startServer
 		this.fileSystem = new VSCodeLanguageClientFileSystem()
 		this.subscriptions = []
 
@@ -105,7 +107,17 @@ export class Client {
 	}
 
 	public async start(): Promise<void> {
-		return this.client.start()
+		return this.client.start().then(() => {
+			const servers = VSCodeVDFLanguageIDSchema.array().parse(this.client.initializeResult?.["servers"])
+			for (const languageId of servers) {
+				try {
+					this.startServer(languageId)
+				}
+				catch (error: any) {
+					window.showErrorMessage(error.message)
+				}
+			}
+		})
 	}
 
 	public dispose() {
