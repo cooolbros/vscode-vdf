@@ -20,6 +20,7 @@ export class VMTLanguageServer extends VDFLanguageServer {
 			getVDFTokeniserOptions(uri) {
 				return { allowMultilineStrings: false }
 			},
+			servers: new Set(),
 			keyHash: (key) => key,
 			schema: {
 				keys: keys,

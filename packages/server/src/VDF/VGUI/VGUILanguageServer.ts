@@ -66,7 +66,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					allowMultilineStrings: /(tf|chat)_.*?\.txt/.test(posix.basename(uri))
 				}
 			},
-			servers: ["hudanimations"],
+			servers: new Set(["hudanimations"]),
 			keyHash: (key) => {
 				return key.replace("_minmode", "")
 			},

@@ -108,14 +108,14 @@ export class Client {
 
 	public async start(): Promise<void> {
 		return this.client.start().then(() => {
-			const servers = VSCodeVDFLanguageIDSchema.array().parse(this.client.initializeResult?.["servers"])
-			for (const languageId of servers) {
-				try {
+			const result = VSCodeVDFLanguageIDSchema.array().transform((arg) => new Set(arg)).safeParse(this.client.initializeResult?.["servers"])
+			if (result.success) {
+				for (const languageId of result.data) {
 					this.startServer(languageId)
 				}
-				catch (error: any) {
-					window.showErrorMessage(error.message)
-				}
+			}
+			else {
+				this.client.warn(result.error.message)
 			}
 		})
 	}

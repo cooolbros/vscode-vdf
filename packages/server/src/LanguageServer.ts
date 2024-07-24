@@ -53,7 +53,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 				textDocumentSync: TextDocumentSyncKind.Incremental,
 				documentSymbolProvider: true,
 			},
-			servers: this.languageServerConfiguration.servers
+			servers: [...this.languageServerConfiguration.servers]
 		}
 	}
 

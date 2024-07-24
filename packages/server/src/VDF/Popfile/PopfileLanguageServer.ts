@@ -15,6 +15,7 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 			getVDFTokeniserOptions(uri) {
 				return { allowMultilineStrings: true }
 			},
+			servers: new Set(),
 			vpkRootPath: "scripts/population",
 			keyHash: (key) => key,
 			schema: {

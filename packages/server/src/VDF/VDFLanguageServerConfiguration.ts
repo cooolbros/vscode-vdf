@@ -6,7 +6,7 @@ import type { Color, CompletionItem, DocumentLink } from "vscode-languageserver"
 
 export interface VDFLanguageServerConfiguration {
 	getVDFTokeniserOptions(uri: string): VDFTokeniserOptions,
-	servers?: (keyof typeof languageNames)[]
+	servers: Set<keyof typeof languageNames>
 	vpkRootPath?: string
 	keyHash(key: string): string
 	schema: {
