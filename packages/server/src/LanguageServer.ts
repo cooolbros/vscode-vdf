@@ -1,7 +1,7 @@
 import type { languageNames } from "utils/languageNames"
 import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import { VDFSyntaxError } from "vdf"
-import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"
 import type { LanguageServerConfiguration } from "./LanguageServerConfiguration"
@@ -25,7 +25,14 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.connection = connection
 		this.fileSystem = new LanguageServerFileSystem(this.connection)
 		this.languageServerConfiguration = configuration
-		this.documents = new TextDocuments(TextDocument)
+		this.documents = new TextDocuments({
+			create(uri, languageId, version, content) {
+				return TextDocument.create(decodeURIComponent(uri), languageId, version, content)
+			},
+			update(document, changes, version) {
+				return TextDocument.update(document, changes, version)
+			},
+		})
 		this.documentsSymbols = new Map<string, T>()
 		this.documentsConfiguration = new DocumentsConfiguration(this.connection)
 
@@ -40,6 +47,23 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
 		this.documents.listen(this.connection)
 		this.connection.listen()
+	}
+
+	protected onTextDocumentRequest<P extends { textDocument: { uri: string } }, R, E>(
+		listener: (handler: RequestHandler<P, R | null, E>) => { dispose(): void },
+		callback: (params: P) => R | null | Promise<R | null>
+	) {
+		listener(async (params) => {
+			params.textDocument.uri = decodeURIComponent(params.textDocument.uri)
+			try {
+				return await callback.call(this, params)
+			}
+			catch (error: any) {
+				console.error(error.message)
+				this.connection.console.error(error.message)
+			}
+			return null
+		})
 	}
 
 	private onInitialize(params: InitializeParams): InitializeResult {

@@ -41,23 +41,23 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 		this.oldName = null
 
-		this.connection.onCompletion(async (params) => {
-			if (!this.documentsConfiguration.get(params.textDocument.uri)[this.languageId].suggest.enable) {
-				return null
-			}
-			return this.onCompletion(params)
-		})
-		this.connection.onDefinition(this.onDefinition.bind(this))
-		this.connection.onReferences(this.onReferences.bind(this))
-		this.connection.onCodeAction(this.onCodeAction.bind(this))
-		this.connection.onCodeLens(this.onCodeLens.bind(this))
-		this.connection.onDocumentLinks(this.onDocumentLinks.bind(this))
+		this.onTextDocumentRequest(
+			this.connection.onCompletion,
+			async (params) => !this.documentsConfiguration.get(params.textDocument.uri)[this.languageId].suggest.enable ? null : this.onCompletion(params)
+		)
+		this.onTextDocumentRequest(this.connection.onDefinition, this.onDefinition)
+		this.onTextDocumentRequest(this.connection.onReferences, this.onReferences)
+		this.onTextDocumentRequest(this.connection.onCodeAction, this.onCodeAction)
+		this.onTextDocumentRequest(this.connection.onCodeLens, this.onCodeLens)
+		this.onTextDocumentRequest(this.connection.onDocumentLinks, this.onDocumentLinks)
+
 		this.connection.onDocumentLinkResolve(this.onDocumentLinkResolve.bind(this))
-		this.connection.onDocumentColor(this.onDocumentColor.bind(this))
-		this.connection.onColorPresentation(this.onColorPresentation.bind(this))
-		this.connection.onDocumentFormatting(this.onDocumentFormatting.bind(this))
-		this.connection.onPrepareRename(this.onPrepareRename.bind(this))
-		this.connection.onRenameRequest(this.onRenameRequest.bind(this))
+
+		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
+		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
+		this.onTextDocumentRequest(this.connection.onDocumentFormatting, this.onDocumentFormatting)
+		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
+		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 
 		this.connection.onRequest("files/documentSymbolKeys", this.onDocumentSymbolKeys.bind(this))
 		this.connection.onRequest("files/documentSymbolLocation", this.onDocumentSymbolLocation.bind(this))

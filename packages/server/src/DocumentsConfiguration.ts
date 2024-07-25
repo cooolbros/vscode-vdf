@@ -28,7 +28,7 @@ export class DocumentsConfiguration {
 	}
 
 	public async add(uri: string): Promise<VSCodeVDFConfiguration> {
-		const settings = await VSCodeVDFConfigurationSchema.parseAsync(await this.connection.workspace.getConfiguration({ scopeUri: uri, section: "vscode-vdf" }))
+		const settings = await VSCodeVDFConfigurationSchema.parseAsync(await this.connection.workspace.getConfiguration({ scopeUri: encodeURIComponent(uri), section: "vscode-vdf" }))
 		this.configuration.set(uri, settings)
 		return settings
 	}
