@@ -1,9 +1,12 @@
+import type { AnyRouter } from "@trpc/server"
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { languageNames } from "utils/languageNames"
 import { type VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
+import { clientRouter } from "./TRPCClientRouter"
 import { VSCodeLanguageClientFileSystem } from "./VSCodeLanguageClientFileSystem"
 
 type JSONDecorationOptions = {
@@ -16,6 +19,23 @@ type JSONPosition = { line: number, character: number }
 export class Client {
 
 	private static readonly sendRequestParamsSchema = z.tuple([VSCodeVDFLanguageIDSchema, z.string(), z.record(z.unknown())])
+	private static readonly TRPCRequestSchema = z.tuple([
+		z.union([
+			z.literal("hudanimations"),
+			z.literal("popfile"),
+			z.literal("vmt"),
+			z.literal("vdf"),
+			z.null()
+		]),
+		z.tuple([
+			z.string(),
+			z.object({
+				method: z.string(),
+				headers: z.record(z.string()),
+				body: z.string().optional()
+			})
+		])
+	])
 
 	private readonly client: BaseLanguageClient
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
@@ -27,6 +47,26 @@ export class Client {
 		this.startServer = startServer
 		this.fileSystem = new VSCodeLanguageClientFileSystem()
 		this.subscriptions = []
+
+		this.subscriptions.push(this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
+			const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
+
+			if (languageId == null) {
+				const response = await fetchRequestHandler<AnyRouter>({
+					endpoint: "",
+					req: new Request(new URL(url, "https://vscode.vdf"), init),
+					router: clientRouter
+				})
+				return await response.text()
+			}
+			else {
+				const languageClient = languageClients[languageId]
+				if (!languageClient) {
+					throw new Error(`${languageId} language server not running.`)
+				}
+				return languageClient.client.sendRequest("vscode-vdf/trpc", [url, init])
+			}
+		}))
 
 		this.subscriptions.push(
 			this.client.onRequest("vscode-vdf/fs/exists", async (uri: string) => {

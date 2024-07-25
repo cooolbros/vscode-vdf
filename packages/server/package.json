@@ -4,7 +4,10 @@
         "directory": "src"
     },
     "devDependencies": {
+        "@trpc/client": "^10.45.2",
+        "@trpc/server": "^10.45.2",
         "@types/string-similarity": "^4.0.2",
+        "client": "workspace:^",
         "hudanimations-documentsymbols": "workspace:^",
         "hudanimations-format": "workspace:^",
         "string-similarity": "^4.0.4",

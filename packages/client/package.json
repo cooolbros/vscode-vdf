@@ -4,6 +4,7 @@
         "directory": "src"
     },
     "devDependencies": {
+        "@trpc/server": "^10.45.2",
         "tsconfig": "workspace:^",
         "utils": "workspace:^",
         "vdf": "workspace:^",

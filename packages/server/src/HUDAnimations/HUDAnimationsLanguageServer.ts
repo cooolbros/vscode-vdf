@@ -1,3 +1,4 @@
+import type { initTRPC } from "@trpc/server"
 import { HUDAnimationStatementType, HUDAnimationsDocumentSymbols, getHUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
 import { getHUDRoot } from "utils/getHUDRoot"
@@ -119,6 +120,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.connection.onRequest("workspace/open", this.onWorkspaceOpen.bind(this))
 		this.connection.onRequest("workspace/setManifest", this.onWorkspaceSetManifest.bind(this))
 		this.connection.onRequest("textDocument/decoration", this.onDecoration.bind(this))
+	}
+
+	protected router(t: ReturnType<typeof initTRPC.create>) {
+		return t.router({})
 	}
 
 	protected getCapabilities(): ServerCapabilities<any> {

@@ -1,11 +1,21 @@
+import { createTRPCProxyClient, httpLink, type CreateTRPCProxyClient } from "@trpc/client"
+import { initTRPC, type AnyRouter } from "@trpc/server"
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import type { clientRouter } from "client/TRPCClientRouter"
 import type { languageNames } from "utils/languageNames"
 import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
+import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { VDFSyntaxError } from "vdf"
 import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
+import { z } from "zod"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"
+import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
 import type { LanguageServerConfiguration } from "./LanguageServerConfiguration"
 import { LanguageServerFileSystem } from "./LanguageServerFileSystem"
+import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
+import type { VDFLanguageServer } from "./VDF/VDFLanguageServer"
+import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
 
 export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
@@ -17,6 +27,16 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 	protected readonly documents: TextDocuments<TextDocument>
 	protected readonly documentsSymbols: Map<string, T>
 	protected readonly documentsConfiguration: DocumentsConfiguration
+
+	protected readonly trpc: {
+		client: CreateTRPCProxyClient<typeof clientRouter>
+		servers: {
+			hudanimations: CreateTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>
+			popfile: CreateTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>
+			vmt: CreateTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>
+			vdf: CreateTRPCProxyClient<ReturnType<VDFLanguageServer["router"]>>
+		}
+	}
 
 	constructor(name: LanguageServer<T>["name"], languageId: LanguageServer<T>["languageId"], connection: Connection, configuration: LanguageServerConfiguration<T>) {
 
@@ -36,6 +56,73 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.documentsSymbols = new Map<string, T>()
 		this.documentsConfiguration = new DocumentsConfiguration(this.connection)
 
+		let _router: ReturnType<typeof this.router>
+
+		const resolveTRPC = async (input: string, init?: RequestInit) => {
+			_router ??= this.router(initTRPC.create())
+			const response = await fetchRequestHandler({
+				endpoint: "",
+				req: new Request(new URL(input, "https://vscode.vdf"), init),
+				router: _router
+			})
+			return await response.text()
+		}
+
+		this.connection.onRequest("vscode-vdf/trpc", async (params: unknown) => {
+			const [url, init] = z.tuple([
+				z.string(),
+				z.object({
+					method: z.string().optional(),
+					headers: z.record(z.string()).optional(),
+					body: z.string()
+				})
+			]).parse(params)
+
+			return await resolveTRPC(url, init)
+		})
+
+		const VSCodeRPCLink = (server: VSCodeVDFLanguageID | null) => httpLink({
+			url: "",
+			fetch: async (input, init) => {
+				let body: Promise<string>
+
+				if (server != languageId) {
+					body = this.connection.sendRequest(
+						"vscode-vdf/trpc",
+						[
+							server,
+							[
+								input,
+								{
+									method: init?.method,
+									headers: init?.headers,
+									body: init?.body
+								}
+							]
+						]
+					)
+				}
+				else {
+					let url = typeof input == "object"
+						? ("url" in input ? input.url : input.pathname)
+						: input
+					body = resolveTRPC(url, init)
+
+				}
+				return new Response(await body)
+			}
+		})
+
+		this.trpc = {
+			client: createTRPCProxyClient<typeof clientRouter>({ links: [VSCodeRPCLink(null)] }),
+			servers: {
+				hudanimations: createTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>({ links: [VSCodeRPCLink("hudanimations")] }),
+				popfile: createTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>({ links: [VSCodeRPCLink("popfile")] }),
+				vmt: createTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>({ links: [VSCodeRPCLink("vmt")] }),
+				vdf: createTRPCProxyClient<ReturnType<VDFLanguageServer["router"]>>({ links: [VSCodeRPCLink("vdf")] }),
+			}
+		}
+
 		this.connection.onInitialize(this.onInitialize.bind(this))
 
 		this.documents.onDidOpen(this.onDidOpen.bind(this))
@@ -48,6 +135,8 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.documents.listen(this.connection)
 		this.connection.listen()
 	}
+
+	protected abstract router(t: ReturnType<typeof initTRPC.create>): AnyRouter
 
 	protected onTextDocumentRequest<P extends { textDocument: { uri: string } }, R, E>(
 		listener: (handler: RequestHandler<P, R | null, E>) => { dispose(): void },

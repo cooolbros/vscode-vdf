@@ -1,3 +1,4 @@
+import type { initTRPC } from "@trpc/server"
 import { posix } from "path"
 import { encodeBaseValue } from "utils/encodeBaseValue"
 import { getHUDRoot } from "utils/getHUDRoot"
@@ -218,6 +219,13 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		this.connection.onRequest("workspace/definition", this.onWorkspaceDefinition.bind(this))
 		this.connection.onRequest("workspace/definitions", this.onWorkspaceDefinitions.bind(this))
 		this.connection.onRequest("workspace/setReferences", this.onWorkspaceSetReferences.bind(this))
+	}
+
+	protected router(t: ReturnType<typeof initTRPC.create>) {
+		return t.mergeRouters(
+			super.router(t),
+			t.router({})
+		)
 	}
 
 	private async findHUDDefinitionReferences(hudRoot: string): Promise<VGUIDefinitionReferences> {

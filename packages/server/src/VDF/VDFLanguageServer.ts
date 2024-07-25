@@ -1,3 +1,4 @@
+import type { initTRPC } from "@trpc/server"
 import { posix } from "path"
 import { findBestMatch } from "string-similarity"
 import { encodeBaseValue } from "utils/encodeBaseValue"
@@ -62,6 +63,10 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		this.connection.onRequest("files/documentSymbolKeys", this.onDocumentSymbolKeys.bind(this))
 		this.connection.onRequest("files/documentSymbolLocation", this.onDocumentSymbolLocation.bind(this))
 		this.connection.onRequest("files/setReferences", this.onSetReferences.bind(this))
+	}
+
+	protected router(t: ReturnType<typeof initTRPC.create>) {
+		return t.router({})
 	}
 
 	protected getCapabilities(): ServerCapabilities<any> {

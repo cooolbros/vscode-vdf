@@ -160,6 +160,9 @@ importers:
 
   packages/client:
     devDependencies:
+      '@trpc/server':
+        specifier: ^10.45.2
+        version: 10.45.2
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
@@ -203,9 +206,18 @@ importers:
 
   packages/server:
     devDependencies:
+      '@trpc/client':
+        specifier: ^10.45.2
+        version: 10.45.2(@trpc/server@10.45.2)
+      '@trpc/server':
+        specifier: ^10.45.2
+        version: 10.45.2
       '@types/string-similarity':
         specifier: ^4.0.2
         version: 4.0.2
+      client:
+        specifier: workspace:^
+        version: link:../client/src
       hudanimations-documentsymbols:
         specifier: workspace:^
         version: link:../hudanimations-documentsymbols
@@ -533,6 +545,14 @@ packages:
 
   '@theguild/remark-npm2yarn@0.2.1':
     resolution: {integrity: sha512-jUTFWwDxtLEFtGZh/TW/w30ySaDJ8atKWH8dq2/IiQF61dPrGfETpl0WxD0VdBfuLOeU14/kop466oBSRO/5CA==}
+
+  '@trpc/client@10.45.2':
+    resolution: {integrity: sha512-ykALM5kYWTLn1zYuUOZ2cPWlVfrXhc18HzBDyRhoPYN0jey4iQHEFSEowfnhg1RvYnrAVjNBgHNeSAXjrDbGwg==}
+    peerDependencies:
+      '@trpc/server': 10.45.2
+
+  '@trpc/server@10.45.2':
+    resolution: {integrity: sha512-wOrSThNNE4HUnuhJG6PfDRp4L2009KDVxsd+2VYH8ro6o/7/jwYZ8Uu5j+VaW+mOmc8EHerHzGcdbGNQSAUPgg==}
 
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
@@ -3308,6 +3328,12 @@ snapshots:
     dependencies:
       npm-to-yarn: 2.2.1
       unist-util-visit: 5.0.0
+
+  '@trpc/client@10.45.2(@trpc/server@10.45.2)':
+    dependencies:
+      '@trpc/server': 10.45.2
+
+  '@trpc/server@10.45.2': {}
 
   '@tsconfig/node10@1.0.11': {}
 
