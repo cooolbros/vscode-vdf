@@ -340,5 +340,5 @@
         "publisherId": "0bca7cad-ed90-49e6-88a6-828825345806",
         "isPreReleaseVersion": false
     },
-    "packageManager": "pnpm@9.4.0"
+    "packageManager": "pnpm@9.6.0"
 }
