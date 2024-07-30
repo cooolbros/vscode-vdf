@@ -3,7 +3,6 @@ import { initTRPC, type AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { clientRouter } from "client/TRPCClientRouter"
 import type { languageNames } from "utils/languageNames"
-import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { VDFSyntaxError } from "vdf"
 import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -12,7 +11,6 @@ import { z } from "zod"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
 import type { LanguageServerConfiguration } from "./LanguageServerConfiguration"
-import { LanguageServerFileSystem } from "./LanguageServerFileSystem"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
@@ -22,7 +20,6 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 	protected readonly name: typeof languageNames[keyof typeof languageNames]
 	protected readonly languageId: keyof typeof languageNames
 	protected readonly connection: Connection
-	protected readonly fileSystem: VSCodeVDFFileSystem
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<T>
 	protected readonly documents: TextDocuments<TextDocument>
 	protected readonly documentsSymbols: Map<string, T>
@@ -43,7 +40,6 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.name = name
 		this.languageId = languageId
 		this.connection = connection
-		this.fileSystem = new LanguageServerFileSystem(this.connection)
 		this.languageServerConfiguration = configuration
 		this.documents = new TextDocuments({
 			create(uri, languageId, version, content) {
@@ -56,7 +52,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.documentsSymbols = new Map<string, T>()
 		this.documentsConfiguration = new DocumentsConfiguration(this.connection)
 
-		let _router: ReturnType<typeof this.router>
+		let _router: AnyRouter
 
 		const resolveTRPC = async (input: string, init?: RequestInit) => {
 			_router ??= this.router(initTRPC.create())
@@ -135,7 +131,22 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.connection.listen()
 	}
 
-	protected abstract router(t: ReturnType<typeof initTRPC.create>): AnyRouter
+	protected router(t: ReturnType<typeof initTRPC.create>) {
+		return t.router({
+			textDocument: t.router({
+				documentSymbol: t
+					.procedure
+					.input(
+						z.object({
+							uri: z.string()
+						})
+					)
+					.query(async ({ input }) => {
+						return await this.onDocumentSymbol({ textDocument: input })
+					})
+			})
+		})
+	}
 
 	protected onTextDocumentRequest<P extends { textDocument: { uri: string } }, R, E>(
 		listener: (handler: RequestHandler<P, R | null, E>) => { dispose(): void },
@@ -283,13 +294,13 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		})
 	}
 
-	private async onDocumentSymbol(params: DocumentSymbolParams): Promise<DocumentSymbol[] | undefined> {
+	private async onDocumentSymbol(params: DocumentSymbolParams) {
 
 		if (!this.documentsSymbols.has(params.textDocument.uri)) {
-			this.documentsSymbols.set(params.textDocument.uri, this.languageServerConfiguration.parseDocumentSymbols(params.textDocument.uri, await this.fileSystem.readFile(params.textDocument.uri)))
+			this.documentsSymbols.set(params.textDocument.uri, this.languageServerConfiguration.parseDocumentSymbols(params.textDocument.uri, await this.trpc.client.fileSystem.readFile.query({ uri: params.textDocument.uri })))
 		}
 
-		return this.documentsSymbols.get(params.textDocument.uri)
+		return this.documentsSymbols.get(params.textDocument.uri)!
 	}
 
 	protected codeLensRefresh(): void {

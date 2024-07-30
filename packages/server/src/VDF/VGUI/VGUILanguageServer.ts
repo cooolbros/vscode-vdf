@@ -1,7 +1,6 @@
 import type { initTRPC } from "@trpc/server"
 import { posix } from "path"
 import { encodeBaseValue } from "utils/encodeBaseValue"
-import { getHUDRoot } from "utils/getHUDRoot"
 import { normalizeUri } from "utils/normalizeUri"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import { VDFPosition, VDFRange } from "vdf"
@@ -104,7 +103,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 						const hudRoot = this.documentHUDRoots.get(documentLink.data.uri)
 						if (hudRoot) {
 							const vmtPath = `${hudRoot}/${posix.normalize(`materials/vgui/${documentLink.data.value}.vmt`)}`
-							if (await this.fileSystem.exists(vmtPath)) {
+							if (await this.trpc.client.fileSystem.exists.query({ uri: vmtPath })) {
 								documentLink.target = vmtPath
 								return documentLink
 							}
@@ -120,11 +119,11 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					check: async (uri: string, documentSymbol: VDFDocumentSymbol): Promise<boolean> => {
 						let hudRoot = this.documentHUDRoots.get(uri)
 						if (hudRoot === undefined) {
-							hudRoot = await getHUDRoot({ uri }, this.fileSystem)
+							hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri })
 						}
 
 						const fileUri = `${hudRoot}/${encodeBaseValue(documentSymbol.detail!)}`
-						if (await this.fileSystem.exists(fileUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 							return true
 						}
 
@@ -135,7 +134,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 						}
 
 						const tfUri = `${configuration.teamFortress2Folder}/tf/${encodeBaseValue(documentSymbol.detail!)}`
-						if (await this.fileSystem.exists(tfUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: tfUri })) {
 							return true
 						}
 
@@ -148,13 +147,13 @@ export class VGUILanguageServer extends VDFLanguageServer {
 						const hudRoot = this.documentHUDRoots.get(documentLink.data.uri)
 
 						const fileUri = `${hudRoot}/${encodeBaseValue(documentLink.data.value)}`
-						if (await this.fileSystem.exists(fileUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 							documentLink.target = fileUri
 							return documentLink
 						}
 
 						const tfUri = `${this.documentsConfiguration.get(documentLink.data.uri).teamFortress2Folder}/tf/${encodeBaseValue(documentLink.data.value)}`
-						if (await this.fileSystem.exists(tfUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: tfUri })) {
 							documentLink.target = tfUri
 							return documentLink
 						}
@@ -170,14 +169,14 @@ export class VGUILanguageServer extends VDFLanguageServer {
 						const hudRoot = this.documentHUDRoots.get(documentLink.data.uri)
 						if (hudRoot !== undefined) {
 							const hudFilePath = `${hudRoot}/${encodeBaseValue(documentLink.data.value)}`
-							if (await this.fileSystem.exists(hudFilePath)) {
+							if (await this.trpc.client.fileSystem.exists.query({ uri: hudFilePath })) {
 								documentLink.target = hudFilePath
 								return documentLink
 							}
 						}
 
 						const vpkFilePath = `vpk:///${posix.normalize(`${encodeBaseValue(documentLink.data.value.toLowerCase())}`)}?vpk=misc`
-						if (await this.fileSystem.exists(vpkFilePath)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: vpkFilePath })) {
 							documentLink.target = vpkFilePath
 						}
 
@@ -214,17 +213,123 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		this.languageId = languageId
 		this.documentHUDRoots = new Map<string, string | null>()
 		this.HUDSchemes = new Map<string, VGUIDefinitionReferences>()
-
-		this.connection.onRequest("workspace/open", this.onWorkspaceOpen.bind(this))
-		this.connection.onRequest("workspace/definition", this.onWorkspaceDefinition.bind(this))
-		this.connection.onRequest("workspace/definitions", this.onWorkspaceDefinitions.bind(this))
-		this.connection.onRequest("workspace/setReferences", this.onWorkspaceSetReferences.bind(this))
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create>) {
 		return t.mergeRouters(
 			super.router(t),
-			t.router({})
+			t.router({
+				workspace: t.router({
+					open: t
+						.procedure
+						.input(
+							z.object({
+								hudRoot: z.string()
+							})
+						)
+						.mutation(async ({ input }) => {
+							const { hudRoot } = input
+
+							if (!this.HUDSchemes.has(hudRoot)) {
+								this.HUDSchemes.set(hudRoot, await this.findHUDDefinitionReferences(hudRoot))
+							}
+						}),
+					definition: t
+						.procedure
+						.input(
+							z.object({
+								hudRoot: z.string(),
+								type: z.number(),
+								key: z.string()
+							})
+						)
+						.query(({ input }) => {
+							const { hudRoot, type, key } = input
+
+							const hudScheme = this.HUDSchemes.get(hudRoot)
+							if (!hudScheme) {
+								throw new Error("hudScheme is null")
+							}
+
+							const definitionReference = hudScheme.get([type, key])
+							if (!definitionReference) {
+								return null
+							}
+
+							const definitionLocation = definitionReference.getDefinitionLocation()
+							if (!definitionLocation) {
+								return null
+							}
+
+							return definitionLocation
+						}),
+					definitions: t
+						.procedure
+						.input(
+							z.object({
+								hudRoot: z.string(),
+								type: z.number()
+							})
+						)
+						.query(async ({ input }) => {
+							const { hudRoot, type } = input
+
+							const hudScheme = this.HUDSchemes.get(hudRoot)
+							if (!hudScheme) {
+								return {}
+							}
+
+							const keys: { [key: string]: any } = {}
+
+							for (const definitionReference of hudScheme.ofType(type).values()) {
+								if (definitionReference.getDefinitionLocation() != undefined && definitionReference.hasValue()) {
+									keys[definitionReference.key] = definitionReference.getValue()
+								}
+							}
+
+							return keys
+						}),
+					setReferences: t
+						.procedure
+						.input(
+							z.object({
+								hudRoot: z.string(),
+								references: z.record(
+									z.object({
+										type: z.number(),
+										key: z.string(),
+										range: VDFRange.schema
+									}).array()
+								)
+							})
+						)
+						.mutation(async ({ input }) => {
+							const workspaceReferenceParams = input
+
+							const hudScheme = this.HUDSchemes.get(workspaceReferenceParams.hudRoot)
+							if (!hudScheme) {
+								throw new Error(`Cannot set workspace references for hudScheme "${workspaceReferenceParams.hudRoot}" because it does not exist.`)
+							}
+
+							for (const uri in workspaceReferenceParams.references) {
+
+								hudScheme.deleteReferences(uri)
+
+								const references = workspaceReferenceParams.references[uri]
+
+								for (const reference of references) {
+									const range = new VDFRange(
+										new VDFPosition(reference.range.start.line, reference.range.start.character),
+										new VDFPosition(reference.range.end.line, reference.range.end.character)
+									)
+									hudScheme.get([reference.type, reference.key]).addReference(uri, range)
+								}
+							}
+
+							this.codeLensRefresh()
+						})
+				})
+			})
 		)
 	}
 
@@ -240,19 +345,19 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			const uri = await (async (): Promise<string | null> => {
 
 				const fileUri = `${hudRoot}/${relativePath}`
-				if (await this.fileSystem.exists(fileUri)) {
+				if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 					return fileUri
 				}
 
 				const tfUri = normalizeUri(`file:///${(await this.connection.workspace.getConfiguration("vscode-vdf"))["teamFortress2Folder"]}/tf/${relativePath}`)
-				if (await this.fileSystem.exists(tfUri)) {
+				if (await this.trpc.client.fileSystem.exists.query({ uri: tfUri })) {
 					// The tf/resource directory contains tf_english.txt which uses multi-line strings.
 					allowMultilineStrings = true
 					return tfUri
 				}
 
 				const vpkUri = `vpk:///${relativePath}?vpk=misc`
-				if (await this.fileSystem.exists(vpkUri)) {
+				if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 					return vpkUri
 				}
 
@@ -276,7 +381,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 
 			const promises: Promise<any>[] = []
 
-			const directory = this.fileSystem.readDirectory(directoryUri)
+			const directory = this.trpc.client.fileSystem.readDirectory.query({ uri: directoryUri })
 			promises.push(directory)
 			directory
 				.then((entries) => {
@@ -289,7 +394,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 							}
 						}
 						else if (type == 1 && posix.extname(entry) == ".res") {
-							const file = this.fileSystem.readFile(entryUri)
+							const file = this.trpc.client.fileSystem.readFile.query({ uri: entryUri })
 							promises.push(file)
 							file
 								.then((text) => {
@@ -328,7 +433,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 
 			const documentSymbols = this.documentsSymbols.get(uri)
 				?? await (async (): Promise<VDFDocumentSymbols> => {
-					const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(uri, await this.fileSystem.readFile(uri), { allowMultilineStrings })
+					const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(uri, await this.trpc.client.fileSystem.readFile.query({ uri }), { allowMultilineStrings })
 					this.documentsSymbols.set(uri, documentSymbols)
 					return documentSymbols
 				})()
@@ -452,7 +557,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await getHUDRoot(e.document, this.fileSystem)
+		const hudRoot = await this.trpc.client.searchForHUDRoot.query(e.document)
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 
 		if (hudRoot && !this.HUDSchemes.has(hudRoot)) {
@@ -461,15 +566,15 @@ export class VGUILanguageServer extends VDFLanguageServer {
 				this.codeLensRefresh()
 
 				// await catch
-				await this.connection.sendRequest("servers/sendRequest", ["hudanimations", "workspace/open", { hudRoot }])
+				await this.trpc.servers.hudanimations.workspace.open.mutate({ hudRoot })
 			}
 			catch (error: any) {
 				this.connection.console.log(error.stack!)
 			}
 		}
 
-		if (e.document.uri == `${hudRoot}/scripts/hudanimations_manifest.txt`) {
-			this.connection.sendRequest("servers/sendRequest", ["hudanimations", "workspace/setManifest", { hudRoot, documentSymbols: this.documentsSymbols.get(e.document.uri)! }])
+		if (hudRoot && e.document.uri == `${hudRoot}/scripts/hudanimations_manifest.txt`) {
+			this.trpc.servers.hudanimations.workspace.setManifest.mutate({ hudRoot, documentSymbols: this.documentsSymbols.get(e.document.uri)! })
 				.then((value) => console.log(value))
 				.catch((error) => console.log(error))
 		}
@@ -507,7 +612,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		this.updateReferences(hudScheme, e.document.uri, documentSymbols)
 
 		if (e.document.uri == `${hudRoot}/scripts/hudanimations_manifest.txt`) {
-			this.connection.sendRequest("servers/sendRequest", ["hudanimations", "workspace/setManifest", { hudRoot, documentSymbols }])
+			this.trpc.servers.hudanimations.workspace.setManifest.mutate({ hudRoot, documentSymbols })
 				.then((value) => console.log(value))
 				.catch((error) => console.log(error))
 		}
@@ -858,99 +963,5 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			}
 		}
 		return super.onPrepareRename(params)
-	}
-
-	private async onWorkspaceOpen(params: unknown): Promise<void> {
-
-		const { hudRoot } = z.object({ hudRoot: z.string() }).parse(params)
-
-		if (!this.HUDSchemes.has(hudRoot)) {
-			this.HUDSchemes.set(hudRoot, await this.findHUDDefinitionReferences(hudRoot))
-		}
-	}
-
-	private onWorkspaceDefinition(params: unknown): Definition | null {
-
-		const { hudRoot, type, key } = z.object({
-			hudRoot: z.string(),
-			type: z.number(),
-			key: z.string()
-		}).parse(params)
-
-		const hudScheme = this.HUDSchemes.get(hudRoot)
-		if (!hudScheme) {
-			throw new Error("hudScheme is null")
-		}
-
-		const definitionReference = hudScheme.get([type, key])
-		if (!definitionReference) {
-			return null
-		}
-
-		const definitionLocation = definitionReference.getDefinitionLocation()
-		if (!definitionLocation) {
-			return null
-		}
-
-		return definitionLocation
-	}
-
-	private onWorkspaceDefinitions(params: unknown): { [key: string]: any } {
-
-		const { hudRoot, type } = z.object({
-			hudRoot: z.string(),
-			type: z.number(),
-		}).parse(params)
-
-		const hudScheme = this.HUDSchemes.get(hudRoot)
-		if (!hudScheme) {
-			return {}
-		}
-
-		const keys: { [key: string]: any } = {}
-
-		for (const definitionReference of hudScheme.ofType(type).values()) {
-			if (definitionReference.getDefinitionLocation() != undefined && definitionReference.hasValue()) {
-				keys[definitionReference.key] = definitionReference.getValue()
-			}
-		}
-
-		return keys
-	}
-
-	private async onWorkspaceSetReferences(params: unknown): Promise<void> {
-
-		const workspaceReferenceParams = z.object({
-			hudRoot: z.string(),
-			references: z.record(
-				z.object({
-					type: z.number(),
-					key: z.string(),
-					range: VDFRange.schema
-				}).array()
-			)
-		}).parse(params)
-
-		const hudScheme = this.HUDSchemes.get(workspaceReferenceParams.hudRoot)
-		if (!hudScheme) {
-			throw new Error(`Cannot set workspace references for hudScheme "${workspaceReferenceParams.hudRoot}" because it does not exist.`)
-		}
-
-		for (const uri in workspaceReferenceParams.references) {
-
-			hudScheme.deleteReferences(uri)
-
-			const references = workspaceReferenceParams.references[uri]
-
-			for (const reference of references) {
-				const range = new VDFRange(
-					new VDFPosition(reference.range.start.line, reference.range.start.character),
-					new VDFPosition(reference.range.end.line, reference.range.end.character)
-				)
-				hudScheme.get([reference.type, reference.key]).addReference(uri, range)
-			}
-		}
-
-		this.codeLensRefresh()
 	}
 }

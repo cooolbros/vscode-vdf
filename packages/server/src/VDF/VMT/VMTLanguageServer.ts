@@ -1,5 +1,4 @@
 import { encodeBaseValue } from "utils/encodeBaseValue"
-import { getHUDRoot } from "utils/getHUDRoot"
 import { normalizeUri } from "utils/normalizeUri"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -56,20 +55,20 @@ export class VMTLanguageServer extends VDFLanguageServer {
 
 						if (hudRoot) {
 							const hudUri = `${hudRoot}/${value}`
-							if (await this.fileSystem.exists(hudUri)) {
+							if (await this.trpc.client.fileSystem.exists.query({ uri: hudUri })) {
 								documentLink.target = hudUri
 								return documentLink
 							}
 						}
 
 						const tfUri = normalizeUri(`${this.documentsConfiguration.get(documentLink.data.uri).teamFortress2Folder}/tf/${value}`)
-						if (await this.fileSystem.exists(tfUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: tfUri })) {
 							documentLink.target = tfUri
 							return documentLink
 						}
 
 						const vpkUri = `vpk:///${value}?vpk=textures`
-						if (await this.fileSystem.exists(vpkUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 							documentLink.target = vpkUri
 							return documentLink
 						}
@@ -126,7 +125,7 @@ export class VMTLanguageServer extends VDFLanguageServer {
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await getHUDRoot(e.document, this.fileSystem)
+		const hudRoot = await this.trpc.client.searchForHUDRoot.query(e.document)
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 	}
 

@@ -1,5 +1,4 @@
 import { extname, parse } from "path"
-import type { VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import { CompletionItem, CompletionItemKind, type Connection } from "vscode-languageserver"
 
 export class CompletionItemSet {
@@ -14,7 +13,6 @@ export class CompletionItemSet {
 
 export async function incremental(
 	connection: Connection,
-	fileSystem: VSCodeVDFFileSystem,
 	query: `?${string}` | "",
 	startingPath: string,
 	relativePath: string | undefined,

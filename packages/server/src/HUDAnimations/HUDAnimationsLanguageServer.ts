@@ -1,10 +1,9 @@
 import type { initTRPC } from "@trpc/server"
 import { HUDAnimationStatementType, HUDAnimationsDocumentSymbols, getHUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
-import { getHUDRoot } from "utils/getHUDRoot"
 import { VDFRange, VDFTokeniser, type VDFToken } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, DocumentSymbolRequest, Location, Range, TextDocumentIdentifier, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, Location, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { LanguageServer } from "../LanguageServer"
@@ -116,14 +115,50 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.onTextDocumentRequest(this.connection.onDocumentFormatting, this.onDocumentFormatting)
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
-
-		this.connection.onRequest("workspace/open", this.onWorkspaceOpen.bind(this))
-		this.connection.onRequest("workspace/setManifest", this.onWorkspaceSetManifest.bind(this))
-		this.connection.onRequest("textDocument/decoration", this.onDecoration.bind(this))
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create>) {
-		return t.router({})
+		return t.mergeRouters(
+			super.router(t),
+			t.router({
+				workspace: t.router({
+					open: t
+						.procedure
+						.input(
+							z.object({
+								hudRoot: z.string()
+							})
+						)
+						.mutation(async ({ input }) => {
+							const { hudRoot } = input
+							await this.findHUDDefinitionReferences(hudRoot)
+						}),
+					setManifest: t
+						.procedure
+						.input(
+							z.object({
+								hudRoot: z.string(),
+								documentSymbols: VDFDocumentSymbols.schema
+							})
+						)
+						.mutation(async ({ input }) => {
+							const { hudRoot, documentSymbols } = input
+
+							const files = documentSymbols
+								.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
+								?.children
+								?.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "file" && documentSymbol.detail != undefined)
+								.map((documentSymbol) => documentSymbol.detail!)
+								?? []
+
+							this.workspaceHUDAnimationsManifests.set(
+								hudRoot,
+								new Set(files)
+							)
+						})
+				})
+			})
+		)
 	}
 
 	protected getCapabilities(): ServerCapabilities<any> {
@@ -155,12 +190,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		const hudAnimationsManifestPath = await (async (): Promise<string | null> => {
 			const fileHUDAnimationsManifestPath = `${hudRoot}/scripts/hudanimations_manifest.txt`
-			if (await this.fileSystem.exists(fileHUDAnimationsManifestPath)) {
+			if (await this.trpc.client.fileSystem.exists.query({ uri: fileHUDAnimationsManifestPath })) {
 				return fileHUDAnimationsManifestPath
 			}
 			else {
 				const vpkHUDAnimationsManifestPath = "vpk:///scripts/hudanimations_manifest.txt?vpk=misc"
-				if (await this.fileSystem.exists(vpkHUDAnimationsManifestPath)) {
+				if (await this.trpc.client.fileSystem.exists.query({ uri: vpkHUDAnimationsManifestPath })) {
 					return vpkHUDAnimationsManifestPath
 				}
 			}
@@ -173,7 +208,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		const files = await (async (): Promise<string[] | null> => {
 			try {
-				const manifestDocumentSymbols = await this.connection.sendRequest<VDFDocumentSymbols>("servers/sendRequest", ["vdf", DocumentSymbolRequest.method, { textDocument: TextDocumentIdentifier.create(hudAnimationsManifestPath) }])
+				const manifestDocumentSymbols = await this.trpc.servers.vgui.textDocument.documentSymbol.query({ uri: hudAnimationsManifestPath })
 
 				const hudanimations_manifest = manifestDocumentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
 				if (!hudanimations_manifest || hudanimations_manifest.children == undefined) {
@@ -203,12 +238,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 				const uri = await (async (): Promise<string | null> => {
 					const fileUri = `${hudRoot}/${file}`
-					if (await this.fileSystem.exists(fileUri)) {
+					if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 						return fileUri
 					}
 					else {
 						const vpkUri = `vpk:///${file}?vpk=misc`
-						if (await this.fileSystem.exists(vpkUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 							return vpkUri
 						}
 					}
@@ -226,7 +261,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				}
 
 				if (!this.documentsSymbols.has(uri)) {
-					this.documentsSymbols.set(uri, getHUDAnimationsDocumentSymbols(await this.fileSystem.readFile(uri)))
+					this.documentsSymbols.set(uri, getHUDAnimationsDocumentSymbols(await this.trpc.client.fileSystem.readFile.query({ uri })))
 				}
 
 				await this.onDefinitionReferences(uri, workspaceReferences)
@@ -238,27 +273,27 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		}
 
 		await request
-		await this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/setReferences", workspaceReferences])
+		await this.trpc.servers.vgui.workspace.setReferences.mutate(workspaceReferences)
 	}
 
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await getHUDRoot(e.document, this.fileSystem)
+		const hudRoot = await this.trpc.client.searchForHUDRoot.query(e.document)
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 
 		this.onDefinitionReferences(e.document.uri)
-		this.onDecoration(e.document)
+		this.onDecoration(e)
 
 		if (hudRoot) {
-			const request = this.connection.sendRequest<void>("servers/sendRequest", ["vdf", "workspace/open", { hudRoot }])
+			const request = this.trpc.servers.vgui.workspace.open.mutate({ hudRoot })
 			await this.findHUDDefinitionReferences(hudRoot, request)
 		}
 	}
 
 	protected async onDidChangeContent(e: TextDocumentChangeEvent<TextDocument>): Promise<boolean> {
 		const result = super.onDidChangeContent(e)
-		this.onDecoration(e.document)
+		this.onDecoration(e)
 		return result
 	}
 
@@ -282,12 +317,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					[...(this.workspaceHUDAnimationsManifests.get(hudRoot) ?? [])]
 						.map(async (relativePath) => {
 							const fileUri = `${hudRoot}/${relativePath}`
-							if (await this.fileSystem.exists(fileUri)) {
+							if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 								return fileUri
 							}
 							else {
 								const vpkUri = `vpk:///${relativePath}?vpk=misc`
-								if (await this.fileSystem.exists(vpkUri)) {
+								if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 									return vpkUri
 								}
 							}
@@ -299,7 +334,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					absolutePaths.map(async (absolutePath) => {
 						let documentSymbols = this.documentsSymbols.get(absolutePath)
 						if (!documentSymbols) {
-							documentSymbols = getHUDAnimationsDocumentSymbols(await this.fileSystem.readFile(absolutePath))
+							documentSymbols = getHUDAnimationsDocumentSymbols(await this.trpc.client.fileSystem.readFile.query({ uri: absolutePath }))
 							this.documentsSymbols.set(absolutePath, documentSymbols)
 						}
 
@@ -369,7 +404,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		let hudRoot = this.documentHUDRoots.get(uri)
 		if (hudRoot === undefined) {
-			hudRoot = await getHUDRoot({ uri }, this.fileSystem)
+			hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri })
 			this.documentHUDRoots.set(uri, hudRoot)
 		}
 
@@ -404,12 +439,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 								const definitionFileUri = await (async (): Promise<string | null> => {
 									const fileUri = `${hudRoot}/${relativePath}`
-									if (await this.fileSystem.exists(fileUri)) {
+									if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 										return fileUri
 									}
 									else {
 										const vpkUri = `vpk:///${relativePath}?vpk=misc`
-										if (await this.fileSystem.exists(vpkUri)) {
+										if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 											return vpkUri
 										}
 									}
@@ -457,13 +492,13 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		Promise.all(filesReferencesPromises).then(() => {
 			for (const definitionUri in filesReferences) {
-				this.connection.sendRequest("servers/sendRequest", ["vdf", "files/setReferences", { uri: definitionUri, references: filesReferences[definitionUri] }])
+				this.trpc.servers.vgui.files.setReferences.query({ uri: definitionUri, references: filesReferences[definitionUri] })
 					.catch((error: any) => this.connection.console.log(error.message))
 			}
 		})
 
 		if (workspaceReferences) {
-			this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/setReferences", workspaceReferences])
+			this.trpc.servers.vgui.workspace.setReferences.mutate(workspaceReferences)
 				.catch((error: any) => this.connection.console.log(error.message))
 		}
 
@@ -540,7 +575,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 				if (typeof eventFile == "string") {
 					const uri = `${hudRoot}/${eventFile}`
-					const keys: string[] = await this.connection.sendRequest("servers/sendRequest", ["vdf", "files/documentSymbolKeys", { uri }])
+					const keys = await this.trpc.servers.vgui.files.documentSymbolKeys.query({ uri })
 					for (const key of keys) {
 						set.add({ label: key, kind: CompletionItemKind.Variable })
 					}
@@ -549,9 +584,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					await Promise.all(
 						eventFile.map(async (relativePath) => {
 							const uri = `${hudRoot}/${relativePath}`
-							return this.connection.sendRequest("servers/sendRequest", ["vdf", "files/documentSymbolKeys", { uri }])
+							return this.trpc.servers.vgui.files.documentSymbolKeys.query({ uri })
 								.then((keys) => {
-									for (const key of <string[]>keys) {
+									for (const key of keys) {
 										set.add({ label: key, kind: CompletionItemKind.Variable })
 									}
 								})
@@ -586,7 +621,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					return []
 				}
 
-				const colourDefinitions = await this.connection.sendRequest<{ [key: string]: string }>("servers/sendRequest", ["vdf", "workspace/definitions", { hudRoot: hudRoot, type: 0 }])
+				const colourDefinitions = await this.trpc.servers.vgui.workspace.definitions.query({ hudRoot: hudRoot, type: 0 })
 
 				const items: CompletionItem[] = []
 
@@ -626,7 +661,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					return []
 				}
 
-				const fontDefinitions = await this.connection.sendRequest<{ [key: string]: string }>("servers/sendRequest", ["vdf", "workspace/definitions", { hudRoot: hudRoot, type: 2 }])
+				const fontDefinitions = await this.trpc.servers.vgui.workspace.definitions.query({ hudRoot: hudRoot, type: 2 })
 
 				const items: CompletionItem[] = []
 
@@ -923,7 +958,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 									.map(async (relativePath) => {
 										const fileUri = `${hudRoot}/${relativePath}`
 										const vpkUri = `vpk:///${relativePath}?vpk=misc`
-										return this.connection.sendRequest("servers/sendRequest", ["vdf", "files/documentSymbolLocation", { uris: [fileUri, vpkUri], key: element }])
+										return this.trpc.servers.vgui.files.documentSymbolLocation.query({ uris: [fileUri, vpkUri], key: element })
 									})
 							)).
 							filter((location): location is Location => location != null)
@@ -933,11 +968,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					else {
 						const fileUri = `${hudRoot}/${eventFile}`
 						const vpkUri = `vpk:///${eventFile}?vpk=misc`
-						return this.connection.sendRequest("servers/sendRequest", ["vdf", "files/documentSymbolLocation", { uris: [fileUri, vpkUri], key: element }])
+						return this.trpc.servers.vgui.files.documentSymbolLocation.query({ uris: [fileUri, vpkUri], key: element })
 					}
 				}
 				else if (documentSymbol.valueRange.contains(params.position)) {
-					return this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/definition", { hudRoot, type: 0, key: documentSymbol.value.toLowerCase() }])
+					return this.trpc.servers.vgui.workspace.definition.query({ hudRoot, type: 0, key: documentSymbol.value.toLowerCase() })
 				}
 				break
 			}
@@ -964,12 +999,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 							[...files]
 								.map(async (relativePath) => {
 									const fileUri = `${hudRoot}/${relativePath}`
-									if (await this.fileSystem.exists(fileUri)) {
+									if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 										return fileUri
 									}
 									else {
 										const vpkUri = `vpk:///${relativePath}?vpk=misc`
-										if (await this.fileSystem.exists(vpkUri)) {
+										if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 											return vpkUri
 										}
 									}
@@ -981,7 +1016,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 							absolutePaths.map(async (absolutePath) => {
 								let documentSymbols = this.documentsSymbols.get(absolutePath)
 								if (!documentSymbols) {
-									documentSymbols = getHUDAnimationsDocumentSymbols(await this.fileSystem.readFile(absolutePath))
+									documentSymbols = getHUDAnimationsDocumentSymbols(await this.trpc.client.fileSystem.readFile.query({ uri: absolutePath }))
 									this.documentsSymbols.set(absolutePath, documentSymbols)
 								}
 
@@ -1007,7 +1042,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			}
 			case HUDAnimationStatementType.SetFont: {
 				const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
-				return this.connection.sendRequest("servers/sendRequest", ["vdf", "workspace/definition", { hudRoot, type: 2, key: documentSymbol.value.toLowerCase() }])
+				return this.trpc.servers.vgui.workspace.definition.query({ hudRoot, type: 2, key: documentSymbol.value.toLowerCase() })
 			}
 			default:
 				break
@@ -1155,7 +1190,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		if (hudRoot) {
 			const fileUri = `${hudRoot}/sound/${sound}`
-			if (await this.fileSystem.exists(fileUri)) {
+			if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 				documentLink.target = fileUri
 				return documentLink
 			}
@@ -1163,7 +1198,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		const vpkUri = `vpk:///sound/${sound}?vpk=sound_misc`
 
-		if (await this.fileSystem.exists(vpkUri)) {
+		if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
 			documentLink.target = vpkUri
 			return documentLink
 		}
@@ -1270,9 +1305,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		return { changes }
 	}
 
-	private onDecoration(params: unknown): void {
+	private onDecoration(params: TextDocumentChangeEvent<TextDocument>): void {
 
-		const { uri } = z.object({ uri: z.string() }).parse(params)
+		const { uri } = params.document
 
 		const documentSymbols = this.documentsSymbols.get(uri)
 		if (!documentSymbols) {
@@ -1302,26 +1337,5 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		}
 
 		this.connection.sendRequest("textDocument/decoration", [uri, decorations])
-	}
-
-	private async onWorkspaceOpen(params: unknown): Promise<void> {
-		const { hudRoot } = z.object({ hudRoot: z.string() }).parse(params)
-		await this.findHUDDefinitionReferences(hudRoot)
-	}
-
-	private async onWorkspaceSetManifest(params: unknown): Promise<void> {
-		const { hudRoot, documentSymbols } = z.object({ hudRoot: z.string(), documentSymbols: VDFDocumentSymbols.schema }).parse(params)
-
-		const files = documentSymbols
-			.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
-			?.children
-			?.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "file" && documentSymbol.detail != undefined)
-			.map((documentSymbol) => documentSymbol.detail!)
-			?? []
-
-		this.workspaceHUDAnimationsManifests.set(
-			hudRoot,
-			new Set(files)
-		)
 	}
 }

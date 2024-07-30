@@ -1,3 +1,4 @@
+import type { initTRPC } from "@trpc/server"
 import { posix } from "path"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
@@ -73,10 +74,10 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 
 						const customDirectory = `${teamFortress2DirectoryUri}/tf/custom`
 
-						for (const [item, type] of await this.fileSystem.readDirectory(customDirectory)) {
+						for (const [item, type] of await this.trpc.client.fileSystem.readDirectory.query({ uri: customDirectory })) {
 							if (type == 2) {
 								const vmtPath = `${customDirectory}/${item}/${relativePath}`
-								if (await this.fileSystem.exists(vmtPath)) {
+								if (await this.trpc.client.fileSystem.exists.query({ uri: vmtPath })) {
 									documentLink.target = vmtPath
 									return documentLink
 								}
@@ -84,19 +85,19 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 						}
 
 						const vpkVmtPath = `vpk:///${relativePath}?vpk=misc`
-						if (await this.fileSystem.exists(vpkVmtPath)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: vpkVmtPath })) {
 							documentLink.target = vpkVmtPath
 							return documentLink
 						}
 
 						const tfPath = `${teamFortress2DirectoryUri}/tf/${relativePath}`
-						if (await this.fileSystem.exists(tfPath)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: tfPath })) {
 							documentLink.target = tfPath
 							return documentLink
 						}
 
 						const downloadPath = `${teamFortress2DirectoryUri}/tf/download/${relativePath}`
-						if (await this.fileSystem.exists(downloadPath)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: downloadPath })) {
 							documentLink.target = downloadPath
 							return documentLink
 						}
@@ -128,6 +129,13 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 
 		this.name = name
 		this.languageId = languageId
+	}
+
+	protected router(t: ReturnType<typeof initTRPC.create>) {
+		return t.mergeRouters(
+			super.router(t),
+			t.router({})
+		)
 	}
 
 	protected async validateDocumentSymbol(uri: string, documentSymbol: VDFDocumentSymbol): Promise<Diagnostic | null> {
@@ -165,13 +173,13 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 
 			const tfUri = `${teamFortress2DirectoryUri}/tf/materials/hud`
 			const downloadUri = `${teamFortress2DirectoryUri}/tf/download/materials/hud`
-			const customUris = (await this.fileSystem.readDirectory(`${teamFortress2DirectoryUri}/tf/custom`))
+			const customUris = (await this.trpc.client.fileSystem.readDirectory.query({ uri: `${teamFortress2DirectoryUri}/tf/custom` }))
 				.filter(([, type]) => type == 2)
 				.map(([name]) => `${teamFortress2DirectoryUri}/tf/custom/${name}`)
 			const vpiUri = "vpk:///materials/hud?vpk=misc"
 
 			const promises = [tfUri, downloadUri, ...customUris, vpiUri].map(async (path) => {
-				return this.fileSystem.readDirectory(path)
+				return this.trpc.client.fileSystem.readDirectory.query({ uri: path })
 					.then((items) => {
 						return items
 							.filter(([name]) => name.startsWith("leaderboard_class_") && name.endsWith(".vmt"))

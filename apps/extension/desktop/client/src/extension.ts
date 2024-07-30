@@ -1,5 +1,4 @@
 import { Client } from "client"
-import { VSCodeLanguageClientFileSystem } from "client/VSCodeLanguageClientFileSystem"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
@@ -31,7 +30,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
 
 	// Workspace
-	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(new VSCodeLanguageClientFileSystem()), { isCaseSensitive: false, isReadonly: true }))
+	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
 

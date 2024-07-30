@@ -59,14 +59,114 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		this.onTextDocumentRequest(this.connection.onDocumentFormatting, this.onDocumentFormatting)
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
-
-		this.connection.onRequest("files/documentSymbolKeys", this.onDocumentSymbolKeys.bind(this))
-		this.connection.onRequest("files/documentSymbolLocation", this.onDocumentSymbolLocation.bind(this))
-		this.connection.onRequest("files/setReferences", this.onSetReferences.bind(this))
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create>) {
-		return t.router({})
+		return t.mergeRouters(
+			super.router(t),
+			t.router({
+				files: t.router({
+					documentSymbolKeys: t
+						.procedure
+						.input(
+							z.object({
+								uri: z.string()
+							})
+						).query(async ({ input }) => {
+							const { uri } = input
+
+							const documentSymbols = this.documentsSymbols.get(uri)
+								?? this.languageServerConfiguration.parseDocumentSymbols(uri, await this.trpc.client.fileSystem.readFile.query({ uri }))
+
+							const keys: string[] = []
+
+							documentSymbols.forAll((documentSymbol) => {
+								if (documentSymbol.children) {
+									keys.push(documentSymbol.key)
+								}
+							})
+
+							return keys
+						}),
+					documentSymbolLocation: t
+						.procedure
+						.input(
+							z.object({
+								uris: z.string().array(),
+								key: z.string()
+							})
+						)
+						.query(async ({ input }) => {
+
+							const { uris, key } = input
+
+							for (const uri of uris) {
+
+								try {
+									const documentSymbols = this.documentsSymbols.get(uri)
+										?? this.languageServerConfiguration.parseDocumentSymbols(uri, await this.trpc.client.fileSystem.readFile.query({ uri }))
+
+									const documentSymbol = documentSymbols.findRecursive((documentSymbol) => documentSymbol.key.toLowerCase() == key)
+									if (!documentSymbol) {
+										return null
+									}
+
+									return {
+										uri: uri,
+										range: documentSymbol.nameRange
+									}
+								}
+								catch (error: any) {
+									this.connection.console.log(error.stack)
+									continue
+								}
+							}
+
+							return null
+						}),
+					setReferences: t
+						.procedure
+						.input(
+							z.object({
+								uri: z.string(),
+								references: z.record(
+									z.object({
+										type: z.number(),
+										key: z.string(),
+										range: VDFRange.schema
+									}).array()
+								)
+							})
+						)
+						.query(async ({ input }) => {
+							const referenceParams = input
+
+							let documentDefinitionReferences = this.documentsDefinitionReferences.get(referenceParams.uri)
+							if (!documentDefinitionReferences) {
+								documentDefinitionReferences = new DocumentDefinitionReferences(this.VDFLanguageServerConfiguration.definitionReferences.length)
+								this.documentsDefinitionReferences.set(referenceParams.uri, documentDefinitionReferences)
+							}
+
+							for (const uri in referenceParams.references) {
+
+								documentDefinitionReferences.deleteReferences(uri)
+
+								const references = referenceParams.references[uri]
+
+								for (const reference of references) {
+									const range = new VDFRange(
+										new VDFPosition(reference.range.start.line, reference.range.start.character),
+										new VDFPosition(reference.range.end.line, reference.range.end.character)
+									)
+									documentDefinitionReferences.get([reference.type, reference.key]).addReference(uri, range)
+								}
+							}
+
+							this.codeLensRefresh()
+						})
+				})
+			})
+		)
 	}
 
 	protected getCapabilities(): ServerCapabilities<any> {
@@ -336,13 +436,13 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				baseUri = await (async (): Promise<string> => {
 
 					const fileBaseUri = baseUri
-					if (await this.fileSystem.exists(fileBaseUri)) {
+					if (await this.trpc.client.fileSystem.exists.query({ uri: fileBaseUri })) {
 						return fileBaseUri
 					}
 
 					if (this.VDFLanguageServerConfiguration.vpkRootPath) {
 						const vpkBaseUri = `vpk:///${this.VDFLanguageServerConfiguration.vpkRootPath}/${posix.basename(baseUri)}?vpk=misc`
-						if (await this.fileSystem.exists(vpkBaseUri)) {
+						if (await this.trpc.client.fileSystem.exists.query({ uri: vpkBaseUri })) {
 							return vpkBaseUri
 						}
 					}
@@ -353,7 +453,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				const baseDocumentSymbols = this.documentsSymbols.has(baseUri)
 					? this.documentsSymbols.get(baseUri)!
 					: await (async (): Promise<VDFDocumentSymbols> => {
-						const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(baseUri, await this.fileSystem.readFile(baseUri))
+						const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(baseUri, await this.trpc.client.fileSystem.readFile.query({ uri: baseUri }))
 						this.documentsSymbols.set(baseUri, documentSymbols)
 						return documentSymbols
 					})()
@@ -845,14 +945,14 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 			const fileUri = `${posix.dirname(link.data.uri)}/${fileName}`
 
-			if (await this.fileSystem.exists(fileUri)) {
+			if (await this.trpc.client.fileSystem.exists.query({ uri: fileUri })) {
 				documentLink.target = fileUri
 				return documentLink
 			}
 
 			if (this.VDFLanguageServerConfiguration.vpkRootPath) {
 				const vpkBaseUri = `vpk:///${this.VDFLanguageServerConfiguration.vpkRootPath}/${fileName}?vpk=misc`
-				if (await this.fileSystem.exists(vpkBaseUri)) {
+				if (await this.trpc.client.fileSystem.exists.query({ uri: vpkBaseUri })) {
 					documentLink.target = vpkBaseUri
 					return documentLink
 				}
@@ -1066,90 +1166,8 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		return { changes }
 	}
 
-	private async onDocumentSymbolKeys(params: unknown): Promise<string[] | null> {
-
-		const { uri } = await z.object({ uri: z.string() }).parseAsync(params)
-
-		const documentSymbols = this.documentsSymbols.get(uri)
-			?? this.languageServerConfiguration.parseDocumentSymbols(uri, await this.fileSystem.readFile(uri))
-
-		const keys: string[] = []
-
-		documentSymbols.forAll((documentSymbol) => {
-			if (documentSymbol.children) {
-				keys.push(documentSymbol.key)
-			}
-		})
-
-		return keys
-	}
-
-	private async onDocumentSymbolLocation(params: unknown): Promise<Location | null> {
-
-		const { uris, key } = z.object({
-			uris: z.string().array(),
-			key: z.string(),
-		}).parse(params)
-
-		for (const uri of uris) {
-
-			try {
-				const documentSymbols = this.documentsSymbols.get(uri)
-					?? this.languageServerConfiguration.parseDocumentSymbols(uri, await this.fileSystem.readFile(uri))
-
-				const documentSymbol = documentSymbols.findRecursive((documentSymbol) => documentSymbol.key.toLowerCase() == key)
-				if (!documentSymbol) {
-					return null
-				}
-
-				return {
-					uri: uri,
-					range: documentSymbol.nameRange
-				}
-			}
-			catch (error: any) {
-				this.connection.console.log(error.stack)
-				continue
-			}
-		}
-
-		return null
-	}
-
 	private async onSetReferences(params: unknown): Promise<void> {
 
-		const referenceParams = await z.object({
-			uri: z.string(),
-			references: z.record(
-				z.object({
-					type: z.number(),
-					key: z.string(),
-					range: VDFRange.schema
-				}).array()
-			)
-		}).parseAsync(params)
 
-		let documentDefinitionReferences = this.documentsDefinitionReferences.get(referenceParams.uri)
-		if (!documentDefinitionReferences) {
-			documentDefinitionReferences = new DocumentDefinitionReferences(this.VDFLanguageServerConfiguration.definitionReferences.length)
-			this.documentsDefinitionReferences.set(referenceParams.uri, documentDefinitionReferences)
-		}
-
-		for (const uri in referenceParams.references) {
-
-			documentDefinitionReferences.deleteReferences(uri)
-
-			const references = referenceParams.references[uri]
-
-			for (const reference of references) {
-				const range = new VDFRange(
-					new VDFPosition(reference.range.start.line, reference.range.start.character),
-					new VDFPosition(reference.range.end.line, reference.range.end.character)
-				)
-				documentDefinitionReferences.get([reference.type, reference.key]).addReference(uri, range)
-			}
-		}
-
-		this.codeLensRefresh()
 	}
 }

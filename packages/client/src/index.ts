@@ -1,13 +1,11 @@
 import type { AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { languageNames } from "utils/languageNames"
-import { type VSCodeVDFFileSystem } from "utils/types/VSCodeVDFFileSystem"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { clientRouter } from "./TRPCClientRouter"
-import { VSCodeLanguageClientFileSystem } from "./VSCodeLanguageClientFileSystem"
 
 type JSONDecorationOptions = {
 	range: JSONRange
@@ -39,13 +37,11 @@ export class Client {
 
 	private readonly client: BaseLanguageClient
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
-	private readonly fileSystem: VSCodeVDFFileSystem
 	private readonly subscriptions: { dispose(): any }[]
 
 	constructor(languageClients: { -readonly [P in keyof typeof languageNames]?: Client }, startServer: (languageId: VSCodeVDFLanguageID) => void, client: BaseLanguageClient) {
 		this.client = client
 		this.startServer = startServer
-		this.fileSystem = new VSCodeLanguageClientFileSystem()
 		this.subscriptions = []
 
 		this.subscriptions.push(this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
@@ -67,39 +63,6 @@ export class Client {
 				return languageClient.client.sendRequest("vscode-vdf/trpc", [url, init])
 			}
 		}))
-
-		this.subscriptions.push(
-			this.client.onRequest("vscode-vdf/fs/exists", async (uri: string) => {
-				return this.fileSystem.exists(uri)
-			}),
-			this.client.onRequest("vscode-vdf/fs/stat", async (uri: string) => {
-				return this.fileSystem.stat(uri)
-			}),
-			this.client.onRequest("vscode-vdf/fs/readFile", async (uri: string) => {
-				return this.fileSystem.readFile(uri)
-			}),
-			this.client.onRequest("vscode-vdf/fs/readFileBinary", async ({ uri, begin, end }: { uri: string, begin?: number, end?: number }) => {
-				return this.fileSystem.readFileBinary(uri, begin, end)
-			}),
-			this.client.onRequest("vscode-vdf/fs/readDirectory", async (uri: string) => {
-				return this.fileSystem.readDirectory(uri)
-			})
-		)
-
-		this.subscriptions.push(
-			this.client.onRequest("servers/sendRequest", async (params: unknown) => {
-
-				const [languageID, requestType, param] = await Client.sendRequestParamsSchema.parseAsync(params)
-
-				const server = languageClients[languageID]
-				if (!server) {
-					throw new Error(`${languageID} language server not running.`)
-				}
-
-				return server.client.sendRequest(requestType, param)
-			})
-		)
-
 
 		const hudAnimationsEventDecorationType = window.createTextEditorDecorationType({
 			after: {
