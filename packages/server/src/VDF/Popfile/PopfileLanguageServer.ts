@@ -1,7 +1,7 @@
 import { posix } from "path"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
-import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentLink, type Connection } from "vscode-languageserver"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"
@@ -132,12 +132,26 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 
 	protected async validateDocumentSymbol(uri: string, documentSymbol: VDFDocumentSymbol): Promise<Diagnostic | null> {
 
-		if (this.vscript == false) {
-			const key = documentSymbol.key.toLowerCase()
-			if (key == "RunScriptCode".toLowerCase() || key == "RunScriptFile".toLowerCase()) {
+		const key = documentSymbol.key.toLowerCase()
+		if (key == "RunScriptCode".toLowerCase() || key == "RunScriptFile".toLowerCase()) {
+
+			let diagnostic: Diagnostic | null = null
+
+			if (documentSymbol.detail!.length + "\0".length >= 2 ** 12) {
+				diagnostic = {
+					range: documentSymbol.detailRange!,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-length",
+					message: "Value exceeds maximum buffer size.",
+				}
+			}
+
+			if (this.vscript == false) {
 				this.trpc.client.popfile.vscript.install.query({ name: posix.basename(uri) })
 				this.vscript = true
 			}
+
+			return diagnostic
 		}
 
 		return null
