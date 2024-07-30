@@ -112,7 +112,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 		documentSymbols.forAll(async (documentSymbol, objectPath) => {
 
-			if (!documentSymbol.detail || !documentSymbol.detailRange) {
+			if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
 				return
 			}
 
