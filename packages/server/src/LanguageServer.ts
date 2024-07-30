@@ -14,7 +14,7 @@ import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsL
 import type { LanguageServerConfiguration } from "./LanguageServerConfiguration"
 import { LanguageServerFileSystem } from "./LanguageServerFileSystem"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
-import type { VDFLanguageServer } from "./VDF/VDFLanguageServer"
+import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
 
 export abstract class LanguageServer<T extends DocumentSymbol[]> {
@@ -33,8 +33,8 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		servers: {
 			hudanimations: CreateTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>
 			popfile: CreateTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>
+			vgui: CreateTRPCProxyClient<ReturnType<VGUILanguageServer["router"]>>
 			vmt: CreateTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>
-			vdf: CreateTRPCProxyClient<ReturnType<VDFLanguageServer["router"]>>
 		}
 	}
 
@@ -107,7 +107,6 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 						? ("url" in input ? input.url : input.pathname)
 						: input
 					body = resolveTRPC(url, init)
-
 				}
 				return new Response(await body)
 			}
@@ -118,8 +117,8 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 			servers: {
 				hudanimations: createTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>({ links: [VSCodeRPCLink("hudanimations")] }),
 				popfile: createTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>({ links: [VSCodeRPCLink("popfile")] }),
+				vgui: createTRPCProxyClient<ReturnType<VGUILanguageServer["router"]>>({ links: [VSCodeRPCLink("vdf")] }),
 				vmt: createTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>({ links: [VSCodeRPCLink("vmt")] }),
-				vdf: createTRPCProxyClient<ReturnType<VDFLanguageServer["router"]>>({ links: [VSCodeRPCLink("vdf")] }),
 			}
 		}
 
