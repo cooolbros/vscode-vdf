@@ -14,6 +14,21 @@
             }
         },
         {
+            "begin": "^\\s*(RunScriptCode)\\s+\"",
+            "end": "\"",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword.control"
+                }
+            },
+            "name": "meta.embedded.block.squirrel",
+            "patterns": [
+                {
+                    "include": "source.squirrel"
+                }
+            ]
+        },
+        {
             "name": "comment",
             "match": "//.*$"
         },

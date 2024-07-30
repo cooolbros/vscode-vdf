@@ -226,7 +226,10 @@
             {
                 "language": "popfile",
                 "scopeName": "source.popfile",
-                "path": "./syntaxes/popfile.tmLanguage.json"
+                "path": "./syntaxes/popfile.tmLanguage.json",
+                "embeddedLanguages": {
+                    "meta.embedded.block.squirrel": "squirrel"
+                }
             },
             {
                 "language": "vmt",
