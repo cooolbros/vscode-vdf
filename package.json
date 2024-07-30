@@ -151,6 +151,11 @@
                         "type": "boolean",
                         "description": "Enabled/disable autocomplete suggestions.",
                         "default": true
+                    },
+                    "vscode-vdf.popfile.vscript.alert.enable": {
+                        "type": "boolean",
+                        "description": "Enable/disable VScript language support alert.",
+                        "default": true
                     }
                 }
             },

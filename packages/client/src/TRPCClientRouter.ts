@@ -1,4 +1,4 @@
-import { FileType, Uri, workspace } from "vscode"
+import { commands, FileType, languages, Uri, window, workspace } from "vscode"
 import { z } from "zod"
 import { t } from "./TRPCServer"
 
@@ -64,4 +64,24 @@ export const clientRouter = t.router({
 			return paths
 		})
 	}),
+	popfile: t.router({
+		vscript: t.router({
+			install: t.procedure.input(z.object({ name: z.string() })).query(async ({ input }) => {
+				const configuration = workspace.getConfiguration("vscode-vdf")
+				if (configuration.get("popfile.vscript.alert.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
+					const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install a VScript extension?`, "Yes", "No", "Don't ask again")
+					switch (result) {
+						case "Yes":
+							await commands.executeCommand("workbench.extensions.search", "@ext:nut")
+							break
+						case "No":
+							break
+						case "Don't ask again":
+							configuration.update("popfile.vscript.alert.enable", false, true)
+							break
+					}
+				}
+			})
+		})
+	})
 })

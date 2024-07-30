@@ -1,5 +1,6 @@
 import { posix } from "path"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
+import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection } from "vscode-languageserver"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
@@ -9,6 +10,7 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 
 	protected readonly name: Extract<VDFLanguageServer["name"], "Popfile">
 	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "popfile">
+	private vscript = false
 
 	constructor(name: PopfileLanguageServer["name"], languageId: PopfileLanguageServer["languageId"], connection: Connection) {
 		super(name, languageId, connection, {
@@ -128,7 +130,16 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 		this.languageId = languageId
 	}
 
-	protected async validateDocumentSymbol(): Promise<Diagnostic | null> {
+	protected async validateDocumentSymbol(uri: string, documentSymbol: VDFDocumentSymbol): Promise<Diagnostic | null> {
+
+		if (this.vscript == false) {
+			const key = documentSymbol.key.toLowerCase()
+			if (key == "RunScriptCode".toLowerCase() || key == "RunScriptFile".toLowerCase()) {
+				this.trpc.client.popfile.vscript.install.query({ name: posix.basename(uri) })
+				this.vscript = true
+			}
+		}
+
 		return null
 	}
 
