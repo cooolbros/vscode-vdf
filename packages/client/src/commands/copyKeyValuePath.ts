@@ -1,8 +1,7 @@
-import { basename, relative, sep } from "path"
-import { getHUDRoot } from "utils/getHUDRoot"
+import { posix } from "path"
 import { getVDFDocumentSymbols, type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Position, Uri, env, window, type TextEditor } from "vscode"
-import { VSCodeLanguageClientFileSystem } from "../VSCodeLanguageClientFileSystem"
+import { trpc } from "../TRPCClient"
 
 export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
@@ -13,11 +12,11 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
 	const filePath = await (async (): Promise<string> => {
 		const fsPath = editor.document.uri.fsPath
-		const hudRoot = await getHUDRoot({ uri: editor.document.uri.toString() }, new VSCodeLanguageClientFileSystem())
+		const hudRoot = await trpc.searchForHUDRoot({ uri: editor.document.uri.toString(true) })
 		if (hudRoot) {
-			return relative(Uri.parse(hudRoot).fsPath, fsPath)
+			return posix.relative(Uri.parse(hudRoot).fsPath, fsPath)
 		}
-		return basename(fsPath)
+		return posix.basename(fsPath)
 	})()
 
 	function findDocumentSymbolPath(documentSymbols: VDFDocumentSymbols, position: Position): VDFDocumentSymbol[] | null {
@@ -64,7 +63,7 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 			] : [])
 		].map(i => /\s/.test(i) ? `"${i}"` : i)
 
-		const result = `${filePath.split(sep).join("/")} ${documentSymbolsPath.join(" > ")}`
+		const result = `${filePath.split(/[/\\]+/).join("/")} ${documentSymbolsPath.join(" > ")}`
 
 		await env.clipboard.writeText(result)
 		window.showInputBox({ value: result })
