@@ -3,7 +3,7 @@
     "name": "Popfile",
     "patterns": [
         {
-            "match": "^(\\s?\"?#base\"?)\\s+(\"?.*\"?)$",
+            "match": "^\\s*(\"#base\"|#base)\\s+(\".*?\"|\\S+)",
             "captures": {
                 "1": {
                     "name": "keyword.control"
