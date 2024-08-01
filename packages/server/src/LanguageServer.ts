@@ -2,10 +2,11 @@ import { createTRPCProxyClient, httpLink, type CreateTRPCProxyClient } from "@tr
 import { initTRPC, type AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { clientRouter } from "client/TRPCClientRouter"
+import { posix } from "path"
 import type { languageNames } from "utils/languageNames"
 import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { VDFSyntaxError } from "vdf"
-import { CodeLensRefreshRequest, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"
@@ -163,6 +164,64 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 			}
 			return null
 		})
+	}
+
+	protected async getFilesCompletion(document: { uri: string }, { items = [], uri, relativePath, query, startsWithFilter, extensionsFilter, displayExtensions }: { items?: CompletionItem[], uri: string, relativePath?: string, query?: `?${string}`, startsWithFilter?: string, extensionsFilter?: string[], displayExtensions: boolean }) {
+		const configuration = this.documentsConfiguration.get(document.uri)
+		if (!configuration) {
+			return []
+		}
+
+		const basename = posix.basename(document.uri)
+		startsWithFilter = startsWithFilter?.toLowerCase()
+
+		const filters = [
+			(name: string, type: number) => posix.basename(name) != basename,
+			(name: string, type: number) => !items.some((item) => item.label == name),
+			configuration.filesAutoCompletionKind == "all" ? (name: string, type: number) => type == 1 : null,
+			startsWithFilter ? (name: string, type: number) => name.toLowerCase().startsWith(startsWithFilter) : null,
+			extensionsFilter ? (name: string, type: number) => extensionsFilter.includes(posix.extname(name)) : null,
+		].filter((f) => f != null)
+
+		const filter = (name: string, type: number) => filters.every((filter) => filter(name, type))
+
+		if (configuration.filesAutoCompletionKind == "incremental") {
+			for (const [name, type] of await this.trpc.client.fileSystem.readDirectory.query({ uri: `${uri}${relativePath ? `/${relativePath}` : ""}${query}` })) {
+				if (filter(name, type)) {
+					if (!items.some((item) => item.label == name)) {
+						items.push({
+							label: name, // Display file extension in label so VSCode displays the associated icon
+							kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+							insertText: displayExtensions ? name : posix.parse(name).name,
+							commitCharacters: ["/"],
+						})
+					}
+				}
+			}
+		}
+		else {
+			for (const [name, type] of await this.trpc.client.fileSystem.readDirectory.query({ uri: `${uri}${query}`, recursive: true })) {
+				if (filter(name, type)) {
+
+					let insertText
+					if (displayExtensions) {
+						insertText = name
+					}
+					else {
+						const path = posix.parse(name)
+						insertText = posix.join(path.dir, path.name)
+					}
+
+					items.push({
+						label: name, // Display file extension in label so VSCode displays the associated icon
+						kind: CompletionItemKind.File,
+						insertText: insertText
+					})
+				}
+			}
+		}
+
+		return items
 	}
 
 	private onInitialize(params: InitializeParams): InitializeResult {

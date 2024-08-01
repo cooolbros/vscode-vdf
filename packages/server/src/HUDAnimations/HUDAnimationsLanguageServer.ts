@@ -8,7 +8,6 @@ import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { LanguageServer } from "../LanguageServer"
 import { DefinitionReference, DocumentDefinitionReferences } from "../definitionReferences"
-import * as filesCompletion from "../filesCompletion"
 import eventFiles from "./eventFiles.json"
 
 export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDocumentSymbols> {
@@ -571,32 +570,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					return []
 				}
 
-				const set = new filesCompletion.CompletionItemSet()
-
-				if (typeof eventFile == "string") {
-					const uri = `${hudRoot}/${eventFile}`
-					const keys = await this.trpc.servers.vgui.files.documentSymbolKeys.query({ uri })
-					for (const key of keys) {
-						set.add({ label: key, kind: CompletionItemKind.Variable })
-					}
-				}
-				else {
+				return (
 					await Promise.all(
-						eventFile.map(async (relativePath) => {
+						(typeof eventFile == "string" ? [eventFile] : eventFile).map(async (relativePath) => {
 							const uri = `${hudRoot}/${relativePath}`
-							return this.trpc.servers.vgui.files.documentSymbolKeys.query({ uri })
-								.then((keys) => {
-									for (const key of keys) {
-										set.add({ label: key, kind: CompletionItemKind.Variable })
-									}
-								})
+							const keys = await this.trpc.servers.vgui.files.documentSymbolKeys.query({ uri })
+							return keys.filter((key) => text ? key.startsWith(text) : true).map((key) => ({
+								label: key,
+								kind: CompletionItemKind.Variable
+							}))
 						})
 					)
-				}
-
-				return text
-					? set.items.filter(startsWithFilter(text))
-					: set.items
+				).flat()
 			}
 
 			const properties = async (text?: string): Promise<CompletionItem[]> => {
@@ -702,37 +687,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 					relativePath = folders.join("/")
 				}
 
-				const configuration = this.documentsConfiguration.get(params.textDocument.uri)
-
-				if (configuration.filesAutoCompletionKind == "incremental") {
-					const sounds = await filesCompletion.incremental(
-						this.connection,
-						this.fileSystem,
-						"?vpk=sound_misc",
-						"vpk:///sound",
-						relativePath,
-						[".mp3", ".wav"],
-						false
-					)
-
-					return search
-						? sounds.filter(startsWithFilter(search))
-						: sounds
-				}
-				else {
-					const sounds = await filesCompletion.all(
-						this.connection,
-						this.fileSystem,
-						"?vpk=sound_misc",
-						`vpk:///sound/${relativePath ?? ""}`,
-						[".mp3", ".wav"],
-						false
-					)
-
-					return search
-						? sounds.filter(startsWithFilter(search))
-						: sounds
-				}
+				return this.getFilesCompletion(params.textDocument, {
+					uri: "vpk:///sound",
+					query: "?vpk=sound_misc",
+					relativePath: relativePath,
+					startsWithFilter: search,
+					extensionsFilter: [".mp3", ".wav"],
+					displayExtensions: false,
+				})
 			}
 
 			if (tokens.length == 0) {

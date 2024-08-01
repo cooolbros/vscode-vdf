@@ -3,7 +3,6 @@ import { normalizeUri } from "utils/normalizeUri"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
-import * as filesCompletion from "../../filesCompletion"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"
@@ -138,32 +137,26 @@ export class VMTLanguageServer extends VDFLanguageServer {
 		if (key == "$basetexture") {
 
 			const hudRoot = this.documentHUDRoots.get(uri)
-			const configuration = this.documentsConfiguration.get(uri)
 
-			const set = new filesCompletion.CompletionItemSet()
-
-			if (configuration.filesAutoCompletionKind == "incremental") {
-				if (hudRoot) {
-					for (const item of await filesCompletion.incremental(this.connection, this.fileSystem, "", `${hudRoot}/materials`, value, [".vtf"], true)) {
-						set.add(item)
-					}
-				}
-				for (const item of await filesCompletion.incremental(this.connection, this.fileSystem, "?vpk=textures", "vpk:///materials", value, [".vtf"], true)) {
-					set.add(item)
-				}
-			}
-			else {
-				if (hudRoot) {
-					for (const item of await filesCompletion.all(this.connection, this.fileSystem, "", `${hudRoot}/materials`, [".vtf"], true)) {
-						set.add(item)
-					}
-				}
-				for (const item of await filesCompletion.all(this.connection, this.fileSystem, "?vpk=textures", "vpk:///materials", [".vtf"], true)) {
-					set.add(item)
-				}
-			}
-
-			return set.items
+			return [
+				...(
+					hudRoot
+						? await this.getFilesCompletion({ uri }, {
+							uri: `${hudRoot}/materials`,
+							relativePath: value,
+							extensionsFilter: [".vtf"],
+							displayExtensions: false
+						})
+						: []
+				),
+				...await this.getFilesCompletion({ uri }, {
+					uri: "vpk:///materials",
+					query: "?vpk=textures",
+					relativePath: value,
+					extensionsFilter: [".vtf"],
+					displayExtensions: false
+				})
+			]
 		}
 
 		return null

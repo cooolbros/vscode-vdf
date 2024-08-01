@@ -12,7 +12,6 @@ import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { LanguageServer } from "../LanguageServer"
 import { DefinitionReference, DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences, type DocumentsDefinitionReferences } from "../definitionReferences"
-import * as filesCompletion from "../filesCompletion"
 import type { VDFLanguageServerConfiguration } from "./VDFLanguageServerConfiguration"
 
 export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbols> {
@@ -615,31 +614,13 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				const value = tokens.pop()?.replaceAll(/["]+/g, "")
 
 				if (key == "#base") {
-
-					const filesAutoCompletionKind = this.documentsConfiguration.get(params.textDocument.uri).filesAutoCompletionKind
-
-					const set = new filesCompletion.CompletionItemSet()
-
-					if (!value && this.VDFLanguageServerConfiguration.completion.files) {
-						for (const file of this.VDFLanguageServerConfiguration.completion.files) {
-							set.add({
-								label: file,
-								kind: CompletionItemKind.File,
-								sortText: "#" // first
-							})
-						}
-					}
-
-					const completionItems = filesAutoCompletionKind == "incremental"
-						? filesCompletion.incremental(this.connection, this.fileSystem, "", posix.dirname(params.textDocument.uri), value, this.VDFLanguageServerConfiguration.completion.extensions, false)
-						: filesCompletion.all(this.connection, this.fileSystem, "", posix.dirname(params.textDocument.uri), this.VDFLanguageServerConfiguration.completion.extensions, false)
-
-					for (const completionItem of await completionItems) {
-						set.add(completionItem)
-					}
-
-					const name = posix.basename(params.textDocument.uri)
-					return set.items.filter((item) => item.label != name)
+					return this.getFilesCompletion(params.textDocument, {
+						items: (this.VDFLanguageServerConfiguration.completion.files ?? []).map((value) => ({ label: value, kind: CompletionItemKind.File, sortText: "#" })),
+						uri: posix.dirname(params.textDocument.uri),
+						relativePath: value,
+						extensionsFilter: this.VDFLanguageServerConfiguration.completion.extensions,
+						displayExtensions: true
+					})
 				}
 
 				if (key in this.VDFLanguageServerConfiguration.schema.values) {

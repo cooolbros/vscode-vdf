@@ -9,7 +9,6 @@ import { CodeLens, Color, CompletionItem, CompletionItemKind, Diagnostic, Diagno
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences } from "../../definitionReferences"
-import * as filesCompletion from "../../filesCompletion"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import type { VDFDefinitionReferencesConfiguration } from "../VDFLanguageServerConfiguration"
 import { VGUIDefinitionReferences, type DefinitionFile } from "./VGUIDefinitionReferences"
@@ -697,64 +696,28 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		const hudRoot = this.documentHUDRoots.get(uri)
 
 		if (["image", ...Array.from({ length: 3 }).map((_, index) => `teambg_${index + 1}`)].includes(key)) {
-
-			const configuration = this.documentsConfiguration.get(uri)
-
-			const set = new filesCompletion.CompletionItemSet()
-
-			if (configuration.filesAutoCompletionKind == "incremental") {
-
-				// HUD files first
-				if (hudRoot) {
-					try {
-						for (const item of await filesCompletion.incremental(this.connection, this.fileSystem, "", `${hudRoot}/materials/vgui`, value, [".vmt"], true)) {
-							set.add(item)
-						}
-					}
-					catch (error: any) {
-						this.connection.console.log(error.stack!)
-					}
-				}
-
-				try {
-					for (const item of await filesCompletion.incremental(this.connection, this.fileSystem, "?vpk=misc", "vpk:///materials/vgui", value, [".vmt"], true)) {
-						set.add(item)
-					}
-				}
-				catch (error: any) {
-					this.connection.console.log(error.stack!)
-				}
-			}
-			else {
-
-				if (hudRoot) {
-					try {
-						for (const item of await filesCompletion.all(this.connection, this.fileSystem, "", `${hudRoot}/materials/vgui`, [".vmt"], true)) {
-							set.add(item)
-						}
-					}
-					catch (error: any) {
-						this.connection.console.log(error.stack!)
-					}
-				}
-
-				try {
-					for (const item of await filesCompletion.all(this.connection, this.fileSystem, "?vpk=misc", "vpk:///materials/vgui", [".vmt"], true)) {
-						set.add(item)
-					}
-				}
-				catch (error: any) {
-					this.connection.console.log(error.stack!)
-				}
-
-			}
-
-			return set.items
+			return [
+				...(
+					hudRoot
+						? await this.getFilesCompletion({ uri }, {
+							uri: `${hudRoot}/materials/vgui`,
+							relativePath: value,
+							extensionsFilter: [".vmt"],
+							displayExtensions: false
+						})
+						: []
+				),
+				...await this.getFilesCompletion({ uri }, {
+					uri: "vpk:///materials/vgui",
+					query: "?vpk=misc",
+					relativePath: value,
+					extensionsFilter: [".vmt"],
+					displayExtensions: false
+				})
+			]
 		}
 
-
 		// HUD root required completion:
-
 		if (!hudRoot) {
 			return null
 		}
