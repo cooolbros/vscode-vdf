@@ -71,7 +71,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 				z.object({
 					method: z.string().optional(),
 					headers: z.record(z.string()).optional(),
-					body: z.string()
+					body: z.string().optional()
 				})
 			]).parse(params)
 
