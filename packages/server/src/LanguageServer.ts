@@ -126,7 +126,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.documents.onDidSave(this.onDidSave.bind(this))
 		this.documents.onDidClose(this.onDidClose.bind(this))
 
-		this.connection.onDocumentSymbol(this.onDocumentSymbol.bind(this))
+		this.onTextDocumentRequest(this.connection.onDocumentSymbol, this.onDocumentSymbol)
 
 		this.documents.listen(this.connection)
 		this.connection.listen()
