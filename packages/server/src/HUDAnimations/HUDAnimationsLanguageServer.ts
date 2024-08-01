@@ -278,7 +278,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await this.trpc.client.searchForHUDRoot.query(e.document)
+		const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri })
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 
 		this.onDefinitionReferences(e.document.uri)
