@@ -933,7 +933,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 						return this.trpc.servers.vgui.files.documentSymbolLocation.query({ uris: [fileUri, vpkUri], key: element })
 					}
 				}
-				else if (documentSymbol.valueRange.contains(params.position)) {
+				else if (hudRoot && documentSymbol.valueRange.contains(params.position)) {
 					return this.trpc.servers.vgui.workspace.definition.query({ hudRoot, type: 0, key: documentSymbol.value.toLowerCase() })
 				}
 				break
@@ -1004,7 +1004,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			}
 			case HUDAnimationStatementType.SetFont: {
 				const hudRoot = this.documentHUDRoots.get(params.textDocument.uri)
-				return this.trpc.servers.vgui.workspace.definition.query({ hudRoot, type: 2, key: documentSymbol.value.toLowerCase() })
+				if (hudRoot) {
+					return this.trpc.servers.vgui.workspace.definition.query({ hudRoot, type: 2, key: documentSymbol.value.toLowerCase() })
+				}
+				break
 			}
 			default:
 				break
