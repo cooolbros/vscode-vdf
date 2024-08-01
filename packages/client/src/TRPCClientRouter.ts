@@ -1,5 +1,5 @@
-import { posix } from "path"
 import { commands, FileType, languages, Uri, window, workspace } from "vscode"
+import { URI, Utils } from "vscode-uri"
 import { z } from "zod"
 import { t } from "./TRPCServer"
 
@@ -105,18 +105,18 @@ export const clientRouter = t.router({
 		.input(URISchema)
 		.query(async ({ input }) => {
 
-			let folderPathReference = input.uri.toString()
-			let folderPath = posix.dirname(folderPathReference)
+			let folderUri = Utils.dirname(input.uri)
+			let folderUriReference = URI.revive(input.uri)
 
-			while (folderPath != folderPathReference) {
+			while (folderUri.toString() != folderUriReference.toString()) {
 				try {
-					await workspace.fs.stat(input.uri.with({ path: `${folderPath}/info.vdf` }))
-					return folderPath
+					await workspace.fs.stat(Utils.joinPath(folderUri, "info.vdf"))
+					return folderUri
 				}
 				catch (error: any) { }
 
-				folderPathReference = posix.dirname(folderPathReference)
-				folderPath = posix.dirname(folderPath)
+				folderUri = Utils.dirname(folderUri)
+				folderUriReference = Utils.dirname(folderUriReference)
 			}
 
 			return null
