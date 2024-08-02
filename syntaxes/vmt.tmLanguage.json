@@ -3,7 +3,7 @@
     "name": "Valve Material Type",
     "patterns": [
         {
-            "match": "(\"#base\"|#base)\\s+(\".*?\"|\\S+)$",
+            "match": "^\\s*(\"#base\"|#base)\\s+(\".*?\"|\\S+)",
             "captures": {
                 "1": {
                     "name": "keyword.control"
@@ -14,28 +14,34 @@
             }
         },
         {
-            "name": "comment",
-            "match": "//.*$"
+            "match": "//.*$",
+            "name": "comment"
         },
         {
-            "name": "constant.character",
-            "match": "\\[.*\\]"
+            "match": "\\[.*\\]",
+            "name": "constant.character"
         },
         {
+            "match": "(\"[^(?<!\\\\)\"]*\"|\\b\\S+\\b)\\s+(\"[^(?<!\\\\)\"]*\"|\\b\\S+\\b)",
             "name": "variable",
-            "match": "(\".*?\"|\\w+)\\s+(\".*?\"|\\w+)",
             "captures": {
                 "1": {
                     "name": "variable"
                 },
                 "2": {
-                    "name": "string.quoted.double"
+                    "name": "string.quoted.double",
+                    "patterns": [
+                        {
+                            "match": "\\\\[\"\\\\/bfnrt]",
+                            "name": "constant.character.escape"
+                        }
+                    ]
                 }
             }
         },
         {
-            "name": "variable",
-            "match": "(\".*?\"|\\b\\w+\\b)"
+            "match": "(\"[^(?<!\\\\)\"]*\"|\\b\\S+\\b)",
+            "name": "variable"
         }
     ],
     "repository": {},

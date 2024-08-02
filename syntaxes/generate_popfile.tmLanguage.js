@@ -1,7 +1,7 @@
 // @ts-check
 
-const KEYS = require("../packages/lib/server/VDF/Popfile/keys.json")
-const VALUES = require("../packages/lib/server/VDF/Popfile/values.json")
+const KEYS = require("../packages/server/src/VDF/Popfile/keys.json")
+const VALUES = require("../packages/server/src/VDF/Popfile/values.json")
 
 function lower(/** @type {string} */str) {
 	return str.toLowerCase()
@@ -20,7 +20,7 @@ console.log(JSON.stringify({
 	"name": "Popfile",
 	"patterns": [
 		{
-			"match": "^(\\s?\"?#base\"?)\\s+(\"?.*\"?)$",
+			"match": "^\\s*(\"#base\"|#base)\\s+(\".*?\"|\\S+)",
 			"captures": {
 				"1": {
 					"name": "keyword.control"
@@ -31,12 +31,27 @@ console.log(JSON.stringify({
 			}
 		},
 		{
-			"name": "comment",
-			"match": "//.*$"
+			"begin": "^\\s*(RunScriptCode)\\s+\"",
+			"end": "\"",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control"
+				}
+			},
+			"name": "meta.embedded.block.squirrel",
+			"patterns": [
+				{
+					"include": "source.squirrel"
+				}
+			]
 		},
 		{
-			"name": "constant.character",
-			"match": "\\[.*\\]"
+			"match": "//.*$",
+			"name": "comment"
+		},
+		{
+			"match": "\\[.*\\]",
+			"name": "constant.character"
 		},
 		{
 			"name": "string",

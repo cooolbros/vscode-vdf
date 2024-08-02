@@ -29,12 +29,12 @@
             ]
         },
         {
-            "name": "comment",
-            "match": "//.*$"
+            "match": "//.*$",
+            "name": "comment"
         },
         {
-            "name": "constant.character",
-            "match": "\\[.*\\]"
+            "match": "\\[.*\\]",
+            "name": "constant.character"
         },
         {
             "name": "string",
