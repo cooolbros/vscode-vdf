@@ -2,8 +2,8 @@ import { z } from "zod"
 import { VDFPosition, type IPosition } from "./VDFPosition"
 
 export interface IRange {
-	start: VDFPosition
-	end: VDFPosition
+	start: IPosition
+	end: IPosition
 }
 
 export class VDFRange implements IRange {
