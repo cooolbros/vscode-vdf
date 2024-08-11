@@ -292,6 +292,7 @@
                     ".vdf"
                 ],
                 "filenames": [
+                    "gameinfo.txt",
                     "hudanimations_manifest.txt",
                     "mod_textures.txt"
                 ],
