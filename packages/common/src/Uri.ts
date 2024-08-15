@@ -41,8 +41,8 @@ export class Uri {
 		return posix.basename(this.path)
 	}
 
-	public joinPath(...paths: (string | undefined)[]) {
-		return new Uri(Utils.joinPath(this, ...paths.filter((path) => path != undefined).map((path) => path.split(/[/\\]/)).flat()))
+	public joinPath(...paths: string[]) {
+		return new Uri(Utils.joinPath(this, ...paths.map((path) => path.split(/[/\\]/)).flat()))
 	}
 
 	equals(other?: Uri): boolean {
