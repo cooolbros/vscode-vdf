@@ -45,7 +45,7 @@ export class VDFTokeniser {
 	// EOF
 	private _EOFRead = false
 
-	constructor(str: string, options?: VDFTokeniserOptions) {
+	constructor(str: string, options?: Partial<VDFTokeniserOptions>) {
 		this.str = str
 		this.options = {
 			allowMultilineStrings: options?.allowMultilineStrings ?? false
