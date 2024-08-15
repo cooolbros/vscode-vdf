@@ -1,22 +1,16 @@
-import { commands, FileType, languages, Uri, window, workspace } from "vscode"
-import { URI, Utils } from "vscode-uri"
+import { Uri } from "common/Uri"
+import { commands, FileType, languages, window, workspace } from "vscode"
 import { z } from "zod"
 import { t } from "./TRPCServer"
 
 const URISchema = z.object({
-	uri: z.string().transform((arg) => {
-
-		const sep = "://"
-		const index = arg.indexOf(sep)
-		const scheme = arg.substring(0, index)
-		const [path, query] = arg.substring(index + sep.length).split("?")
-
-		return Uri.from({
-			scheme: scheme,
-			path: path,
-			query: query
-		})
-	})
+	uri: z.object({
+		scheme: z.string(),
+		authority: z.string(),
+		path: z.string(),
+		query: z.string(),
+		fragment: z.string(),
+	}).transform((arg) => new Uri(arg))
 })
 
 const UTF8Decoder = new TextDecoder("utf-8")
@@ -105,18 +99,18 @@ export const clientRouter = t.router({
 		.input(URISchema)
 		.query(async ({ input }) => {
 
-			let folderUri = Utils.dirname(input.uri)
-			let folderUriReference = URI.revive(input.uri)
+			let folderUri = input.uri.dirname()
+			let folderUriReference = input.uri
 
-			while (folderUri.toString() != folderUriReference.toString()) {
+			while (!folderUri.equals(folderUriReference)) {
 				try {
-					await workspace.fs.stat(Utils.joinPath(folderUri, "info.vdf"))
+					await workspace.fs.stat(folderUri.joinPath("info.vdf"))
 					return folderUri
 				}
 				catch (error: any) { }
 
-				folderUri = Utils.dirname(folderUri)
-				folderUriReference = Utils.dirname(folderUriReference)
+				folderUri = folderUri.dirname()
+				folderUriReference = folderUriReference.dirname()
 			}
 
 			return null

@@ -1,7 +1,7 @@
-import path, { dirname } from "path"
+import { Uri } from "common/Uri"
 import { VDFPosition } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { EndOfLine, Position, Uri, workspace, WorkspaceEdit, type TextEditor } from "vscode"
+import { EndOfLine, Position, workspace, WorkspaceEdit, type TextEditor } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { trpc } from "../TRPCClient"
 
@@ -49,12 +49,12 @@ export async function importPopfileTemplates(editor: TextEditor): Promise<void> 
 	for (const baseFile of baseFiles) {
 
 		const baseFileUri = ["robot_standard.pop", "robot_giant.pop", "robot_gatebot.pop"].includes(baseFile)
-			? `vpk:///scripts/population/${baseFile}?vpk=misc`
-			: Uri.parse(path.join(dirname(editor.document.uri.toString(true)), baseFile))
+			? new Uri(`vpk:///scripts/population/${baseFile}?vpk=misc`)
+			: new Uri(editor.document.uri).base(baseFile)
 
-		if (await trpc.fileSystem.exists({ uri: baseFileUri.toString(true) })) {
-			const baseFileContent = await trpc.fileSystem.readFile({ uri: baseFileUri.toString(true) })
-			const baseFileTextDocument = TextDocument.create(baseFileUri.toString(false), "popfile", 1, baseFileContent)
+		if (await trpc.fileSystem.exists({ uri: baseFileUri })) {
+			const baseFileContent = await trpc.fileSystem.readFile({ uri: baseFileUri })
+			const baseFileTextDocument = TextDocument.create(baseFileUri.toString(), "popfile", 1, baseFileContent)
 			const baseFileDocumentSymbols = getVDFDocumentSymbols(baseFileContent)
 			const baseFileTemplatesDocumentSymbols = baseFileDocumentSymbols
 				.filter(VDFDocumentSymbolHasChildren)
