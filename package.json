@@ -316,10 +316,10 @@
     },
     "scripts": {
         "vscode:prepublish": "pnpm build",
-        "dev": "turbo run dev",
-        "dev:docs": "turbo run dev --filter=docs",
-        "build": "turbo run build",
-        "build:docs": "turbo run build --filter=docs",
+        "dev": "turbo dev",
+        "dev:docs": "turbo dev --filter=docs",
+        "build": "turbo build",
+        "build:docs": "turbo build --filter=docs",
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
     },
     "devDependencies": {
