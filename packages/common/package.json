@@ -1,0 +1,10 @@
+{
+    "name": "common",
+    "publishConfig": {
+        "directory": "src"
+    },
+    "devDependencies": {
+        "tsconfig": "workspace:^",
+        "vscode-uri": "^3.0.8"
+    }
+}
