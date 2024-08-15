@@ -49,11 +49,6 @@ export class VDFFormatTokeniser {
 		this.options = {
 			allowMultilineStrings: options?.allowMultilineStrings ?? false
 		}
-
-		// UTF-16 LE
-		if (str.substring(0, 1).charCodeAt(0) == 65279) {
-			this.next()
-		}
 	}
 
 	public next(peek = false, skipNewlines = false): VDFFormatToken | null {
