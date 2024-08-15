@@ -45,4 +45,12 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 	public getDocumentSymbolAtPosition(position: IPosition): VDFDocumentSymbol | undefined {
 		return this.findRecursive(documentSymbol => documentSymbol.range.contains(position))
 	}
+
+	public reduceRecursive<T>(initialValue: T, callbackfn: (previousValue: T, documentSymbol: VDFDocumentSymbol, path: string[]) => T): T {
+		let result = initialValue
+		this.forAll((documentSymbol, path) => {
+			result = callbackfn(result, documentSymbol, path)
+		})
+		return result
+	}
 }
