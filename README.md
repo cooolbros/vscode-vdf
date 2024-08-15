@@ -2,6 +2,12 @@
 
 # VSCode VDF Language Support
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/cooolbros/vscode-vdf/build.yaml)
+![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/pfwobcke.vscode-vdf?label=Visual%20Studio%20Marketplace)
+![Open VSX Downloads](https://img.shields.io/open-vsx/dt/pfwobcke/vscode-vdf?label=Open%20VSX%20Registry)
+![GitHub Repo stars](https://img.shields.io/github/stars/cooolbros/vscode-vdf?style=flat)
+![GitHub License](https://img.shields.io/github/license/cooolbros/vscode-vdf)
+
 VDF/Valve KeyValues language support for VSCode
 
 ![](demo.gif)
