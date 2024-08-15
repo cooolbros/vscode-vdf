@@ -1,0 +1,27 @@
+$schema: 'https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json'
+name: Valve KeyValues
+patterns:
+  - match: '^\s*("#base"|#base)\s+(".*?"|\S+)'
+    captures:
+      '1':
+        name: keyword.control
+      '2':
+        name: string
+  - match: //.*$
+    name: comment
+  - match: '\[.*\]'
+    name: constant.character
+  - match: '("[^(?<!\\)"]*"|\b\S+\b)\s+("[^(?<!\\)"]*"|\b\S+\b)'
+    name: variable
+    captures:
+      '1':
+        name: variable
+      '2':
+        name: string.quoted.double
+        patterns:
+          - match: '\\["\\/bfnrt]'
+            name: constant.character.escape
+  - match: '("[^(?<!\\)"]*"|\b\S+\b)'
+    name: variable
+repository: {}
+scopeName: source.vdf

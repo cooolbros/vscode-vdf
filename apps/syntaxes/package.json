@@ -1,0 +1,11 @@
+{
+    "name": "syntaxes",
+    "scripts": {
+        "build": "node build"
+    },
+    "devDependencies": {
+        "js-yaml": "^4.1.0",
+        "server": "workspace:^"
+    },
+    "type": "module"
+}
