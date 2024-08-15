@@ -240,9 +240,6 @@ importers:
       client:
         specifier: workspace:^
         version: link:../client/src
-      common:
-        specifier: workspace:^
-        version: link:../common/src
       hudanimations-documentsymbols:
         specifier: workspace:^
         version: link:../hudanimations-documentsymbols

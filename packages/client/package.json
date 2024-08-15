@@ -5,6 +5,7 @@
     },
     "devDependencies": {
         "@trpc/server": "^10.45.2",
+        "common": "workspace:^",
         "tsconfig": "workspace:^",
         "utils": "workspace:^",
         "vdf": "workspace:^",
