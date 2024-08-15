@@ -42,7 +42,11 @@ export class Uri {
 	}
 
 	public joinPath(...paths: string[]) {
-		return new Uri(Utils.joinPath(this, ...paths.map((path) => path.split(/[/\\]/)).flat()))
+		return this.with({ path: posix.join(this.path, ...paths.map((path) => path.split(/[/\\]/)).flat()) })
+	}
+
+	public base(path: string) {
+		return this.with({ path: posix.resolve(posix.dirname(this.path), ...path.split(/[/\\]/)) })
 	}
 
 	equals(other?: Uri): boolean {
@@ -58,7 +62,7 @@ export class Uri {
 	}
 
 	public with(changes: Parameters<URI["with"]>[0]) {
-		return this.uri.with(changes)
+		return new Uri(this.uri.with(changes))
 	}
 
 	public toString(): string {
