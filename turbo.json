@@ -6,7 +6,6 @@
             "persistent": true
         },
         "build": {
-            "cache": false,
             "dependsOn": [
                 "^build"
             ]
