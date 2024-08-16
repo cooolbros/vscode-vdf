@@ -10,8 +10,8 @@ import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { CodeAction, CodeActionKind, CodeLens, ColorInformation, ColorPresentation, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentLink, Location, Position, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
+import { DefinitionReference, DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences, type DocumentsDefinitionReferences } from "../DefinitionReferences"
 import { LanguageServer } from "../LanguageServer"
-import { DefinitionReference, DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences, type DocumentsDefinitionReferences } from "../definitionReferences"
 import type { VDFLanguageServerConfiguration } from "./VDFLanguageServerConfiguration"
 
 export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbols> {

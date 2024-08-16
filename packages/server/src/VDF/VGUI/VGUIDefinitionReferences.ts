@@ -1,4 +1,4 @@
-import { DocumentDefinitionReferences } from "../../definitionReferences"
+import { DocumentDefinitionReferences } from "../../DefinitionReferences"
 import type { VGUIDefinitionReferencesConfiguration, VGUIDefinitionType } from "./VGUILanguageServer"
 
 export type DefinitionFile = {
