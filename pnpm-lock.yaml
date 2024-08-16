@@ -166,6 +166,9 @@ importers:
       server:
         specifier: workspace:^
         version: link:../../packages/server/src
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../packages/tsconfig
 
   packages/client:
     devDependencies:

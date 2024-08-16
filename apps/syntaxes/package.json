@@ -5,7 +5,8 @@
     },
     "devDependencies": {
         "js-yaml": "^4.1.0",
-        "server": "workspace:^"
+        "server": "workspace:^",
+        "tsconfig": "workspace:^"
     },
     "type": "module"
 }
