@@ -6,7 +6,7 @@ import { posix } from "path"
 import type { languageNames } from "utils/languageNames"
 import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { VDFSyntaxError } from "vdf"
-import { CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocumentSyncKind, TextDocuments, type Connection, type DocumentSymbolParams, type InitializeParams, type InitializeResult, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocuments, TextDocumentSyncKind, type Connection, type DocumentSymbolParams, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { DocumentsConfiguration } from "./DocumentsConfiguration"
@@ -119,7 +119,20 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 			}
 		}
 
-		this.connection.onInitialize(this.onInitialize.bind(this))
+		this.connection.onInitialize((params) => {
+			// this.connection.console.log(JSON.stringify(params, null, 2))
+			return {
+				serverInfo: {
+					name: `${this.name} Language Server`
+				},
+				capabilities: {
+					...this.getCapabilities(),
+					textDocumentSync: TextDocumentSyncKind.Incremental,
+					documentSymbolProvider: true,
+				},
+				servers: [...this.languageServerConfiguration.servers]
+			}
+		})
 
 		this.documents.onDidOpen(this.onDidOpen.bind(this))
 		this.documents.onDidChangeContent(this.onDidChangeContent.bind(this))
@@ -222,21 +235,6 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		}
 
 		return items
-	}
-
-	private onInitialize(params: InitializeParams): InitializeResult {
-		// this.connection.console.log(JSON.stringify(params, null, 2))
-		return {
-			serverInfo: {
-				name: `${this.name} Language Server`
-			},
-			capabilities: {
-				...this.getCapabilities(),
-				textDocumentSync: TextDocumentSyncKind.Incremental,
-				documentSymbolProvider: true,
-			},
-			servers: [...this.languageServerConfiguration.servers]
-		}
 	}
 
 	protected abstract getCapabilities(): ServerCapabilities
