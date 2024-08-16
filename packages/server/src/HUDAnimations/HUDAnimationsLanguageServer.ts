@@ -3,7 +3,7 @@ import { HUDAnimationStatementType, HUDAnimationsDocumentSymbols, getHUDAnimatio
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
 import { VDFRange, VDFTokeniser, type VDFToken } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, Location, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLens, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DiagnosticTag, DocumentLink, Location, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { DefinitionReference, DocumentDefinitionReferences } from "../DefinitionReferences"
@@ -91,6 +91,26 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			servers: new Set(["vdf"]),
 			parseDocumentSymbols: (uri, str) => getHUDAnimationsDocumentSymbols(str),
 			defaultDocumentSymbols: () => new HUDAnimationsDocumentSymbols()
+		}, {
+			completionProvider: {
+				triggerCharacters: [
+					"\"",
+					"/"
+				]
+			},
+			definitionProvider: true,
+			referencesProvider: true,
+			codeActionProvider: true,
+			codeLensProvider: {
+				resolveProvider: false
+			},
+			documentLinkProvider: {
+				resolveProvider: true,
+			},
+			documentFormattingProvider: true,
+			renameProvider: {
+				prepareProvider: true
+			}
 		})
 
 		this.name = name
@@ -158,31 +178,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 				})
 			})
 		)
-	}
-
-	protected getCapabilities(): ServerCapabilities<any> {
-		return {
-			// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
-			completionProvider: {
-				triggerCharacters: [
-					"\"",
-					"/"
-				]
-			},
-			definitionProvider: true,
-			referencesProvider: true,
-			codeActionProvider: true,
-			codeLensProvider: {
-				resolveProvider: false
-			},
-			documentLinkProvider: {
-				resolveProvider: true,
-			},
-			documentFormattingProvider: true,
-			renameProvider: {
-				prepareProvider: true
-			}
-		}
 	}
 
 	private async findHUDDefinitionReferences(hudRoot: string, request?: Promise<void>): Promise<void> {

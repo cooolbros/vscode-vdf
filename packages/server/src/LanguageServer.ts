@@ -36,7 +36,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		}
 	}
 
-	constructor(name: LanguageServer<T>["name"], languageId: LanguageServer<T>["languageId"], connection: Connection, configuration: LanguageServerConfiguration<T>) {
+	constructor(name: LanguageServer<T>["name"], languageId: LanguageServer<T>["languageId"], connection: Connection, configuration: LanguageServerConfiguration<T>, capabilities: Omit<ServerCapabilities, "textDocumentSync" | "documentSymbolProvider">) {
 
 		this.name = name
 		this.languageId = languageId
@@ -126,7 +126,8 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 					name: `${this.name} Language Server`
 				},
 				capabilities: {
-					...this.getCapabilities(),
+					// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
+					...capabilities,
 					textDocumentSync: TextDocumentSyncKind.Incremental,
 					documentSymbolProvider: true,
 				},
@@ -236,8 +237,6 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
 		return items
 	}
-
-	protected abstract getCapabilities(): ServerCapabilities
 
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 

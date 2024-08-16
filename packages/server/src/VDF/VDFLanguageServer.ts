@@ -7,7 +7,7 @@ import { documentLinkDataSchema, type DocumentLinkData } from "utils/types/Docum
 import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols, getVDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { CodeAction, CodeActionKind, CodeLens, ColorInformation, ColorPresentation, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentLink, Location, Position, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLens, ColorInformation, ColorPresentation, Command, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentLink, Location, Position, Range, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type Definition, type DefinitionParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocument } from "vscode-languageserver-textdocument"
 import { z } from "zod"
 import { DefinitionReference, DocumentDefinitionReferences, documentSymbolMatchesDefinition, documentSymbolMatchesReferences, type DocumentsDefinitionReferences } from "../DefinitionReferences"
@@ -30,6 +30,27 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			servers: configuration.servers,
 			parseDocumentSymbols: (uri, str) => getVDFDocumentSymbols(str, this.VDFLanguageServerConfiguration.getVDFTokeniserOptions(uri)),
 			defaultDocumentSymbols: () => new VDFDocumentSymbols()
+		}, {
+			completionProvider: {
+				triggerCharacters: [
+					"\"",
+					"/"
+				]
+			},
+			definitionProvider: true,
+			referencesProvider: true,
+			codeActionProvider: true,
+			codeLensProvider: {
+				resolveProvider: false,
+			},
+			documentLinkProvider: {
+				resolveProvider: true,
+			},
+			colorProvider: true,
+			documentFormattingProvider: true,
+			renameProvider: {
+				prepareProvider: true
+			}
 		})
 
 		this.name = name
@@ -166,32 +187,6 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 				})
 			})
 		)
-	}
-
-	protected getCapabilities(): ServerCapabilities<any> {
-		// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
-		return {
-			completionProvider: {
-				triggerCharacters: [
-					"\"",
-					"/"
-				]
-			},
-			definitionProvider: true,
-			referencesProvider: true,
-			codeActionProvider: true,
-			codeLensProvider: {
-				resolveProvider: false,
-			},
-			documentLinkProvider: {
-				resolveProvider: true,
-			},
-			colorProvider: true,
-			documentFormattingProvider: true,
-			renameProvider: {
-				prepareProvider: true
-			}
-		}
 	}
 
 	protected onDidClose(e: TextDocumentChangeEvent<TextDocument>): void {
