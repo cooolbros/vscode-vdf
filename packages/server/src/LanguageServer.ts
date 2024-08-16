@@ -120,7 +120,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		}
 
 		this.connection.onInitialize((params) => {
-			// this.connection.console.log(JSON.stringify(params, null, 2))
+			this.connection.console.log(JSON.stringify(params, null, 2))
 			return {
 				serverInfo: {
 					name: `${this.name} Language Server`
