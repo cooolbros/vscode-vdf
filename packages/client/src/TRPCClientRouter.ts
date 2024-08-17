@@ -4,13 +4,7 @@ import { z } from "zod"
 import { t } from "./TRPCServer"
 
 const URISchema = z.object({
-	uri: z.object({
-		scheme: z.string(),
-		authority: z.string(),
-		path: z.string(),
-		query: z.string(),
-		fragment: z.string(),
-	}).transform((arg) => new Uri(arg))
+	uri: Uri.schema
 })
 
 const UTF8Decoder = new TextDecoder("utf-8")

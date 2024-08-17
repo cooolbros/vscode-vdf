@@ -1,4 +1,4 @@
-import type { initTRPC } from "@trpc/server"
+import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { posix } from "path"
 import { findBestMatch } from "string-similarity"
 import { encodeBaseValue } from "utils/encodeBaseValue"
@@ -81,7 +81,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

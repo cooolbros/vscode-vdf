@@ -4,6 +4,7 @@
         "directory": "src"
     },
     "devDependencies": {
+        "devalue": "^5.0.0",
         "tsconfig": "workspace:^",
         "vscode-uri": "^3.0.8"
     }

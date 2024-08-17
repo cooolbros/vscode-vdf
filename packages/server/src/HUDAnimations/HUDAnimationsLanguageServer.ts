@@ -1,4 +1,4 @@
-import type { initTRPC } from "@trpc/server"
+import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { HUDAnimationStatementType, HUDAnimationsDocumentSymbols, getHUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
 import { VDFRange, VDFTokeniser, type VDFToken } from "vdf"
@@ -136,7 +136,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

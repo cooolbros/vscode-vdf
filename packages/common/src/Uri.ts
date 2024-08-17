@@ -4,13 +4,21 @@ import { z } from "zod"
 
 export class Uri {
 
-	public static readonly schema = z.object({
-		scheme: z.string(),
-		authority: z.string(),
-		path: z.string(),
-		query: z.string(),
-		fragment: z.string(),
-	}).transform((arg) => new Uri(arg))
+	public static readonly schema = z.union([
+		z.string(),
+		z.object({
+			scheme: z.string(),
+			authority: z.string(),
+			path: z.string(),
+			query: z.string(),
+			fragment: z.string(),
+		})
+	]).transform((arg) => {
+		if (typeof arg == "string") {
+			console.warn(`Dangerously parsing Uri from string: "${arg}"`)
+		}
+		return new Uri(arg)
+	})
 
 	private readonly uri: URI
 	private readonly str: string
@@ -69,7 +77,7 @@ export class Uri {
 		return this.str
 	}
 
-	public toJSON(): any {
+	public toJSON() {
 		return {
 			scheme: this.scheme,
 			authority: this.authority,

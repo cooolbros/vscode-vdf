@@ -1,7 +1,8 @@
 import { createTRPCProxyClient, httpLink, type CreateTRPCProxyClient } from "@trpc/client"
-import { initTRPC, type AnyRouter } from "@trpc/server"
+import { initTRPC, type AnyRouter, type CombinedDataTransformer } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { clientRouter } from "client/TRPCClientRouter"
+import { devalueTransformer } from "common/devalueTransformer"
 import { posix } from "path"
 import type { languageNames } from "utils/languageNames"
 import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
@@ -56,7 +57,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		let _router: AnyRouter
 
 		const resolveTRPC = async (input: string, init?: RequestInit) => {
-			_router ??= this.router(initTRPC.create())
+			_router ??= this.router(initTRPC.create({ transformer: devalueTransformer, }))
 			const response = await fetchRequestHandler({
 				endpoint: "",
 				req: new Request(new URL(input, "https://vscode.vdf"), init),
@@ -78,44 +79,49 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 			return await resolveTRPC(url, init)
 		})
 
-		const VSCodeRPCLink = (server: VSCodeVDFLanguageID | null) => httpLink({
-			url: "",
-			fetch: async (input, init) => {
-				let body: Promise<string>
+		const VSCodeRPCOptions = (server: VSCodeVDFLanguageID | null) => ({
+			transformer: devalueTransformer,
+			links: [
+				httpLink({
+					url: "",
+					fetch: async (input, init) => {
+						let body: Promise<string>
 
-				if (server != languageId) {
-					body = this.connection.sendRequest(
-						"vscode-vdf/trpc",
-						[
-							server,
-							[
-								input,
-								{
-									method: init?.method,
-									headers: init?.headers,
-									body: init?.body
-								}
-							]
-						]
-					)
-				}
-				else {
-					let url = typeof input == "object"
-						? ("url" in input ? input.url : input.pathname)
-						: input
-					body = resolveTRPC(url, init)
-				}
-				return new Response(await body)
-			}
+						if (server != languageId) {
+							body = this.connection.sendRequest(
+								"vscode-vdf/trpc",
+								[
+									server,
+									[
+										input,
+										{
+											method: init?.method,
+											headers: init?.headers,
+											body: init?.body
+										}
+									]
+								]
+							)
+						}
+						else {
+							let url = typeof input == "object"
+								? ("url" in input ? input.url : input.pathname)
+								: input
+							body = resolveTRPC(url, init)
+						}
+						return new Response(await body)
+					}
+				})
+			]
 		})
 
 		this.trpc = {
-			client: createTRPCProxyClient<typeof clientRouter>({ links: [VSCodeRPCLink(null)] }),
+			client: createTRPCProxyClient<typeof clientRouter>(VSCodeRPCOptions(null)),
 			servers: {
-				hudanimations: createTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>({ links: [VSCodeRPCLink("hudanimations")] }),
-				popfile: createTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>({ links: [VSCodeRPCLink("popfile")] }),
-				vgui: createTRPCProxyClient<ReturnType<VGUILanguageServer["router"]>>({ links: [VSCodeRPCLink("vdf")] }),
-				vmt: createTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>({ links: [VSCodeRPCLink("vmt")] }),
+				hudanimations: createTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>(VSCodeRPCOptions("hudanimations")),
+				popfile: createTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>(VSCodeRPCOptions("popfile")),
+				vgui: createTRPCProxyClient<ReturnType<VGUILanguageServer["router"]>>(VSCodeRPCOptions("vdf")),
+				vmt: createTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>(VSCodeRPCOptions("vmt")),
 			}
 		}
 
@@ -146,7 +152,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.connection.listen()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
 		return t.router({
 			textDocument: t.router({
 				documentSymbol: t

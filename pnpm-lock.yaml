@@ -197,6 +197,9 @@ importers:
 
   packages/common:
     devDependencies:
+      devalue:
+        specifier: ^5.0.0
+        version: 5.0.0
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
@@ -243,6 +246,9 @@ importers:
       client:
         specifier: workspace:^
         version: link:../client/src
+      common:
+        specifier: workspace:^
+        version: link:../common/src
       hudanimations-documentsymbols:
         specifier: workspace:^
         version: link:../hudanimations-documentsymbols
@@ -1274,6 +1280,9 @@ packages:
   destroy@1.2.0:
     resolution: {integrity: sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
+
+  devalue@5.0.0:
+    resolution: {integrity: sha512-gO+/OMXF7488D+u3ue+G7Y4AA3ZmUnB3eHJXmBTgNHvr4ZNzl36A0ZtG+XCRNYCkYx/bFmw4qtkoFLa+wSrwAA==}
 
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
@@ -4066,6 +4075,8 @@ snapshots:
   dequal@2.0.3: {}
 
   destroy@1.2.0: {}
+
+  devalue@5.0.0: {}
 
   devlop@1.1.0:
     dependencies:

@@ -1,4 +1,4 @@
-import type { initTRPC } from "@trpc/server"
+import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { posix } from "path"
 import { encodeBaseValue } from "utils/encodeBaseValue"
 import { normalizeUri } from "utils/normalizeUri"
@@ -214,7 +214,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		this.HUDSchemes = new Map<string, VGUIDefinitionReferences>()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

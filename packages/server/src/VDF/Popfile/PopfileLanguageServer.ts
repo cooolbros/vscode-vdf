@@ -1,4 +1,4 @@
-import type { initTRPC } from "@trpc/server"
+import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { posix } from "path"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
@@ -131,7 +131,7 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 		this.languageId = languageId
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({})
