@@ -273,7 +273,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri })
+		const hudRoot = (await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri }))?.toString() ?? null
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 
 		this.onDefinitionReferences(e.document.uri)
@@ -398,7 +398,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 
 		let hudRoot = this.documentHUDRoots.get(uri)
 		if (hudRoot === undefined) {
-			hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri })
+			hudRoot = (await this.trpc.client.searchForHUDRoot.query({ uri }))?.toString() ?? null
 			this.documentHUDRoots.set(uri, hudRoot)
 		}
 
@@ -918,7 +918,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 										return this.trpc.servers.vgui.files.documentSymbolLocation.query({ uris: [fileUri, vpkUri], key: element })
 									})
 							)).
-							filter((location): location is Location => location != null)
+							filter((location) => location != null)
 
 						return locations
 					}

@@ -124,7 +124,7 @@ export class VMTLanguageServer extends VDFLanguageServer {
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri })
+		const hudRoot = (await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri }))?.toString() ?? null
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 	}
 

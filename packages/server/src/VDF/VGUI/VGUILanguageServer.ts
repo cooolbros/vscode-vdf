@@ -118,7 +118,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 					check: async (uri: string, documentSymbol: VDFDocumentSymbol): Promise<boolean> => {
 						let hudRoot = this.documentHUDRoots.get(uri)
 						if (hudRoot === undefined) {
-							hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri })
+							hudRoot = (await this.trpc.client.searchForHUDRoot.query({ uri }))?.toString() ?? null
 						}
 
 						const fileUri = `${hudRoot}/${encodeBaseValue(documentSymbol.detail!)}`
@@ -556,7 +556,7 @@ export class VGUILanguageServer extends VDFLanguageServer {
 	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
 		super.onDidOpen(e)
 
-		const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri })
+		const hudRoot = (await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri }))?.toString() ?? null
 		this.documentHUDRoots.set(e.document.uri, hudRoot)
 
 		if (hudRoot && !this.HUDSchemes.has(hudRoot)) {
