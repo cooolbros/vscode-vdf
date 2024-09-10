@@ -107,6 +107,7 @@ export class VPK {
 	}
 
 	public entry(path: string): VPKEntry | null {
+
 		let tree: VPKEntry = this.tree
 
 		for (const folder of path.split("/")) {
