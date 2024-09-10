@@ -16,7 +16,7 @@ export const VSCodeVDFConfigurationSchema = z.object({
 	filesAutoCompletionKind: z.enum(["incremental", "all"]),
 	teamFortress2Folder: z.string().transform((arg) => {
 		// Convert Windows drive letter to lower case to be consistent with VSCode Uris
-		const path = arg.replace(/[a-z]{1}:/i, (substring) => substring.toLowerCase())
+		const path = arg.trim().replace(/[a-z]{1}:/i, (substring) => substring.toLowerCase())
 		return new Uri({
 			scheme: "file",
 			authority: "",
