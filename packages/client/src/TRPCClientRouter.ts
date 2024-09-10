@@ -119,7 +119,7 @@ export const clientRouter = t.router({
 					})
 				).query(async ({ input }) => {
 					const configuration = workspace.getConfiguration("vscode-vdf")
-					if (configuration.get("popfile.vscript.alert.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
+						if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
 						const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install a VScript extension?`, "Yes", "No", "Don't ask again")
 						switch (result) {
 							case "Yes":
@@ -128,7 +128,7 @@ export const clientRouter = t.router({
 							case "No":
 								break
 							case "Don't ask again":
-								configuration.update("popfile.vscript.alert.enable", false, true)
+									configuration.update("popfile.vscript.enable", false, true)
 								break
 						}
 					}
