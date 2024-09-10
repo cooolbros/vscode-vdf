@@ -7,59 +7,40 @@ import type { VDFStringifyOptions } from "./VDFStringifyOptions"
 import { VDFTokenType } from "./VDFToken"
 import { VDFTokeniser } from "./VDFTokeniser"
 
+export type KeyValue = { key: string, value: string | KeyValue[], conditional: string | null }
+
 /**
  * Provides support for parsing and stringifying VDF objects
  */
 export class VDF {
-
-	public static readonly ConditionalDelimeter = <const>"^"
-
-	public static parse(str: string): any {
-
+	static parse(str: string): KeyValue[] {
 		const tokeniser = new VDFTokeniser(str)
 
-		const write = (obj: ReturnType<typeof VDF.parse>, key: string, value: any): void => {
-			if (key in obj) {
-				const existing = obj[key]
-				if (Array.isArray(existing)) {
-					existing.push(value)
-				}
-				else {
-					obj[key] = [existing, value]
-				}
-			}
-			else {
-				obj[key] = value
-			}
-		}
+		const parse = (obj: boolean) => {
 
-		const parseObject = (isObject = false): ReturnType<typeof VDF.parse> => {
+			const keyValues: KeyValue[] = []
 
-			const obj: ReturnType<typeof VDF.parse> = {}
-
-			const objectTerminator = isObject
+			const terminator = obj
 				? { type: VDFTokenType.ControlCharacter, value: "}" }
 				: null
 
 			while (true) {
 
 				let key: string
-				let value: string | ReturnType<typeof VDF.parse>
+				let value: string | KeyValue[]
 				let conditional: `[${string}]` | null
 
 				const keyToken = tokeniser.next()
 
-				if (keyToken != null && objectTerminator != null ? (keyToken.type == objectTerminator.type && keyToken.value == objectTerminator.value) : keyToken == objectTerminator) {
+				if (keyToken != null && terminator != null ? (keyToken.type == terminator.type && keyToken.value == terminator.value) : keyToken == terminator) {
 					break
 				}
 				if (keyToken == null) {
-					const endOfFilePosition = new VDFPosition(tokeniser.line, tokeniser.character)
-					throw new UnexpectedEndOfFileError(["token"], new VDFRange(endOfFilePosition))
+					throw new UnexpectedEndOfFileError(["key", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 				}
 
 				switch (keyToken.type) {
 					case VDFTokenType.String: {
-
 						key = keyToken.value
 
 						let valueToken = tokeniser.next()
@@ -68,7 +49,7 @@ export class VDF {
 						}
 
 						if (valueToken.type == VDFTokenType.Conditional) {
-							conditional = <`[${string}]`>valueToken.value
+							conditional = valueToken.value
 							valueToken = tokeniser.next()
 							if (valueToken == null) {
 								throw new UnexpectedEndOfFileError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -78,19 +59,19 @@ export class VDF {
 						switch (valueToken.type) {
 							case VDFTokenType.ControlCharacter: {
 								if (valueToken.value == "{") {
-									value = parseObject(true)
-									conditional = null
+									value = parse(true)
+									conditional ??= null
+									break
 								}
 								else {
 									throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'", "value"], valueToken.range)
 								}
-								break
 							}
 							case VDFTokenType.String: {
 								value = valueToken.value
 								const conditionalToken = tokeniser.next(true)
 								if (conditionalToken?.type == VDFTokenType.Conditional) {
-									conditional = <`[${string}]`>conditionalToken.value
+									conditional = conditionalToken.value
 									tokeniser.next()
 								}
 								else {
@@ -99,10 +80,9 @@ export class VDF {
 								break
 							}
 							case VDFTokenType.Conditional: {
-								throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'"], valueToken.range)
+								throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'", "value"], valueToken.range)
 							}
 						}
-
 						break
 					}
 					case VDFTokenType.ControlCharacter: {
@@ -113,18 +93,20 @@ export class VDF {
 					}
 				}
 
-				if (conditional != null) {
-					key += `${VDF.ConditionalDelimeter}${conditional}`
-				}
-
-				write(obj, key, value)
+				keyValues.push({
+					key,
+					value,
+					conditional
+				})
 			}
-			return obj
+
+			return keyValues
 		}
-		return parseObject()
+
+		return parse(false)
 	}
 
-	public static stringify(obj: any, options?: Partial<VDFStringifyOptions>): any {
+	static stringify(keyValues: KeyValue[], options?: Partial<VDFStringifyOptions>): string {
 
 		const _options: VDFStringifyOptions = {
 			indentation: options?.indentation ?? VDFIndentation.Tabs,
@@ -145,65 +127,37 @@ export class VDF {
 			? (longest: number, current: number): string => tab.repeat(Math.floor(((longest + 2) / 4) - Math.floor((current + 2) / 4)) + 2)
 			: (longest: number, current: number): string => space.repeat((longest + 2) - (current + 2) + (4 - (longest + 2) % 4))
 
-
-		const stringifyObject = (obj: any, level: number): string => {
+		const stringify = (arr: KeyValue[], level = 0) => {
 
 			let str = ""
 
 			let longestKeyLength = 0
-			for (const key in obj) {
-				longestKeyLength = Math.max(longestKeyLength, typeof obj[key] != "object" ? key.split(VDF.ConditionalDelimeter)[0].length : 0)
+			for (const { key, value } of arr) {
+				longestKeyLength = Math.max(longestKeyLength, typeof value == "string" ? key.length : 0)
 			}
 
-			for (const key in obj) {
-				const keyTokens = key.split(VDF.ConditionalDelimeter)
-				if (Array.isArray(obj[key])) {
-					for (const item of obj[key]) {
-						if (typeof item == "object") {
-							if (keyTokens.length > 1) {
-								str += `${getIndentation(level)}"${keyTokens[0]}" ${keyTokens[1]}${eol}`
-							}
-							else {
-								str += `${getIndentation(level)}"${key}"${eol}`
-							}
-							str += `${getIndentation(level)}{${eol}`
-							str += `${stringifyObject(item, level + 1)}`
-							str += `${getIndentation(level)}}${eol}`
-						}
-						else {
-							if (keyTokens.length > 1) {
-								str += `${getIndentation(level)}"${keyTokens[0]}"${getWhitespace(longestKeyLength, keyTokens[0].length)}"${item}" ${keyTokens[1]}${eol}`
-							}
-							else {
-								str += `${getIndentation(level)}"${key}"${getWhitespace(longestKeyLength, key.length)}"${item}"${eol}`
-							}
-						}
+			for (const keyValue of arr) {
+				str += `${getIndentation(level)}"${keyValue.key}"`
+				if (typeof keyValue.value == "string") {
+					str += `${getWhitespace(longestKeyLength, keyValue.key.length)}"${keyValue.value}"`
+					if (keyValue.conditional != null) {
+						str += ` ${keyValue.conditional}`
 					}
+					str += eol
 				}
 				else {
-					if (typeof obj[key] == "object") {
-						if (keyTokens.length > 1) {
-							str += `${getIndentation(level)}"${keyTokens[0]}" ${keyTokens[1]}${eol}`
-						}
-						else {
-							str += `${getIndentation(level)}"${key}"${eol}`
-						}
-						str += `${getIndentation(level)}{${eol}`
-						str += `${stringifyObject(obj[key], level + 1)}`
-						str += `${getIndentation(level)}}${eol}`
+					if (keyValue.conditional != null) {
+						str += ` ${keyValue.conditional}`
 					}
-					else {
-						if (keyTokens.length > 1) {
-							str += `${getIndentation(level)}"${keyTokens[0]}"${getWhitespace(longestKeyLength, keyTokens[0].length)}"${obj[key]}" ${keyTokens[1]}${eol}`
-						}
-						else {
-							str += `${getIndentation(level)}"${key}"${getWhitespace(longestKeyLength, key.length)}"${obj[key]}"${eol}`
-						}
-					}
+					str += eol
+					str += `${getIndentation(level)}{${eol}`
+					str += stringify(keyValue.value, level + 1)
+					str += `${getIndentation(level)}}${eol}`
 				}
 			}
+
 			return str
 		}
-		return stringifyObject(obj, 0)
+		return stringify(keyValues)
 	}
 }

@@ -113,7 +113,7 @@ export class VDFTokeniser {
 			case "}": {
 				token = {
 					type: VDFTokenType.ControlCharacter,
-					value: this.str[index],
+					value: <"{" | "}">this.str[index],
 					range: new VDFRange(
 						new VDFPosition(line, character),
 						new VDFPosition(line, character + 1),
@@ -143,7 +143,7 @@ export class VDFTokeniser {
 				const value = this.str.slice(start, end)
 				token = {
 					type: VDFTokenType.Conditional,
-					value: value,
+					value: <`[${string}]`>value,
 					range: new VDFRange(
 						startPosition,
 						endPosition
@@ -152,10 +152,10 @@ export class VDFTokeniser {
 				break
 			}
 			case "\"": {
-				const startPosition = new VDFPosition(line, character)
 				index++
 				character++
 				const start = index
+				const startPosition = new VDFPosition(line, character)
 				while (this.str[index] != "\"") {
 					if (index >= this.str.length) {
 						throw new UnexpectedEndOfFileError(["'\"'"], new VDFRange(startPosition, new VDFPosition(line, character)))
@@ -184,9 +184,9 @@ export class VDFTokeniser {
 					index++
 				}
 				const end = index
+				const endPosition = new VDFPosition(line, character)
 				index++
 				character++
-				const endPosition = new VDFPosition(line, character)
 				token = {
 					type: VDFTokenType.String,
 					value: this.str.slice(start, end),

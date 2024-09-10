@@ -6,8 +6,4 @@ export const enum VDFTokenType {
 	ControlCharacter,
 }
 
-export interface VDFToken {
-	type: VDFTokenType
-	value: string
-	range: VDFRange
-}
+export type VDFToken = ({ type: VDFTokenType.String, value: string } | { type: VDFTokenType.Conditional, value: `[${string}]` } | { type: VDFTokenType.ControlCharacter, value: "{" | "}" }) & { range: VDFRange }
