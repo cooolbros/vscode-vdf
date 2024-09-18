@@ -2,6 +2,7 @@ import { Uri } from "common/Uri"
 import { commands, FileType, languages, window, workspace } from "vscode"
 import { z } from "zod"
 import { t } from "./TRPCServer"
+import { searchForHUDRoot } from "./searchForHUDRoot"
 
 const URISchema = z.object({
 	uri: Uri.schema
@@ -83,32 +84,10 @@ export const clientRouter = t.router({
 				return paths
 			})
 	}),
-	/**
-	* Resolve root folder of an absolute HUD file uri
-	* @param uri File uri containing object.
-	* @returns The root of the HUD folder as a file uri (`file:///C:/...`) or null if the HUD root directory is not found
-	*/
 	searchForHUDRoot: t
 		.procedure
 		.input(URISchema)
-		.query(async ({ input }) => {
-
-			let folderUri = input.uri.dirname()
-			let folderUriReference = input.uri
-
-			while (!folderUri.equals(folderUriReference)) {
-				try {
-					await workspace.fs.stat(folderUri.joinPath("info.vdf"))
-					return folderUri
-				}
-				catch (error: any) { }
-
-				folderUri = folderUri.dirname()
-				folderUriReference = folderUriReference.dirname()
-			}
-
-			return null
-		}),
+		.query(async ({ input }) => searchForHUDRoot(input.uri)),
 	popfile: t.router({
 		vscript: t.router({
 			install: t
@@ -119,7 +98,7 @@ export const clientRouter = t.router({
 					})
 				).query(async ({ input }) => {
 					const configuration = workspace.getConfiguration("vscode-vdf")
-						if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
+					if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
 						const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install a VScript extension?`, "Yes", "No", "Don't ask again")
 						switch (result) {
 							case "Yes":
@@ -128,7 +107,7 @@ export const clientRouter = t.router({
 							case "No":
 								break
 							case "Don't ask again":
-									configuration.update("popfile.vscript.enable", false, true)
+								configuration.update("popfile.vscript.enable", false, true)
 								break
 						}
 					}

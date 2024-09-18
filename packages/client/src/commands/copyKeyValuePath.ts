@@ -1,7 +1,8 @@
+import { Uri } from "common/Uri"
 import { posix } from "path"
 import { getVDFDocumentSymbols, type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Position, env, window, type TextEditor } from "vscode"
-import { trpc } from "../TRPCClient"
+import { searchForHUDRoot } from "../searchForHUDRoot"
 
 export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
@@ -12,7 +13,7 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
 	const filePath = await (async (): Promise<string> => {
 		const fsPath = editor.document.uri.fsPath
-		const hudRoot = await trpc.searchForHUDRoot({ uri: editor.document.uri })
+		const hudRoot = await searchForHUDRoot(new Uri(editor.document.uri))
 		if (hudRoot) {
 			return posix.relative(hudRoot.fsPath, fsPath)
 		}
