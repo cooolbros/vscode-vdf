@@ -1,11 +1,12 @@
-import type { AnyRouter } from "@trpc/server"
+import { initTRPC, type AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import { devalueTransformer } from "common/devalueTransformer"
 import type { LanguageNames } from "utils/types/LanguageNames"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
-import { clientRouter } from "./TRPCClientRouter"
+import { TRPCClientRouter } from "./TRPCClientRouter"
 
 type JSONDecorationOptions = {
 	range: JSONRange
@@ -43,15 +44,22 @@ export class Client {
 		this.startServer = startServer
 		this.subscriptions = []
 
+		let router: ReturnType<typeof TRPCClientRouter>
+
 		this.subscriptions.push(this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
 			const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
 
 			if (languageId == null) {
+				router ??= TRPCClientRouter(
+					initTRPC.create({ transformer: devalueTransformer }),
+				)
+
 				const response = await fetchRequestHandler<AnyRouter>({
 					endpoint: "",
 					req: new Request(new URL(url, "https://vscode.vdf"), init),
-					router: clientRouter
+					router: router
 				})
+
 				return await response.text()
 			}
 			else {
