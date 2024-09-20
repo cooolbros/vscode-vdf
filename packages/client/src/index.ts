@@ -16,7 +16,6 @@ type JSONPosition = { line: number, character: number }
 
 export class Client {
 
-	private static readonly sendRequestParamsSchema = z.tuple([VSCodeVDFLanguageIDSchema, z.string(), z.record(z.unknown())])
 	private static readonly TRPCRequestSchema = z.tuple([
 		z.union([
 			z.literal("hudanimations"),
