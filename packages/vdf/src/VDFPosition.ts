@@ -40,4 +40,11 @@ export class VDFPosition implements IPosition {
 		}
 		return this.character >= value.character
 	}
+
+	public toJSON() {
+		return {
+			line: this.line,
+			character: this.character,
+		}
+	}
 }

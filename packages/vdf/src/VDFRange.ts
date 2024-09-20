@@ -27,4 +27,11 @@ export class VDFRange implements IRange {
 		}
 		return this.start.isBefore(value) && this.end.isAfter(value)
 	}
+
+	public toJSON() {
+		return {
+			start: this.start.toJSON(),
+			end: this.end.toJSON(),
+		}
+	}
 }

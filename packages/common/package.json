@@ -6,6 +6,8 @@
     "devDependencies": {
         "devalue": "^5.0.0",
         "tsconfig": "workspace:^",
+        "vdf": "workspace:^",
+        "vdf-documentsymbols": "workspace:^",
         "vscode-uri": "^3.0.8"
     }
 }

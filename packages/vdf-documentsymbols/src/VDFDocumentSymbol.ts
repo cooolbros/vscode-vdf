@@ -105,4 +105,19 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 			this.children = value
 		}
 	}
+
+	public toJSON(): z.input<typeof VDFDocumentSymbol.schema> {
+		return {
+			name: this.name,
+			key: this.key,
+			nameRange: this.nameRange.toJSON(),
+			kind: this.kind,
+			conditional: this.conditional,
+			range: this.range.toJSON(),
+			selectionRange: this.selectionRange.toJSON(),
+			detail: this.detail,
+			detailRange: this.detailRange?.toJSON(),
+			children: this.children?.toJSON(),
+		}
+	}
 }
