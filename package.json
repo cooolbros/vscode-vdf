@@ -21,6 +21,9 @@
     "engines": {
         "vscode": "^1.86.2"
     },
+    "activationEvents": [
+        "onFileSystem:vpk"
+    ],
     "main": "./apps/extension/desktop/client/dist/extension.js",
     "browser": "./apps/extension/browser/client/dist/extension.js",
     "contributes": {
