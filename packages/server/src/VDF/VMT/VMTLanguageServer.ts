@@ -7,13 +7,11 @@ import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"
 
-export class VMTLanguageServer extends VDFLanguageServer {
+export class VMTLanguageServer extends VDFLanguageServer<"vmt"> {
 
-	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "vmt">
-	protected readonly name: Extract<VDFLanguageServer["name"], "VMT">
 	private readonly documentHUDRoots: Map<string, string | null>
 
-	constructor(languageId: VMTLanguageServer["languageId"], name: VMTLanguageServer["name"], connection: Connection) {
+	constructor(languageId: "vmt", name: "VMT", connection: Connection) {
 		super(languageId, name, connection, {
 			getVDFTokeniserOptions(uri) {
 				return { allowMultilineStrings: false }
@@ -116,8 +114,6 @@ export class VMTLanguageServer extends VDFLanguageServer {
 			],
 		})
 
-		this.name = name
-		this.languageId = languageId
 		this.documentHUDRoots = new Map<string, string | null>()
 	}
 

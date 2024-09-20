@@ -4,6 +4,7 @@ import { findBestMatch } from "string-similarity"
 import { encodeBaseValue } from "utils/encodeBaseValue"
 import { normalizeUri } from "utils/normalizeUri"
 import { documentLinkDataSchema, type DocumentLinkData } from "utils/types/DocumentLinkData"
+import type { LanguageNames } from "utils/types/LanguageNames"
 import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols, getVDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
@@ -14,10 +15,8 @@ import { DefinitionReference, DocumentDefinitionReferences, documentSymbolMatche
 import { LanguageServer } from "../LanguageServer"
 import type { VDFLanguageServerConfiguration } from "./VDFLanguageServerConfiguration"
 
-export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbols> {
+export abstract class VDFLanguageServer<TLanguageId extends Extract<keyof LanguageNames, "popfile" | "vmt" | "vdf">> extends LanguageServer<TLanguageId, VDFDocumentSymbols> {
 
-	protected readonly languageId: Extract<LanguageServer<VDFDocumentSymbols>["languageId"], "popfile" | "vmt" | "vdf">
-	protected readonly name: Extract<LanguageServer<VDFDocumentSymbols>["name"], "Popfile" | "VMT" | "VDF">
 	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration
 	private readonly documentsBaseFiles: Map<string, Set<string>>
 	private readonly documentsDefinitionReferences: DocumentsDefinitionReferences
@@ -25,7 +24,7 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 
 	private oldName: [number, string, VDFRange | undefined] | null
 
-	constructor(languageId: VDFLanguageServer["languageId"], name: VDFLanguageServer["name"], connection: Connection, configuration: VDFLanguageServerConfiguration) {
+	constructor(languageId: TLanguageId, name: LanguageNames[TLanguageId], connection: Connection, configuration: VDFLanguageServerConfiguration) {
 		super(languageId, name, connection, {
 			servers: configuration.servers,
 			parseDocumentSymbols: (uri, str) => getVDFDocumentSymbols(str, this.VDFLanguageServerConfiguration.getVDFTokeniserOptions(uri)),
@@ -53,8 +52,6 @@ export abstract class VDFLanguageServer extends LanguageServer<VDFDocumentSymbol
 			}
 		})
 
-		this.name = name
-		this.languageId = languageId
 		this.VDFLanguageServerConfiguration = configuration
 		this.documentsBaseFiles = new Map<string, Set<string>>()
 		this.documentsDefinitionReferences = new Map()

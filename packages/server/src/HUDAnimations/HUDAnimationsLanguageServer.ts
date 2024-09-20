@@ -10,7 +10,7 @@ import { DefinitionReference, DocumentDefinitionReferences } from "../Definition
 import { LanguageServer } from "../LanguageServer"
 import eventFiles from "./eventFiles.json"
 
-export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDocumentSymbols> {
+export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations", HUDAnimationsDocumentSymbols> {
 
 	private static readonly keywords = <const>[
 		"Animate",
@@ -78,15 +78,13 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"Bias",
 	]
 
-	protected readonly languageId: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["languageId"], "hudanimations">
-	protected readonly name: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["name"], "HUD Animations">
 	private readonly documentHUDRoots: Map<string, string | null>
 	private readonly workspaceHUDAnimationsManifests: Map<string, Set<string>>
 	private readonly documentsDefinitionReferences: Map<string, DocumentDefinitionReferences>
 
 	private oldName: string | null
 
-	constructor(languageId: HUDAnimationsLanguageServer["languageId"], name: HUDAnimationsLanguageServer["name"], connection: Connection) {
+	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection) {
 		super(languageId, name, connection, {
 			servers: new Set(["vdf"]),
 			parseDocumentSymbols: (uri, str) => getHUDAnimationsDocumentSymbols(str),
@@ -113,8 +111,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 			}
 		})
 
-		this.name = name
-		this.languageId = languageId
 		this.documentHUDRoots = new Map<string, string | null>()
 		this.workspaceHUDAnimationsManifests = new Map<string, Set<string>>()
 		this.documentsDefinitionReferences = new Map<string, DocumentDefinitionReferences>()

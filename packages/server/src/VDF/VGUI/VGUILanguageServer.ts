@@ -28,7 +28,7 @@ export interface VGUIDefinitionReferencesConfiguration extends VDFDefinitionRefe
 	readonly files: string[]
 }
 
-export class VGUILanguageServer extends VDFLanguageServer {
+export class VGUILanguageServer extends VDFLanguageServer<"vdf"> {
 
 	private static readonly HUDDefinitionReferences: VGUIDefinitionReferencesConfiguration[] = [
 		...Object.entries(clientscheme).map(([key, values], index) => ({
@@ -53,12 +53,10 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		}
 	]
 
-	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "vdf">
-	protected readonly name: Extract<VDFLanguageServer["name"], "VDF">
 	private readonly documentHUDRoots: Map<string, string | null>
 	private readonly HUDSchemes: Map<string, VGUIDefinitionReferences>
 
-	constructor(languageId: VGUILanguageServer["languageId"], name: VGUILanguageServer["name"], connection: Connection) {
+	constructor(languageId: "vdf", name: "VDF", connection: Connection) {
 		super(languageId, name, connection, {
 			getVDFTokeniserOptions: (uri) => {
 				return {
@@ -208,8 +206,6 @@ export class VGUILanguageServer extends VDFLanguageServer {
 			}
 		})
 
-		this.name = name
-		this.languageId = languageId
 		this.documentHUDRoots = new Map<string, string | null>()
 		this.HUDSchemes = new Map<string, VGUIDefinitionReferences>()
 	}

@@ -7,13 +7,11 @@ import { VDFLanguageServer } from "../VDFLanguageServer"
 import keys from "./keys.json"
 import values from "./values.json"
 
-export class PopfileLanguageServer extends VDFLanguageServer {
+export class PopfileLanguageServer extends VDFLanguageServer<"popfile"> {
 
-	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "popfile">
-	protected readonly name: Extract<VDFLanguageServer["name"], "Popfile">
 	private vscript = false
 
-	constructor(languageId: PopfileLanguageServer["languageId"], name: PopfileLanguageServer["name"], connection: Connection) {
+	constructor(languageId: "popfile", name: "Popfile", connection: Connection) {
 		super(languageId, name, connection, {
 			getVDFTokeniserOptions(uri) {
 				return { allowMultilineStrings: true }
@@ -126,9 +124,6 @@ export class PopfileLanguageServer extends VDFLanguageServer {
 				}
 			]
 		})
-
-		this.name = name
-		this.languageId = languageId
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {

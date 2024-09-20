@@ -17,14 +17,12 @@ import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
 
-export abstract class LanguageServer<T extends DocumentSymbol[]> {
+export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TDocumentSymbols extends DocumentSymbol[]> {
 
-	protected readonly languageId: keyof LanguageNames
-	protected readonly name: LanguageNames[keyof LanguageNames]
 	protected readonly connection: Connection
-	protected readonly languageServerConfiguration: LanguageServerConfiguration<T>
+	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocumentSymbols>
 	protected readonly documents: TextDocuments<TextDocument>
-	protected readonly documentsSymbols: Map<string, T>
+	protected readonly documentsSymbols: Map<string, TDocumentSymbols>
 	protected readonly documentsConfiguration: DocumentsConfiguration
 
 	protected readonly trpc: {
@@ -37,10 +35,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		}
 	}
 
-	constructor(languageId: LanguageServer<T>["languageId"], name: LanguageServer<T>["name"], connection: Connection, configuration: LanguageServerConfiguration<T>, capabilities: Omit<ServerCapabilities, "textDocumentSync" | "documentSymbolProvider">) {
-
-		this.languageId = languageId
-		this.name = name
+	constructor(languageId: TLanguageId, name: LanguageNames[TLanguageId], connection: Connection, configuration: LanguageServerConfiguration<TDocumentSymbols>, capabilities: Omit<ServerCapabilities, "textDocumentSync" | "documentSymbolProvider">) {
 		this.connection = connection
 		this.languageServerConfiguration = configuration
 		this.documents = new TextDocuments({
@@ -51,7 +46,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 				return TextDocument.update(document, changes, version)
 			},
 		})
-		this.documentsSymbols = new Map<string, T>()
+		this.documentsSymbols = new Map<string, TDocumentSymbols>()
 		this.documentsConfiguration = new DocumentsConfiguration(this.connection)
 
 		let _router: AnyRouter
@@ -248,7 +243,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
 		this.documentsConfiguration.add(e.document.uri)
 
-		let documentSymbols: T
+		let documentSymbols: TDocumentSymbols
 		let diagnostics: VDFSyntaxError | Diagnostic[] = []
 		try {
 			documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
@@ -339,7 +334,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		this.documentsConfiguration.delete(e.document.uri)
 	}
 
-	protected abstract validateTextDocument(uri: string, documentSymbols: T): Promise<Diagnostic[]>
+	protected abstract validateTextDocument(uri: string, documentSymbols: TDocumentSymbols): Promise<Diagnostic[]>
 
 	private sendDiagnostics(uri: string, diagnostics: VDFSyntaxError | Diagnostic[]): void {
 		this.connection.sendDiagnostics({
