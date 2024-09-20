@@ -3,4 +3,4 @@ import { BrowserMessageReader, BrowserMessageWriter, createConnection } from "vs
 
 const connection = createConnection(new BrowserMessageReader(self), new BrowserMessageWriter(self))
 
-const server = new VGUILanguageServer("VDF", "vdf", connection)
+const server = new VGUILanguageServer("vdf", "VDF", connection)

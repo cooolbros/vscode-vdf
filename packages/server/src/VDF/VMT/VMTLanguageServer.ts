@@ -9,12 +9,12 @@ import values from "./values.json"
 
 export class VMTLanguageServer extends VDFLanguageServer {
 
-	protected readonly name: Extract<VDFLanguageServer["name"], "VMT">
 	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "vmt">
+	protected readonly name: Extract<VDFLanguageServer["name"], "VMT">
 	private readonly documentHUDRoots: Map<string, string | null>
 
-	constructor(name: VMTLanguageServer["name"], languageId: VMTLanguageServer["languageId"], connection: Connection) {
-		super(name, languageId, connection, {
+	constructor(languageId: VMTLanguageServer["languageId"], name: VMTLanguageServer["name"], connection: Connection) {
+		super(languageId, name, connection, {
 			getVDFTokeniserOptions(uri) {
 				return { allowMultilineStrings: false }
 			},

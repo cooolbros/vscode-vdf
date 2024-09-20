@@ -3,4 +3,4 @@ import { createConnection, ProposedFeatures } from "vscode-languageserver/node"
 
 const connection = createConnection(ProposedFeatures.all)
 
-const server = new PopfileLanguageServer("Popfile", "popfile", connection)
+const server = new PopfileLanguageServer("popfile", "Popfile", connection)

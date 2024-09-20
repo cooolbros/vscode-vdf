@@ -3,4 +3,4 @@ import { createConnection, ProposedFeatures } from "vscode-languageserver/node"
 
 const connection = createConnection(ProposedFeatures.all)
 
-const server = new VGUILanguageServer("VDF", "vdf", connection)
+const server = new VGUILanguageServer("vdf", "VDF", connection)

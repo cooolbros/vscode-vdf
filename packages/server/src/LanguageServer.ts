@@ -19,8 +19,8 @@ import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
 
 export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
-	protected readonly name: LanguageNames[keyof LanguageNames]
 	protected readonly languageId: keyof LanguageNames
+	protected readonly name: LanguageNames[keyof LanguageNames]
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<T>
 	protected readonly documents: TextDocuments<TextDocument>
@@ -37,10 +37,10 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		}
 	}
 
-	constructor(name: LanguageServer<T>["name"], languageId: LanguageServer<T>["languageId"], connection: Connection, configuration: LanguageServerConfiguration<T>, capabilities: Omit<ServerCapabilities, "textDocumentSync" | "documentSymbolProvider">) {
+	constructor(languageId: LanguageServer<T>["languageId"], name: LanguageServer<T>["name"], connection: Connection, configuration: LanguageServerConfiguration<T>, capabilities: Omit<ServerCapabilities, "textDocumentSync" | "documentSymbolProvider">) {
 
-		this.name = name
 		this.languageId = languageId
+		this.name = name
 		this.connection = connection
 		this.languageServerConfiguration = configuration
 		this.documents = new TextDocuments({

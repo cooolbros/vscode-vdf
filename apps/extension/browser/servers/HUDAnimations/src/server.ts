@@ -3,4 +3,4 @@ import { BrowserMessageReader, BrowserMessageWriter, createConnection } from "vs
 
 const connection = createConnection(new BrowserMessageReader(self), new BrowserMessageWriter(self))
 
-const server = new HUDAnimationsLanguageServer("HUD Animations", "hudanimations", connection)
+const server = new HUDAnimationsLanguageServer("hudanimations", "HUD Animations", connection)

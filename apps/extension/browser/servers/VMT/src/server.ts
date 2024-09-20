@@ -3,4 +3,4 @@ import { BrowserMessageReader, BrowserMessageWriter, createConnection } from "vs
 
 const connection = createConnection(new BrowserMessageReader(self), new BrowserMessageWriter(self))
 
-const server = new VMTLanguageServer("VMT", "vmt", connection)
+const server = new VMTLanguageServer("vmt", "VMT", connection)

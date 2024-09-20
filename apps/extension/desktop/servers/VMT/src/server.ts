@@ -3,4 +3,4 @@ import { createConnection, ProposedFeatures } from "vscode-languageserver/node"
 
 const connection = createConnection(ProposedFeatures.all)
 
-const server = new VMTLanguageServer("VMT", "vmt", connection)
+const server = new VMTLanguageServer("vmt", "VMT", connection)

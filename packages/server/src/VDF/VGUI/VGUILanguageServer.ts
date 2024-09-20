@@ -53,13 +53,13 @@ export class VGUILanguageServer extends VDFLanguageServer {
 		}
 	]
 
-	protected readonly name: Extract<VDFLanguageServer["name"], "VDF">
 	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "vdf">
+	protected readonly name: Extract<VDFLanguageServer["name"], "VDF">
 	private readonly documentHUDRoots: Map<string, string | null>
 	private readonly HUDSchemes: Map<string, VGUIDefinitionReferences>
 
-	constructor(name: VGUILanguageServer["name"], languageId: VGUILanguageServer["languageId"], connection: Connection) {
-		super(name, languageId, connection, {
+	constructor(languageId: VGUILanguageServer["languageId"], name: VGUILanguageServer["name"], connection: Connection) {
+		super(languageId, name, connection, {
 			getVDFTokeniserOptions: (uri) => {
 				return {
 					allowMultilineStrings: /(tf|chat)_.*?\.txt/.test(posix.basename(uri))

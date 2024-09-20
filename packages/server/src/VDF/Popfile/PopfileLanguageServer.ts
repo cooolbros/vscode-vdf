@@ -9,12 +9,12 @@ import values from "./values.json"
 
 export class PopfileLanguageServer extends VDFLanguageServer {
 
-	protected readonly name: Extract<VDFLanguageServer["name"], "Popfile">
 	protected readonly languageId: Extract<VDFLanguageServer["languageId"], "popfile">
+	protected readonly name: Extract<VDFLanguageServer["name"], "Popfile">
 	private vscript = false
 
-	constructor(name: PopfileLanguageServer["name"], languageId: PopfileLanguageServer["languageId"], connection: Connection) {
-		super(name, languageId, connection, {
+	constructor(languageId: PopfileLanguageServer["languageId"], name: PopfileLanguageServer["name"], connection: Connection) {
+		super(languageId, name, connection, {
 			getVDFTokeniserOptions(uri) {
 				return { allowMultilineStrings: true }
 			},

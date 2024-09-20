@@ -78,16 +78,16 @@ export class HUDAnimationsLanguageServer extends LanguageServer<HUDAnimationsDoc
 		"Bias",
 	]
 
-	protected readonly name: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["name"], "HUD Animations">
 	protected readonly languageId: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["languageId"], "hudanimations">
+	protected readonly name: Extract<LanguageServer<HUDAnimationsDocumentSymbols>["name"], "HUD Animations">
 	private readonly documentHUDRoots: Map<string, string | null>
 	private readonly workspaceHUDAnimationsManifests: Map<string, Set<string>>
 	private readonly documentsDefinitionReferences: Map<string, DocumentDefinitionReferences>
 
 	private oldName: string | null
 
-	constructor(name: HUDAnimationsLanguageServer["name"], languageId: HUDAnimationsLanguageServer["languageId"], connection: Connection) {
-		super(name, languageId, connection, {
+	constructor(languageId: HUDAnimationsLanguageServer["languageId"], name: HUDAnimationsLanguageServer["name"], connection: Connection) {
+		super(languageId, name, connection, {
 			servers: new Set(["vdf"]),
 			parseDocumentSymbols: (uri, str) => getHUDAnimationsDocumentSymbols(str),
 			defaultDocumentSymbols: () => new HUDAnimationsDocumentSymbols()
