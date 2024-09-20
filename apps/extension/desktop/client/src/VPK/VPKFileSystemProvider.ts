@@ -1,59 +1,57 @@
 import { open } from "fs/promises"
-import { join } from "path/posix"
-import { Lazy } from "utils/Lazy"
-import { VPK, VPKFileType } from "vpk"
+import { posix } from "path"
+import { VPK, VPKFileType, type VPKEntry } from "vpk"
 import { Disposable, EventEmitter, FilePermission, FileSystemError, FileType, Uri, workspace, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider } from "vscode"
-import { z } from "zod"
 
 export class VPKFileSystemProvider implements FileSystemProvider {
 
-	private static readonly VPKTypeSchema = z.enum(["misc", "sound_misc", "textures"])
+	private readonly vpks: Map<string, Promise<{ stat: FileStat, vpk: VPK }>>
 
-	private readonly vpks: { [P in z.infer<typeof VPKFileSystemProvider["VPKTypeSchema"]>]: Lazy<Promise<{ stat: FileStat, vpk: VPK }>> }
 	public readonly onDidChangeFile: Event<FileChangeEvent[]>
 
 	constructor() {
-
-		let load: ((type: keyof VPKFileSystemProvider["vpks"]) => Promise<{ stat: FileStat, vpk: VPK }>) | null = async (type: keyof VPKFileSystemProvider["vpks"]) => {
-			const uri = Uri.file(join(workspace.getConfiguration("vscode-vdf")["teamFortress2Folder"], `tf/tf2_${type}_dir.vpk`)).toString()
-			const statPromise = workspace.fs.stat(Uri.parse(uri))
-			const vpkPromise = (async () => new VPK(new DataView((await workspace.fs.readFile(Uri.parse(uri))).buffer)))()
-			return Promise
-				.all([statPromise, vpkPromise])
-				.then(([stat, vpk]) => ({
-					stat,
-					vpk
-				}))
-		}
-
-		this.vpks = {
-			misc: new Lazy(() => load!("misc")),
-			sound_misc: new Lazy(() => load!("sound_misc")),
-			textures: new Lazy(() => load!("textures")),
-		}
-
+		this.vpks = new Map()
 		this.onDidChangeFile = new EventEmitter<FileChangeEvent[]>().event
 	}
 
-	private async entry(uri: Uri) {
-		const type = VPKFileSystemProvider.VPKTypeSchema.parse(new URLSearchParams(uri.query).get("vpk"))
-		const path = uri.path.substring(1)
-		return {
-			archiveType: type,
-			path: path,
-			value: (await this.vpks[type].value).vpk.entry(path)
+	private async resolve(uri: Uri) {
+
+		const vpkUri = Uri.from(JSON.parse(uri.authority))
+
+		let vpk = this.vpks.get(vpkUri.toString())
+		if (!vpk) {
+			vpk = (async () => {
+				const [stat, { buffer }] = await Promise.all([
+					workspace.fs.stat(vpkUri),
+					workspace.fs.readFile(vpkUri)
+				])
+
+				return {
+					stat: stat,
+					vpk: new VPK(new DataView(buffer))
+				}
+			})()
+
+			this.vpks.set(vpkUri.toString(), vpk)
 		}
+
+		return await vpk
 	}
 
-	watch(): Disposable {
+	private async entry(uri: Uri): Promise<VPKEntry | null> {
+		const { vpk } = await this.resolve(uri)
+		const path = uri.path.substring(1)
+
+		return vpk.entry(path)
+	}
+
+	public watch(): Disposable {
 		return Disposable.from()
 	}
 
-	async stat(uri: Uri): Promise<FileStat> {
+	public async stat(uri: Uri): Promise<FileStat> {
 
-		const { archiveType, value } = await this.entry(uri)
-
-		const entry = value
+		const entry = await this.entry(uri)
 		if (!entry) {
 			throw FileSystemError.FileNotFound()
 		}
@@ -72,7 +70,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 				break
 		}
 
-		const stat = (await this.vpks[archiveType].value).stat
+		const { stat } = await this.resolve(uri)
 
 		return {
 			type: type,
@@ -80,12 +78,12 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 			mtime: stat.mtime,
 			size: size,
 			permissions: FilePermission.Readonly
-		} satisfies FileStat
+		}
 	}
 
-	async readDirectory(uri: Uri): Promise<[string, FileType][]> {
+	public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
 
-		const entry = (await this.entry(uri)).value
+		const entry = await this.entry(uri)
 		if (!entry) {
 			throw FileSystemError.FileNotFound()
 		}
@@ -94,18 +92,20 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 			throw FileSystemError.FileNotADirectory()
 		}
 
-		return [...entry.value.entries()].map(([name, entry]) => <const>[name, entry.type == VPKFileType.File ? FileType.File : FileType.Directory])
+		return entry
+			.value
+			.entries()
+			.map(([name, entry]): [string, FileType] => [name, entry.type == VPKFileType.File ? FileType.File : FileType.Directory])
+			.toArray()
 	}
 
-	createDirectory(): void {
+	public createDirectory(): void {
 		throw FileSystemError.Unavailable()
 	}
 
-	async readFile(uri: Uri): Promise<Uint8Array> {
+	public async readFile(uri: Uri): Promise<Uint8Array> {
 
-		const { archiveType, value } = await this.entry(uri)
-
-		const entry = value
+		const entry = await this.entry(uri)
 		if (!entry) {
 			throw FileSystemError.FileNotFound()
 		}
@@ -114,27 +114,34 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 			throw FileSystemError.FileIsADirectory()
 		}
 
-		const file = await open(join(workspace.getConfiguration("vscode-vdf")["teamFortress2Folder"], `tf/tf2_${archiveType}_${entry.value.archiveIndex == 255 ? "_dir" : entry.value.archiveIndex.toString().padStart(3, "0")}.vpk`), "r")
+		const vpkUri = Uri.from(JSON.parse(uri.authority))
+
+		const archiveUri = vpkUri.with({
+			path: posix.join(posix.dirname(vpkUri.path), posix.basename(vpkUri.path).replace("_dir.vpk", `_${entry.value.archiveIndex == 255 ? "_dir" : entry.value.archiveIndex.toString().padStart(3, "0")}.vpk`))
+		})
+
+		const file = await open(archiveUri.fsPath, "r")
 		const buf = Buffer.alloc(entry.value.entryLength)
+
 		await file.read(buf, 0, entry.value.entryLength, entry.value.entryOffset)
 		file.close()
 
 		return buf
 	}
 
-	writeFile(): void {
+	public writeFile(): void {
 		throw FileSystemError.Unavailable()
 	}
 
-	delete(): void {
+	public delete(): void {
 		throw FileSystemError.Unavailable()
 	}
 
-	rename(): void {
+	public rename(): void {
 		throw FileSystemError.Unavailable()
 	}
 
-	copy?(): void {
+	public copy?(): void {
 		throw FileSystemError.Unavailable()
 	}
 }
