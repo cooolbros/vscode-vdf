@@ -333,7 +333,7 @@
         "path-browserify": "^1.0.1",
         "ts-loader": "^9.5.1",
         "ts-node": "^10.9.2",
-        "turbo": "^2.0.9",
+        "turbo": "^2.1.2",
         "typescript": "^5.6.2",
         "vscode-languageserver-textdocument": "^1.0.11",
         "webpack": "^5.93.0",
