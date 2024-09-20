@@ -288,6 +288,9 @@ importers:
 
   packages/utils:
     devDependencies:
+      common:
+        specifier: workspace:^
+        version: link:../common/src
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig

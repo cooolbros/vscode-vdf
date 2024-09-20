@@ -4,6 +4,7 @@
         "directory": "src"
     },
     "devDependencies": {
+        "common": "workspace:^",
         "tsconfig": "workspace:^",
         "vdf": "workspace:^",
         "vdf-documentsymbols": "workspace:^"
