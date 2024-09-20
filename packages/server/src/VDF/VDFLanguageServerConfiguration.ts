@@ -1,12 +1,12 @@
-import type { languageNames } from "utils/languageNames"
 import type { DocumentLinkData } from "utils/types/DocumentLinkData"
+import type { LanguageNames } from "utils/types/LanguageNames"
 import type { VDFTokeniserOptions } from "vdf"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import type { Color, CompletionItem, DocumentLink } from "vscode-languageserver"
 
 export interface VDFLanguageServerConfiguration {
 	getVDFTokeniserOptions(uri: string): VDFTokeniserOptions,
-	servers: Set<keyof typeof languageNames>
+	servers: Set<keyof LanguageNames>
 	vpkRootPath?: string
 	keyHash(key: string): string
 	schema: {

@@ -1,6 +1,6 @@
 import type { AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
-import { languageNames } from "utils/languageNames"
+import type { LanguageNames } from "utils/types/LanguageNames"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { Position, Range, window, type DecorationInstanceRenderOptions, type DecorationOptions } from "vscode"
 import type { BaseLanguageClient } from "vscode-languageclient"
@@ -39,7 +39,7 @@ export class Client {
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
 
-	constructor(languageClients: { -readonly [P in keyof typeof languageNames]?: Client }, startServer: (languageId: VSCodeVDFLanguageID) => void, client: BaseLanguageClient) {
+	constructor(languageClients: { -readonly [P in keyof LanguageNames]?: Client }, startServer: (languageId: VSCodeVDFLanguageID) => void, client: BaseLanguageClient) {
 		this.client = client
 		this.startServer = startServer
 		this.subscriptions = []

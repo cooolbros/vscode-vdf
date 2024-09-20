@@ -4,7 +4,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { clientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import { posix } from "path"
-import type { languageNames } from "utils/languageNames"
+import type { LanguageNames } from "utils/types/LanguageNames"
 import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { VDFSyntaxError } from "vdf"
 import { CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocuments, TextDocumentSyncKind, type Connection, type DocumentSymbolParams, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -19,8 +19,8 @@ import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
 
 export abstract class LanguageServer<T extends DocumentSymbol[]> {
 
-	protected readonly name: typeof languageNames[keyof typeof languageNames]
-	protected readonly languageId: keyof typeof languageNames
+	protected readonly name: LanguageNames[keyof LanguageNames]
+	protected readonly languageId: keyof LanguageNames
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<T>
 	protected readonly documents: TextDocuments<TextDocument>

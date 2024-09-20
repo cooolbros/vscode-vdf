@@ -5,14 +5,15 @@ import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
 import { showReferences } from "client/commands/showReferences"
+import { languageNames } from "client/languageNames"
 import { join } from "path"
-import { languageNames } from "utils/languageNames"
+import type { LanguageNames } from "utils/types/LanguageNames"
 import { commands, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 import { VTFEditor } from "./VTF/VTFEditor"
 
-const languageClients: { -readonly [P in keyof typeof languageNames]?: Client } = {}
+const languageClients: { -readonly [P in keyof LanguageNames]?: Client } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -38,12 +39,12 @@ export function activate(context: ExtensionContext): void {
 
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
 		const languageId = e.languageId
-		if (((languageId): languageId is keyof typeof languageNames => languageId in languageNames)(languageId)) {
+		if (((languageId): languageId is keyof LanguageNames => languageId in languageNames)(languageId)) {
 			startServer(languageId)
 		}
 	}
 
-	const startServer = async (languageId: keyof typeof languageNames): Promise<void> => {
+	const startServer = async (languageId: keyof LanguageNames): Promise<void> => {
 
 		if (languageClients[languageId]) {
 			return
