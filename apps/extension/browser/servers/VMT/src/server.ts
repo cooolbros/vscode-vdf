@@ -1,6 +1,4 @@
 import { VMTLanguageServer } from "server/VDF/VMT/VMTLanguageServer"
 import { BrowserMessageReader, BrowserMessageWriter, createConnection } from "vscode-languageserver/browser"
 
-const connection = createConnection(new BrowserMessageReader(self), new BrowserMessageWriter(self))
-
-const server = new VMTLanguageServer("vmt", "VMT", connection)
+new VMTLanguageServer("vmt", "VMT", createConnection(new BrowserMessageReader(self), new BrowserMessageWriter(self)))
