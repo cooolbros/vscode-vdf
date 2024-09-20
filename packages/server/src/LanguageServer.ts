@@ -1,7 +1,7 @@
 import { createTRPCProxyClient, httpLink, type CreateTRPCProxyClient } from "@trpc/client"
 import { initTRPC, type AnyRouter, type CombinedDataTransformer } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
-import type { clientRouter } from "client/TRPCClientRouter"
+import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import { posix } from "path"
 import type { LanguageNames } from "utils/types/LanguageNames"
@@ -28,7 +28,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 	protected readonly documentsConfiguration: DocumentsConfiguration
 
 	protected readonly trpc: {
-		client: CreateTRPCProxyClient<typeof clientRouter>
+		client: CreateTRPCProxyClient<ReturnType<typeof TRPCClientRouter>>
 		servers: {
 			hudanimations: CreateTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>
 			popfile: CreateTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>
@@ -116,7 +116,7 @@ export abstract class LanguageServer<T extends DocumentSymbol[]> {
 		})
 
 		this.trpc = {
-			client: createTRPCProxyClient<typeof clientRouter>(VSCodeRPCOptions(null)),
+			client: createTRPCProxyClient<ReturnType<typeof TRPCClientRouter>>(VSCodeRPCOptions(null)),
 			servers: {
 				hudanimations: createTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>(VSCodeRPCOptions("hudanimations")),
 				popfile: createTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>(VSCodeRPCOptions("popfile")),
