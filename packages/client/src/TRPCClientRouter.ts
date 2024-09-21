@@ -194,7 +194,7 @@ export function TRPCClientRouter(
 							path: z.string(),
 						})
 					)
-					.query(async ({ input }) => {
+					.mutation(async ({ input }) => {
 						return fileSystems.get(input.key)!.remove(input.path)
 					}),
 				dispose: t
