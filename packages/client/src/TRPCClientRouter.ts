@@ -97,6 +97,25 @@ export function TRPCClientRouter(
 			.procedure
 			.input(URISchema)
 			.query(async ({ input }) => searchForHUDRoot(input.uri)),
+		workspace: t.router({
+			openTextDocument: t
+				.procedure
+				.input(URISchema.merge(z.object({ languageId: z.string() })))
+				.query(async ({ input }) => {
+					return {
+						uri: input.uri,
+						languageId: input.languageId,
+						version: 1,
+						content: await (async () => {
+							const arr = await workspace.fs.readFile(input.uri)
+							if (arr[0] == 255 && arr[1] == 254) {
+								return UTF16LEDecoder.decode(arr)
+							}
+							return UTF8Decoder.decode(arr)
+						})()
+					}
+				})
+		}),
 		teamFortress2FileSystem: t
 			.router({
 				open: t
