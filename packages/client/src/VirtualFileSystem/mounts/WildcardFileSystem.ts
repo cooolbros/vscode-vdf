@@ -5,6 +5,11 @@ import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory
 
 class SortedArray<T> extends Array<T> {
 
+	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/species
+	static get [Symbol.species]() {
+		return Array
+	}
+
 	constructor(private readonly compareFn: (a: T, b: T) => number, ...items: T[]) {
 		super(...items.sort(compareFn))
 	}
