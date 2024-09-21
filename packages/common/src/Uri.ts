@@ -47,7 +47,7 @@ export class Uri {
 		return this.with({ path: posix.relative(this.path, to.path) })
 	}
 
-	equals(other?: Uri): boolean {
+	equals(other?: Uri | null): boolean {
 		if (!other) {
 			return false
 		}
