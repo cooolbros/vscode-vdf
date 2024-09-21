@@ -13,16 +13,16 @@ class SortedArray<T> extends Array<T> {
 		this.sort(this.compareFn)
 	}
 
-	public splice(start: number, deleteCount: number, ...items: T[]): T[] {
-		const deleted = super.splice(start, deleteCount, ...items)
-		this.update()
-		return deleted
-	}
-
 	public push(...items: T[]): number {
 		const length = super.push(...items)
 		this.update()
 		return length
+	}
+
+	public splice(start: number, deleteCount: number, ...items: T[]): T[] {
+		const deleted = super.splice(start, deleteCount, ...items)
+		this.update()
+		return deleted
 	}
 }
 
