@@ -1138,9 +1138,4 @@ export abstract class VDFLanguageServer<TLanguageId extends Extract<keyof Langua
 
 		return { changes }
 	}
-
-	private async onSetReferences(params: unknown): Promise<void> {
-
-
-	}
 }
