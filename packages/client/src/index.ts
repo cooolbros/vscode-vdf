@@ -7,6 +7,7 @@ import { Position, Range, window, type DecorationInstanceRenderOptions, type Dec
 import type { BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
+import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 type JSONDecorationOptions = {
 	range: JSONRange
@@ -35,6 +36,8 @@ export class Client {
 		])
 	])
 
+	private static readonly FileSystemMountPointFactory = new FileSystemMountPointFactory()
+
 	private readonly client: BaseLanguageClient
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
@@ -52,6 +55,10 @@ export class Client {
 			if (languageId == null) {
 				router ??= TRPCClientRouter(
 					initTRPC.create({ transformer: devalueTransformer }),
+					Client.FileSystemMountPointFactory,
+					async (key, path, uri) => {
+						await this.client.sendNotification("vscode-vdf/teamFortress2FileSystem/update", { key, path, uri })
+					}
 				)
 
 				const response = await fetchRequestHandler<AnyRouter>({

@@ -178,6 +178,9 @@ importers:
       common:
         specifier: workspace:^
         version: link:../common/src
+      minimatch:
+        specifier: ^10.0.1
+        version: 10.0.1
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
@@ -2104,13 +2107,13 @@ packages:
     resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==}
     engines: {node: '>= 0.6'}
 
+  minimatch@10.0.1:
+    resolution: {integrity: sha512-ethXTt3SGGR+95gudmqJ1eNhRO7eGEGIgYA9vnPatK4/etz2MEVDno5GMCibdMTuBMyElzIlgxMna3K94XDIDQ==}
+    engines: {node: 20 || >=22}
+
   minimatch@5.1.6:
     resolution: {integrity: sha512-lKwV/1brpG6mBUFHtb7NUmtABCb2WZZmm2wNiOA5hAb8VdCS4B3dtMWyvcoViccwAW/COERjXLt0zP1zXUN26g==}
     engines: {node: '>=10'}
-
-  minimatch@9.0.4:
-    resolution: {integrity: sha512-KqWh+VchfxcMNRAJjj2tnsSJdNbHsVgnkBhTNrW7AjVo6OvLtxw8zfT9oLw1JSohlFzJ8jCoTgaoXvJ+kHt6fw==}
-    engines: {node: '>=16 || 14 >=14.17'}
 
   minimatch@9.0.5:
     resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
@@ -4296,7 +4299,7 @@ snapshots:
     dependencies:
       foreground-child: 3.1.1
       jackspeak: 3.1.2
-      minimatch: 9.0.4
+      minimatch: 9.0.5
       minipass: 7.1.1
       path-scurry: 1.11.1
 
@@ -5255,11 +5258,11 @@ snapshots:
     dependencies:
       mime-db: 1.52.0
 
-  minimatch@5.1.6:
+  minimatch@10.0.1:
     dependencies:
       brace-expansion: 2.0.1
 
-  minimatch@9.0.4:
+  minimatch@5.1.6:
     dependencies:
       brace-expansion: 2.0.1
 
