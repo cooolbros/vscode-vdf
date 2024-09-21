@@ -7,7 +7,7 @@ import { WildcardFileSystem } from "./mounts/WildcardFileSystem"
 
 export class FileSystemMountPointFactory {
 
-	private readonly fileSystems = new Map<keyof FileSystemMountPointFactory, Map<string, { value: FileSystemMountPoint, updaters: Map<string, ((uri: Uri | null) => void)[]>, references: number }>>()
+	private readonly fileSystems = new Map<keyof FileSystemMountPointFactory, Map<string, { value: FileSystemMountPoint, updaters: Map<string, { subscribers: ((uri: Uri | null) => void)[], references: number }>, references: number }>>()
 
 	private async resolve<T extends keyof FileSystemMountPointFactory>(type: T, uri: Uri, factory: () => ReturnType<FileSystemMountPointFactory[T]>): Promise<FileSystemMountPoint> {
 		let typeFileSystems = this.fileSystems.get(type)
@@ -27,16 +27,17 @@ export class FileSystemMountPointFactory {
 		return {
 			resolveFile: async (path, update) => {
 				if (update) {
-					let updaters = fileSystem.updaters.get(path)
-					if (!updaters) {
-						updaters = []
-						fileSystem.updaters.set(path, updaters)
+					let updater = fileSystem.updaters.get(path)
+					if (!updater) {
+						updater = { subscribers: [], references: 0 }
+						fileSystem.updaters.set(path, updater)
 					}
-					updaters.push(update)
+					updater.subscribers.push(update)
+					updater.references++
 				}
 
 				return await fileSystem.value.resolveFile(path, async (uri) => {
-					for (const update of fileSystem.updaters.get(path) ?? []) {
+					for (const update of fileSystem.updaters.get(path)?.subscribers ?? []) {
 						update(uri)
 					}
 				})
@@ -45,7 +46,14 @@ export class FileSystemMountPointFactory {
 				return await fileSystem.value.readDirectory(path, options)
 			},
 			remove: (path) => {
-				fileSystem.value.remove(path)
+				const updater = fileSystem.updaters.get(path)
+				if (updater) {
+					updater.references--
+					if (updater.references == 0) {
+						fileSystem.value.remove(path)
+						fileSystem.updaters.delete(path)
+					}
+				}
 			},
 			dispose: () => {
 				fileSystem.references--
