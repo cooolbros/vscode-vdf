@@ -55,6 +55,6 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 	}
 
 	public toJSON() {
-		return this.map((documentSymbol) => documentSymbol.toJSON())
+		return this.values().map((documentSymbol) => documentSymbol.toJSON()).toArray()
 	}
 }
