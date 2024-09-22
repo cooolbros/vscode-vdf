@@ -5,10 +5,6 @@ import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory
 
 class SortedArray<T> extends Array<T> {
 
-	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/species
-	static get [Symbol.species]() {
-		return Array
-	}
 
 	constructor(private readonly compareFn: (a: T, b: T) => number, ...items: T[]) {
 		super(...items.sort(compareFn))
@@ -28,6 +24,10 @@ class SortedArray<T> extends Array<T> {
 		const deleted = super.splice(start, deleteCount, ...items)
 		this.update()
 		return deleted
+	}
+
+	map<U>(callbackfn: (value: T, index: number, array: T[]) => U): U[] {
+		return this.values().map((value, index) => callbackfn(value, index, this)).toArray()
 	}
 }
 
