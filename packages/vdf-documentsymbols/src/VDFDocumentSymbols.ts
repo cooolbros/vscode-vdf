@@ -4,6 +4,11 @@ import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 
+	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/species
+	public static get [Symbol.species]() {
+		return Array
+	}
+
 	public static readonly schema = z.lazy(() => VDFDocumentSymbol.schema.array().transform((arg) => new VDFDocumentSymbols(...arg)))
 
 	public forAll(callback: (documentSymbol: VDFDocumentSymbol, path: string[]) => void): void {
@@ -55,6 +60,6 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 	}
 
 	public toJSON() {
-		return this.values().map((documentSymbol) => documentSymbol.toJSON()).toArray()
+		return this.map((documentSymbol) => documentSymbol.toJSON())
 	}
 }
