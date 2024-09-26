@@ -11,12 +11,12 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 
 	public static readonly schema = z.lazy(() => VDFDocumentSymbol.schema.array().transform((arg) => new VDFDocumentSymbols(...arg)))
 
-	public forAll(callback: (documentSymbol: VDFDocumentSymbol, path: string[]) => void): void {
-		const path: string[] = []
+	public forAll(callback: (documentSymbol: VDFDocumentSymbol, VDFDocumentSymbol: VDFDocumentSymbol[]) => void): void {
+		const path: VDFDocumentSymbol[] = []
 		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): void => {
 			for (const documentSymbol of documentSymbols) {
 				if (documentSymbol.children) {
-					path.push(documentSymbol.key.toLowerCase())
+					path.push(documentSymbol)
 					iterateDocumentSymbols(documentSymbol.children)
 					path.pop()
 				}
@@ -26,20 +26,20 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		iterateDocumentSymbols(this)
 	}
 
-	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol, objectPath: string[]) => boolean): VDFDocumentSymbol | undefined {
-		const objectPath: string[] = []
+	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => boolean): VDFDocumentSymbol | undefined {
+		const path: VDFDocumentSymbol[] = []
 		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): VDFDocumentSymbol | undefined => {
 			for (const documentSymbol of documentSymbols) {
 				if (documentSymbol.children) {
-					objectPath.push(documentSymbol.key.toLowerCase())
+					path.push(documentSymbol)
 					const result = iterateDocumentSymbols(documentSymbol.children)
 					if (result != undefined) {
 						return result
 					}
-					objectPath.pop()
+					path.pop()
 				}
 
-				if (callback(documentSymbol, objectPath)) {
+				if (callback(documentSymbol, path)) {
 					return documentSymbol
 				}
 			}
@@ -51,7 +51,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		return this.findRecursive(documentSymbol => documentSymbol.range.contains(position))
 	}
 
-	public reduceRecursive<T>(initialValue: T, callbackfn: (previousValue: T, documentSymbol: VDFDocumentSymbol, path: string[]) => T): T {
+	public reduceRecursive<T>(initialValue: T, callbackfn: (previousValue: T, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => T): T {
 		let result = initialValue
 		this.forAll((documentSymbol, path) => {
 			result = callbackfn(result, documentSymbol, path)
