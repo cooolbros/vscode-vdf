@@ -9,7 +9,7 @@
  * ArrayContainsArray(["a", "b", "c", "d"], []) // true
  * ```
  */
-export function ArrayContainsArray(arr1: string[], arr2: string[]): boolean {
+export function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
 
 	if (arr2.length == 0) {
 		return true
@@ -24,11 +24,11 @@ export function ArrayContainsArray(arr1: string[], arr2: string[]): boolean {
 	let index = 0
 
 	while (i < arr1.length) {
-		if (arr1[i] == arr2[index]) {
+		if (comparer(arr1[i], arr2[index])) {
 
 			while (index < arr2.length) {
 
-				if (arr1[i] != arr2[index]) {
+				if (!comparer(arr1[i], arr2[index])) {
 					return false
 				}
 
