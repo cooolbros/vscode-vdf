@@ -25,7 +25,7 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 		const uri = new Uri(event)
 		const path = root.relative(uri).path.substring(1)
 		const updater = paths.get(path)
-		updater?.(uri)
+		updater?.(null)
 	})
 
 	return {
