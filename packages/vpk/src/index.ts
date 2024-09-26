@@ -110,7 +110,7 @@ export class VPK {
 
 		let tree: VPKEntry = this.tree
 
-		for (const folder of path.split("/")) {
+		for (const folder of path.toLowerCase().split("/")) {
 
 			if (tree.type == VPKFileType.File) {
 				return null
