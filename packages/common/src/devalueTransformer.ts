@@ -6,6 +6,7 @@ import { Uri } from "./Uri"
 export { devalue }
 
 export const reducers = {
+	Symbol: (value: unknown) => typeof value == "symbol" ? Symbol.keyFor(value) : undefined,
 	Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
 	VDFDocumentSymbol: (value: unknown) => value instanceof VDFDocumentSymbol ? value.toJSON() : undefined,
 	VDFDocumentSymbols: (value: unknown) => value instanceof VDFDocumentSymbols ? value.toJSON() : undefined,
@@ -14,6 +15,7 @@ export const reducers = {
 }
 
 export const revivers = {
+	Symbol: (value: ReturnType<Symbol["toString"]>) => Symbol.for(value),
 	Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
 	VDFDocumentSymbol: (value: ReturnType<VDFDocumentSymbol["toJSON"]>) => VDFDocumentSymbol.schema.parse(value),
 	VDFDocumentSymbols: (value: ReturnType<VDFDocumentSymbols["toJSON"]>) => VDFDocumentSymbols.schema.parse(value),
