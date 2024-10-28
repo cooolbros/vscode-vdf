@@ -3,6 +3,8 @@ import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Uri } from "./Uri"
 
+export { devalue }
+
 export const reducers = {
 	Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
 	VDFDocumentSymbol: (value: unknown) => value instanceof VDFDocumentSymbol ? value.toJSON() : undefined,
