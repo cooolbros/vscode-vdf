@@ -237,11 +237,15 @@ export class RunEventChildDocumentSymbol extends HUDAnimationsStatementDocumentS
 
 export class SetInputEnabledDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetInputEnabled
+	public readonly element: string
+	public readonly elementRange: VDFRange
 	constructor(
-		{ element, enabled, delay, conditional }: { element: string, enabled: string, delay: number, conditional?: string },
+		{ element, elementRange, enabled, delay, conditional }: { element: string, elementRange: VDFRange, enabled: string, delay: number, conditional?: string },
 		range: VDFRange
 	) {
 		super(`SetInputEnabled ${element} ${enabled} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+		this.element = element
+		this.elementRange = elementRange
 	}
 }
 

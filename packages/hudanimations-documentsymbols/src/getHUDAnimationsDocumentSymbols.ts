@@ -260,9 +260,11 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				break
 			}
 			case "setinputenabled": {
+				const elementToken = readString()
 				statement = new SetInputEnabledDocumentSymbol(
 					{
-						element: readStringValue(),
+						element: elementToken.value,
+						elementRange: elementToken.range,
 						enabled: readStringValue(),
 						delay: readNumber(),
 						conditional: readConditional(),
