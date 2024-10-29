@@ -82,7 +82,7 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 				await Promise.all(promises)
 			}
 
-			await iterateDirectory("")
+			await iterateDirectory(path)
 			return paths
 		},
 		remove: (path) => {
