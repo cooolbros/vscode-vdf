@@ -100,7 +100,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 				key || "\"\"",
 				keyRange,
 				typeof value == "object" ? SymbolKind.Object : SymbolKind.String,
-				conditional ?? null,
+				conditional,
 				selectionRange,
 				typeof value == "object" ? value : { detail: value, range: valueRange! },
 			))
