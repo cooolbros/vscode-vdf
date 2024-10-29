@@ -8,7 +8,8 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 	return {
 		resolveFile: async (path, update) => {
 
-			const uris = await Promise.all(fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path, update == null ? null : (uri) => {
+			const uris = await Promise.all(
+				fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path, update == null ? null : (uri) => {
 				const result = paths.get(path)
 				if (!result) {
 					return
@@ -23,7 +24,8 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 				if (!prev?.equals(newUri)) {
 					update(newUri)
 				}
-			})))
+				}).catch(() => null))
+			)
 
 			const index = uris.findIndex((uri) => uri != null)
 			paths.set(path, { uris: uris, index: index })
