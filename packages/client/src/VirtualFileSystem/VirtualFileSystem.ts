@@ -10,20 +10,20 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 
 			const uris = await Promise.all(
 				fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path, update == null ? null : (uri) => {
-				const result = paths.get(path)
-				if (!result) {
-					return
-				}
+					const result = paths.get(path)
+					if (!result) {
+						return
+					}
 
-				const prev = result.uris[result.index]
+					const prev = result.uris[result.index]
 
-				result.uris[index] = uri
-				result.index = uris.findIndex((uri) => uri != null)
+					result.uris[index] = uri
+					result.index = uris.findIndex((uri) => uri != null)
 
-				const newUri = uris[result.index] ?? null
-				if (!prev?.equals(newUri)) {
-					update(newUri)
-				}
+					const newUri = uris[result.index] ?? null
+					if (!prev?.equals(newUri)) {
+						update(newUri)
+					}
 				}).catch(() => null))
 			)
 
@@ -32,8 +32,19 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 			return uris[index] ?? null
 		},
 		readDirectory: async (path, options) => {
-			const all = (await Promise.all(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))).flat()
-			return all.filter(([name], index) => all.findIndex(([n]) => n == name) == index)
+			const results = await Promise.allSettled(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))
+
+			return results
+				.values()
+				.filter((result) => result.status == "fulfilled")
+				.map((result) => result.value)
+				.flatMap((value) => value)
+				.reduce((a, b) => {
+					if (!a.some(([n]) => n == b[0])) {
+						a.push(b)
+					}
+					return a
+				}, <[string, number][]>[])
 		},
 		remove: (path) => {
 			for (const fileSystem of fileSystems) {
