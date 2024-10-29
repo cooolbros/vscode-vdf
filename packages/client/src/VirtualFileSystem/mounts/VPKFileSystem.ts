@@ -62,7 +62,7 @@ export async function VPKFileSystem(vpk: Uri): Promise<FileSystemMountPoint> {
 				await Promise.all(promises)
 			}
 
-			await iterateDirectory("")
+			await iterateDirectory(path)
 			return paths
 		},
 		remove: (path) => {
