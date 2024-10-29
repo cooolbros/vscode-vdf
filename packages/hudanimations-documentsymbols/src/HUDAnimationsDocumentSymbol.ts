@@ -196,12 +196,14 @@ export class StopEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 
 export class SetVisibleDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetVisible
+	public readonly element: string
 	public readonly elementRange: VDFRange
 	constructor(
 		{ element, elementRange, visible, delay, conditional }: { element: string, elementRange: VDFRange, visible: string, delay: number, conditional?: string },
 		range: VDFRange
 	) {
 		super(`SetVisible ${element} ${visible} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+		this.element = element
 		this.elementRange = elementRange
 	}
 }
