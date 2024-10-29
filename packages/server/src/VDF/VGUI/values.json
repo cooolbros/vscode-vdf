@@ -177,6 +177,7 @@
             "CTFPlaylistPanel",
             "CTFProgressBar",
             "CTFStaticBadgePanel",
+            "CTFStreamListPanel",
             "CTFStreamPanel",
             "CTFTeamButton",
             "CTFTeamStatus",
