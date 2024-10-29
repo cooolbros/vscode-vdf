@@ -263,7 +263,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				statement = new SetInputEnabledDocumentSymbol(
 					{
 						element: readStringValue(),
-						visible: readStringValue(),
+						enabled: readStringValue(),
 						delay: readNumber(),
 						conditional: readConditional(),
 					},
