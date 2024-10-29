@@ -290,19 +290,19 @@ export class SetFontDocumentSymbol extends HUDAnimationsStatementDocumentSymbolB
 	public readonly elementRange: VDFRange
 	public readonly property: string
 	public readonly propertyRange: VDFRange
-	public readonly value: string
-	public readonly valueRange: VDFRange
+	public readonly font: string
+	public readonly fontRange: VDFRange
 	constructor(
-		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional?: string },
+		{ element, elementRange, property, propertyRange, font, fontRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, font: string, fontRange: VDFRange, delay: number, conditional?: string },
 		range: VDFRange
 	) {
-		super(`SetFont ${element} ${property} ${value} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
+		super(`SetFont ${element} ${property} ${font} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
 		this.element = element
 		this.elementRange = elementRange
 		this.property = property
 		this.propertyRange = propertyRange
-		this.value = value
-		this.valueRange = valueRange
+		this.font = font
+		this.fontRange = fontRange
 	}
 }
 

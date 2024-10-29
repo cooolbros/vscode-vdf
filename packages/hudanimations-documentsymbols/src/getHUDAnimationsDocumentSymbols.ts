@@ -313,7 +313,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 			case "setfont": {
 				const elementToken = readString()
 				const propertyToken = readString()
-				const valueToken = readString()
+				const fontToken = readString()
 
 				statement = new SetFontDocumentSymbol(
 					{
@@ -321,8 +321,8 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						elementRange: elementToken.range,
 						property: propertyToken.value,
 						propertyRange: propertyToken.range,
-						value: valueToken.value,
-						valueRange: valueToken.range,
+						font: fontToken.value,
+						fontRange: fontToken.range,
 						delay: readNumber(),
 						conditional: readConditional(),
 					},
