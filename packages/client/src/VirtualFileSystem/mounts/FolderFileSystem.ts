@@ -44,6 +44,9 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 				return uri
 			}
 			catch (error) {
+				if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
+					console.error(error)
+				}
 				return null
 			}
 		},
