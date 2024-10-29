@@ -5,7 +5,6 @@ import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory
 
 class SortedArray<T> extends Array<T> {
 
-
 	constructor(private readonly compareFn: (a: T, b: T) => number, ...items: T[]) {
 		super(...items.sort(compareFn))
 	}
