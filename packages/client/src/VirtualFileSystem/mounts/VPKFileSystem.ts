@@ -16,7 +16,10 @@ export async function VPKFileSystem(vpk: Uri): Promise<FileSystemMountPoint> {
 		resolveFile: async (path, update) => {
 			try {
 				const uri = new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
-				await vscode.workspace.fs.stat(uri)
+				const stat = await vscode.workspace.fs.stat(uri)
+				if (stat.type == vscode.FileType.Directory) {
+					throw vscode.FileSystemError.FileIsADirectory(uri)
+				}
 				return uri
 			}
 			catch (error) {
