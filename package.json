@@ -322,6 +322,8 @@
     "scripts": {
         "vscode:prepublish": "pnpm build",
         "dev": "turbo dev",
+        "dev:desktop": "turbo dev --filter=desktop-*",
+        "dev:browser": "turbo dev --filter=browser-*",
         "dev:docs": "turbo dev --filter=docs",
         "build": "turbo build",
         "build:docs": "turbo build --filter=docs",
