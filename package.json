@@ -19,7 +19,7 @@
         "url": "https://github.com/cooolbros/vscode-vdf"
     },
     "engines": {
-        "vscode": "^1.86.2"
+        "vscode": "^1.95.0"
     },
     "activationEvents": [
         "onFileSystem:vpk"
@@ -332,7 +332,7 @@
     },
     "devDependencies": {
         "@types/path-browserify": "^1.0.2",
-        "@types/vscode": "^1.91.0",
+        "@types/vscode": "^1.95.0",
         "@types/vscode-webview": "^1.57.5",
         "@vscode/test-web": "^0.0.56",
         "@vscode/vsce": "^3.2.1",
