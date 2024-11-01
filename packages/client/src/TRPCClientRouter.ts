@@ -16,7 +16,7 @@ const UTF16LEDecoder = new TextDecoder("utf-16le")
 
 export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>,
-	fileSystemNodeFactory: FileSystemMountPointFactory,
+	fileSystemMountPointFactory: FileSystemMountPointFactory,
 	update: (key: string, path: string, uri: Uri | null) => Promise<void>,
 ) {
 	const fileSystems = new Map<string, FileSystemMountPoint>()
@@ -138,13 +138,13 @@ export function TRPCClientRouter(
 								input.paths.map(async ({ type, uri }) => {
 									switch (type) {
 										case "folder":
-											return await fileSystemNodeFactory.folder(uri)
+											return await fileSystemMountPointFactory.folder(uri)
 										case "tf2":
-											return await fileSystemNodeFactory.tf2(uri)
+											return await fileSystemMountPointFactory.tf2(uri)
 										case "vpk":
-											return await fileSystemNodeFactory.vpk(uri)
+											return await fileSystemMountPointFactory.vpk(uri)
 										case "wildcard":
-											return await fileSystemNodeFactory.wildcard(uri)
+											return await fileSystemMountPointFactory.wildcard(uri)
 									}
 								})
 							)
