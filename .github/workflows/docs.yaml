@@ -12,11 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
-          with:
-            path: .turbo
-            key: ${{ runner.os }}-turbo-${{ github.sha }}
-            restore-keys: |
-              ${{ runner.os }}-turbo-
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
       - uses: actions/setup-node@v4
         with:
           node-version: latest
