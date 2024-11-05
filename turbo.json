@@ -8,6 +8,11 @@
         "build": {
             "dependsOn": [
                 "^build"
+            ],
+            "outputs": [
+                "!.next/cache/**",
+                ".dist/**",
+                ".next/**"
             ]
         }
     }
