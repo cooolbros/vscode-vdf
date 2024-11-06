@@ -10,7 +10,6 @@
                 "^build"
             ],
             "outputs": [
-                "!.next/cache/**",
                 ".next/**",
                 "dist/**"
             ]
