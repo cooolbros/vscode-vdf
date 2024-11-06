@@ -28,7 +28,7 @@ export default {
 	logo: (
 		<div className="flex gap-4 items-center">
 			<img src="https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png" alt="Logo" width={24} height={24} />
-			<h1 className="text-lg font-bold">VSCode VDF</h1>
+			<h1 className="text-lg font-medium">VSCode VDF</h1>
 		</div>
 	),
 	project: {
