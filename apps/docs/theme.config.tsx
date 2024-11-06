@@ -18,6 +18,9 @@ export default {
 					<li>
 						<a href="https://marketplace.visualstudio.com/items?itemName=pfwobcke.vscode-vdf" target="_blank">Visual Studio Marketplace</a>
 					</li>
+					<li>
+						<a href="https://open-vsx.org/extension/pfwobcke/vscode-vdf" target="_blank">Open VSX Registry</a>
+					</li>
 				</ul>
 			</div>
 		)
