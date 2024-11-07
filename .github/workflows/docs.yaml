@@ -13,10 +13,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: latest
+          node-version: 22
       - uses: pnpm/action-setup@v4
       - run: pnpm install
-      - run: pnpm build:docs --force
+      - run: pnpm build:docs
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
