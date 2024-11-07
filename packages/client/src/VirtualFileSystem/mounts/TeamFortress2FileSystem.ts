@@ -5,6 +5,9 @@ import { z } from "zod"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory"
 
+/**
+ * @class
+ */
 export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory: FileSystemMountPointFactory): Promise<FileSystemMountPoint> {
 
 	function invalid(): never {

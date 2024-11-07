@@ -30,6 +30,9 @@ class SortedArray<T> extends Array<T> {
 	}
 }
 
+/**
+ * @class
+ */
 export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPointFactory): Promise<FileSystemMountPoint> {
 
 	if (uri.basename() != "*") {

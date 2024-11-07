@@ -3,6 +3,9 @@ import { Minimatch } from "minimatch"
 import * as vscode from "vscode"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 
+/**
+ * @class
+ */
 export async function VPKFileSystem(vpk: Uri): Promise<FileSystemMountPoint> {
 
 	const stat = await vscode.workspace.fs.stat(vpk)

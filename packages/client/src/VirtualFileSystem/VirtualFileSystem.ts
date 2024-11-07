@@ -1,6 +1,9 @@
 import type { Uri } from "common/Uri"
 import type { FileSystemMountPoint } from "./FileSystemMountPoint"
 
+/**
+ * @class
+ */
 export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSystemMountPoint {
 
 	const paths = new Map<string, { uris: (Uri | null)[], index: number }>()
