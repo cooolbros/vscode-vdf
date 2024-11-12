@@ -47,10 +47,7 @@ export class Client {
 			if (languageId == null) {
 				router ??= TRPCClientRouter(
 					initTRPC.create({ transformer: devalueTransformer }),
-					Client.FileSystemMountPointFactory,
-					async (key, path, uri) => {
-						await this.client.sendNotification("vscode-vdf/teamFortress2FileSystem/update", { key, path, uri })
-					}
+					Client.FileSystemMountPointFactory
 				)
 
 				const response = await fetchRequestHandler<AnyRouter>({
