@@ -4,6 +4,7 @@ import { VDFToJSON } from "client/commands/VDFToJSON"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
 import { showReferences } from "client/commands/showReferences"
+import { onDidChangeActiveTextEditor } from "client/decorations"
 import { languageNames } from "client/languageNames"
 import { join } from "path"
 import type { LanguageNames } from "utils/types/LanguageNames"
@@ -28,6 +29,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
+	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
 
 	// Workspace

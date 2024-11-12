@@ -2,10 +2,12 @@ import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { commands, languages, window, workspace } from "vscode"
 import { z } from "zod"
+import { decorationTypes, editorDecorations } from "./decorations"
 import { searchForHUDRoot } from "./searchForHUDRoot"
 import type { FileSystemMountPoint } from "./VirtualFileSystem/FileSystemMountPoint"
 import type { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
+import { VSCodeRangeSchema } from "./VSCodeSchemas"
 
 const URISchema = z.object({
 	uri: Uri.schema
@@ -135,6 +137,48 @@ export function TRPCClientRouter(
 					.mutation(async ({ input }) => {
 						fileSystems.get(input.key)?.dispose()
 						fileSystems.delete(input.key)
+					})
+			}),
+		textDocument: t.router({
+			decoration: t
+				.procedure
+				.input(
+					URISchema.merge(
+						z.object({
+							key: z.string(),
+							decorations: z.object({
+								range: VSCodeRangeSchema,
+								renderOptions: z.object({
+									after: z.object({
+										contentText: z.string()
+									})
+								})
+							}).array()
+						})
+					)
+				)
+				.mutation(async ({ input }) => {
+
+					const decorationType = decorationTypes.get(input.key)
+					if (!decorationType) {
+						return
+					}
+
+					editorDecorations.set(
+						input.uri.toString(),
+						{
+							decorationType: decorationType,
+							decorations: input.decorations
+						}
+					)
+
+					const editor = window.visibleTextEditors.find((editor) => editor.document.uri.toString() == input.uri.toString())
+					if (editor) {
+						editor.setDecorations(
+							decorationType,
+							input.decorations
+						)
+					}
 					})
 			}),
 		popfile: t.router({
