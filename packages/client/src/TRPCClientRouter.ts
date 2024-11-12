@@ -18,8 +18,7 @@ const UTF16LEDecoder = new TextDecoder("utf-16le")
 
 export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>,
-	fileSystemMountPointFactory: FileSystemMountPointFactory,
-	update: (key: string, path: string, uri: Uri | null) => Promise<void>,
+	fileSystemMountPointFactory: FileSystemMountPointFactory
 ) {
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
