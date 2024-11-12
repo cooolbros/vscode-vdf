@@ -79,24 +79,8 @@ export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory:
 	const paths = new Map<string, { uris: (Uri | null)[], index: number }>()
 
 	return {
-		resolveFile: async (path, update) => {
-
-			const uris = await Promise.all(fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path, update == null ? null : async (uri) => {
-				const result = paths.get(path)
-				if (!result) {
-					return
-				}
-
-				const prev = result.uris[result.index]
-
-				result.uris[index] = uri
-				result.index = uris.findIndex((uri) => uri != null)
-
-				const newUri = uris[result.index] ?? null
-				if (!prev?.equals(newUri)) {
-					update(newUri)
-				}
-			})))
+		resolveFile: async (path) => {
+			const uris = await Promise.all(fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path)))
 
 			const index = uris.findIndex((uri) => uri != null)
 			paths.set(path, { uris: uris, index: index })
@@ -116,12 +100,6 @@ export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory:
 					}
 					return a
 				}, <[string, number][]>[])
-		},
-		remove: (path) => {
-			paths.delete(path)
-			for (const fileSystem of fileSystems) {
-				fileSystem.remove(path)
-			}
 		},
 		dispose: () => {
 			for (const fileSystem of fileSystems) {

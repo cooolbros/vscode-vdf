@@ -1,4 +1,4 @@
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import type { FileSystemMountPoint } from "./FileSystemMountPoint"
 
 /**
@@ -9,25 +9,10 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 	const paths = new Map<string, { uris: (Uri | null)[], index: number }>()
 
 	return {
-		resolveFile: async (path, update) => {
+		resolveFile: async (path) => {
 
 			const uris = await Promise.all(
-				fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path, update == null ? null : (uri) => {
-					const result = paths.get(path)
-					if (!result) {
-						return
-					}
-
-					const prev = result.uris[result.index]
-
-					result.uris[index] = uri
-					result.index = uris.findIndex((uri) => uri != null)
-
-					const newUri = uris[result.index] ?? null
-					if (!prev?.equals(newUri)) {
-						update(newUri)
-					}
-				}).catch(() => null))
+				fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path).catch(() => null))
 			)
 
 			const index = uris.findIndex((uri) => uri != null)
@@ -48,11 +33,6 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 					}
 					return a
 				}, <[string, number][]>[])
-		},
-		remove: (path) => {
-			for (const fileSystem of fileSystems) {
-				fileSystem.remove(path)
-			}
 		},
 		dispose: () => {
 			for (const fileSystem of fileSystems) {

@@ -16,7 +16,7 @@ export async function VPKFileSystem(vpk: Uri): Promise<FileSystemMountPoint> {
 	const authority = JSON.stringify(vpk)
 
 	return {
-		resolveFile: async (path, update) => {
+		resolveFile: async (path) => {
 			try {
 				const uri = new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
 				const stat = await vscode.workspace.fs.stat(uri)
@@ -67,8 +67,6 @@ export async function VPKFileSystem(vpk: Uri): Promise<FileSystemMountPoint> {
 
 			await iterateDirectory(path)
 			return paths
-		},
-		remove: (path) => {
 		},
 		dispose: () => {
 		}

@@ -13,31 +13,24 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 		throw new Error(`${root.toString(true)} is not a directory.`)
 	}
 
-	const paths = new Map<string, (uri: Uri | null) => void>()
-
 	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(root), "**/**"), false, true, false)
 
-	watcher.onDidCreate((event) => {
-		const uri = new Uri(event)
-		const path = root.relative(uri).path.substring(1)
-		const updater = paths.get(path)
-		updater?.(uri)
+	watcher.onDidCreate(async (event) => {
+		const stat = await vscode.workspace.fs.stat(event)
+		if (stat.type == vscode.FileType.File) {
+			const uri = new Uri(event)
+			const path = root.relative(uri).path.substring(1)
+		}
 	})
 
 	watcher.onDidDelete((event) => {
 		const uri = new Uri(event)
 		const path = root.relative(uri).path.substring(1)
-		const updater = paths.get(path)
-		updater?.(null)
 	})
 
 	return {
-		resolveFile: async (path, update) => {
+		resolveFile: async (path) => {
 			const uri = root.joinPath(path)
-
-			if (update) {
-				paths.set(path, update)
-			}
 
 			try {
 				const stat = await vscode.workspace.fs.stat(uri)
@@ -87,9 +80,6 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 
 			await iterateDirectory(path)
 			return paths
-		},
-		remove: (path) => {
-			paths.delete(path)
 		},
 		dispose: () => {
 			watcher.dispose()

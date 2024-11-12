@@ -71,7 +71,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 			.map((fileSystem) => fileSystem.value)
 	)
 
-	const paths = new Map<string, { uris: SortedArray<{ folder: string, uri: Uri | null }>, folder: string | null, updater: (folder: string, uri: Uri | null) => void }>()
+	const paths = new Map<string, { uris: SortedArray<{ folder: string, uri: Uri | null }>, folder: string | null }>()
 
 	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(dirname), "*"), false, true, false)
 
@@ -83,9 +83,8 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 			const fileSystem = { folder: basename, fileSystem: await factory.folder(uri) }
 			fileSystems.push(fileSystem)
 			for (const [path, result] of paths.entries()) {
-				fileSystem.fileSystem.resolveFile(path, (uri) => result.updater(basename, uri)).then((uri) => {
+				fileSystem.fileSystem.resolveFile(path).then((uri) => {
 					result.uris.push({ folder: basename, uri: uri })
-					result.updater(basename, uri)
 				})
 			}
 		}
@@ -105,37 +104,15 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 	})
 
 	return {
-		resolveFile: async (path, update) => {
-
-			const updater = async (folder: string, uri: Uri | null) => {
-				const result = paths.get(path)
-				if (!result) {
-					return
-				}
-
-				const prev = result.uris.find(({ folder: f }) => f == result.folder)?.uri ?? null
-
-				const caller = result.uris.find(({ folder: f }) => f == folder)
-				if (caller) {
-					caller.uri = uri
-				}
-				result.folder = result.uris.find(({ uri }) => uri != null)?.folder ?? null
-
-				const newUri = result.uris.find(({ folder: f }) => f == result.folder)?.uri ?? null
-				if (!prev?.equals(newUri)) {
-					update?.(newUri)
-				}
-			}
-
+		resolveFile: async (path) => {
 			const uris = fileSystems.length != 0
-				? await Promise.all(fileSystems.map(async ({ folder, fileSystem }) => ({ folder: folder, uri: await fileSystem.resolveFile(path, (uri) => updater(folder, uri)) })))
+				? await Promise.all(fileSystems.map(async ({ folder, fileSystem }) => ({ folder: folder, uri: await fileSystem.resolveFile(path) })))
 				: []
 
 			const result = uris.find(({ uri }) => uri != null) ?? null
 			paths.set(path, {
 				uris: new SortedArray((a, b) => a.folder.localeCompare(b.folder), ...uris),
 				folder: result?.folder ?? null,
-				updater: updater,
 			})
 
 			return result?.uri ?? null
@@ -143,11 +120,6 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		readDirectory: async (path, options) => {
 			const all = (await Promise.all(fileSystems.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))).flat()
 			return all.filter(([name], index) => all.findIndex(([n]) => n == name) == index)
-		},
-		remove: (path) => {
-			for (const { fileSystem } of fileSystems) {
-				fileSystem.remove(path)
-			}
 		},
 		dispose: () => {
 			watcher.dispose()

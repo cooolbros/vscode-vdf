@@ -7,7 +7,7 @@ import { WildcardFileSystem } from "./mounts/WildcardFileSystem"
 
 export class FileSystemMountPointFactory {
 
-	private readonly fileSystems = new Map<keyof FileSystemMountPointFactory, Map<string, { value: FileSystemMountPoint, updaters: Map<string, { subscribers: ((uri: Uri | null) => void)[], references: number }>, references: number }>>()
+	private readonly fileSystems = new Map<keyof FileSystemMountPointFactory, Map<string, { value: FileSystemMountPoint, references: number }>>()
 
 	private async resolve<T extends keyof FileSystemMountPointFactory>(type: T, uri: Uri, factory: () => ReturnType<FileSystemMountPointFactory[T]>): Promise<FileSystemMountPoint> {
 		let typeFileSystems = this.fileSystems.get(type)
@@ -19,47 +19,22 @@ export class FileSystemMountPointFactory {
 		let fileSystem = typeFileSystems.get(uri.toString())
 
 		if (!fileSystem) {
-			fileSystem = { value: await factory(), updaters: new Map(), references: 0 }
+			fileSystem = { value: await factory(), references: 0 }
 		}
 
 		fileSystem.references++
 
 		return {
-			resolveFile: async (path, update) => {
-				if (update) {
-					let updater = fileSystem.updaters.get(path)
-					if (!updater) {
-						updater = { subscribers: [], references: 0 }
-						fileSystem.updaters.set(path, updater)
-					}
-					updater.subscribers.push(update)
-					updater.references++
-				}
-
-				return await fileSystem.value.resolveFile(path, async (uri) => {
-					for (const update of fileSystem.updaters.get(path)?.subscribers ?? []) {
-						update(uri)
-					}
-				})
-			},
-			readDirectory: async (path, options) => {
-				return await fileSystem.value.readDirectory(path, options)
-			},
-			remove: (path) => {
-				const updater = fileSystem.updaters.get(path)
-				if (updater) {
-					updater.references--
-					if (updater.references == 0) {
-						fileSystem.value.remove(path)
-						fileSystem.updaters.delete(path)
-					}
-				}
-			},
+			resolveFile: fileSystem.value.resolveFile,
+			readDirectory: fileSystem.value.readDirectory,
 			dispose: () => {
 				fileSystem.references--
 				if (fileSystem.references == 0) {
 					fileSystem.value.dispose()
 					typeFileSystems.delete(uri.toString())
+					if (typeFileSystems.size == 0) {
+						this.fileSystems.delete(type)
+					}
 				}
 			}
 		}

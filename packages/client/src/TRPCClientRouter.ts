@@ -99,7 +99,7 @@ export function TRPCClientRouter(
 						})
 					)
 					.query(async ({ input }) => {
-						return await fileSystems.get(input.key)!.resolveFile(input.path, async (uri) => await update(input.key, input.path, uri))
+						return await fileSystems.get(input.key)!.resolveFile(input.path)
 					}),
 				readDirectory: t
 					.procedure
@@ -115,17 +115,6 @@ export function TRPCClientRouter(
 					)
 					.query(async ({ input }) => {
 						return await fileSystems.get(input.key)!.readDirectory(input.path, input.options)
-					}),
-				remove: t
-					.procedure
-					.input(
-						z.object({
-							key: z.string(),
-							path: z.string(),
-						})
-					)
-					.mutation(async ({ input }) => {
-						return fileSystems.get(input.key)!.remove(input.path)
 					}),
 				dispose: t
 					.procedure
@@ -179,8 +168,8 @@ export function TRPCClientRouter(
 							input.decorations
 						)
 					}
-					})
-			}),
+				})
+		}),
 		popfile: t.router({
 			vscript: t.router({
 				install: t
