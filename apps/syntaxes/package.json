@@ -1,7 +1,7 @@
 {
     "name": "syntaxes",
     "scripts": {
-        "dev": "node build --watch-path=./src",
+        "dev": "node --watch-path=./src build",
         "build": "node build"
     },
     "devDependencies": {
