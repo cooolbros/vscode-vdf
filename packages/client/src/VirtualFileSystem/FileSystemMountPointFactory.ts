@@ -25,8 +25,8 @@ export class FileSystemMountPointFactory {
 		fileSystem.references++
 
 		return {
-			resolveFile: fileSystem.value.resolveFile,
-			readDirectory: fileSystem.value.readDirectory,
+			resolveFile: (path) => fileSystem.value.resolveFile(path),
+			readDirectory: (path, options) => fileSystem.value.readDirectory(path, options),
 			dispose: () => {
 				fileSystem.references--
 				if (fileSystem.references == 0) {
