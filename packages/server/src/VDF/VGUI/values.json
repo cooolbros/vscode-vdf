@@ -23,6 +23,13 @@
             "AUTORESIZE_DOWNANDRIGHT"
         ]
     },
+    "centerwrap": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
     "controlname": {
         "kind": 7,
         "values": [
@@ -235,6 +242,13 @@
             "1"
         ]
     },
+    "mouseinputenabled": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
     "paintbackground": {
         "kind": 12,
         "values": [
@@ -310,6 +324,13 @@
             "1"
         ]
     },
+    "scaleimage": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
     "textalignment": {
         "kind": 13,
         "values": [
@@ -344,6 +365,13 @@
         ]
     },
     "visible": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "wrap": {
         "kind": 12,
         "values": [
             "0",
