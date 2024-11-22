@@ -31,7 +31,6 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 	return {
 		resolveFile: async (path) => {
 			const uri = root.joinPath(path)
-
 			try {
 				const stat = await vscode.workspace.fs.stat(uri)
 				if (stat.type == vscode.FileType.Directory) {
