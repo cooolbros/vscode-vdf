@@ -113,7 +113,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				severity: DiagnosticSeverity.Warning,
 				code: "useless-squad",
 				source: "popfile",
-				message: "Squad with 1 entry is superfluous.",
+				message: "Squad with 1 TFBot is useless.",
 				data: {
 					kind: CodeActionKind.QuickFix,
 					fix: (createDocumentWorkspaceEdit) => {
