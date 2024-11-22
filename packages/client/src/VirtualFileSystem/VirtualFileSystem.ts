@@ -12,7 +12,7 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 		resolveFile: async (path) => {
 
 			const uris = await Promise.all(
-				fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path).catch(() => null))
+				fileSystems.map((fileSystem) => fileSystem.resolveFile(path).catch(() => null))
 			)
 
 			const index = uris.findIndex((uri) => uri != null)
