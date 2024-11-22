@@ -46,6 +46,7 @@ export function activate(context: ExtensionContext): void {
 		const client = languageClients[languageId] = new Client(
 			languageClients,
 			startServer,
+			context.subscriptions,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${languageNames[languageId]} Language Server`,

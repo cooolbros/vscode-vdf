@@ -3,21 +3,22 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { LanguageNames } from "utils/types/LanguageNames"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
-import type { BaseLanguageClient } from "vscode-languageclient"
+import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
 import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 export class Client {
 
+	private static readonly serverSchema = z.union([
+		z.literal("hudanimations"),
+		z.literal("popfile"),
+		z.literal("vdf"),
+		z.literal("vmt"),
+	])
+
 	private static readonly TRPCRequestSchema = z.tuple([
-		z.union([
-			z.literal("hudanimations"),
-			z.literal("popfile"),
-			z.literal("vmt"),
-			z.literal("vdf"),
-			z.null()
-		]),
+		Client.serverSchema.nullable(),
 		z.tuple([
 			z.string(),
 			z.object({
@@ -28,44 +29,81 @@ export class Client {
 		])
 	])
 
+	private static readonly sendSchema = z.object({
+		server: Client.serverSchema,
+		method: z.string(),
+		param: z.any()
+	})
+
 	private static readonly FileSystemMountPointFactory = new FileSystemMountPointFactory()
 
 	private readonly client: BaseLanguageClient
+	private router?: ReturnType<typeof TRPCClientRouter>
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
 
-	constructor(languageClients: { -readonly [P in keyof LanguageNames]?: Client }, startServer: (languageId: VSCodeVDFLanguageID) => void, client: BaseLanguageClient) {
+	constructor(
+		languageClients: { -readonly [P in keyof LanguageNames]?: Client },
+		startServer: (languageId: VSCodeVDFLanguageID) => void,
+		subscriptions: { dispose(): any }[],
+		client: BaseLanguageClient,
+	) {
 		this.client = client
 		this.startServer = startServer
 		this.subscriptions = []
 
-		let router: ReturnType<typeof TRPCClientRouter>
+		this.subscriptions.push(
+			this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
+				const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
 
-		this.subscriptions.push(this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
-			const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
+				if (languageId == null) {
+					this.router ??= TRPCClientRouter(
+						initTRPC.create({
+							transformer: devalueTransformer({
+								reducers: {},
+								revivers: {},
+								name: "client",
+								subscriptions: subscriptions,
+								onRequest: (method, handler) => client.onRequest(method, handler),
+								onNotification: (method, handler) => client.onNotification(method, handler),
+								sendRequest: (server, method, param) => {
+									if (server != null) {
+										languageClients[Client.serverSchema.parse(server)]!.client.sendRequest(method, param)
+									}
+									throw new Error("server == null")
+								},
+								sendNotification: (server, method, param) => {
+									if (server != null) {
+										languageClients[Client.serverSchema.parse(server)]!.client.sendNotification(method, param)
+									}
+									throw new Error("server == null")
+								},
+							})
+						}),
+						Client.FileSystemMountPointFactory
+					)
 
-			if (languageId == null) {
-				router ??= TRPCClientRouter(
-					initTRPC.create({ transformer: devalueTransformer }),
-					Client.FileSystemMountPointFactory
-				)
+					const response = await fetchRequestHandler<AnyRouter>({
+						endpoint: "",
+						req: new Request(new URL(url, "https://vscode.vdf"), init),
+						router: this.router
+					})
 
-				const response = await fetchRequestHandler<AnyRouter>({
-					endpoint: "",
-					req: new Request(new URL(url, "https://vscode.vdf"), init),
-					router: router
-				})
-
-				return await response.text()
-			}
-			else {
-				const languageClient = languageClients[languageId]
-				if (!languageClient) {
-					throw new Error(`${languageId} language server not running.`)
+					return await response.text()
 				}
-				return languageClient.client.sendRequest("vscode-vdf/trpc", [url, init])
-			}
-		}))
+				else {
+					return await languageClients[languageId]!.client.sendRequest("vscode-vdf/trpc", [url, init])
+				}
+			}),
+			this.client.onRequest("vscode-vdf/sendRequest", async (...params) => {
+				const { server, method, param } = Client.sendSchema.parse(params[0])
+				return await languageClients[server]!.client.sendRequest(method, param)
+			}),
+			this.client.onRequest("vscode-vdf/sendNotification", async (...params) => {
+				const { server, method, param } = Client.sendSchema.parse(params[0])
+				return await languageClients[server]!.client.sendNotification(method, param)
+			})
+		)
 	}
 
 	public async start(): Promise<void> {
