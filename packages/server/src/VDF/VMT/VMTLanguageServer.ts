@@ -1,160 +1,77 @@
-import { encodeBaseValue } from "utils/encodeBaseValue"
-import { normalizeUri } from "utils/normalizeUri"
-import type { DocumentLinkData } from "utils/types/DocumentLinkData"
-import { Color, CompletionItem, CompletionItemKind, Diagnostic, DocumentLink, type Connection, type TextDocumentChangeEvent } from "vscode-languageserver"
-import type { TextDocument } from "vscode-languageserver-textdocument"
+import { CompletionItemKind, InsertTextFormat, type Connection } from "vscode-languageserver"
+import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import keys from "./keys.json"
-import values from "./values.json"
+import { VMTTextDocument, type VMTTextDocumentDependencies } from "./VMTTextDocument"
+import { VMTWorkspace } from "./VMTWorkspace"
 
-export class VMTLanguageServer extends VDFLanguageServer<"vmt"> {
+export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument, VMTTextDocumentDependencies> {
 
-	private readonly documentHUDRoots: Map<string, string | null>
+	private readonly workspaces: Map<string, VMTWorkspace>
 
 	constructor(languageId: "vmt", name: "VMT", connection: Connection) {
 		super(languageId, name, connection, {
-			getVDFTokeniserOptions(uri) {
-				return { allowMultilineStrings: false }
-			},
+			name: "vmt",
 			servers: new Set(),
-			keyHash: (key) => key,
-			schema: {
-				keys: keys,
-				values: values,
+			capabilities: {},
+			createDocument: async (init, documentConfiguration$) => {
+				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
+
+				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
+					hudRoot ? { type: "folder", uri: hudRoot } : null,
+					{ type: "tf2", uri: teamFortress2Folder }
+				])
+
+				let workspace: WorkspaceBase | null
+
+				if (hudRoot != null) {
+					const key = hudRoot.toString()
+					let w = this.workspaces.get(key)
+					if (!w) {
+						w = new VMTWorkspace(hudRoot)
+						this.workspaces.set(key, w)
+					}
+					workspace = w
+				}
+				else {
+					workspace = null
+				}
+
+				return new VMTTextDocument(
+					init,
+					documentConfiguration$,
+					fileSystem$,
+					this.documents,
+					workspace
+				)
 			},
 			completion: {
 				root: [
 					{
 						label: "LightmappedGeneric",
-						kind: CompletionItemKind.Class
+						kind: CompletionItemKind.Class,
+						preselect: true,
+						insertText: "WaveSchedule\n{\n\t$0\n}",
+						insertTextFormat: InsertTextFormat.Snippet
 					},
 					{
 						label: "UnlitGeneric",
-						kind: CompletionItemKind.Class
+						kind: CompletionItemKind.Class,
+						preselect: true,
+						insertText: "WaveSchedule\n{\n\t$0\n}",
+						insertTextFormat: InsertTextFormat.Snippet
 					},
 					{
 						label: "VertexlitGeneric",
-						kind: CompletionItemKind.Class
+						kind: CompletionItemKind.Class,
+						preselect: true,
+						insertText: "WaveSchedule\n{\n\t$0\n}",
+						insertTextFormat: InsertTextFormat.Snippet
 					}
-				]
-			},
-			definitionReferences: [],
-			links: [
-				{
-					keys: new Set([
-						"$baseTexture".toLowerCase()
-					]),
-					resolve: async (documentLink: DocumentLinkData): Promise<DocumentLink | null> => {
-
-						const hudRoot = this.documentHUDRoots.get(documentLink.data.uri)
-
-						const value = `materials/${encodeBaseValue(documentLink.data.value.toLowerCase())}.vtf`
-
-						if (hudRoot) {
-							const hudUri = `${hudRoot}/${value}`
-							if (await this.trpc.client.fileSystem.exists.query({ uri: hudUri })) {
-								documentLink.target = hudUri
-								return documentLink
-							}
-						}
-
-						const tfUri = normalizeUri(`${this.documentsConfiguration.get(documentLink.data.uri).teamFortress2Folder}/tf/${value}`)
-						if (await this.trpc.client.fileSystem.exists.query({ uri: tfUri })) {
-							documentLink.target = tfUri
-							return documentLink
-						}
-
-						const vpkUri = `vpk:///${value}?vpk=textures`
-						if (await this.trpc.client.fileSystem.exists.query({ uri: vpkUri })) {
-							documentLink.target = vpkUri
-							return documentLink
-						}
-
-						return documentLink
-					}
-				}
-			],
-
-			// https://developer.valvesoftware.com/wiki/$color
-			colours: [
-				{
-					parse: (value: string): Color | null => {
-						if (/\[\s?[\d.]+\s+[\d.]+\s+[\d.]+\s?\]/.test(value)) {
-							const colour = value.split(/[\s[\]]+/)
-							return {
-								red: parseFloat(colour[1]),
-								green: parseFloat(colour[2]),
-								blue: parseFloat(colour[3]),
-								alpha: 1
-							}
-						}
-						return null
-					},
-					stringify: (colour: Color): string => {
-						return `[ ${colour.red.toFixed(2)} ${colour.green.toFixed(2)} ${colour.blue.toFixed(2)} ]`
-					}
-				},
-				{
-					parse: (value: string): Color | null => {
-						if (/{\s?\d+\s+\d+\s+\d+\s?}/.test(value)) {
-							const colour = value.split(/[\s{}]+/)
-							return {
-								red: parseInt(colour[1]) / 255,
-								green: parseInt(colour[2]) / 255,
-								blue: parseInt(colour[3]) / 255,
-								alpha: 1
-							}
-						}
-						return null
-					},
-					stringify: (colour: Color): string => {
-						return `{ ${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} }`
-					}
-				}
-			],
+				],
+				typeKey: null,
+				defaultType: null
+			}
 		})
-
-		this.documentHUDRoots = new Map<string, string | null>()
-	}
-
-	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
-		super.onDidOpen(e)
-
-		const hudRoot = (await this.trpc.client.searchForHUDRoot.query({ uri: e.document.uri }))?.toString() ?? null
-		this.documentHUDRoots.set(e.document.uri, hudRoot)
-	}
-
-	protected async validateDocumentSymbol(): Promise<Diagnostic | null> {
-		return null
-	}
-
-	protected async getCompletionValues(uri: string, key: string, value: string): Promise<CompletionItem[] | null> {
-
-		if (key == "$basetexture") {
-
-			const hudRoot = this.documentHUDRoots.get(uri)
-
-			return [
-				...(
-					hudRoot
-						? await this.getFilesCompletion({ uri }, {
-							uri: `${hudRoot}/materials`,
-							relativePath: value,
-							extensionsFilter: [".vtf"],
-							displayExtensions: false
-						})
-						: []
-				),
-				...await this.getFilesCompletion({ uri }, {
-					uri: "vpk:///materials",
-					query: "?vpk=textures",
-					relativePath: value,
-					extensionsFilter: [".vtf"],
-					displayExtensions: false
-				})
-			]
-		}
-
-		return null
+		this.workspaces = new Map()
 	}
 }

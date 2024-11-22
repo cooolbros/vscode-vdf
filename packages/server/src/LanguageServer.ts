@@ -1,29 +1,94 @@
-import { createTRPCProxyClient, httpLink, type CreateTRPCProxyClient } from "@trpc/client"
+import { createTRPCProxyClient, httpBatchLink, type CreateTRPCClientOptions, type CreateTRPCProxyClient } from "@trpc/client"
 import { initTRPC, type AnyRouter, type CombinedDataTransformer } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
-import { posix } from "path"
+import { Uri } from "common/Uri"
+import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap, zip } from "rxjs"
+import { findBestMatch } from "string-similarity"
 import type { LanguageNames } from "utils/types/LanguageNames"
+import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
-import { VDFSyntaxError } from "vdf"
-import { CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, DocumentSymbol, TextDocuments, TextDocumentSyncKind, type Connection, type DocumentSymbolParams, type RequestHandler, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
-import { TextDocument } from "vscode-languageserver-textdocument"
+import { VDFPosition, VDFRange } from "vdf"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
-import { DocumentsConfiguration } from "./DocumentsConfiguration"
+import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
-import type { LanguageServerConfiguration } from "./LanguageServerConfiguration"
+import { TeamFortress2FileSystem } from "./TeamFortress2FileSystem"
+import type { TextDocumentBase, TextDocumentInit } from "./TextDocumentBase"
+import { TextDocuments } from "./TextDocuments"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
 
-export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TDocumentSymbols extends DocumentSymbol[]> {
+const capabilities = {
+	textDocumentSync: TextDocumentSyncKind.Incremental,
+	completionProvider: {
+		triggerCharacters: [
+			"[",
+			"/",
+			"\"",
+			"#",
+		]
+	},
+	definitionProvider: true,
+	referencesProvider: true,
+	documentSymbolProvider: true,
+	codeActionProvider: true,
+	codeLensProvider: {
+		resolveProvider: false
+	},
+	documentLinkProvider: {
+		resolveProvider: true,
+	},
+	documentFormattingProvider: true,
+	renameProvider: {
+		prepareProvider: true
+	}
+} satisfies ServerCapabilities
 
+export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies> {
+	name: "hudanimations" | "popfile" | "vdf" | "vmt"
+	servers: Set<keyof LanguageNames>
+	capabilities: Omit<ServerCapabilities, keyof typeof capabilities>
+	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
+}
+
+export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
+
+export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { kind: (typeof CodeActionKind)[keyof (typeof CodeActionKind)], fix: (createDocumentWorkspaceEdit: (range: VDFRange, newText: string) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
+
+export type CompletionFiles = (path: string, options: CompletionFilesOptions) => Promise<CompletionItem[]>
+
+export interface CompletionFilesOptions {
+	value: string | null
+	extensionsPattern: `.${string}` | null
+	displayExtensions: boolean
+}
+
+export abstract class LanguageServer<
+	TLanguageId extends keyof LanguageNames,
+	TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>,
+	TDocumentSymbols extends DocumentSymbol[],
+	TDependencies
+> {
+
+	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
-	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocumentSymbols>
-	protected readonly documents: TextDocuments<TextDocument>
-	protected readonly documentsSymbols: Map<string, TDocumentSymbols>
-	protected readonly documentsConfiguration: DocumentsConfiguration
+	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
+	protected readonly fileSystems: {
+		get: (paths: (teamFortress2Folder: Uri) => ({ type: "folder" | "tf2" | "vpk" | "wildcard", uri: Uri } | null)[]) => Observable<TeamFortress2FileSystem>
+	}
+	protected readonly documents: TextDocuments<TDocument>
+
+	private readonly observables = new Map<string, Observable<any>>()
+	private readonly subscriptions = new Map<Observable<any>, Map<string, Subscription | null>>()
+	private readonly subjects = new Map<string, WeakRef<Subject<unknown>>>()
+
+	private readonly documentDiagnostics: WeakMap<TDocument, Map<string, DiagnosticCodeAction>>
+	private readonly documentsLinks: WeakMap<TDocument, Map<string, (documentLink: DocumentLink) => Promise<Uri | null>>>
+
+	private oldName: [symbol, string] | null = null
 
 	protected readonly trpc: {
 		client: CreateTRPCProxyClient<ReturnType<typeof TRPCClientRouter>>
@@ -35,24 +100,216 @@ export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TD
 		}
 	}
 
-	constructor(languageId: TLanguageId, name: LanguageNames[TLanguageId], connection: Connection, configuration: LanguageServerConfiguration<TDocumentSymbols>, capabilities: Omit<ServerCapabilities, "textDocumentSync" | "documentSymbolProvider">) {
+	constructor(
+		languageId: TLanguageId,
+		name: LanguageNames[TLanguageId],
+		connection: Connection,
+		languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>,
+	) {
+		this.languageId = languageId
 		this.connection = connection
-		this.languageServerConfiguration = configuration
-		this.documents = new TextDocuments({
-			create(uri, languageId, version, content) {
-				return TextDocument.create(decodeURIComponent(uri), languageId, version, content)
+		this.languageServerConfiguration = languageServerConfiguration
+
+		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
+
+		const teamFortress2Folder$ = onDidChangeConfiguration$.pipe(
+			// concatMap(async () => {
+			// 	await this.ready
+			// }),
+			concatMap(async () => {
+				return VSCodeVDFConfigurationSchema.shape.teamFortress2Folder.parse(await this.connection.workspace.getConfiguration({ section: "vscode-vdf.teamFortress2Folder" }))
+			}),
+			distinctUntilChanged(),
+			shareReplay(1)
+		)
+
+		const fileSystems = new Map<string, Observable<TeamFortress2FileSystem>>()
+		this.fileSystems = {
+			get: (paths) => {
+				return teamFortress2Folder$.pipe(
+					concatMap(async (teamFortress2Folder) => {
+						return await this.trpc.client.teamFortress2FileSystem.open.mutate({
+							paths: paths(teamFortress2Folder).filter((path) => path != null)
+						})
+					}),
+					distinctUntilKeyChanged("key"),
+					switchMap(({ key, paths }) => {
+						let fileSystem$ = fileSystems.get(key)
+						if (!fileSystem$) {
+							fileSystem$ = of(
+								new TeamFortress2FileSystem(paths.map((path) => path.uri), {
+									resolveFile: (path) => {
+										return from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path }))
+									},
+									readDirectory: async (path, options) => {
+										return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
+									}
+								})
+							).pipe(
+								finalize(() => {
+									console.log(`TeamFortress2FileSystem.finalize ${key}`)
+									// fileSystems.delete(key)
+									// this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
+								}),
+								shareReplay({
+									bufferSize: 1,
+									refCount: true,
+								})
+							)
+
+							fileSystems.set(key, fileSystem$)
+						}
+						return fileSystem$
+					}),
+					shareReplay(1)
+				)
 			},
-			update(document, changes, version) {
-				return TextDocument.update(document, changes, version)
-			},
+		}
+
+		this.connection.onDidChangeConfiguration((params) => {
+			onDidChangeConfiguration$.next()
 		})
-		this.documentsSymbols = new Map<string, TDocumentSymbols>()
-		this.documentsConfiguration = new DocumentsConfiguration(this.connection)
+
+		this.documents = new TextDocuments({
+			open: async (uri) => {
+				return await this.trpc.client.workspace.openTextDocument.query({ uri, languageId: languageId })
+			},
+			create: async (init) => {
+				return languageServerConfiguration.createDocument(init, onDidChangeConfiguration$.pipe(
+					concatMap(async () => {
+						return VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: init.uri.toString(), section: "vscode-vdf" }))
+					}),
+					shareReplay(1)
+				))
+			},
+			onDidOpen: async (event) => {
+				const subscriptions: { unsubscribe(): void }[] = []
+
+				subscriptions.push(
+					event.document.documentConfiguration$.pipe(
+						distinctUntilKeyChanged("updateDiagnosticsEvent"),
+						switchMap(({ updateDiagnosticsEvent }) => {
+							return updateDiagnosticsEvent == "type"
+								? event.document.diagnostics$
+								: new Subject<DiagnosticCodeAction[]>()
+						})
+					).subscribe((diagnostics) => {
+						const uri = event.document.uri.toString()
+
+						const result: Diagnostic[] = []
+						const map = new Map<string, DiagnosticCodeAction>()
+
+						for (const diagnostic of diagnostics) {
+							const id = crypto.randomUUID()
+							const { data, ...rest } = diagnostic
+							map.set(id, diagnostic)
+							result.push({ ...rest, data: { id } })
+						}
+
+						this.documentDiagnostics.set(event.document, map)
+
+						this.connection.sendDiagnostics({
+							uri: uri,
+							diagnostics: result
+						})
+					})
+				)
+
+				subscriptions.push(
+					event.document.definitionReferences$.pipe(
+						switchMap((definitionReferences) => definitionReferences.references$)
+					).subscribe(() => {
+						this.connection.sendRequest(CodeLensRefreshRequest.method)
+					})
+				)
+
+				const { onDidClose } = await this.onDidOpen(event)
+
+				return () => {
+					this.connection.sendDiagnostics({
+						uri: event.document.uri.toString(),
+						diagnostics: []
+					})
+
+					onDidClose()
+
+					for (const subscription of subscriptions) {
+						subscription.unsubscribe()
+					}
+
+					this.documentDiagnostics.delete(event.document)
+					this.documentsLinks.delete(event.document)
+				}
+			}
+		})
+
+		this.documentDiagnostics = new WeakMap()
+		this.documentsLinks = new WeakMap()
+
+		this.connection.onInitialize(async (params) => {
+			this.connection.console.log(`${name} Language Server`)
+			return {
+				serverInfo: {
+					name: `${name} Language Server`
+				},
+				capabilities: {
+					// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
+					...languageServerConfiguration.capabilities,
+					...capabilities,
+				},
+				servers: [...this.languageServerConfiguration.servers]
+			}
+		})
+
+		this.connection.onInitialized(async (params) => {
+			await this.connection.client.register(DidChangeConfigurationNotification.type)
+		})
+
+		this.onTextDocumentRequest(this.connection.onDidSaveTextDocument, this.onDidSaveTextDocument)
+		this.onTextDocumentRequest(this.connection.onCompletion, this.onCompletion)
+		this.onTextDocumentRequest(this.connection.onDefinition, this.onDefinition)
+		this.onTextDocumentRequest(this.connection.onReferences, this.onReferences)
+		this.onTextDocumentRequest(this.connection.onDocumentSymbol, this.onDocumentSymbol)
+		this.onTextDocumentRequest(this.connection.onCodeAction, this.onCodeAction)
+		this.onTextDocumentRequest(this.connection.onCodeLens, this.onCodeLens)
+		this.onTextDocumentRequest(
+			this.connection.onDocumentFormatting,
+			async (params: TextDocumentRequestParams<DocumentFormattingParams>) => {
+				try {
+					return await this.onDocumentFormatting(await this.documents.get(params.textDocument.uri), params)
+				}
+				catch (error) {
+					console.error(error)
+					return null
+				}
+			}
+		)
+		this.onTextDocumentRequest(this.connection.onDocumentLinks, this.onDocumentLinks)
+		this.connection.onDocumentLinkResolve((documentLink) => this.onDocumentLinkResolve(documentLink))
+		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
+		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 
 		let _router: AnyRouter
 
+		const transformer = devalueTransformer({
+			reducers: {
+				Definitions: (value: unknown) => value instanceof Definitions && value.toJSON(),
+				References: (value: unknown) => value instanceof References && value.toJSON(),
+			},
+			revivers: {
+				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
+				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
+			},
+			name: this.languageServerConfiguration.name,
+			subscriptions: [],
+			onRequest: (method, handler) => this.connection.onRequest(method, handler),
+			onNotification: (method, handler) => this.connection.onNotification(method, handler),
+			sendRequest: (server, method, param) => server != null ? this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param }) : this.connection.sendRequest(method, param),
+			sendNotification: (server, method, param) => server != null ? this.connection.sendRequest("vscode-vdf/sendNotification", { server, method, param }) : this.connection.sendNotification(method, param),
+		}) satisfies CombinedDataTransformer
+
 		const resolveTRPC = async (input: string, init?: RequestInit) => {
-			_router ??= this.router(initTRPC.create({ transformer: devalueTransformer, }))
+			_router ??= this.router(initTRPC.create({ transformer: transformer, isDev: true }))
 			const response = await fetchRequestHandler({
 				endpoint: "",
 				req: new Request(new URL(input, "https://vscode.vdf"), init),
@@ -75,15 +332,15 @@ export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TD
 		})
 
 		const VSCodeRPCOptions = (server: VSCodeVDFLanguageID | null) => ({
-			transformer: devalueTransformer,
+			transformer: transformer,
 			links: [
-				httpLink({
+				httpBatchLink({
 					url: "",
 					fetch: async (input, init) => {
-						let body: Promise<string>
+						let body: string
 
 						if (server != languageId) {
-							body = this.connection.sendRequest(
+							body = await this.connection.sendRequest(
 								"vscode-vdf/trpc",
 								[
 									server,
@@ -102,13 +359,14 @@ export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TD
 							let url = typeof input == "object"
 								? ("url" in input ? input.url : input.pathname)
 								: input
-							body = resolveTRPC(url, init)
+							body = await resolveTRPC(url, init)
 						}
-						return new Response(await body)
+
+						return new Response(body)
 					}
 				})
 			]
-		})
+		} satisfies CreateTRPCClientOptions<AnyRouter>)
 
 		this.trpc = {
 			client: createTRPCProxyClient<ReturnType<typeof TRPCClientRouter>>(VSCodeRPCOptions(null)),
@@ -119,29 +377,6 @@ export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TD
 				vmt: createTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>(VSCodeRPCOptions("vmt")),
 			}
 		}
-
-		this.connection.onInitialize((params) => {
-			this.connection.console.log(JSON.stringify(params, null, 2))
-			return {
-				serverInfo: {
-					name: `${this.name} Language Server`
-				},
-				capabilities: {
-					// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
-					...capabilities,
-					textDocumentSync: TextDocumentSyncKind.Incremental,
-					documentSymbolProvider: true,
-				},
-				servers: [...this.languageServerConfiguration.servers]
-			}
-		})
-
-		this.documents.onDidOpen(this.onDidOpen.bind(this))
-		this.documents.onDidChangeContent(this.onDidChangeContent.bind(this))
-		this.documents.onDidSave(this.onDidSave.bind(this))
-		this.documents.onDidClose(this.onDidClose.bind(this))
-
-		this.onTextDocumentRequest(this.connection.onDocumentSymbol, this.onDocumentSymbol)
 
 		this.documents.listen(this.connection)
 		this.connection.listen()
@@ -154,213 +389,432 @@ export abstract class LanguageServer<TLanguageId extends keyof LanguageNames, TD
 					.procedure
 					.input(
 						z.object({
-							uri: z.string()
+							uri: Uri.schema
 						})
 					)
 					.query(async ({ input }) => {
 						return await this.onDocumentSymbol({ textDocument: input })
+					}),
+				references: t
+					.procedure
+					.input(
+						z.object({
+							textDocument: z.object({
+								uri: Uri.schema
+							}),
+							position: VDFPosition.schema,
+							context: z.object({
+								includeDeclaration: z.boolean()
+							})
+						})
+					)
+					.query(async ({ input }) => await this.onReferences(input)),
+				rename: t
+					.procedure
+					.input(
+						z.object({
+							textDocument: z.object({
+								uri: Uri.schema
+							}),
+							oldName: z.object({
+								type: z.symbol(),
+								key: z.string(),
+							}),
+							newName: z.string(),
+						})
+					)
+					.query(async ({ input }) => {
+						const document = await this.documents.get(input.textDocument.uri, true)
+						return await this.rename(document, input.oldName.type, input.oldName.key, input.newName)
+					})
+			}),
+			observable: t.router({
+				subscribe: t
+					.procedure
+					.input(
+						z.object({
+							serverId: z.enum([
+								"hudanimations",
+								"popfile",
+								"vgui",
+								"vmt",
+							]),
+							id: z.string()
+						})
+					)
+					.mutation(({ input }) => {
+						const observable = this.observables.get(input.id)!
+
+						let servers = this.subscriptions.get(observable)
+						if (!servers) {
+							servers = new Map()
+							this.subscriptions.set(observable, servers)
+						}
+
+						let subscription = servers.get(input.serverId)
+						if (!subscription) {
+							subscription = observable.subscribe((value) => {
+								this.trpc.servers[input.serverId].observable.next.mutate({
+									id: input.id,
+									value: value
+								})
+							})
+							servers.set(input.serverId, subscription)
+						}
+					}),
+				next: t
+					.procedure
+					.input(
+						z.object({
+							id: z.string(),
+							value: z.any()
+						})
+					)
+					.mutation(({ input }) => {
+						// this.next(input.id, input.value)
+					}),
+				unsubscribe: t
+					.procedure
+					.input(
+						z.object({
+							serverId: z.enum([
+								"hudanimations",
+								"popfile",
+								"vgui",
+								"vmt",
+							]),
+							id: z.string()
+						})
+					)
+					.mutation(({ input }) => {
+						const observable = this.observables.get(input.id)!
+						const servers = this.subscriptions.get(observable)
+						if (servers) {
+							servers.get(input.serverId)?.unsubscribe()
+							servers.set(input.serverId, null)
+						}
+					}),
+				free: t
+					.procedure
+					.input(
+						z.object({
+							serverId: z.enum([
+								"hudanimations",
+								"popfile",
+								"vgui",
+								"vmt",
+							]),
+							id: z.string()
+						})
+					)
+					.mutation(({ input }) => {
+						const observable = this.observables.get(input.id)
+						if (observable) {
+							const servers = this.subscriptions.get(observable)
+							if (servers) {
+								const subscription = servers.get(input.serverId)
+								if (subscription != undefined && subscription != null) {
+									throw new Error(`Cannot free observable "${input.id}" with ${input.serverId} active subscription`)
+								}
+
+								servers.delete(input.serverId)
+								if (servers.size == 0) {
+									this.observables.delete(input.id)
+									this.subscriptions.delete(observable)
+								}
+							}
+						}
 					})
 			})
 		})
 	}
 
 	protected onTextDocumentRequest<P extends { textDocument: { uri: string } }, R, E>(
-		listener: (handler: RequestHandler<P, R | null, E>) => { dispose(): void },
-		callback: (params: P) => R | null | Promise<R | null>
+		listener: (handler: GenericRequestHandler<R | null, E>) => { dispose(): void },
+		callback: (params: TextDocumentRequestParams<P>) => R | null | Promise<R | null>
 	) {
+		const fn = callback.bind(this)
 		listener(async (params) => {
-			params.textDocument.uri = decodeURIComponent(params.textDocument.uri)
 			try {
-				return await callback.call(this, params)
+				const { textDocument, ...rest } = params
+				return await fn({
+					...rest,
+					textDocument: { uri: new Uri(textDocument.uri) }
+				})
 			}
 			catch (error: any) {
-				console.error(error.message)
-				this.connection.console.error(error.message)
+				console.trace(listener, error.message)
+				throw error
 			}
-			return null
 		})
 	}
 
-	protected async getFilesCompletion(document: { uri: string }, { items = [], uri, relativePath, query, startsWithFilter, extensionsFilter, displayExtensions }: { items?: CompletionItem[], uri: string, relativePath?: string, query?: `?${string}`, startsWithFilter?: string, extensionsFilter?: string[], displayExtensions: boolean }) {
-		const configuration = this.documentsConfiguration.get(document.uri)
-		if (!configuration) {
-			return []
-		}
-
-		const basename = posix.basename(document.uri)
-		startsWithFilter = startsWithFilter?.toLowerCase()
-
-		const filters = [
-			(name: string, type: number) => posix.basename(name) != basename,
-			(name: string, type: number) => !items.some((item) => item.label == name),
-			configuration.filesAutoCompletionKind == "all" ? (name: string, type: number) => type == 1 : null,
-			startsWithFilter ? (name: string, type: number) => name.toLowerCase().startsWith(startsWithFilter) : null,
-			extensionsFilter ? (name: string, type: number) => extensionsFilter.includes(posix.extname(name)) : null,
-		].filter((f) => f != null)
-
-		const filter = (name: string, type: number) => filters.every((filter) => filter(name, type))
-
-		if (configuration.filesAutoCompletionKind == "incremental") {
-			for (const [name, type] of await this.trpc.client.fileSystem.readDirectory.query({ uri: `${uri}${relativePath ? `/${relativePath}` : ""}${query}` })) {
-				if (filter(name, type)) {
-					if (!items.some((item) => item.label == name)) {
-						items.push({
-							label: name, // Display file extension in label so VSCode displays the associated icon
-							kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-							insertText: displayExtensions ? name : posix.parse(name).name,
-							commitCharacters: ["/"],
-						})
-					}
-				}
+	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<{ onDidClose: () => void }> {
+		return {
+			onDidClose: () => {
+				this.documentDiagnostics.delete(event.document)
+				this.documentsLinks.delete(event.document)
 			}
-		}
-		else {
-			for (const [name, type] of await this.trpc.client.fileSystem.readDirectory.query({ uri: `${uri}${query}`, recursive: true })) {
-				if (filter(name, type)) {
-
-					let insertText
-					if (displayExtensions) {
-						insertText = name
-					}
-					else {
-						const path = posix.parse(name)
-						insertText = posix.join(path.dir, path.name)
-					}
-
-					items.push({
-						label: name, // Display file extension in label so VSCode displays the associated icon
-						kind: CompletionItemKind.File,
-						insertText: insertText
-					})
-				}
-			}
-		}
-
-		return items
-	}
-
-	protected async onDidOpen(e: TextDocumentChangeEvent<TextDocument>): Promise<void> {
-
-		this.documentsConfiguration.add(e.document.uri)
-
-		let documentSymbols: TDocumentSymbols
-		let diagnostics: VDFSyntaxError | Diagnostic[] = []
-		try {
-			documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
-			this.documentsSymbols.set(e.document.uri, documentSymbols)
-			diagnostics = await this.validateTextDocument(e.document.uri, documentSymbols)
-		}
-		catch (error: unknown) {
-			documentSymbols = this.languageServerConfiguration.defaultDocumentSymbols()
-			this.documentsSymbols.set(e.document.uri, documentSymbols)
-			if (error instanceof VDFSyntaxError) {
-				diagnostics = error
-			}
-			else {
-				throw error
-			}
-		}
-
-		this.sendDiagnostics(e.document.uri, diagnostics)
-	}
-
-	/**
-	 * @returns Whether the text document change was parsed successfully
-	 */
-	protected async onDidChangeContent(e: TextDocumentChangeEvent<TextDocument>): Promise<boolean> {
-
-		const documentConfiguration = this.documentsConfiguration.get(e.document.uri)
-		if (documentConfiguration == undefined) {
-			return false
-		}
-
-		const shouldSendDiagnostics = documentConfiguration.updateDiagnosticsEvent == "type"
-
-		try {
-			const documentSymbols = this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
-			this.documentsSymbols.set(e.document.uri, documentSymbols)
-			const diagnostics = await this.validateTextDocument(e.document.uri, documentSymbols)
-			if (shouldSendDiagnostics) {
-				this.sendDiagnostics(e.document.uri, diagnostics)
-			}
-			return true
-		}
-		catch (error: any) {
-			if (error instanceof VDFSyntaxError) {
-				if (shouldSendDiagnostics) {
-					this.sendDiagnostics(e.document.uri, error)
-				}
-			}
-			else {
-				throw error
-			}
-			return false
 		}
 	}
 
-	protected onDidSave(e: TextDocumentChangeEvent<TextDocument>): void {
+	protected async onDidSaveTextDocument(params: TextDocumentRequestParams<DidSaveTextDocumentParams>) {
+		const document = await this.documents.get(params.textDocument.uri)
+		const documentConfiguration = await firstValueFrom(document.documentConfiguration$)
 
-		const documentConfiguration = this.documentsConfiguration.get(e.document.uri)
-		if (documentConfiguration == undefined) {
-			return
-		}
-
-		const shouldSendDiagnostics = documentConfiguration.updateDiagnosticsEvent == "save"
-
-		if (!shouldSendDiagnostics) {
-			return
-		}
-
-		try {
-			this.languageServerConfiguration.parseDocumentSymbols(e.document.uri, e.document.getText())
+		if (documentConfiguration.updateDiagnosticsEvent == "save") {
+			const diagnostics = await firstValueFrom(document.diagnostics$)
 			this.connection.sendDiagnostics({
-				uri: e.document.uri,
-				diagnostics: []
+				uri: params.textDocument.uri.toString(),
+				diagnostics: diagnostics
 			})
 		}
-		catch (error: unknown) {
-			if (error instanceof VDFSyntaxError) {
-				this.sendDiagnostics(e.document.uri, error)
-			}
-			else {
-				throw error
-			}
+	}
+
+	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
+
+		const document = await this.documents.get(params.textDocument.uri)
+		const links = await firstValueFrom(document.links$)
+
+		this.documentsLinks.set(
+			document,
+			new Map(links.map(({ range, data }) => [`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`, data.resolve]))
+		)
+
+		return links
+	}
+
+	private async onDocumentLinkResolve(documentLink: DocumentLink) {
+
+		const { range, data } = documentLink
+
+		const { uri } = z.object({ uri: Uri.schema }).parse(data)
+		const document = await this.documents.get(uri)
+
+		const resolve = this.documentsLinks
+			?.get(document)
+			?.get(`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`)
+
+		if (resolve == undefined) {
+			// Document closed
+			// https://github.com/cooolbros/vscode-vdf/issues/10
+			return documentLink
 		}
+
+		documentLink.target = (await resolve(documentLink))?.toString()
+		return documentLink
 	}
 
-	protected onDidClose(e: TextDocumentChangeEvent<TextDocument>): void {
-		this.connection.sendDiagnostics({ uri: e.document.uri, diagnostics: [] })
-		this.documentsSymbols.delete(e.document.uri)
-		this.documentsConfiguration.delete(e.document.uri)
-	}
+	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {
+		try {
+			const document = await this.documents.get(params.textDocument.uri)
+			return await this.getCompletion(
+				document,
+				new VDFPosition(params.position.line, params.position.character),
+				async (path: string, { value, extensionsPattern, displayExtensions }: CompletionFilesOptions) => {
+					return await firstValueFrom(
+						zip([document.fileSystem$, document.documentConfiguration$]).pipe(
+							concatMap(async ([fileSystem, documentConfiguration]) => {
 
-	protected abstract validateTextDocument(uri: string, documentSymbols: TDocumentSymbols): Promise<Diagnostic[]>
+								let startsWithFilter: ((name: string, type: number) => boolean) | null = null
 
-	private sendDiagnostics(uri: string, diagnostics: VDFSyntaxError | Diagnostic[]): void {
-		this.connection.sendDiagnostics({
-			uri: uri,
-			diagnostics: !Array.isArray(diagnostics) ? [
-				{
-					range: diagnostics.range,
-					severity: DiagnosticSeverity.Error,
-					code: diagnostics.name, // Don't use diagnostics.constructor.name because webpack obfuscates class names
-					source: this.languageId,
-					message: diagnostics.message
+								if (value) {
+									const [last, ...rest] = value.split("/").reverse()
+									if (rest.length) {
+										path += `/${rest.reverse().join("/")}`
+									}
+									startsWithFilter = (name: string, type: number) => name.toLowerCase().startsWith(last)
+								}
+
+								const entries = await fileSystem.readDirectory(path, {
+									recursive: documentConfiguration.filesAutoCompletionKind == "all",
+									pattern: extensionsPattern != null
+										? `**/*.${extensionsPattern}`
+										: undefined
+								})
+
+								const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
+
+								const filters = [
+									!incremental ? (name: string, type: number) => type == 1 : null, // Hide folders when filesAutoCompletionKind is "all", because the user will not #base a folder
+									startsWithFilter,
+								].filter((f) => f != null)
+
+								const filter = ([name, type]: [string, number]) => filters.every((filter) => filter(name, type))
+
+								return entries
+									.values()
+									.filter(filter)
+									.map(([name, type]): CompletionItem => ({
+										label: name,
+										kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+										...(incremental && {
+											commitCharacters: ["/"],
+										})
+									}))
+									.toArray()
+							})
+						)
+					)
 				}
-			] : diagnostics.map((diagnostic) => ({ ...diagnostic, source: this.languageId }))
-		})
+			)
+		}
+		catch (error) {
+			console.log(error)
+			return null
+		}
 	}
 
-	private async onDocumentSymbol(params: DocumentSymbolParams) {
+	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null>
 
-		if (!this.documentsSymbols.has(params.textDocument.uri)) {
-			this.documentsSymbols.set(params.textDocument.uri, this.languageServerConfiguration.parseDocumentSymbols(params.textDocument.uri, await this.trpc.client.fileSystem.readFile.query({ uri: params.textDocument.uri })))
+	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
+		const definitionReferences = await firstValueFrom((await this.documents.get(params.textDocument.uri)).definitionReferences$)
+		for (const { type, key, value: ranges } of definitionReferences.references.get(params.textDocument.uri.toString()) ?? []) {
+			if (ranges.some((range) => range.contains(params.position))) {
+				return definitionReferences.definitions.get(type, key)?.map((definition) => ({
+					uri: definition.uri.toString(),
+					range: definition.range
+				})) ?? null
+			}
+		}
+		return null
+	}
+
+	private async onReferences(params: TextDocumentRequestParams<ReferenceParams>) {
+		const definitionReferences = await firstValueFrom((await this.documents.get(params.textDocument.uri)).definitionReferences$)
+		for (const { type, key, value: definitions } of definitionReferences.definitions) {
+			if (definitions.some((definition) => definition.keyRange.contains(params.position))) {
+				return definitionReferences
+					.references
+					.values()
+					.flatMap((references) => references.get(type, key).map((range) => ({ uri: references.uri.toString(), range })))
+					.toArray()
+			}
+		}
+		return null
+	}
+
+	private async onDocumentSymbol(params: TextDocumentRequestParams<DocumentSymbolParams>) {
+		return await firstValueFrom((await this.documents.get(params.textDocument.uri, true)).documentSymbols$)
+	}
+
+	private async onCodeAction(params: TextDocumentRequestParams<CodeActionParams>): Promise<CodeAction[] | null> {
+
+		const document = await this.documents.get(params.textDocument.uri)
+
+		const diagnostics = this.documentDiagnostics.get(document)
+		if (!diagnostics) {
+			return null
 		}
 
-		return this.documentsSymbols.get(params.textDocument.uri)!
+		const filter = params.context.only
+			? (diagnostic: DiagnosticCodeAction) => params.context.only!.includes(diagnostic.data!.kind)
+			: () => true
+
+		const uri = params.textDocument.uri.toString()
+
+		return params
+			.context
+			.diagnostics
+			.values()
+			.map((diagnostic) => diagnostics.get(diagnostic.data.id))
+			.filter((diagnostic): diagnostic is NonNullable<typeof diagnostic> => diagnostic != undefined && diagnostic.data != undefined)
+			.filter(filter)
+			.map((diagnostic) => {
+				let isPreferred = true
+
+				const codeAction = diagnostic.data!.fix(
+					(range: VDFRange, newText: string) => {
+						return {
+							changes: {
+								[uri]: [
+									TextEdit.replace(range, newText)
+								]
+							}
+						}
+					},
+					(mainString: string, targetStrings: string[]) => {
+						if (!targetStrings.length) {
+							return null
+						}
+						const match = findBestMatch(mainString, targetStrings).bestMatch
+						// isPreferred = match.rating > 0.5
+						return match.target
+					}
+				)
+
+				if (!codeAction) {
+					return null
+				}
+
+				return {
+					...codeAction,
+					kind: diagnostic.data!.kind,
+					diagnostics: [diagnostic],
+					isPreferred: isPreferred
+				} satisfies CodeAction
+			})
+			.filter((codeAction) => codeAction != null)
+			.toArray()
 	}
 
-	protected codeLensRefresh(): void {
-		this.connection.sendRequest(CodeLensRefreshRequest.method)
+	private async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
+		return await firstValueFrom((await this.documents.get(params.textDocument.uri)).codeLens$)
 	}
+
+	protected abstract onDocumentFormatting(document: TDocument, params: TextDocumentRequestParams<DocumentFormattingParams>): Promise<TextEdit[]>
+
+	private async onPrepareRename(params: TextDocumentRequestParams<PrepareRenameParams>) {
+
+		const definitionReferences = await firstValueFrom((await this.documents.get(params.textDocument.uri)).definitionReferences$)
+
+		for (const { type, key, value: definitions } of definitionReferences.definitions) {
+			for (const definition of definitions) {
+				if (definition.uri.equals(params.textDocument.uri)) {
+					if (definition.keyRange.contains(params.position)) {
+						this.oldName = [type, key]
+						return {
+							range: definition.keyRange,
+							placeholder: definition.key
+						}
+					}
+					else if (definition.nameRange?.contains(params.position)) {
+						this.oldName = [type, key]
+						return {
+							range: definition.nameRange,
+							placeholder: definition.key
+						}
+					}
+				}
+			}
+		}
+
+		for (const { type, key, value: ranges } of definitionReferences.references.get(params.textDocument.uri.toString()) ?? []) {
+			for (const range of ranges) {
+				if (range.contains(params.position)) {
+					this.oldName = [type, key]
+					return {
+						range: range,
+						placeholder: definitionReferences.definitions.get(type, key)?.[0]?.key ?? key
+					}
+				}
+			}
+		}
+
+		return null
+	}
+
+	private async onRenameRequest(params: TextDocumentRequestParams<RenameParams>) {
+
+		if (this.oldName == null) {
+			throw new Error(`this.oldName == null`)
+		}
+
+		const document = await this.documents.get(params.textDocument.uri)
+		const [type, key] = this.oldName
+		this.oldName = null
+		return { changes: await this.rename(document, type, key, params.newName) }
+	}
+
+	protected abstract rename(document: TDocument, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>>
 }

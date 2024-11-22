@@ -1,204 +1,195 @@
-import type { VDFRange } from "vdf"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
-import type { VDFDefinitionReferencesConfiguration, VDFLanguageServerConfiguration } from "./VDF/VDFLanguageServerConfiguration"
+import { Uri } from "common/Uri"
+import { BehaviorSubject } from "rxjs"
+import { VDFRange } from "vdf"
+import { z, type ZodTypeAny } from "zod"
 
-export type DocumentsDefinitionReferences = Map<string, DocumentDefinitionReferences>
+class Collection<T> {
 
-export class DocumentDefinitionReferences {
+	public static readonly createSchema = <T extends ZodTypeAny>(schema: T) => z.map(z.symbol(), z.map(z.string(), schema.array())).transform((arg) => new Collection([arg]))
+	private readonly map: Map<symbol, Map<string, T[]>>
 
-	public readonly size: number
-	protected readonly documentDefinitionReferences: Map<number, Map<string, DefinitionReference>>
-
-	constructor(size: number) {
-		this.size = size
-		this.documentDefinitionReferences = new Map<number, Map<string, DefinitionReference>>()
-
-		for (let i = 0; i < size; i++) {
-			this.documentDefinitionReferences.set(i, new Map<string, DefinitionReference>())
-		}
+	public constructor(init?: Map<symbol, Map<string, T[]>>[]) {
+		this.map = new Map(init ? init?.values().flatMap((map) => map) : [])
 	}
 
-	public ofType(type: number): Map<string, DefinitionReference> {
-		if (type < 0 || type > this.size) {
-			throw new TypeError(`Invalid type ${type}.`)
-		}
-		return this.documentDefinitionReferences.get(type)!
+	public get(type: symbol, key: string) {
+		return Object.freeze(this.map.get(type)?.get(key.toLowerCase())) ?? null
 	}
 
-	public get([type, key]: [number, string]): DefinitionReference {
+	public set(type: symbol, key: string, ...value: T[]) {
+
+		let typeMap = this.map.get(type)
+		if (!typeMap) {
+			typeMap = new Map()
+			this.map.set(type, typeMap)
+		}
 
 		const keyLower = key.toLowerCase()
 
-		const typeDefinitionReferences = this.documentDefinitionReferences.get(type)!
-		if (typeDefinitionReferences.has(keyLower)) {
-			return typeDefinitionReferences.get(keyLower)!
+		let keyCollection = typeMap.get(keyLower)
+		if (!keyCollection) {
+			keyCollection = []
+			typeMap.set(keyLower, keyCollection)
 		}
 
-		const value = new DefinitionReference([type, key])
-		typeDefinitionReferences.set(keyLower, value)
-
-		return value
+		keyCollection.push(...value)
 	}
 
-	public deleteDefinitions(): void {
-		for (const [, typeDefinitionReferences] of this.documentDefinitionReferences) {
-			for (const [key, definitionReference] of typeDefinitionReferences) {
-				definitionReference.deleteDefinitionLocation()
-				if (!definitionReference.hasReferences()) {
-					typeDefinitionReferences.delete(key)
-				}
+	public ofType(type: symbol): ReadonlyMap<string, T[]> {
+		return this.map.get(type) ?? new Map()
+	}
+
+	public *[Symbol.iterator](): Iterator<{ type: symbol, key: string, value: T[] }> {
+		for (const [type, keyCollection] of this.map) {
+			for (const [key, value] of keyCollection) {
+				yield { type, key, value }
 			}
 		}
 	}
 
-	public deleteDefinitionsOfTypes(types: Set<number>): void {
-		for (const type of types) {
-			for (const definitionReference of this.ofType(type).values()) {
-				definitionReference.deleteDefinitionLocation()
-			}
-		}
+	public toJSON() {
+		return this.map
+	}
+}
+
+export const definitionSchema = z.object({
+	uri: Uri.schema,
+	key: z.string(),
+	range: VDFRange.schema,
+	nameRange: VDFRange.schema.optional(),
+	keyRange: VDFRange.schema,
+	detail: z.string().optional(),
+	conditional: z.string().optional(),
+})
+
+export type Definition = z.infer<typeof definitionSchema>
+
+export class Definitions {
+
+	public static readonly schema = z.object({
+		collection: Collection.createSchema(definitionSchema)
+	}).transform((arg) => new Definitions({ collection: arg.collection }))
+
+	private readonly collection: Collection<Definition>
+	private readonly globals: Definitions[]
+
+	constructor({ collection = new Collection(), globals = [] }: { collection?: Collection<Definition>, globals?: Definitions[] } = {}) {
+		this.collection = collection
+		this.globals = globals
 	}
 
-	public deleteReferences(uri: string): void {
-		for (const [, definitionReferences] of this.documentDefinitionReferences) {
-			for (const [, definitionReference] of definitionReferences) {
-				definitionReference.deleteReferences(uri)
+	public get(type: symbol, key: string): readonly Definition[] | null {
+		const definitions = this.collection.get(type, key)
+		if (definitions != null) {
+			return definitions
+		}
+
+		for (const global of this.globals) {
+			const definitions = global.get(type, key)
+			if (definitions != null) {
+				return definitions
 			}
 		}
+
+		return null
 	}
 
-	public *[Symbol.iterator](): Iterator<readonly [number, string, DefinitionReference]> {
-		for (const [index, definitionReferences] of this.documentDefinitionReferences) {
-			for (const [key, definitionReference] of definitionReferences) {
-				yield [index, key, definitionReference]
+	public add(type: symbol, key: string, ...definitions: Definition[]) {
+		this.collection.set(type, key, ...definitions)
+	}
+
+	public ofType(type: symbol): ReadonlyMap<string, Definition[]> {
+
+		const map = this.collection.ofType(type)
+		if (map.size) {
+			return map
+		}
+
+		for (const definitions of this.globals) {
+			const map = definitions.ofType(type)
+			if (map.size) {
+				return map
 			}
+		}
+
+		return new Map()
+	}
+
+	public [Symbol.iterator]() {
+		return this.collection[Symbol.iterator]()
+	}
+
+	public toJSON() {
+		return {
+			collection: this.collection.toJSON()
 		}
 	}
 }
 
-export class DefinitionReference {
+export class References {
 
-	public readonly type: number
-	public readonly key: string
-	private definitionLocation?: DefinitionLocation
-	private definitionIDLocation?: DefinitionLocation
-	private value?: any
-	private readonly references: Map<string, VDFRange[]>
+	public static readonly schema = z.object({
+		uri: Uri.schema,
+		collection: Collection.createSchema(VDFRange.schema),
+	}).transform((arg) => {
+		return new References(arg.uri, arg.collection)
+	})
 
-	constructor([index, key]: [number, string]) {
-		this.type = index
-		this.key = key
-		this.definitionLocation = undefined
-		this.references = new Map<string, VDFRange[]>()
+	public readonly uri: Uri
+	private readonly collection: Collection<VDFRange>
+
+	constructor(uri: Uri, collection = new Collection<VDFRange>()) {
+		this.uri = uri
+		this.collection = collection
 	}
 
-	// #region Definition
-
-	public getDefinitionLocation(): DefinitionLocation | undefined {
-		return this.definitionLocation
+	public get(type: symbol, key: string) {
+		return this.collection.get(type, key) ?? []
 	}
 
-	public getDefinitionIDLocation(): DefinitionLocation | undefined {
-		return this.definitionIDLocation
+	public [Symbol.iterator]() {
+		return this.collection[Symbol.iterator]()
 	}
 
-	public setDefinitionLocation({ definitionLocation, definitionIDLocation, value }: { definitionLocation: DefinitionLocation, definitionIDLocation?: DefinitionLocation, value: any }): void {
-		if (this.definitionLocation != undefined) {
-			throw new Error(`[${this.type}, ${this.key}] Definition location already set`)
-		}
-		this.definitionLocation = definitionLocation
-		this.definitionIDLocation = definitionIDLocation
-		this.value = value
+	public addReference(type: symbol, key: string, range: VDFRange) {
+		this.collection.set(type, key, range)
 	}
 
-	public deleteDefinitionLocation(): void {
-		this.definitionLocation = undefined
-		this.definitionIDLocation = undefined
-	}
-
-	public hasValue(): boolean {
-		return this.value != undefined
-	}
-
-	public getValue(): any {
-		if (this.value == undefined) {
-			throw new Error(`[${this.type}, ${this.key}] Definition value is undefined`)
-		}
-		return this.value
-	}
-
-	// #endregion
-
-	// #region References
-
-	public hasReferences(): boolean {
-
-		if (this.references.size == 0) {
-			return false
-		}
-
-		for (const ranges of this.references.values()) {
-			if (ranges.length > 0) {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	public *getReferences(): Iterable<{ uri: string, range: VDFRange }> {
-		for (const [uri, ranges] of this.references) {
-			for (const range of ranges) {
-				yield { uri, range }
-			}
+	public toJSON() {
+		return {
+			uri: this.uri.toJSON(),
+			collection: this.collection.toJSON(),
 		}
 	}
-
-	public addReference(uri: string, range: VDFRange): void {
-		if (!this.references.has(uri)) {
-			this.references.set(uri, [])
-		}
-		this.references.get(uri)!.push(range)
-	}
-
-	public deleteReferences(uri: string): void {
-		this.references.delete(uri)
-	}
-
-	// #endregion
 }
 
-export type DefinitionLocation = { uri: string, range: VDFRange }
+export class DefinitionReferences {
 
-/**
- * @returns The key of the definition if the documentSymbol matches, or null
- */
-export function documentSymbolMatchesDefinition(
-	definitionReference: VDFDefinitionReferencesConfiguration,
-	documentSymbol: VDFDocumentSymbol,
-	objectPath: string[]
-): string | null {
+	private readonly dependencies: DefinitionReferences[]
+	public readonly definitions: Definitions
+	public readonly references: Map<string /* Uri */, References>
+	public readonly references$: BehaviorSubject<void>
 
-	const parentKeysTrue = ArrayContainsArray(objectPath, definitionReference.parentKeys)
+	constructor({ dependencies = [], globals = [] }: { dependencies?: DefinitionReferences[], globals?: Definitions[] } = {}) {
+		this.dependencies = dependencies
+		this.definitions = new Definitions({ globals })
 
-	const definitionKey = definitionReference.definitionIDKey != undefined
-		? documentSymbol.children?.find((i) => i.key.toLowerCase() == definitionReference.definitionIDKey && i.detail != undefined)?.detail
-		: documentSymbol.key
-
-	const definitionKeyTrue = definitionKey != undefined
-
-	const definitionChildrenTrue = definitionReference.definitionChildren ? documentSymbol.children != undefined : true
-
-	if (parentKeysTrue && definitionKeyTrue && definitionChildrenTrue) {
-		return definitionKey
+		this.references = new Map()
+		this.references$ = new BehaviorSubject<void>(undefined)
 	}
 
-	return null
-}
+	public setDocumentReferences(references: References[], notify: boolean) {
 
-export function documentSymbolMatchesReferences(
-	definitionReference: VDFLanguageServerConfiguration["definitionReferences"][number],
-	key: string,
-): boolean {
-	return definitionReference.referenceKeys.has(key.toLowerCase())
+		for (const documentReferences of references) {
+			this.references.set(documentReferences.uri.toString(), documentReferences)
+		}
+
+		for (const dependency of this.dependencies) {
+			dependency.setDocumentReferences(references, notify)
+		}
+
+		if (notify) {
+			this.references$.next()
+		}
+	}
 }

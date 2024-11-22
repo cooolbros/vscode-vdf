@@ -86,7 +86,8 @@ export function TRPCClientRouter(
 						}
 
 						return {
-							key
+							key: key,
+							paths: input.paths
 						}
 					}),
 				resolveFile: t
@@ -127,6 +128,25 @@ export function TRPCClientRouter(
 						fileSystems.delete(input.key)
 					})
 			}),
+		window: t.router({
+			createTextEditorDecorationType: t
+				.procedure
+				.input(
+					z.object({
+						options: z.object({
+							after: z.object({
+								margin: z.string(),
+								color: z.string()
+							})
+						})
+					})
+				)
+				.mutation(async ({ input }) => {
+					const decorationType = window.createTextEditorDecorationType(input.options)
+					decorationTypes.set(decorationType.key, decorationType)
+					return decorationType.key
+				}),
+		}),
 		textDocument: t.router({
 			decoration: t
 				.procedure
