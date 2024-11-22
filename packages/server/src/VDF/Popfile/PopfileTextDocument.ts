@@ -126,6 +126,24 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			}
 		}
 
+		// https://github.com/cooolbros/vscode-vdf/issues/34
+		if (key == "WaveSpawn".toLowerCase() && documentSymbol.children != undefined) {
+			const maxActive = parseInt(documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "MaxActive".toLowerCase())?.detail ?? "")
+			const spawnCount = parseInt(documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "SpawnCount".toLowerCase())?.detail ?? "")
+			if (!isNaN(maxActive) && !isNaN(spawnCount) && spawnCount > maxActive) {
+				return {
+					range: documentSymbol.nameRange,
+					severity: DiagnosticSeverity.Warning,
+					code: "wavespawn-softlock",
+					source: "popfile",
+					message: `WaveSpawn with MaxActive ${maxActive} and SpawnCount ${spawnCount} will cause softlock`,
+				}
+			}
+			else {
+				return null
+			}
+		}
+
 		// https://github.com/cooolbros/vscode-vdf/issues/29
 		if ((key == "RunScriptCode".toLowerCase() || key == "RunScriptFile".toLowerCase()) && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
 			return {
