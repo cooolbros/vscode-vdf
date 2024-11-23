@@ -1,6 +1,6 @@
-import { of, type Observable } from "rxjs"
+import { concatMap, map, switchMap, type Observable } from "rxjs"
 import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
-import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
+import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
@@ -96,7 +96,32 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			relativeFolderPath: "scripts/population",
 			VDFTokeniserOptions: { allowMultilineStrings: true },
 			keyTransform: (key) => key,
-			dependencies$: of({ schema: PopfileTextDocument.Schema, global: [] }),
+			dependencies$: fileSystem$.pipe(
+				switchMap((fileSystem) => fileSystem.resolveFile("scripts/items/items_game.txt")),
+				concatMap(async (uri) => documents.get(uri!, true)),
+				switchMap((document) => document.documentSymbols$),
+				map((documentSymbols) => {
+					const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")
+					const attributes = items_game?.children?.find((documentSymbol) => documentSymbol.key == "attributes")
+					return attributes?.children?.values().map((documentSymbol) => {
+						return documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail
+					}).filter((value) => value != undefined) ?? Iterator.from([])
+				}),
+				map((attributes) => {
+					return {
+						schema: {
+							...PopfileTextDocument.Schema,
+							keys: {
+								...keys,
+								itemattributes: {
+									values: attributes.map((attribute) => ({ label: attribute, kind: 5 })).toArray()
+								}
+							}
+						},
+						global: []
+					}
+				})
+			),
 			getCodeLens: (definitionReferences$) => {
 				return definitionReferences$
 			}

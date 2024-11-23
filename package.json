@@ -292,6 +292,7 @@
                     "chapterbackgrounds.txt",
                     "gameinfo.txt",
                     "hudanimations_manifest.txt",
+                    "items_game.txt",
                     "mod_textures.txt"
                 ],
                 "filenamePatterns": [
