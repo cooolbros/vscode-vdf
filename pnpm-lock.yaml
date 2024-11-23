@@ -22,8 +22,8 @@ importers:
         specifier: ^1.57.5
         version: 1.57.5
       '@vscode/test-web':
-        specifier: ^0.0.56
-        version: 0.0.56
+        specifier: ^0.0.64
+        version: 0.0.64
       '@vscode/vsce':
         specifier: ^3.2.1
         version: 3.2.1
@@ -49,7 +49,7 @@ importers:
         specifier: ^1.0.11
         version: 1.0.12
       webpack:
-        specifier: ^5.93.0
+        specifier: ^5.96.1
         version: 5.96.1(webpack-cli@5.1.4)
       webpack-cli:
         specifier: ^5.1.4
@@ -556,9 +556,9 @@ packages:
     resolution: {integrity: sha512-x/iUDjcS90W69PryLDIMgFyV21YLTnG9zOpPXS7Bkt2b8AsY3zZsIpOLBkYr9fBcF3HbkKaER5hOBZLfpLgYNw==}
     engines: {node: '>= 14.0.0'}
 
-  '@koa/router@12.0.2':
-    resolution: {integrity: sha512-sYcHglGKTxGF+hQ6x67xDfkE9o+NhVlRHBqq6gLywaMc6CojK/5vFZByphdonKinYlMLkEkacm+HEse9HzwgTA==}
-    engines: {node: '>= 12'}
+  '@koa/router@13.1.0':
+    resolution: {integrity: sha512-mNVu1nvkpSd8Q8gMebGbCkDWJ51ODetrFvLKYusej+V0ByD4btqHYnPIzTBLXnQMVUlm/oxVwqmWBY3zQfZilw==}
+    engines: {node: '>= 18'}
 
   '@mdx-js/mdx@2.3.0':
     resolution: {integrity: sha512-jLuwRlz8DQfQNiUCJR50Y09CGPq3fLtmtUQfVrj79E0JWu3dvsVcxVIcfhR5h0iXu+/z++zDrYeiJqifRynJkA==}
@@ -860,8 +860,8 @@ packages:
   '@ungap/structured-clone@1.2.0':
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
 
-  '@vscode/test-web@0.0.56':
-    resolution: {integrity: sha512-lR688n+D6A9odw+IZ5cU8CYr2YXLB61bGgyZpPVJe/sJy4/DYX5CAxPb7Wj9ZMYL41CTvWq5DeXtfCjlabPcYA==}
+  '@vscode/test-web@0.0.64':
+    resolution: {integrity: sha512-V7fTb3K1HzlqwT+VrxIq+vZLqPYzoItu6Tg3vd6sbd87ll0srICQNiH/W7IBUn76zHf7v5xzEXzNOnhSQJ2/YQ==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -2389,10 +2389,6 @@ packages:
 
   mermaid@10.9.3:
     resolution: {integrity: sha512-V80X1isSEvAewIL3xhmz/rVmc27CVljcsbWxkxlWJWY/1kQa4XOABqpDl2qQLGKzpKm6WbTfUEKImBlUfFYArw==}
-
-  methods@1.1.2:
-    resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
-    engines: {node: '>= 0.6'}
 
   micromark-core-commonmark@1.1.0:
     resolution: {integrity: sha512-BgHO1aRbolh2hcrzL2d1La37V0Aoz73ymF8rAcKnohLy93titmv62E0gP8Hrx9PKcKrqCZ1BbLGbP3bEhoXYlw==}
@@ -3955,15 +3951,11 @@ snapshots:
     dependencies:
       vary: 1.1.2
 
-  '@koa/router@12.0.2':
+  '@koa/router@13.1.0':
     dependencies:
-      debug: 4.3.7
       http-errors: 2.0.0
       koa-compose: 4.1.0
-      methods: 1.1.2
       path-to-regexp: 6.3.0
-    transitivePeerDependencies:
-      - supports-color
 
   '@mdx-js/mdx@2.3.0':
     dependencies:
@@ -4227,12 +4219,12 @@ snapshots:
 
   '@ungap/structured-clone@1.2.0': {}
 
-  '@vscode/test-web@0.0.56':
+  '@vscode/test-web@0.0.64':
     dependencies:
       '@koa/cors': 5.0.0
-      '@koa/router': 12.0.2
+      '@koa/router': 13.1.0
       '@playwright/browser-chromium': 1.48.2
-      glob: 10.4.5
+      glob: 11.0.0
       gunzip-maybe: 1.4.2
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.5
@@ -6040,8 +6032,6 @@ snapshots:
       web-worker: 1.3.0
     transitivePeerDependencies:
       - supports-color
-
-  methods@1.1.2: {}
 
   micromark-core-commonmark@1.1.0:
     dependencies:
