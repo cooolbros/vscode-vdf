@@ -1,8 +1,9 @@
 import { posix } from "path"
 import { combineLatest, concatMap, distinctUntilChanged, map, of, switchMap, type Observable } from "rxjs"
 import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, CompletionItemKind, DiagnosticSeverity } from "vscode-languageserver"
+import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
@@ -265,8 +266,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 		this.workspace = workspace
 	}
 
-	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DiagnosticCodeAction | null {
-
+	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
 		if (!documentSymbol.detail || !documentSymbol.detailRange) {
 			return null
 		}

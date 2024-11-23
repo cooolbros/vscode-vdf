@@ -7,7 +7,7 @@ import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import type { VDFRange, VDFTokeniserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
-import { DefinitionReferences, References, type Definition } from "../DefinitionReferences"
+import { DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
 import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
@@ -264,7 +264,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					<(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[],
 					(diagnostics, documentSymbol, path) => {
 						if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
-							diagnostics.push(this.validateDocumentSymbol(documentSymbol, path))
+							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
+							diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 							return diagnostics
 						}
 
@@ -561,7 +562,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 						}
 
-						diagnostics.push(this.validateDocumentSymbol(documentSymbol, path))
+						const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
+						diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 						return diagnostics
 					}
 				)
@@ -689,5 +691,5 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		)
 	}
 
-	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>
+	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null>
 }

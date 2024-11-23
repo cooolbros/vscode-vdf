@@ -1,7 +1,8 @@
 import { posix } from "path"
 import { of, type Observable } from "rxjs"
 import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
+import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
@@ -91,7 +92,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 		this.workspace = workspace
 	}
 
-	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null> {
+	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
 		return null
 	}
 }

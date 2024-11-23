@@ -1,7 +1,8 @@
 import { of, type Observable } from "rxjs"
 import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity } from "vscode-languageserver"
+import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
@@ -102,8 +103,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		})
 	}
 
-	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DiagnosticCodeAction | null {
-
+	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
 		const key = documentSymbol.key.toLowerCase()
 
 		// https://github.com/cooolbros/vscode-vdf/issues/33
@@ -126,8 +126,9 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			}
 		}
 
-		// https://github.com/cooolbros/vscode-vdf/issues/34
 		if (key == "WaveSpawn".toLowerCase() && documentSymbol.children != undefined) {
+
+			// https://github.com/cooolbros/vscode-vdf/issues/34
 			const maxActive = parseInt(documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "MaxActive".toLowerCase())?.detail ?? "")
 			const spawnCount = parseInt(documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "SpawnCount".toLowerCase())?.detail ?? "")
 			if (!isNaN(maxActive) && !isNaN(spawnCount) && spawnCount > maxActive) {
@@ -143,6 +144,27 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				return null
 			}
 		}
+
+		// https://github.com/cooolbros/vscode-vdf/issues/35
+		const waveSpawnType = Symbol.for("wavespawn")
+		if (PopfileTextDocument.Schema.definitionReferences.find(({ type }) => type == waveSpawnType)!.reference!.keys.has(key) && documentSymbol?.detail != undefined) {
+			for (const waveSpawnDefinition of definitions.get(Symbol.for("wavespawn"), documentSymbol.detail) ?? []) {
+				const waveSpawnDocumentSymbol = documentSymbols.getDocumentSymbolAtPosition(waveSpawnDefinition.range.start)!
+				const support = waveSpawnDocumentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail
+				if (support != undefined && support.toLowerCase() != "Limited".toLowerCase()) {
+					return {
+						range: documentSymbol.detailRange!,
+						severity: DiagnosticSeverity.Warning,
+						code: "wavespawn-softlock",
+						source: "popfile",
+						message: `${documentSymbol.key} '${documentSymbol.detail}' will cause softlock because ${waveSpawnDefinition.key} has Support '${support}'`,
+					}
+				}
+			}
+
+			return null
+		}
+
 
 		// https://github.com/cooolbros/vscode-vdf/issues/29
 		if ((key == "RunScriptCode".toLowerCase() || key == "RunScriptFile".toLowerCase()) && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
