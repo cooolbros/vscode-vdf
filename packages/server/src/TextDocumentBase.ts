@@ -74,11 +74,10 @@ export abstract class TextDocumentBase<
 						throw error
 					}
 				}
-			}),
-			shareReplay(1)
+			})
 		)
 
-		const documentSymbols$ = result$.pipe(
+		this.documentSymbols$ = result$.pipe(
 			map((result, index) => {
 				if (result.success) {
 					return result.value
@@ -89,10 +88,7 @@ export abstract class TextDocumentBase<
 						: configuration.defaultDocumentSymbols
 				}
 			}),
-			filter((documentSymbols): documentSymbols is TDocumentSymbols => documentSymbols != null)
-		)
-
-		this.documentSymbols$ = documentSymbols$.pipe(
+			filter((documentSymbols): documentSymbols is TDocumentSymbols => documentSymbols != null),
 			shareReplay(1)
 		)
 
