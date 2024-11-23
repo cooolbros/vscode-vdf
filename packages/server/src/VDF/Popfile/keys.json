@@ -44,7 +44,7 @@
         ],
         "values": []
     },
-    "EventChangeAttributes": {
+    "eventchangeattributes": {
         "values": [
             {
                 "label": "Default",
