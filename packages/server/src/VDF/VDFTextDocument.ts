@@ -1,8 +1,6 @@
 import type { Uri } from "common/Uri"
 import { posix } from "path"
 import { combineLatest, concatMap, defer, firstValueFrom, from, map, of, shareReplay, switchMap, timeout, type Observable } from "rxjs"
-import { ArrayContainsArray } from "utils/ArrayContainsArray"
-import { ArrayEndsWithArray } from "utils/ArrayEndsWithArray"
 import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import type { VDFRange, VDFTokeniserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
@@ -12,6 +10,29 @@ import type { DiagnosticCodeAction } from "../LanguageServer"
 import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
 import type { TextDocuments } from "../TextDocuments"
+
+function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
+
+	if (arr2.length == 0) {
+		return true
+	}
+
+	if (arr1.length < arr2.length) {
+		return false
+	}
+
+	return arr1.some((_, index) => arr2.every((v, i) => index + i < arr1.length && comparer(arr1[index + i], v)))
+}
+
+function ArrayEndsWithArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
+
+	if (arr1.length < arr2.length) {
+		return false
+	}
+
+	const start = arr1.length - arr2.length
+	return arr2.every((value, index) => comparer(arr1[start + index], value))
+}
 
 export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> {
 	relativeFolderPath: string | null
