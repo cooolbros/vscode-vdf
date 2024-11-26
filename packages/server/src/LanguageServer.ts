@@ -4,11 +4,10 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import { Uri } from "common/Uri"
+import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
+import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap, zip } from "rxjs"
 import { findBestMatch } from "string-similarity"
-import type { LanguageNames } from "utils/types/LanguageNames"
-import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
-import type { VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
 import { VDFPosition, VDFRange } from "vdf"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
@@ -49,7 +48,7 @@ const capabilities = {
 
 export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies> {
 	name: "hudanimations" | "popfile" | "vdf" | "vmt"
-	servers: Set<keyof LanguageNames>
+	servers: Set<VSCodeVDFLanguageID>
 	capabilities: Omit<ServerCapabilities, keyof typeof capabilities>
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
 }
@@ -67,7 +66,7 @@ export interface CompletionFilesOptions {
 }
 
 export abstract class LanguageServer<
-	TLanguageId extends keyof LanguageNames,
+	TLanguageId extends VSCodeVDFLanguageID,
 	TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>,
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies
@@ -102,7 +101,7 @@ export abstract class LanguageServer<
 
 	constructor(
 		languageId: TLanguageId,
-		name: LanguageNames[TLanguageId],
+		name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId],
 		connection: Connection,
 		languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>,
 	) {

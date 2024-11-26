@@ -1,19 +1,17 @@
-import { Client } from "client"
+import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
 import { showReferences } from "client/commands/showReferences"
 import { onDidChangeActiveTextEditor } from "client/decorations"
-import { languageNames } from "client/languageNames"
 import { join } from "path"
-import type { LanguageNames } from "utils/types/LanguageNames"
 import { commands, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 import { VTFEditor } from "./VTF/VTFEditor"
 
-const languageClients: { -readonly [P in keyof LanguageNames]?: Client } = {}
+const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -38,13 +36,13 @@ export function activate(context: ExtensionContext): void {
 	// Language Server
 
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
-		const languageId = e.languageId
-		if (((languageId): languageId is keyof LanguageNames => languageId in languageNames)(languageId)) {
-			startServer(languageId)
+		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
+		if (result.success) {
+			startServer(result.data)
 		}
 	}
 
-	const startServer = async (languageId: keyof LanguageNames): Promise<void> => {
+	const startServer = async (languageId: VSCodeVDFLanguageID): Promise<void> => {
 
 		if (languageClients[languageId]) {
 			return
@@ -58,7 +56,7 @@ export function activate(context: ExtensionContext): void {
 			context.subscriptions,
 			new LanguageClient(
 				`${languageId}-language-server`,
-				`${languageNames[languageId]} Language Server`,
+				`${VSCodeVDFLanguageNameSchema.shape[languageId].value} Language Server`,
 				{
 					run: {
 						module: serverModule,

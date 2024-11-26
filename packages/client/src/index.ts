@@ -1,24 +1,18 @@
 import { initTRPC, type AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
-import type { LanguageNames } from "utils/types/LanguageNames"
-import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "utils/types/VSCodeVDFLanguageID"
+import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
 import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
+export * from "common/VSCodeVDFLanguageID"
+
 export class Client {
 
-	private static readonly serverSchema = z.union([
-		z.literal("hudanimations"),
-		z.literal("popfile"),
-		z.literal("vdf"),
-		z.literal("vmt"),
-	])
-
 	private static readonly TRPCRequestSchema = z.tuple([
-		Client.serverSchema.nullable(),
+		VSCodeVDFLanguageIDSchema.nullable(),
 		z.tuple([
 			z.string(),
 			z.object({
@@ -30,7 +24,7 @@ export class Client {
 	])
 
 	private static readonly sendSchema = z.object({
-		server: Client.serverSchema,
+		server: VSCodeVDFLanguageIDSchema,
 		method: z.string(),
 		param: z.any()
 	})
@@ -43,7 +37,7 @@ export class Client {
 	private readonly subscriptions: { dispose(): any }[]
 
 	constructor(
-		languageClients: { -readonly [P in keyof LanguageNames]?: Client },
+		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		subscriptions: { dispose(): any }[],
 		client: BaseLanguageClient,
@@ -68,13 +62,13 @@ export class Client {
 								onNotification: (method, handler) => client.onNotification(method, handler),
 								sendRequest: (server, method, param) => {
 									if (server != null) {
-										languageClients[Client.serverSchema.parse(server)]!.client.sendRequest(method, param)
+										languageClients[VSCodeVDFLanguageIDSchema.parse(server)]!.client.sendRequest(method, param)
 									}
 									throw new Error("server == null")
 								},
 								sendNotification: (server, method, param) => {
 									if (server != null) {
-										languageClients[Client.serverSchema.parse(server)]!.client.sendNotification(method, param)
+										languageClients[VSCodeVDFLanguageIDSchema.parse(server)]!.client.sendNotification(method, param)
 									}
 									throw new Error("server == null")
 								},

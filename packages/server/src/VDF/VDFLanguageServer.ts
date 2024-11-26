@@ -1,18 +1,19 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
+import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { firstValueFrom, type Observable } from "rxjs"
-import type { LanguageNames } from "utils/types/LanguageNames"
 import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { Color, CompletionItem, CompletionItemKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import type { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import type { TextDocumentInit } from "../TextDocumentBase"
 import type { VDFTextDocument, VDFTextDocumentDependencies } from "./VDFTextDocument"
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> {
 	name: "popfile" | "vdf" | "vmt"
-	servers: Set<keyof LanguageNames>
+	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
 	completion: {
@@ -23,7 +24,7 @@ export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocumen
 }
 
 export abstract class VDFLanguageServer<
-	TLanguageId extends Extract<keyof LanguageNames, "popfile" | "vdf" | "vmt">,
+	TLanguageId extends Extract<VSCodeVDFLanguageID, "popfile" | "vdf" | "vmt">,
 	TDocument extends VDFTextDocument<TDocument, TDependencies>,
 	TDependencies
 > extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, VDFTextDocumentDependencies> {
@@ -32,7 +33,7 @@ export abstract class VDFLanguageServer<
 
 	private readonly documentsColours: Map<string, Map<string, (colour: Color) => string>>
 
-	constructor(languageId: TLanguageId, name: LanguageNames[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>) {
+	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>) {
 		super(languageId, name, connection, {
 			name: VDFLanguageServerConfiguration.name,
 			servers: VDFLanguageServerConfiguration.servers,
