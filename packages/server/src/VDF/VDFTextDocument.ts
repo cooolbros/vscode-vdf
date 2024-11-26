@@ -1,7 +1,7 @@
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, concatMap, defer, firstValueFrom, from, map, of, shareReplay, switchMap, timeout, type Observable } from "rxjs"
+import { combineLatest, concatMap, defer, firstValueFrom, from, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFRange, VDFTokeniserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
@@ -170,8 +170,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 														return base.length != 0
 															? combineLatest(base).pipe(map((results) => results.every((result) => result)))
 															: of(true)
-													}),
-													timeout({ first: 10_000 })
+													})
 												)
 											}
 
