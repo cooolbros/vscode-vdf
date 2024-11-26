@@ -64,7 +64,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 
 	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection) {
 		super(languageId, name, connection, {
-			name: "hudanimations",
 			servers: new Set(["vdf"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {

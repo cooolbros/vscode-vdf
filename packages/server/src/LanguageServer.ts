@@ -47,7 +47,6 @@ const capabilities = {
 } satisfies ServerCapabilities
 
 export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies> {
-	name: "hudanimations" | "popfile" | "vdf" | "vmt"
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: Omit<ServerCapabilities, keyof typeof capabilities>
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
@@ -299,12 +298,21 @@ export abstract class LanguageServer<
 				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
 				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
 			},
-			name: this.languageServerConfiguration.name,
+			name: this.languageId,
 			subscriptions: [],
 			onRequest: (method, handler) => this.connection.onRequest(method, handler),
 			onNotification: (method, handler) => this.connection.onNotification(method, handler),
-			sendRequest: (server, method, param) => server != null ? this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param }) : this.connection.sendRequest(method, param),
-			sendNotification: (server, method, param) => server != null ? this.connection.sendRequest("vscode-vdf/sendNotification", { server, method, param }) : this.connection.sendNotification(method, param),
+			sendRequest: async (server, method, param) => {
+				if (server != null) {
+					return await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
+				}
+				else {
+					return await this.connection.sendRequest(method, param)
+				}
+			},
+			sendNotification: async (subscriber, method, param) => {
+				await this.connection.sendNotification("vscode-vdf/sendNotification", { subscriber, method, param })
+			},
 		}) satisfies CombinedDataTransformer
 
 		const resolveTRPC = async (input: string, init?: RequestInit) => {

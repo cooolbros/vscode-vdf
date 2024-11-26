@@ -56,21 +56,15 @@ export class Client {
 							transformer: devalueTransformer({
 								reducers: {},
 								revivers: {},
-								name: "client",
+								name: null,
 								subscriptions: subscriptions,
 								onRequest: (method, handler) => client.onRequest(method, handler),
 								onNotification: (method, handler) => client.onNotification(method, handler),
 								sendRequest: (server, method, param) => {
-									if (server != null) {
-										languageClients[VSCodeVDFLanguageIDSchema.parse(server)]!.client.sendRequest(method, param)
-									}
-									throw new Error("server == null")
+									throw new Error(`server == null (${server}, ${method}, ${JSON.stringify(param)})`)
 								},
-								sendNotification: (server, method, param) => {
-									if (server != null) {
-										languageClients[VSCodeVDFLanguageIDSchema.parse(server)]!.client.sendNotification(method, param)
-									}
-									throw new Error("server == null")
+								sendNotification: async (subscriber, method, param) => {
+									await languageClients[subscriber]!.client.sendNotification(method, param)
 								},
 							})
 						}),
@@ -93,7 +87,7 @@ export class Client {
 				const { server, method, param } = Client.sendSchema.parse(params[0])
 				return await languageClients[server]!.client.sendRequest(method, param)
 			}),
-			this.client.onRequest("vscode-vdf/sendNotification", async (...params) => {
+			this.client.onNotification("vscode-vdf/sendNotification", async (...params) => {
 				const { server, method, param } = Client.sendSchema.parse(params[0])
 				return await languageClients[server]!.client.sendNotification(method, param)
 			})

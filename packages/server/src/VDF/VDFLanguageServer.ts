@@ -35,7 +35,6 @@ export abstract class VDFLanguageServer<
 
 	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>) {
 		super(languageId, name, connection, {
-			name: VDFLanguageServerConfiguration.name,
 			servers: VDFLanguageServerConfiguration.servers,
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,
