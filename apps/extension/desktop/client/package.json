@@ -9,7 +9,6 @@
         "client": "workspace:^",
         "tga-js": "^1.1.1",
         "tsconfig": "workspace:^",
-        "utils": "workspace:^",
         "vpk": "workspace:^",
         "vscode-languageclient": "*"
     }

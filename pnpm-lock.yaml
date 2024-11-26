@@ -109,9 +109,6 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
-      utils:
-        specifier: workspace:^
-        version: link:../../../../packages/utils/src
       vscode-languageclient:
         specifier: ^9.0.1
         version: 9.0.1
@@ -142,9 +139,6 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
-      utils:
-        specifier: workspace:^
-        version: link:../../../../packages/utils/src
       vpk:
         specifier: workspace:^
         version: link:../../../../packages/vpk
@@ -190,9 +184,6 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
-      utils:
-        specifier: workspace:^
-        version: link:../utils/src
       vdf:
         specifier: workspace:^
         version: link:../vdf
@@ -276,9 +267,6 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
-      utils:
-        specifier: workspace:^
-        version: link:../utils/src
       vdf:
         specifier: workspace:^
         version: link:../vdf
@@ -294,22 +282,6 @@ importers:
     publishDirectory: src
 
   packages/tsconfig: {}
-
-  packages/utils:
-    devDependencies:
-      common:
-        specifier: workspace:^
-        version: link:../common/src
-      tsconfig:
-        specifier: workspace:^
-        version: link:../tsconfig
-      vdf:
-        specifier: workspace:^
-        version: link:../vdf
-      vdf-documentsymbols:
-        specifier: workspace:^
-        version: link:../vdf-documentsymbols
-    publishDirectory: src
 
   packages/vdf:
     devDependencies:
