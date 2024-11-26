@@ -1,6 +1,6 @@
 import type { Uri } from "common/Uri"
+import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
-import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import { VDFSyntaxError, type IRange } from "vdf"
 import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"

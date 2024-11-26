@@ -1,7 +1,7 @@
 import type { Uri } from "common/Uri"
+import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { combineLatest, concatMap, defer, firstValueFrom, from, map, of, shareReplay, switchMap, timeout, type Observable } from "rxjs"
-import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import type { VDFRange, VDFTokeniserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"

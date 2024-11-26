@@ -1,6 +1,6 @@
+import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { combineLatest, concatMap, distinctUntilChanged, map, of, switchMap, type Observable } from "rxjs"
-import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, CompletionItemKind, DiagnosticSeverity } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"

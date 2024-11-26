@@ -1,5 +1,5 @@
-import { Uri } from "common/Uri"
 import { z } from "zod"
+import { Uri } from "./Uri"
 
 const VDFLanguageConfigurationSchema = z.object({
 	format: z.object({

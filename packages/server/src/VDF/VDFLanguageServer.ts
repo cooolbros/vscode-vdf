@@ -1,7 +1,7 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { firstValueFrom, type Observable } from "rxjs"
 import type { LanguageNames } from "utils/types/LanguageNames"
-import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"

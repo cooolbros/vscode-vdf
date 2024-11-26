@@ -1,5 +1,5 @@
+import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { concatMap, map, switchMap, type Observable } from "rxjs"
-import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"

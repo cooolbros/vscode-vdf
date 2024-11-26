@@ -1,6 +1,6 @@
+import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { of, type Observable } from "rxjs"
-import type { VSCodeVDFConfiguration } from "utils/types/VSCodeVDFConfiguration"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
