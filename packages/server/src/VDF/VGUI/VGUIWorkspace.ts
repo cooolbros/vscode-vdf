@@ -367,33 +367,34 @@ export class VGUIWorkspace extends WorkspaceBase {
 		this.workspaceReferencesReady = promise
 
 		firstValueFrom(fileSystem$).then(async (fileSystem) => {
+			const [clientSchemeFiles, sourceSchemeFiles, languageTokenFiles] = await Promise.all([
+				firstValueFrom(this.clientSchemeFiles$),
+				firstValueFrom(this.sourceSchemeFiles$),
+				firstValueFrom(this.languageTokensFiles$),
+			])
 
-			// const [clientSchemeFiles, sourceSchemeFiles, languageTokenFiles] = await Promise.all([
-			// 	firstValueFrom(this.clientSchemeFiles$),
-			// 	firstValueFrom(this.sourceSchemeFiles$),
-			// 	firstValueFrom(this.languageTokensFiles$),
-			// ])
+			const entries = await fileSystem.readDirectory("resource/ui", { recursive: true, pattern: "**/*.res" })
 
-			// const entries = await fileSystem.readDirectory("resource/ui", { recursive: true, pattern: "**/*.res" })
+			const promises: Promise<void>[] = []
 
-			// const promises: Promise<void>[] = []
+			for (const [name, type] of entries) {
+				if (type == 2 || clientSchemeFiles.has(name) || sourceSchemeFiles.has(name) || languageTokenFiles.has(name)) {
+					continue
+				}
 
-			// for (const [name, type] of entries) {
+				const { promise, resolve } = Promise.withResolvers<void>()
+				promises.push(promise)
 
-			// 	if (type == 2 || clientSchemeFiles.has(name) || sourceSchemeFiles.has(name) || languageTokenFiles.has(name)) {
-			// 		continue
-			// 	}
+				setTimeout(async () => {
+					const uri = await firstValueFrom(fileSystem.resolveFile(name))
+					if (uri) {
+						await firstValueFrom((await documents.get(uri, true)).definitionReferences$)
+					}
+					resolve()
+				}, 0)
+			}
 
-			// 	promises.push(
-			// 		firstValueFrom(fileSystem.resolveFile(name)).then(async (uri) => {
-			// 			if (uri) {
-			// 				await firstValueFrom((await documents.get(uri, true)).definitionReferences$)
-			// 			}
-			// 		})
-			// 	)
-			// }
-
-			// await Promise.allSettled(promises)
+			await Promise.allSettled(promises)
 			resolve()
 		})
 	}
