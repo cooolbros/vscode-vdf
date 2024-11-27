@@ -1,5 +1,5 @@
 import * as devalue from "devalue"
-import { identity, isObservable, Observable, shareReplay, startWith, Subject, Subscription } from "rxjs"
+import { identity, isObservable, Observable, shareReplay, skip, startWith, Subject, Subscription } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { z } from "zod"
@@ -56,7 +56,7 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 
 	subscriptions.push(
 		onRequest("vscode-vdf/observable/subscribe", (param: unknown) => {
-			const { server, id } = paramsSchema.parse(param)
+			const { server, id, skip1 } = paramsSchema.extend({ skip1: z.boolean().optional() }).parse(param)
 
 			let serverSubscriptions = serversSubscriptions.get(server)
 			if (!serverSubscriptions) {
@@ -71,7 +71,9 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 
 			let subscription = serverSubscriptions.get(id)
 			if (!subscription) {
-				subscription = observable.subscribe((value) => {
+				subscription = observable.pipe(
+					skip1 ? skip(1) : identity,
+				).subscribe((value) => {
 					sendNotification(server, "vscode-vdf/observable/next", { id: id, value: devalue.stringify(value, inputReducers) })
 				})
 
@@ -157,7 +159,7 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 
 					const o = new Observable((subscriber) => {
 						const subscription = s.subscribe(subscriber)
-						sendRequest(value.server, "vscode-vdf/observable/subscribe", params)
+						sendRequest(value.server, "vscode-vdf/observable/subscribe", { ...params, ...(value.current != undefined && { skip1: true }) })
 						return {
 							unsubscribe: () => {
 								subscription.unsubscribe()
