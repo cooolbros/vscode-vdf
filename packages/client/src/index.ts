@@ -63,8 +63,8 @@ export class Client {
 								sendRequest: (server, method, param) => {
 									throw new Error(`server == null (${server}, ${method}, ${JSON.stringify(param)})`)
 								},
-								sendNotification: async (subscriber, method, param) => {
-									await languageClients[subscriber]!.client.sendNotification(method, param)
+								sendNotification: async (server, method, param) => {
+									await languageClients[server]!.client.sendNotification(method, param)
 								},
 							})
 						}),

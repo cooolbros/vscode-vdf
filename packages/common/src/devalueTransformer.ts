@@ -14,7 +14,7 @@ export interface Options {
 	onRequest(method: string, handler: (...params: any[]) => any): { dispose(): any }
 	onNotification(method: string, handler: (...params: any[]) => any): { dispose(): any }
 	sendRequest(server: VSCodeVDFLanguageID | null, method: `vscode-vdf/observable/${"subscribe" | "unsubscribe" | "free"}`, param: any): Promise<any>
-	sendNotification(subscriber: VSCodeVDFLanguageID, method: "vscode-vdf/observable/next", param: z.infer<typeof nextSchema>): Promise<void>
+	sendNotification(server: VSCodeVDFLanguageID, method: "vscode-vdf/observable/next", param: z.infer<typeof nextSchema>): Promise<void>
 }
 
 const common = {
@@ -37,7 +37,7 @@ const common = {
 }
 
 const paramsSchema = z.object({
-	subscriber: VSCodeVDFLanguageIDSchema,
+	server: VSCodeVDFLanguageIDSchema,
 	id: z.string(),
 })
 
@@ -56,12 +56,12 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 
 	subscriptions.push(
 		onRequest("vscode-vdf/observable/subscribe", (param: unknown) => {
-			const { subscriber, id } = paramsSchema.parse(param)
+			const { server, id } = paramsSchema.parse(param)
 
-			let serverSubscriptions = serversSubscriptions.get(subscriber)
+			let serverSubscriptions = serversSubscriptions.get(server)
 			if (!serverSubscriptions) {
 				serverSubscriptions = new Map()
-				serversSubscriptions.set(subscriber, serverSubscriptions)
+				serversSubscriptions.set(server, serverSubscriptions)
 			}
 
 			const observable = observables.get(id)
@@ -72,26 +72,26 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 			let subscription = serverSubscriptions.get(id)
 			if (!subscription) {
 				subscription = observable.subscribe((value) => {
-					sendNotification(subscriber, "vscode-vdf/observable/next", { id: id, value: devalue.stringify(value, inputReducers) })
+					sendNotification(server, "vscode-vdf/observable/next", { id: id, value: devalue.stringify(value, inputReducers) })
 				})
 
 				serverSubscriptions.set(id, subscription)
 			}
 		}),
 		onRequest("vscode-vdf/observable/unsubscribe", (param: unknown) => {
-			const { subscriber, id } = paramsSchema.parse(param)
+			const { server, id } = paramsSchema.parse(param)
 
-			let serverSubscriptions = serversSubscriptions.get(subscriber)
+			let serverSubscriptions = serversSubscriptions.get(server)
 			if (!serverSubscriptions) {
 				serverSubscriptions = new Map()
-				serversSubscriptions.set(subscriber, serverSubscriptions)
+				serversSubscriptions.set(server, serverSubscriptions)
 			}
 
 			serverSubscriptions.get(id)?.unsubscribe()
 			serverSubscriptions.delete(id)
 
 			if (serverSubscriptions.size == 0) {
-				serversSubscriptions.delete(subscriber)
+				serversSubscriptions.delete(server)
 			}
 		}),
 		onNotification("vscode-vdf/observable/next", (param: unknown) => {
@@ -153,7 +153,7 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 				let subject = subjects.get(value.id)
 				if (!subject) {
 					const s = new Subject()
-					const params: z.infer<typeof paramsSchema> = { subscriber: name, id: value.id }
+					const params: z.infer<typeof paramsSchema> = { server: name, id: value.id }
 
 					const o = new Observable((subscriber) => {
 						const subscription = s.subscribe(subscriber)

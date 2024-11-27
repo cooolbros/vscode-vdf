@@ -1,6 +1,7 @@
 import { createTRPCProxyClient, httpBatchLink, type CreateTRPCClientOptions, type CreateTRPCProxyClient } from "@trpc/client"
 import { initTRPC, type AnyRouter, type CombinedDataTransformer } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import type { Client } from "client"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import { Uri } from "common/Uri"
@@ -306,14 +307,14 @@ export abstract class LanguageServer<
 			onNotification: (method, handler) => this.connection.onNotification(method, handler),
 			sendRequest: async (server, method, param) => {
 				if (server != null) {
-					return await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
+					return await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param } satisfies z.infer<typeof Client["sendSchema"]>)
 				}
 				else {
 					return await this.connection.sendRequest(method, param)
 				}
 			},
-			sendNotification: async (subscriber, method, param) => {
-				await this.connection.sendNotification("vscode-vdf/sendNotification", { subscriber, method, param })
+			sendNotification: async (server, method, param) => {
+				await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param } satisfies z.infer<typeof Client["sendSchema"]>)
 			},
 		}) satisfies CombinedDataTransformer
 
