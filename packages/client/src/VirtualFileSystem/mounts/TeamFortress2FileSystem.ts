@@ -1,4 +1,5 @@
 import type { Uri } from "common/Uri"
+import { combineLatest, map, Observable } from "rxjs"
 import { VDF } from "vdf"
 import * as vscode from "vscode"
 import { z } from "zod"
@@ -76,15 +77,18 @@ export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory:
 		throw new Error()
 	}
 
-	const paths = new Map<string, { uris: (Uri | null)[], index: number }>()
+	const observables = new Map<string, Observable<Uri | null>>()
 
 	return {
-		resolveFile: async (path) => {
-			const uris = await Promise.all(fileSystems.map((fileSystem, index) => fileSystem.resolveFile(path)))
-
-			const index = uris.findIndex((uri) => uri != null)
-			paths.set(path, { uris: uris, index: index })
-			return uris[index] ?? null
+		resolveFile: (path) => {
+			let observable = observables.get(path)
+			if (!observable) {
+				observable = combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path))).pipe(
+					map((uris) => uris.find((uri) => uri != null) ?? null)
+				)
+				observables.set(path, observable)
+			}
+			return observable
 		},
 		readDirectory: async (path, options) => {
 			const results = await Promise.allSettled(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))

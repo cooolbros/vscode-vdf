@@ -1,5 +1,6 @@
 import { Uri } from "common/Uri"
 import { Minimatch } from "minimatch"
+import { catchError, from, map, of } from "rxjs"
 import * as vscode from "vscode"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 
@@ -16,21 +17,22 @@ export async function VPKFileSystem(vpk: Uri): Promise<FileSystemMountPoint> {
 	const authority = JSON.stringify(vpk)
 
 	return {
-		resolveFile: async (path) => {
-			try {
-				const uri = new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
-				const stat = await vscode.workspace.fs.stat(uri)
-				if (stat.type == vscode.FileType.Directory) {
-					throw vscode.FileSystemError.FileIsADirectory(uri)
-				}
-				return uri
-			}
-			catch (error) {
-				if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
-					console.error(error)
-				}
-				return null
-			}
+		resolveFile: (path) => {
+			const uri = new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
+			return from(vscode.workspace.fs.stat(uri)).pipe(
+				map((stat) => {
+					if (stat.type == vscode.FileType.Directory) {
+						throw vscode.FileSystemError.FileIsADirectory(uri)
+					}
+					return uri
+				}),
+				catchError((error) => {
+					if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
+						console.error(error)
+					}
+					return of(null)
+				})
+			)
 		},
 		readDirectory: async (path, options) => {
 			if (!options.recursive) {

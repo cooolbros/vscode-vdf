@@ -1,9 +1,15 @@
 import { Uri } from "common/Uri"
+import { BehaviorSubject, map, Observable, Subscription } from "rxjs"
 import * as vscode from "vscode"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory"
 
 class SortedArray<T> extends Array<T> {
+
+	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/species
+	public static get [Symbol.species]() {
+		return Array
+	}
 
 	constructor(private readonly compareFn: (a: T, b: T) => number, ...items: T[]) {
 		super(...items.sort(compareFn))
@@ -24,10 +30,6 @@ class SortedArray<T> extends Array<T> {
 		this.update()
 		return deleted
 	}
-
-	map<U>(callbackfn: (value: T, index: number, array: T[]) => U): U[] {
-		return this.values().map((value, index) => callbackfn(value, index, this)).toArray()
-	}
 }
 
 /**
@@ -41,51 +43,37 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 	const dirname = uri.dirname()
 
-	const fileSystems = new SortedArray<{ folder: string, fileSystem: FileSystemMountPoint }>(
-		(a, b) => a.folder.localeCompare(b.folder),
-		...(await Promise.allSettled(
-			(await vscode.workspace.fs.readDirectory(dirname))
-				.map(async ([name, type]) => {
+	async function create(name: string, type: vscode.FileType) {
+		if (type == vscode.FileType.Directory) {
+			return { name: name, fileSystem: await factory.folder(dirname.joinPath(name)) }
+		}
+		else if (name.endsWith(".vpk")) {
+			return { name: name, fileSystem: await factory.vpk(dirname.joinPath(name)) }
+		}
+		else {
+			return null
+		}
+	}
 
-					let fileSystem: FileSystemMountPoint | null = null
-
-					if (type == vscode.FileType.Directory) {
-						fileSystem = await factory.folder(dirname.joinPath(name))
-					}
-
-					if (name.endsWith(".vpk")) {
-						fileSystem = await factory.vpk(dirname.joinPath(name))
-					}
-
-					if (!fileSystem) {
-						throw new Error()
-					}
-
-					return {
-						folder: name,
-						fileSystem: fileSystem
-					}
-				})
-		))
-			.filter((fileSystem) => fileSystem.status == "fulfilled")
-			.map((fileSystem) => fileSystem.value)
-	)
-
-	const paths = new Map<string, { uris: SortedArray<{ folder: string, uri: Uri | null }>, folder: string | null }>()
+	const fileSystems$ = new BehaviorSubject<SortedArray<{ name: string, fileSystem: FileSystemMountPoint }>>(new SortedArray(
+		(a, b) => a.name.localeCompare(b.name),
+		...(await Promise.all(
+			(await vscode.workspace.fs.readDirectory(dirname)).map(async ([name, type]) => create(name, type))
+		)).filter((value) => value != null)
+	))
 
 	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(dirname), "*"), false, true, false)
 
 	watcher.onDidCreate(async (event) => {
 		const uri = new Uri(event)
 		const basename = uri.basename()
+		const type = (await vscode.workspace.fs.stat(uri)).type
 
-		if ((await vscode.workspace.fs.stat(uri)).type == vscode.FileType.Directory && !fileSystems.some(({ folder }) => folder == basename)) {
-			const fileSystem = { folder: basename, fileSystem: await factory.folder(uri) }
-			fileSystems.push(fileSystem)
-			for (const [path, result] of paths.entries()) {
-				fileSystem.fileSystem.resolveFile(path).then((uri) => {
-					result.uris.push({ folder: basename, uri: uri })
-				})
+		if (!fileSystems$.value.some(({ name }) => name == basename)) {
+			const fileSystem = await create(basename, type)
+			if (fileSystem) {
+				fileSystems$.value.push(fileSystem)
+				fileSystems$.next(fileSystems$.value)
 			}
 		}
 	})
@@ -93,39 +81,85 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 	watcher.onDidDelete(async (event) => {
 		const uri = new Uri(event)
 		const basename = uri.basename()
+		const fileSystem = fileSystems$.value.find(({ name }) => name == basename)
 
-		if ((await vscode.workspace.fs.stat(uri)).type == vscode.FileType.Directory) {
-			const fileSystem = fileSystems.find(({ folder }) => folder == basename)
-			if (fileSystem) {
-				fileSystem.fileSystem.dispose()
-				fileSystems.splice(fileSystems.indexOf(fileSystem), 1)
-			}
+		if (fileSystem != undefined) {
+			fileSystems$.value.splice(fileSystems$.value.indexOf(fileSystem), 1)
+			fileSystems$.next(fileSystems$.value)
+			fileSystem.fileSystem.dispose()
 		}
 	})
 
+	const observables = new Map<string, Observable<Uri | null>>()
+
 	return {
-		resolveFile: async (path) => {
-			const uris = fileSystems.length != 0
-				? await Promise.all(fileSystems.map(async ({ folder, fileSystem }) => ({ folder: folder, uri: await fileSystem.resolveFile(path) })))
-				: []
+		resolveFile: (path) => {
+			let observable = observables.get(path)
+			if (!observable) {
+				observable = fileSystems$.pipe(
+					(source) => {
+						const uris = new SortedArray<{ name: string, value: Uri | null }>((a, b) => a.name.localeCompare(b.name))
+						return new Observable<SortedArray<{ name: string, value: Uri | null }>>((subscriber) => {
+							const subscriptions = new Map<string, Subscription>()
+							const subscription = source.subscribe((fileSystems) => {
 
-			const result = uris.find(({ uri }) => uri != null) ?? null
-			paths.set(path, {
-				uris: new SortedArray((a, b) => a.folder.localeCompare(b.folder), ...uris),
-				folder: result?.folder ?? null,
-			})
+								let added = fileSystems.filter(({ name }) => subscriptions.has(name)).length
 
-			return result?.uri ?? null
+								for (const fileSystem of fileSystems) {
+									if (!subscriptions.has(fileSystem.name)) {
+										subscriptions.set(
+											fileSystem.name,
+											fileSystem.fileSystem.resolveFile(path).subscribe((uri) => {
+												const existing = uris.find((value) => value.name == fileSystem.name)
+												if (existing) {
+													existing.value = uri
+												}
+												else {
+													uris.push({ name: fileSystem.name, value: uri })
+												}
+
+												added = Math.max(added - 1, 0)
+												if (added == 0) {
+													subscriber.next(uris)
+												}
+											})
+										)
+									}
+								}
+
+								for (const [name, subscription] of subscriptions) {
+									if (!fileSystems.some((value) => value.name == name)) {
+										subscription.unsubscribe()
+										subscriptions.delete(name)
+									}
+								}
+							})
+
+							return () => {
+								for (const subscription of subscriptions.values()) {
+									subscription.unsubscribe()
+								}
+								subscription.unsubscribe()
+							}
+						})
+					},
+					map((uris) => uris.map(({ value }) => value)),
+					map((uris) => uris.find((uri) => uri != null) ?? null)
+				)
+				observables.set(path, observable)
+			}
+			return observable
 		},
 		readDirectory: async (path, options) => {
-			const all = (await Promise.all(fileSystems.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))).flat()
+			const all = (await Promise.all(fileSystems$.value.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))).flat()
 			return all.filter(([name], index) => all.findIndex(([n]) => n == name) == index)
 		},
 		dispose: () => {
 			watcher.dispose()
-			for (const { fileSystem } of fileSystems) {
+			for (const { fileSystem } of fileSystems$.value) {
 				fileSystem?.dispose()
 			}
+			fileSystems$.complete()
 		}
 	}
 }

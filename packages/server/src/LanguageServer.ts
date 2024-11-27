@@ -137,7 +137,9 @@ export abstract class LanguageServer<
 							fileSystem$ = of(
 								new TeamFortress2FileSystem(paths.map((path) => path.uri), {
 									resolveFile: (path) => {
-										return from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path }))
+										return from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
+											switchMap((observable) => observable)
+										)
 									},
 									readDirectory: async (path, options) => {
 										return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })

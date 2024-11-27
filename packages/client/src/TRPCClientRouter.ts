@@ -1,5 +1,6 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
+import { firstValueFrom } from "rxjs"
 import { commands, languages, window, workspace } from "vscode"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
@@ -99,7 +100,9 @@ export function TRPCClientRouter(
 						})
 					)
 					.query(async ({ input }) => {
-						return await fileSystems.get(input.key)!.resolveFile(input.path)
+						const observable = fileSystems.get(input.key)!.resolveFile(input.path)
+						await firstValueFrom(observable)
+						return observable
 					}),
 				readDirectory: t
 					.procedure

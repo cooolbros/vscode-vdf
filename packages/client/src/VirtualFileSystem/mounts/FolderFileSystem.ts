@@ -1,5 +1,6 @@
 import { Uri } from "common/Uri"
 import { Minimatch } from "minimatch"
+import { catchError, concat, from, map, of, Subject } from "rxjs"
 import * as vscode from "vscode"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 
@@ -13,6 +14,8 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 		throw new Error(`${root.toString(true)} is not a directory.`)
 	}
 
+	const subjects = new Map<string, Subject<Uri | null>>()
+
 	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(root), "**/**"), false, true, false)
 
 	watcher.onDidCreate(async (event) => {
@@ -20,30 +23,43 @@ export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint>
 		if (stat.type == vscode.FileType.File) {
 			const uri = new Uri(event)
 			const path = root.relative(uri).path.substring(1)
+			subjects.get(path)?.next(uri)
 		}
 	})
 
 	watcher.onDidDelete((event) => {
 		const uri = new Uri(event)
 		const path = root.relative(uri).path.substring(1)
+		subjects.get(path)?.next(null)
 	})
 
 	return {
-		resolveFile: async (path) => {
+		resolveFile: (path) => {
 			const uri = root.joinPath(path)
-			try {
-				const stat = await vscode.workspace.fs.stat(uri)
-				if (stat.type == vscode.FileType.Directory) {
-					throw vscode.FileSystemError.FileIsADirectory(uri)
-				}
-				return uri
+
+			let subject = subjects.get(path)
+			if (!subject) {
+				subject = new Subject<Uri | null>()
+				subjects.set(path, subject)
 			}
-			catch (error) {
-				if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
-					console.error(error)
-				}
-				return null
-			}
+
+			return concat(
+				from(vscode.workspace.fs.stat(uri)).pipe(
+					map((stat) => {
+						if (stat.type == vscode.FileType.Directory) {
+							throw vscode.FileSystemError.FileIsADirectory(uri)
+						}
+						return uri
+					}),
+					catchError((error) => {
+						if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
+							console.error(error)
+						}
+						return of(null)
+					})
+				),
+				subject
+			)
 		},
 		readDirectory: async (path, options) => {
 			if (!options.recursive) {

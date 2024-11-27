@@ -1,23 +1,22 @@
-import { Uri } from "common/Uri"
+import type { Uri } from "common/Uri"
+import { combineLatest, map, Observable } from "rxjs"
 import type { FileSystemMountPoint } from "./FileSystemMountPoint"
 
 /**
  * @class
  */
 export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSystemMountPoint {
-
-	const paths = new Map<string, { uris: (Uri | null)[], index: number }>()
-
+	const observables = new Map<string, Observable<Uri | null>>()
 	return {
-		resolveFile: async (path) => {
-
-			const uris = await Promise.all(
-				fileSystems.map((fileSystem) => fileSystem.resolveFile(path).catch(() => null))
-			)
-
-			const index = uris.findIndex((uri) => uri != null)
-			paths.set(path, { uris: uris, index: index })
-			return uris[index] ?? null
+		resolveFile: (path) => {
+			let observable = observables.get(path)
+			if (!observable) {
+				observable = combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path))).pipe(
+					map((uris) => uris.find((uri) => uri != null) ?? null)
+				)
+				observables.set(path, observable)
+			}
+			return observable
 		},
 		readDirectory: async (path, options) => {
 			const results = await Promise.allSettled(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))
