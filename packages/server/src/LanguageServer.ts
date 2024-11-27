@@ -7,7 +7,7 @@ import { devalueTransformer } from "common/devalueTransformer"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap, zip } from "rxjs"
+import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap, zip } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -147,11 +147,6 @@ export abstract class LanguageServer<
 									}
 								})
 							).pipe(
-								finalize(() => {
-									console.log(`TeamFortress2FileSystem.finalize ${key}`)
-									// fileSystems.delete(key)
-									// this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
-								}),
 								shareReplay({
 									bufferSize: 1,
 									refCount: true,
