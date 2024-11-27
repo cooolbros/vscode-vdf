@@ -616,11 +616,15 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										if (configuration.relativeFolderPath) {
 											const relativePath = posix.resolve(`/${configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
 
-											return await firstValueFrom(
+											const target = await firstValueFrom(
 												fileSystem$.pipe(
 													switchMap((fileSystem) => fileSystem.resolveFile(relativePath))
 												)
 											)
+
+											if (target) {
+												return target
+											}
 										}
 
 										const dirname = this.uri.dirname()
