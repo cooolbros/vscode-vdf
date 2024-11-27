@@ -127,7 +127,7 @@ export abstract class LanguageServer<
 				return teamFortress2Folder$.pipe(
 					concatMap(async (teamFortress2Folder) => {
 						return await this.trpc.client.teamFortress2FileSystem.open.mutate({
-							paths: paths(teamFortress2Folder).filter((path) => path != null)
+							paths: paths(teamFortress2Folder).filter((path, index, arr): path is NonNullable<typeof path> => path != null && arr.indexOf(path) == index)
 						})
 					}),
 					distinctUntilKeyChanged("key"),
