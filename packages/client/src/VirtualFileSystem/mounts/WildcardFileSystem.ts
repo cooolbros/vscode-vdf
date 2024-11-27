@@ -1,5 +1,5 @@
 import { Uri } from "common/Uri"
-import { BehaviorSubject, map, Observable, Subscription } from "rxjs"
+import { BehaviorSubject, distinctUntilChanged, map, Observable, Subscription } from "rxjs"
 import * as vscode from "vscode"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory"
@@ -144,7 +144,8 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 						})
 					},
 					map((uris) => uris.map(({ value }) => value)),
-					map((uris) => uris.find((uri) => uri != null) ?? null)
+					map((uris) => uris.find((uri) => uri != null) ?? null),
+					distinctUntilChanged(Uri.equals)
 				)
 				observables.set(path, observable)
 			}

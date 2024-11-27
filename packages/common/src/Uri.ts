@@ -12,6 +12,18 @@ export class Uri {
 		fragment: z.string(),
 	}).transform((arg) => new Uri(arg))
 
+	public static equals(a: Uri | null, b: Uri | null): boolean {
+		if (a == b) {
+			return true
+		}
+
+		if (a != null && b != null) {
+			return a.equals(b)
+		}
+
+		return false
+	}
+
 	private readonly uri: URI
 
 	public readonly scheme: string
