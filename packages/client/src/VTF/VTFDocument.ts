@@ -3,7 +3,8 @@ import { type CustomDocument, StatusBarAlignment, type StatusBarItem, type Uri, 
 
 const VTF_WIDTH_OFFSET = 16
 const VTF_HEIGHT_OFFSET = 18
-const VTF_FLAGS_OFFSET = 20
+
+export const VTF_FLAGS_OFFSET = 20
 
 const KB = 1024
 const MB = KB * KB
@@ -43,13 +44,13 @@ export class VTFDocument implements CustomDocument {
 	private readonly dimensionsStatusBarItem: StatusBarItem
 	private readonly binarySizeStatusBarItem: StatusBarItem
 
-	public constructor(uri: Uri, buf: Uint8Array) {
+	public constructor(uri: Uri, buf: Uint8Array, backup: number | null) {
 		this.uri = uri
 		this.buf = buf
 
 		const dataView = new DataView(this.buf.buffer)
 
-		this.flags$ = new DistinctBehaviorSubject(dataView.getUint32(VTF_FLAGS_OFFSET, true))
+		this.flags$ = new DistinctBehaviorSubject(backup ?? dataView.getUint32(VTF_FLAGS_OFFSET, true))
 		this.scale$ = new BehaviorSubject(100)
 
 		let priority = 100
