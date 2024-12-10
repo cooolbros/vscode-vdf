@@ -43,7 +43,10 @@
 					return fromEvent<MouseEvent>(canvas, "click").pipe(map((event) => (event.ctrlKey ? -1 : 1)))
 				}),
 			),
-			fromEvent<WheelEvent>(document, "wheel").pipe(map((event) => (event.deltaY < 0 ? 1 : -1))),
+			fromEvent<WheelEvent>(document, "wheel").pipe(
+				filter((event) => event.ctrlKey),
+				map((event) => (event.deltaY < 0 ? 1 : -1)),
+			),
 		).pipe(map((value) => ({ set: false, value: value * 10 }))),
 		fromEvent<MessageEvent>(window, "message").pipe(
 			map((event) => z.object({ type: z.literal("scale"), value: z.number() }).safeParse(event.data)),
