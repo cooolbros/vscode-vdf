@@ -245,7 +245,9 @@
 					}
 
 					span {
+						width: 100%;
 						padding-right: 2rem;
+						white-space: nowrap;
 					}
 
 					&:has(input[disabled]) {
@@ -259,6 +261,7 @@
 		div#vtf-container {
 			grid-row: span 2;
 			margin-top: 9px;
+			overflow: scroll;
 
 			:global(canvas) {
 				--max: 90%;
