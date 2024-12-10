@@ -83,13 +83,13 @@ export class VTFDocument implements CustomDocument {
 	}
 
 	public save() {
-		new DataView(this.buf.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value)
+		new DataView(this.buf.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value, true)
 		return this.buf
 	}
 
 	public saveAs() {
 		const buf = new Uint8Array(this.buf)
-		new DataView(buf.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value)
+		new DataView(buf.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value, true)
 		return buf
 	}
 
