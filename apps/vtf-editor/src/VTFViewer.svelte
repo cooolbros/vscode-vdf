@@ -150,8 +150,12 @@
 					<input
 						type="checkbox"
 						{id}
-						bind:checked={() => id != null && (flags & value) == value, () => (flags ^= value)}
+						checked={id != null && (flags & value) == value}
 						disabled={id == null}
+						onchange={() => {
+							flags ^= value
+							postMessage({ type: "flags", label: label!, value })
+						}}
 					/>
 					<span>{label ?? "Unused"}</span>
 				</label>
