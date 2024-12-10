@@ -3,8 +3,7 @@ import { type CustomDocument, StatusBarAlignment, type StatusBarItem, type Uri, 
 
 const VTF_WIDTH_OFFSET = 16
 const VTF_HEIGHT_OFFSET = 18
-
-export const VTF_FLAGS_OFFSET = 20
+const VTF_FLAGS_OFFSET = 20
 
 const KB = 1024
 const MB = KB * KB

@@ -1,6 +1,6 @@
 import { commands, EventEmitter, Uri, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
 import { z } from "zod"
-import { VTF_FLAGS_OFFSET, VTFDocument } from "./VTFDocument"
+import { VTFDocument } from "./VTFDocument"
 
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
@@ -56,7 +56,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 	public async openCustomDocument(uri: Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): Promise<VTFDocument> {
 		const flags = openContext.backupId != undefined
-			? new DataView((await workspace.fs.readFile(Uri.parse(openContext.backupId))).buffer).getUint32(VTF_FLAGS_OFFSET, true)
+			? new DataView((await workspace.fs.readFile(Uri.parse(openContext.backupId))).buffer).getUint32(0, true)
 			: null
 		return new VTFDocument(uri, new Uint8Array(await workspace.fs.readFile(uri)), flags)
 	}
