@@ -6,4 +6,5 @@
 dist
 node_modules
 out
+target
 tsconfig.tsbuildinfo

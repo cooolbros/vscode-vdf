@@ -1,0 +1,13 @@
+[package]
+name = "vtf"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bincode = { version = "2.0.0-rc.3", features = ["derive", "serde"] }
+texpresso = "2.0.1"
+wasm-bindgen = "0.2.95"
+web-sys = { version = "0.3.74", features = ["CanvasRenderingContext2d", "ImageData"] }

@@ -1,0 +1,6 @@
+[workspace]
+members = ["packages/vtf"]
+resolver = "2"
+
+[profile.release]
+opt-level = 3
