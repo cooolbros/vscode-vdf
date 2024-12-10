@@ -7,7 +7,8 @@ import "./app.css"
 const app = mount(App, {
 	target: document.getElementById("app")!,
 	props: {
-		vscode: acquireVsCodeApi<any>(),
+		vscode: acquireVsCodeApi<State>(),
+		readonly: document.head.querySelector<HTMLMetaElement>("meta[name=readonly]")?.content == "true",
 		buf: await Promise.all([
 			init(),
 			(await firstValueFrom(fromEvent<MessageEvent<Uint8Array>>(window, "message"))).data

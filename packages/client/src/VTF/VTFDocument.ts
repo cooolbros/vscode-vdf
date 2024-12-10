@@ -35,6 +35,7 @@ class DistinctBehaviorSubject<T> extends BehaviorSubject<T> {
 export class VTFDocument implements CustomDocument {
 
 	public readonly uri: Uri
+	public readonly readonly: boolean
 	public readonly buf: Uint8Array
 	public readonly flags$: DistinctBehaviorSubject<number>
 	public readonly scale$: DistinctBehaviorSubject<number>
@@ -43,8 +44,9 @@ export class VTFDocument implements CustomDocument {
 	private readonly dimensionsStatusBarItem: StatusBarItem
 	private readonly binarySizeStatusBarItem: StatusBarItem
 
-	public constructor(uri: Uri, buf: Uint8Array, backup: number | null) {
+	public constructor(uri: Uri, readonly: boolean, buf: Uint8Array, backup: number | null) {
 		this.uri = uri
+		this.readonly = readonly
 		this.buf = buf
 
 		const dataView = new DataView(this.buf.buffer)

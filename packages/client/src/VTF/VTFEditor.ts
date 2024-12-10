@@ -1,4 +1,4 @@
-import { commands, EventEmitter, Uri, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
+import { commands, EventEmitter, FilePermission, Uri, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
 import { z } from "zod"
 import { VTFDocument } from "./VTFDocument"
 
@@ -55,10 +55,15 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 	}
 
 	public async openCustomDocument(uri: Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): Promise<VTFDocument> {
+		const stat = await workspace.fs.stat(uri)
+		const readonly = stat.permissions
+			? (stat.permissions & FilePermission.Readonly) == FilePermission.Readonly
+			: false
+
 		const flags = openContext.backupId != undefined
 			? new DataView((await workspace.fs.readFile(Uri.parse(openContext.backupId))).buffer).getUint32(0, true)
 			: null
-		return new VTFDocument(uri, new Uint8Array(await workspace.fs.readFile(uri)), flags)
+		return new VTFDocument(uri, readonly, new Uint8Array(await workspace.fs.readFile(uri)), flags)
 	}
 
 	public async resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): Promise<void> {
@@ -68,6 +73,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 		webviewPanel.webview.options = { enableScripts: true }
 		webviewPanel.webview.html = html
+			.replaceAll("%READONLY%", `${document.readonly}`)
 			.replaceAll("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
 
 		webviewPanel.webview.postMessage(document.buf)

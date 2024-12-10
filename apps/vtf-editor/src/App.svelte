@@ -6,10 +6,11 @@
 
 	interface Props {
 		vscode: WebviewApi<{ flags: number; scale: number }>
+		readonly: boolean
 		buf: Uint8Array
 	}
 
-	const { vscode, buf }: Props = $props()
+	const { vscode, readonly, buf }: Props = $props()
 
 	function postMessage(message: z.input<(typeof VTFEditor)["commandSchema"]>) {
 		vscode.postMessage(message)
@@ -23,5 +24,5 @@
 <svelte:boundary
 	onerror={(error) => postMessage({ type: "showErrorMessage", message: (error as Error).message, items: [] })}
 >
-	<VTFViewer {buf} initial={vscode.getState()} {postMessage} {setState} />
+	<VTFViewer {readonly} {buf} initial={vscode.getState()} {postMessage} {setState} />
 </svelte:boundary>

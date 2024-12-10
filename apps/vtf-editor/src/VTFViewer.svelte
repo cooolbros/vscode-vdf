@@ -6,13 +6,14 @@
 	import { z } from "zod"
 
 	interface Props {
+		readonly: boolean
 		buf: Uint8Array
 		initial: State | undefined
 		postMessage: (message: z.input<(typeof VTFEditor)["commandSchema"]>) => void
 		setState(newState: State): void
 	}
 
-	const { buf, initial, postMessage, setState }: Props = $props()
+	const { readonly, buf, initial, postMessage, setState }: Props = $props()
 
 	const vtf = new VTF(buf)
 	const { width, height } = vtf.header
@@ -146,19 +147,22 @@
 			{#snippet checkbox(label: string | null)}
 				{@const id = label?.replaceAll(/\s/g, "-").toLowerCase()}
 				{@const value = 1 << i++}
-				<label class="checkbox-container" for={id}>
-					<input
-						type="checkbox"
-						{id}
-						checked={id != null && (flags & value) == value}
-						disabled={id == null}
-						onchange={() => {
-							flags ^= value
-							postMessage({ type: "flags", label: label!, value })
-						}}
-					/>
-					<span>{label ?? "Unused"}</span>
-				</label>
+				{@const unused = id == null}
+				<div class="checkbox-container" class:readonly={readonly || unused} class:unused>
+					<label for={id}>
+						<input
+							type="checkbox"
+							{id}
+							checked={id != null && (flags & value) == value}
+							tabindex={id != null ? 0 : -1}
+							onchange={() => {
+								flags ^= value
+								postMessage({ type: "flags", label: label!, value })
+							}}
+						/>
+						<span>{label ?? "Unused"}</span>
+					</label>
+				</div>
 			{/snippet}
 
 			<div>
@@ -234,25 +238,32 @@
 				overflow: hidden scroll;
 				scrollbar-width: thin;
 
-				label.checkbox-container {
-					display: flex;
-					align-items: center;
-					gap: 5px;
-					cursor: pointer;
+				div.checkbox-container {
+					label {
+						display: flex;
+						align-items: center;
+						gap: 5px;
+						cursor: pointer;
+					}
 
 					> * {
 						display: block;
 					}
-
 					span {
 						width: 100%;
 						padding-right: 2rem;
 						white-space: nowrap;
 					}
 
-					&:has(input[disabled]) {
+					&.unused {
 						opacity: 0.2;
+					}
+
+					&.readonly {
 						cursor: not-allowed;
+						label {
+							pointer-events: none;
+						}
 					}
 				}
 			}
