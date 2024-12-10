@@ -272,7 +272,7 @@
 		div#vtf-container {
 			grid-row: span 2;
 			margin-top: 9px;
-			overflow: scroll;
+			overflow: auto;
 
 			:global(canvas) {
 				--max: 90%;
