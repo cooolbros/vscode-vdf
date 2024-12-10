@@ -1,4 +1,5 @@
 import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
+import { VTFEditor } from "client/VTF/VTFEditor"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
@@ -9,7 +10,6 @@ import { join } from "path"
 import { commands, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
-import { VTFEditor } from "./VTF/VTFEditor"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client } = {}
 
@@ -28,7 +28,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Window
 	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
-	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context)))
+	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, context.subscriptions)))
 
 	// Workspace
 	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))

@@ -11,7 +11,9 @@
             ],
             "outputs": [
                 ".next/**",
-                "dist/**"
+                "dist/**",
+                "pkg/**",
+                "target/**"
             ],
             "cache": false
         }

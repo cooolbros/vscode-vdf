@@ -7,7 +7,6 @@
     "devDependencies": {
         "@types/node": "^22.9.0",
         "client": "workspace:^",
-        "tga-js": "^1.1.1",
         "tsconfig": "workspace:^",
         "vpk": "workspace:^",
         "vscode-languageclient": "*"
