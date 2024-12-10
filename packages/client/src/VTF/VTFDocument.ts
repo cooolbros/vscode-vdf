@@ -51,7 +51,7 @@ export class VTFDocument implements CustomDocument {
 		const dataView = new DataView(this.buf.buffer)
 
 		this.flags$ = new DistinctBehaviorSubject(backup ?? dataView.getUint32(VTF_FLAGS_OFFSET, true))
-		this.scale$ = new BehaviorSubject(100)
+		this.scale$ = new DistinctBehaviorSubject(100)
 
 		let priority = 100
 
