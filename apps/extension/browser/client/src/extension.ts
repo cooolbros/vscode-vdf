@@ -4,6 +4,7 @@ import { JSONToVDF } from "client/commands/JSONToVDF"
 import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { onDidChangeActiveTextEditor } from "client/decorations"
+import { VTFEditor } from "client/VTF/VTFEditor"
 import { commands, Uri, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
@@ -23,6 +24,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Window
 	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
+	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, context.subscriptions)))
 
 	// Language Server
 
