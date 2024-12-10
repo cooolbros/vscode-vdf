@@ -182,10 +182,10 @@ importers:
         specifier: workspace:^
         version: link:../../packages/client/src
       svelte:
-        specifier: ^5.9.0
+        specifier: ^5.10.0
         version: 5.10.0
       vite:
-        specifier: ^6.0.1
+        specifier: ^6.0.3
         version: 6.0.3(@types/node@22.9.0)(jiti@1.21.6)(terser@5.36.0)(yaml@2.6.0)
       vtf:
         specifier: workspace:^
