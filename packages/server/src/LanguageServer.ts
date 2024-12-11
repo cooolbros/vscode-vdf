@@ -49,6 +49,9 @@ const capabilities = {
 
 export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies> {
 	servers: Set<VSCodeVDFLanguageID>
+	/**
+	 * https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
+	 */
 	capabilities: Omit<ServerCapabilities, keyof typeof capabilities>
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
 }
