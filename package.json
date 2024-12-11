@@ -2,6 +2,16 @@
     "name": "vscode-vdf",
     "displayName": "VSCode VDF",
     "description": "VDF language support for VSCode",
+    "keywords": [
+        "hudanimations",
+        "mvm",
+        "pop",
+        "popfile",
+        "tf2",
+        "vdf",
+        "vmt",
+        "vtf"
+    ],
     "version": "4.6.0",
     "publisher": "pfwobcke",
     "icon": "icon.png",
