@@ -138,7 +138,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 					"font",
 				]),
 				folder: null,
-				resolve: (value) => value,
+				resolve: (name) => name,
 				extensionsPattern: ".*tf",
 				displayExtensions: true
 			},
@@ -153,7 +153,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 					"ButtonsSC".toLowerCase(),
 				]),
 				folder: null,
-				resolve: (value) => value,
+				resolve: (name) => name,
 				extensionsPattern: null,
 				displayExtensions: true
 			},
@@ -164,7 +164,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 					"image",
 				]),
 				folder: "materials/vgui",
-				resolve: (value) => `${value}.vmt`,
+				resolve: (name) => name.endsWith(".vmt") ? name : `${name}.vmt`,
 				extensionsPattern: ".vmt",
 				displayExtensions: false
 			},

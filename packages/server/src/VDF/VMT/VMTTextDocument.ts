@@ -41,7 +41,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 							parentKeys: [],
 							keys: new Set(["$baseTexture".toLowerCase(), "$detail"]),
 							folder: "materials",
-							resolve: (name) => `${name}.vtf`,
+							resolve: (name) => name.endsWith(".vtf") ? name : `${name}.vtf`,
 							extensionsPattern: ".vtf",
 							displayExtensions: false
 						}

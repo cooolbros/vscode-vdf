@@ -56,7 +56,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					"ClassIcon".toLowerCase()
 				]),
 				folder: "materials/hud",
-				resolve: (value: string) => `leaderboard_class_${value.toLowerCase()}.vmt`,
+				resolve: (name) => `leaderboard_class_${name}` + (name.endsWith(".vmt") ? "" : ".vmt"),
 				extensionsPattern: ".vmt",
 				displayExtensions: false
 			}

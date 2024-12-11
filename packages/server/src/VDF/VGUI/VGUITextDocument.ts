@@ -89,7 +89,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 					...Array.from({ length: 3 }, (_, index) => `teambg_${index + 1}`)
 				]),
 				folder: "materials/vgui",
-				resolve: (value) => value.endsWith(".vmt") ? value : `${value}.vmt`,
+				resolve: (name) => name.endsWith(".vmt") ? name : `${name}.vmt`,
 				extensionsPattern: ".vmt",
 				displayExtensions: false,
 			},
@@ -101,7 +101,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 					"sound_released"
 				]),
 				folder: "sound",
-				resolve: (value) => value,
+				resolve: (name) => name,
 				extensionsPattern: null,
 				displayExtensions: true
 			}
