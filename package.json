@@ -348,8 +348,7 @@
             {
                 "id": "vdf",
                 "aliases": [
-                    "VDF",
-                    "vdf"
+                    "VDF"
                 ],
                 "extensions": [
                     ".res",
