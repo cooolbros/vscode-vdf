@@ -55,6 +55,26 @@
                 "command": "vscode-vdf.JSONToVDF"
             },
             {
+                "category": "HUD Animations",
+                "title": "Restart HUD Animations Language Server",
+                "command": "vscode-vdf.restartHUDAnimationsLanguageServer"
+            },
+            {
+                "category": "Popfile",
+                "title": "Restart Popfile Language Server",
+                "command": "vscode-vdf.restartPopfileLanguageServer"
+            },
+            {
+                "category": "VDF",
+                "title": "Restart VDF Language Server",
+                "command": "vscode-vdf.restartVDFLanguageServer"
+            },
+            {
+                "category": "VMT",
+                "title": "Restart VMT Language Server",
+                "command": "vscode-vdf.restartVMTLanguageServer"
+            },
+            {
                 "category": "VDF",
                 "title": "Show References",
                 "command": "vscode-vdf.showReferences"
@@ -352,6 +372,24 @@
             }
         ],
         "menus": {
+            "commandPalette": [
+                {
+                    "command": "vscode-vdf.restartHUDAnimationsLanguageServer",
+                    "when": "editorLangId == hudanimations"
+                },
+                {
+                    "command": "vscode-vdf.restartPopfileLanguageServer",
+                    "when": "editorLangId == popfile"
+                },
+                {
+                    "command": "vscode-vdf.restartVDFLanguageServer",
+                    "when": "editorLangId == vdf"
+                },
+                {
+                    "command": "vscode-vdf.restartVMTLanguageServer",
+                    "when": "editorLangId == vmt"
+                }
+            ],
             "editor/title": [
                 {
                     "command": "vscode-vdf.extractVPKFileToWorkspace",

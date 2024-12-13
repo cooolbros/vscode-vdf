@@ -11,7 +11,7 @@ import { commands, window, workspace, type ExtensionContext, type TextDocument }
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 
-const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client } = {}
+const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -49,14 +49,15 @@ export function activate(context: ExtensionContext): void {
 		}
 
 		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
+		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
-		const client = languageClients[languageId] = new Client(
+		const client = languageClients[languageId] = new Client<LanguageClient>(
 			languageClients,
 			startServer,
 			context.subscriptions,
 			new LanguageClient(
 				`${languageId}-language-server`,
-				`${VSCodeVDFLanguageNameSchema.shape[languageId].value} Language Server`,
+				`${name} Language Server`,
 				{
 					run: {
 						module: serverModule,
@@ -81,7 +82,12 @@ export function activate(context: ExtensionContext): void {
 			)
 		)
 
-		context.subscriptions.push(client)
+		context.subscriptions.push(
+			client,
+			commands.registerCommand(`vscode-vdf.restart${name.replaceAll(" ", "")}LanguageServer`, () => {
+				client.client.restart()
+			})
+		)
 		await client.start()
 	}
 

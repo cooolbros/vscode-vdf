@@ -9,7 +9,7 @@ import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMount
 
 export * from "common/VSCodeVDFLanguageID"
 
-export class Client {
+export class Client<T extends BaseLanguageClient> {
 
 	private static readonly TRPCRequestSchema = z.tuple([
 		VSCodeVDFLanguageIDSchema.nullable(),
@@ -31,16 +31,16 @@ export class Client {
 
 	private static readonly FileSystemMountPointFactory = new FileSystemMountPointFactory()
 
-	private readonly client: BaseLanguageClient
+	public readonly client: T
 	private router?: ReturnType<typeof TRPCClientRouter>
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
 
 	constructor(
-		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client },
+		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		subscriptions: { dispose(): any }[],
-		client: BaseLanguageClient,
+		client: T,
 	) {
 		this.client = client
 		this.startServer = startServer

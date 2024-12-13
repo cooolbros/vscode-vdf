@@ -8,7 +8,7 @@ import { VTFEditor } from "client/VTF/VTFEditor"
 import { commands, Uri, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
-const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client } = {}
+const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
 
 export function activate(context: ExtensionContext): void {
 
@@ -42,6 +42,7 @@ export function activate(context: ExtensionContext): void {
 		}
 
 		const serverModule = Uri.joinPath(context.extensionUri, "apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
+		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
 		const client = languageClients[languageId] = new Client(
 			languageClients,
@@ -49,7 +50,7 @@ export function activate(context: ExtensionContext): void {
 			context.subscriptions,
 			new LanguageClient(
 				`${languageId}-language-server`,
-				`${VSCodeVDFLanguageNameSchema.shape[languageId].value} Language Server`,
+				`${name} Language Server`,
 				{
 					documentSelector: [
 						languageId
