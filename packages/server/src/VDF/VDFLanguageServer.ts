@@ -2,7 +2,7 @@ import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { firstValueFrom, type Observable } from "rxjs"
-import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
+import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { Color, CompletionItem, CompletionItemKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -72,18 +72,7 @@ export abstract class VDFLanguageServer<
 
 	protected async getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null> {
 
-		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })
-
-		console.log(`line: ${line}`)
-
-		// "(?<key>
-		// (?<=")[^"]*
-		const result = /^\s*(?<key>\S*)$/.exec(line)
-		if (result) {
-			let key = result.groups!["key"]
-			if (key.startsWith(`"`)) {
-				key = key.substring(1)
-			}
+		const keys = async (text?: string) => {
 
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
 			const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(position)
@@ -122,7 +111,7 @@ export abstract class VDFLanguageServer<
 					// @ts-ignore
 					return [
 						...(value.reference ? value.reference.flatMap(include) : []),
-						...value.values.filter((value) => value.multiple || !documentSymbol.children?.some((d) => d.key.toLowerCase() == value.label.toLowerCase()))
+						...value.values.filter((value) => (text ? value.label.toLowerCase().startsWith(text.toLowerCase()) : true) && (value.multiple ? true : !documentSymbol.children?.some((d) => d.key.toLowerCase() == value.label.toLowerCase())))
 					]
 				}
 
@@ -130,24 +119,10 @@ export abstract class VDFLanguageServer<
 			}
 		}
 
-		const match = /^\s*(?<key>\S+)\s+(?<value>\S*)$/.exec(line)
-		if (match) {
-			let key = match.groups!["key"]
-			if (key.startsWith(`"`) && key.endsWith(`"`)) {
-				key = key.substring(1, key.length - 1)
-			}
-
-			let value = match.groups!["value"]
-			if (value.startsWith(`"`)) {
-				value = value.substring(1)
-			}
-
-			console.log(`key: ${key}, value: ${value}`)
-			this.connection.console.log(`key: ${key}, value: ${value}`)
-
+		const values = async (key: string, text?: string): Promise<CompletionItem[] | null> => {
 			if (key == "#base") {
 				return files(document.configuration.relativeFolderPath ?? "", {
-					value: value,
+					value: text ?? null,
 					extensionsPattern: null,
 					displayExtensions: true
 				})
@@ -160,13 +135,18 @@ export abstract class VDFLanguageServer<
 			// Static
 			if (key in schema.values) {
 				const valueData = schema.values[key]
-				return valueData.values.map((value, index) => ({
-					label: value,
-					kind: <CompletionItemKind>valueData.kind,
-					...(valueData.enumIndex && {
-						detail: `${index}`
-					})
-				}))
+				return valueData
+					.values
+					.values()
+					.filter((value) => text ? value.toLowerCase().startsWith(text.toLowerCase()) : true)
+					.map((value, index) => ({
+						label: value,
+						kind: <CompletionItemKind>valueData.kind,
+						...(valueData.enumIndex && {
+							detail: `${index}`
+						})
+					}))
+					.toArray()
 			}
 
 			// Dynamic
@@ -181,6 +161,7 @@ export abstract class VDFLanguageServer<
 				return definitionReferences.definitions.ofType(definitionReferencesConfiguration.type)
 					.values()
 					.filter((value) => value.length)
+					.filter((value) => text ? value[0].key.toLowerCase().startsWith(text.toLowerCase()) : true)
 					.map((value) => ({
 						label: value[0].key,
 						...(definitionReferencesConfiguration.toCompletionItem && {
@@ -194,7 +175,7 @@ export abstract class VDFLanguageServer<
 			const fileConfiguration = schema.files.find(({ keys }) => keys.has(key))
 			if (fileConfiguration != undefined) {
 				return await files(fileConfiguration.folder ?? "", {
-					value: value,
+					value: text ?? null,
 					extensionsPattern: fileConfiguration.extensionsPattern,
 					displayExtensions: fileConfiguration.displayExtensions
 				})
@@ -203,29 +184,96 @@ export abstract class VDFLanguageServer<
 			return null
 		}
 
-		const conditionals = [
-			"[$LINUX]",
-			"[$OSX]",
-			"[$POSIX]",
-			"[$WIN32]",
-			"[$WINDOWS]",
-			"[$X360]",
-		]
+		const conditionals = (text?: string) => {
+			return [
+				"[$LINUX]",
+				"[$OSX]",
+				"[$POSIX]",
+				"[$WIN32]",
+				"[$WINDOWS]",
+				"[$X360]",
+			]
+				.filter((conditional) => text ? conditional.toLowerCase().startsWith(text.toLowerCase()) : true)
+				.map((conditional) => {
+					return {
+						label: conditional,
+						kind: CompletionItemKind.Variable,
+					}
+				})
+		}
 
-		const range = new VDFRange(new VDFPosition(position.line, position.character - 1), new VDFPosition(position.line, position.character + 1))
-		const open = document.getText(range) == "[]"
+		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })
 
-		return conditionals.map((conditional) => ({
-			label: conditional,
-			kind: CompletionItemKind.Variable,
-			insertText: conditional,
-			// ...(open && {
-			// 	textEdit: {
-			// 		range: range,
-			// 		newText: conditional
-			// 	}
-			// })
-		}) satisfies CompletionItem)
+		// Error tolerant VDF line tokeniser
+		function* generateTokens() {
+			let i = 0
+
+			while (i < line.length) {
+				while (line[i] == " " || line[i] == "\t") {
+					i++
+				}
+
+				if (i >= line.length) {
+					return
+				}
+
+				if (line[i] == "\"") {
+					i++
+					const start = i
+					while (i < line.length && line[i] != "\"") {
+						i++
+					}
+					const end = i
+					i++
+					yield line.slice(start, end)
+				}
+				else {
+					const start = i
+					while (i < line.length && line[i] != " " && line[i] != "\t") {
+						i++
+					}
+					const end = i
+					yield line.slice(start, end)
+				}
+			}
+		}
+
+		const tokens = Array.from(generateTokens())
+
+		switch (tokens.length) {
+			case 0: {
+				return keys()
+			}
+			case 1: {
+				const [key] = tokens
+				if (line.endsWith(key)) {
+					return keys(key)
+				}
+				else {
+					return values(key)
+				}
+			}
+			case 2: {
+				const [key, value] = tokens
+				if (line.endsWith(value)) {
+					return values(key, value)
+				}
+				else {
+					return conditionals()
+				}
+			}
+			case 3: {
+				const [key, value, conditional] = tokens
+				if (line.endsWith(conditional)) {
+					return conditionals(conditional)
+				}
+				else {
+					return null
+				}
+			}
+			default:
+				return null
+		}
 	}
 
 	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {
