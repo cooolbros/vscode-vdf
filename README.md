@@ -67,6 +67,10 @@ VDF/Valve KeyValues language support for VSCode
  - Colour picker for $color (Supports int and float colours)
  - Link to $baseTexture
 
+### Credits
+ - [Revan](https://github.com/cooolbros) - Code
+ - [randomguy](https://steamcommunity.com/profiles/76561198056380662) - Popfile knowledge
+
 Github: https://github.com/cooolbros/vscode-vdf
 
 VS Marketplace: https://marketplace.visualstudio.com/items?itemName=pfwobcke.vscode-vdf
