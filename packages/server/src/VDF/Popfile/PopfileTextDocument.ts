@@ -108,13 +108,17 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					}).filter((value) => value != undefined) ?? Iterator.from([])
 				}),
 				map((attributes) => {
+					const values = attributes.map((attribute) => ({ label: attribute, kind: 5 })).toArray()
 					return {
 						schema: {
 							...PopfileTextDocument.Schema,
 							keys: {
 								...keys,
+								characterattributes: {
+									values: values
+								},
 								itemattributes: {
-									values: attributes.map((attribute) => ({ label: attribute, kind: 5 })).toArray()
+									values: values
 								}
 							}
 						},
