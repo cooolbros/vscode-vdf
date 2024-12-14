@@ -180,7 +180,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			for (const waveSpawnDefinition of definitions.get(Symbol.for("wavespawn"), documentSymbol.detail) ?? []) {
 				const waveSpawnDocumentSymbol = documentSymbols.getDocumentSymbolAtPosition(waveSpawnDefinition.range.start)!
 				const support = waveSpawnDocumentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail
-				if (support != undefined && support.toLowerCase() != "Limited".toLowerCase()) {
+				if (support != undefined && !["0", "Limited".toLowerCase()].includes(support.toLowerCase())) {
 					return {
 						range: documentSymbol.detailRange!,
 						severity: DiagnosticSeverity.Warning,
