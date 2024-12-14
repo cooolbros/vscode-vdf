@@ -274,6 +274,9 @@
                 }
             }
         ],
+        "configurationDefaults": {
+            "editor.formatOnSave": true
+        },
         "customEditors": [
             {
                 "viewType": "vscode-vdf.VTFEditor",
@@ -401,7 +404,7 @@
             {
                 "language": "vdf",
                 "path": "snippets/vdf.json"
-        }
+            }
         ]
     },
     "scripts": {
