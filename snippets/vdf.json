@@ -1,0 +1,29 @@
+{
+    "EditablePanel": {
+        "prefix": "panel",
+        "body": [
+            "\"$1\"",
+            "{",
+            "\t\"ControlName\"\t\t\"EditablePanel\"",
+            "\t\"fieldName\"\t\t\t\"$1\"",
+            "\t\"xpos\"\t\t\t\t\"$2\"",
+            "\t\"ypos\"\t\t\t\t\"$3\"",
+            "\t\"zpos\"\t\t\t\t\"$4\"",
+            "\t\"wide\"\t\t\t\t\"$5\"",
+            "\t\"tall\"\t\t\t\t\"$6\"",
+            "\t\"visible\"\t\t\t\"1\"",
+            "\t\"enabled\"\t\t\t\"1\"",
+            "\t\"bgcolor_override\"\t\"$7\"",
+            "}",
+            ""
+        ]
+    },
+    "pin_to_sibling": {
+        "prefix": "pin",
+        "body": [
+            "\"pin_to_sibling\"\t\t\t\"$1\"",
+            "\"pin_corner_to_sibling\"\t\t\"${2|PIN_TOPLEFT,PIN_TOPRIGHT,PIN_BOTTOMLEFT,PIN_BOTTOMRIGHT,PIN_CENTER_TOP,PIN_CENTER_RIGHT,PIN_CENTER_BOTTOM,PIN_CENTER_LEFT|}\"",
+            "\"pin_to_sibling_corner\"\t\t\"${3|PIN_TOPLEFT,PIN_TOPRIGHT,PIN_BOTTOMLEFT,PIN_BOTTOMRIGHT,PIN_CENTER_TOP,PIN_CENTER_RIGHT,PIN_CENTER_BOTTOM,PIN_CENTER_LEFT|}\""
+        ]
+    }
+}

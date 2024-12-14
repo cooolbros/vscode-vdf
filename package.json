@@ -396,7 +396,13 @@
                     "when": "resourceScheme == vpk && workspaceFolderCount > 0"
                 }
             ]
+        },
+        "snippets": [
+            {
+                "language": "vdf",
+                "path": "snippets/vdf.json"
         }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "pnpm build",
