@@ -41,6 +41,7 @@
         "outoffocus_bgcolor",
         "positivecolor",
         "selectedboxcolor",
+        "selectedcolor",
         "selectioncolor",
         "selectionnumberfg",
         "selectiontextcolor",
@@ -53,13 +54,16 @@
         "thumbnail_bgcolor",
         "titlebarbgcolor",
         "titlebardisabledfgcolor",
-        "titlebarfgcolor"
+        "titlebarfgcolor",
+        "unselectedcolor"
     ],
     "Borders": [
+        "activeborder_override",
         "activeborder",
         "border_armed",
         "border_default",
         "border",
+        "normalborder_override",
         "normalborder"
     ],
     "Fonts": [
