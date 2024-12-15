@@ -11,34 +11,33 @@ import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory
  */
 export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory: FileSystemMountPointFactory): Promise<FileSystemMountPoint> {
 
-	function invalid(): never {
-		throw new Error("Invalid gameinfo.txt")
-	}
+	const gameInfo = VDF.parse(new TextDecoder("utf-8").decode(await vscode.workspace.fs.readFile(teamFortress2Folder.joinPath("tf/gameinfo.txt"))))
 
-	const gameInfo = VDF.parse(new TextDecoder("utf-8").decode(await vscode.workspace.fs.readFile(teamFortress2Folder.joinPath("tf/gameinfo.txt"))))[0]
-
-	if (typeof gameInfo.value == "string") {
-		invalid()
-	}
-
-	const result = z.tuple([
-		z.object({ key: z.literal("SteamAppId"), value: z.literal("440") }),
-		z.object({ key: z.literal("SearchPaths"), value: z.array(z.object({ key: z.string(), value: z.string() })) })
-	]).safeParse(gameInfo.value.find((kv) => kv.key == "FileSystem")?.value)
+	const result = z.object({
+		GameInfo: z.object({
+			FileSystem: z.object({
+				SearchPaths: z.record(z.union([z.string(), z.array(z.string())]))
+			})
+		})
+	}).safeParse(gameInfo)
 
 	if (!result.success) {
-		invalid()
+		console.error(result.error)
+		throw new Error("Invalid gameinfo.txt", { cause: result.error })
 	}
 
-	const [, { value: searchPaths }] = result.data
+	const { GameInfo: { FileSystem: { SearchPaths: searchPaths } } } = result.data
 
-	const uris = searchPaths.map(({ value }) => {
-		const relativePath = value
-			.replace("|all_source_engine_paths|", "")
-			.replace("|gameinfo_path|", "tf/")
+	const uris = Object
+		.values(searchPaths)
+		.flatMap((i) => Array.isArray(i) ? i : [i])
+		.map((value) => {
+			const relativePath = value
+				.replace("|all_source_engine_paths|", "")
+				.replace("|gameinfo_path|", "tf/")
 
-		return teamFortress2Folder.joinPath(relativePath)
-	})
+			return teamFortress2Folder.joinPath(relativePath)
+		})
 
 	const fileSystems = (
 		await Promise.allSettled(
