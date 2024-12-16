@@ -401,8 +401,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 	public fileType(uri: Uri) {
 		const path = this.relative(uri)
-		return combineLatest([this.clientSchemeFiles$, this.sourceSchemeFiles$, this.languageTokensFiles$]).pipe(
-			map(([clientSchemeFiles, sourceSchemeFiles, languageTokensFiles]) => {
+		return combineLatest({
+			clientSchemeFiles: this.clientSchemeFiles$,
+			sourceSchemeFiles: this.sourceSchemeFiles$,
+			languageTokensFiles: this.languageTokensFiles$
+		}).pipe(
+			map(({ clientSchemeFiles, sourceSchemeFiles, languageTokensFiles }) => {
 				if (clientSchemeFiles.has(path)) {
 					return VGUIFileType.ClientScheme
 				}

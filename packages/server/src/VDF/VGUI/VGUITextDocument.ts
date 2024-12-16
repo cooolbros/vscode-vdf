@@ -196,8 +196,15 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 				return type$.pipe(
 					switchMap((type) => {
 						if (type != VGUIFileType.None || workspace == null) {
+							const schemas = {
+								[VGUIFileType.None]: VGUITextDocument.Schema,
+								[VGUIFileType.ClientScheme]: VGUIWorkspace.ClientSchemeSchema,
+								[VGUIFileType.SourceScheme]: VGUIWorkspace.SourceSchemeSchema,
+								[VGUIFileType.LanguageTokens]: VGUIWorkspace.LanguageTokensSchema,
+							}
+
 							return of({
-								schema: [VGUITextDocument.Schema, VGUIWorkspace.ClientSchemeSchema, VGUIWorkspace.SourceSchemeSchema, VGUIWorkspace.LanguageTokensSchema][type],
+								schema: schemas[type],
 								global: []
 							} satisfies VDFTextDocumentDependencies)
 						}
