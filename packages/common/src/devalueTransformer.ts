@@ -137,10 +137,9 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 				}
 
 				let current = undefined
-				const subscription = value.subscribe((value) => {
-					current = value
-				})
-				subscription.unsubscribe()
+				value
+					.subscribe((value) => current = value)
+					.unsubscribe()
 
 				return { server: name, id: id, current: current }
 			}
