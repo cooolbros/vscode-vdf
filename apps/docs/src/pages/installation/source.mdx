@@ -1,3 +1,5 @@
+import { Steps } from "nextra/components"
+
 # Installation from source
 
 ### Prerequisites
@@ -6,21 +8,25 @@
  - [pnpm](https://pnpm.io)
  - [wasm-pack](https://rustwasm.github.io/wasm-pack)
 
-#### Clone
+<Steps>
+
+### Clone
 
 ```sh
 cd .vscode/extensions
 git clone https://github.com/cooolbros/vscode-vdf
 ```
 
-#### Install Dependencies
+### Install Dependencies
 
 ```sh
 pnpm install
 ```
 
-#### Build
+### Build
 
 ```bash
 pnpm build
 ```
+
+</Steps>
