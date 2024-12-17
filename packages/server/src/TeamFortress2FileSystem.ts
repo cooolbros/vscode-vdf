@@ -5,6 +5,7 @@ import { } from "vscode-languageserver"
 export interface FileSystemService {
 	resolveFile(path: string): Observable<Uri | null>
 	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, number][]>
+	dispose(): any
 }
 
 export class TeamFortress2FileSystem {
@@ -48,5 +49,9 @@ export class TeamFortress2FileSystem {
 
 	public async readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, number][]> {
 		return await this.fileSystemService.readDirectory(path, options)
+	}
+
+	public dispose() {
+		this.fileSystemService.dispose()
 	}
 }
