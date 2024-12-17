@@ -72,7 +72,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 				type: Symbol.for("string"),
 				definition: null,
 				reference: {
-					keys: new Set(["labelText".toLowerCase(), "title"]),
+					keys: new Set(["labelText".toLowerCase(), "title", "tooltip"]),
 					match: (string) => /^#/.test(string),
 					toDefinition: (string) => string.substring("#".length)
 				},
