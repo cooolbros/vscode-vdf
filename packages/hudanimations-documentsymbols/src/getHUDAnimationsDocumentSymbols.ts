@@ -132,7 +132,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 	function readConditional(): string | undefined {
 		try {
-			const token = tokeniser.next(true)
+			const token = tokeniser.next({ peek: true })
 			if (token?.type != VDFTokenType.Conditional) {
 				return undefined
 			}

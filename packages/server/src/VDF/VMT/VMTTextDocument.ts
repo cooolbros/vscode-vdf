@@ -28,7 +28,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 	) {
 		super(init, documentConfiguration$, fileSystem$, documents, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
-			VDFTokeniserOptions: { allowMultilineStrings: false },
+			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,
 			dependencies$: of<VDFTextDocumentDependencies>({
 				schema: <VDFTextDocumentSchema>{

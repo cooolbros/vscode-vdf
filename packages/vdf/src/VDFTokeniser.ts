@@ -2,7 +2,6 @@ import { UnclosedEscapeSequenceError, UnexpectedCharacterError, UnexpectedEndOfF
 import { VDFPosition } from "./VDFPosition"
 import { VDFRange } from "./VDFRange"
 import { VDFTokenType, type VDFToken } from "./VDFToken"
-import type { VDFTokeniserOptions } from "./VDFTokeniserOptions"
 
 export class VDFTokeniser {
 
@@ -21,8 +20,6 @@ export class VDFTokeniser {
 	public static readonly whiteSpaceTokenTerminate = new Set(["\"", "{", "}"])
 
 	private readonly str: string
-
-	private readonly options: VDFTokeniserOptions
 
 	/**
 	 * Zero-based offset position
@@ -45,14 +42,11 @@ export class VDFTokeniser {
 	// EOF
 	private _EOFRead = false
 
-	constructor(str: string, options?: Partial<VDFTokeniserOptions>) {
+	constructor(str: string) {
 		this.str = str
-		this.options = {
-			allowMultilineStrings: options?.allowMultilineStrings ?? false
-		}
 	}
 
-	public next(peek = false): VDFToken | null {
+	public next({ allowMultilineString = false, peek = false }: { allowMultilineString?: boolean, peek?: boolean } = {}): VDFToken | null {
 
 		if (this._peek != null) {
 			const token = this._peek.token
@@ -161,7 +155,7 @@ export class VDFTokeniser {
 						throw new UnexpectedEndOfFileError(["'\"'"], new VDFRange(startPosition, new VDFPosition(line, character)))
 					}
 					if (this.str[index] == "\n") {
-						if (this.options.allowMultilineStrings) {
+						if (allowMultilineString) {
 							line++
 							character = 0
 						}

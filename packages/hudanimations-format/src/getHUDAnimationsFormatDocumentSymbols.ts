@@ -4,14 +4,14 @@ import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimations
 
 export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimationsFormatDocumentSymbol[] {
 
-	const tokeniser = new VDFFormatTokeniser(str, { allowMultilineStrings: false })
+	const tokeniser = new VDFFormatTokeniser(str)
 
 	function parseFile(): HUDAnimationsFormatDocumentSymbol[] {
 
 		const documentSymbols: HUDAnimationsFormatDocumentSymbol[] = []
 
 		while (true) {
-			const token = tokeniser.next(false, true)
+			const token = tokeniser.next({ skipNewlines: true })
 			if (token == null) {
 				break
 			}
@@ -28,7 +28,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 						throw new Error(token.type.toString())
 					}
 
-					const eventName = tokeniser.next(false, true)
+					const eventName = tokeniser.next({ skipNewlines: true })
 					if (eventName == null) {
 						throw new Error("eventName == null")
 					}
@@ -38,20 +38,20 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 					}
 
 					let conditional: string | undefined
-					const conditionalToken = tokeniser.next(true, true)
+					const conditionalToken = tokeniser.next({ skipNewlines: true, peek: true })
 					if (conditionalToken?.type == VDFFormatTokenType.Conditional) {
 						conditional = conditionalToken.value
-						tokeniser.next(false, true)
+						tokeniser.next({ skipNewlines: true })
 					}
 					else {
 						conditional = undefined
 					}
 
 					let comment: string | undefined
-					const nextToken = tokeniser.next(true, true)
+					const nextToken = tokeniser.next({ skipNewlines: true, peek: true })
 					if (nextToken?.type == VDFFormatTokenType.Comment) {
 						comment = nextToken.value
-						tokeniser.next(false, true)
+						tokeniser.next({ skipNewlines: true })
 					}
 					else {
 						comment = undefined
@@ -83,7 +83,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 
 		const statements: (Animation | { comment?: string })[] = []
 
-		const token = tokeniser.next(false, true)
+		const token = tokeniser.next({ skipNewlines: true })
 		if (token == null) {
 			throw new Error("token == null")
 		}
@@ -94,7 +94,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 
 		loop:
 		while (true) {
-			const animationCommandToken = tokeniser.next(false, true)
+			const animationCommandToken = tokeniser.next({ skipNewlines: true })
 			if (animationCommandToken == null) {
 				throw new Error("animationCommandToken == null")
 			}
@@ -122,8 +122,8 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 		return statements
 	}
 
-	function readString(peek = false, skipNewlines = false): VDFFormatToken {
-		const token = tokeniser.next(peek, skipNewlines)
+	function readString(skipNewlines = false, peek = false): VDFFormatToken {
+		const token = tokeniser.next({ skipNewlines, peek })
 		if (token == null) {
 			throw new Error("token == null")
 		}
@@ -134,7 +134,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 	}
 
 	function readStringValue(): string {
-		return readString(false, true).value
+		return readString(true, false).value
 	}
 
 	function readNumberValue(): string {
@@ -286,17 +286,17 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 			}
 		}
 
-		let nextToken = tokeniser.next(true, false)
+		let nextToken = tokeniser.next({ skipNewlines: false, peek: true })
 		if (nextToken == null) {
 			return statement
 		}
 
 		if (nextToken.type == VDFFormatTokenType.Conditional) {
 			statement.conditional = nextToken.value
-			tokeniser.next(false, false)
+			tokeniser.next({ skipNewlines: false })
 
 			// Comment
-			nextToken = tokeniser.next(true, false)
+			nextToken = tokeniser.next({ skipNewlines: false })
 			if (nextToken == null) {
 				return statement
 			}
@@ -307,7 +307,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 		}
 		else if (nextToken.type == VDFFormatTokenType.Comment) {
 			statement.comment = nextToken.value
-			tokeniser.next(false, false)
+			tokeniser.next({ skipNewlines: false })
 		}
 
 		return statement

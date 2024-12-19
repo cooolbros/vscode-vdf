@@ -2,7 +2,7 @@ import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { combineLatest, concatMap, defer, firstValueFrom, from, map, of, shareReplay, switchMap, type Observable } from "rxjs"
-import type { VDFRange, VDFTokeniserOptions } from "vdf"
+import type { VDFParserOptions, VDFRange } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
 import { DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
@@ -36,7 +36,7 @@ function ArrayEndsWithArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b:
 
 export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> {
 	relativeFolderPath: string | null
-	VDFTokeniserOptions: VDFTokeniserOptions
+	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
 	dependencies$: Observable<VDFTextDocumentDependencies>
 	getCodeLens(definitionReferences$: Observable<DefinitionReferences>): Observable<DefinitionReferences>
@@ -115,7 +115,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	) {
 		super(init, documentConfiguration$, fileSystem$, {
 			getDocumentSymbols: (text) => {
-				return getVDFDocumentSymbols(text, configuration.VDFTokeniserOptions)
+				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
 			},
 			defaultDocumentSymbols: new VDFDocumentSymbols(),
 			definitionReferences$: combineLatest({ dependencies: configuration.dependencies$, documentSymbols: defer(() => this.documentSymbols$) }).pipe(

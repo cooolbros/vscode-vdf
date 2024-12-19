@@ -1,4 +1,4 @@
-import { UnexpectedEndOfFileError, VDFPosition, VDFRange, VDFTokeniser, type VDFTokeniserOptions } from "vdf"
+import { UnexpectedEndOfFileError, VDFPosition, VDFRange, VDFTokeniser } from "vdf"
 
 export const enum VDFFormatTokenType {
 	String,
@@ -32,8 +32,6 @@ export class VDFFormatTokeniser {
 	 */
 	public static readonly whiteSpaceIgnore_skipNewLines = new Set([...VDFFormatTokeniser.whiteSpaceIgnore, "\n"])
 
-	private readonly options: VDFTokeniserOptions
-
 	private readonly str: string
 
 	/**
@@ -44,14 +42,11 @@ export class VDFFormatTokeniser {
 	// EOF
 	private _EOFRead = false
 
-	constructor(str: string, options: VDFTokeniserOptions) {
+	constructor(str: string) {
 		this.str = str
-		this.options = {
-			allowMultilineStrings: options?.allowMultilineStrings ?? false
-		}
 	}
 
-	public next(peek = false, skipNewlines = false): VDFFormatToken | null {
+	public next({ skipNewlines, allowMultilineString = false, peek = false }: { skipNewlines: boolean, allowMultilineString?: boolean, peek?: boolean }): VDFFormatToken | null {
 
 		let index = this.index
 
@@ -100,7 +95,7 @@ export class VDFFormatTokeniser {
 					if (index >= this.str.length) {
 						throw new Error()
 					}
-					else if (this.str[index] == "\n" && !this.options.allowMultilineStrings) {
+					else if (this.str[index] == "\n" && !allowMultilineString) {
 						throw new Error()
 					}
 					else if (this.str[index] == "\\") {

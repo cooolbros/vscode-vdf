@@ -1,10 +1,10 @@
-import type { VDFTokeniserOptions } from "vdf"
+import type { VDFParserOptions } from "vdf"
 import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
 import { VDFFormatTokeniser, VDFFormatTokenType } from "./VDFFormatTokeniser"
 
-export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOptions): VDFFormatDocumentSymbol[] {
+export function getVDFFormatDocumentSymbols(str: string, options: VDFParserOptions): VDFFormatDocumentSymbol[] {
 
-	const tokeniser = new VDFFormatTokeniser(str, options)
+	const tokeniser = new VDFFormatTokeniser(str)
 
 	const parseObject = (isObject: boolean): VDFFormatDocumentSymbol[] => {
 
@@ -16,7 +16,7 @@ export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOp
 
 		while (true) {
 
-			const currentToken = tokeniser.next(false, true)
+			const currentToken = tokeniser.next({ skipNewlines: true })
 
 			if (currentToken != null && objectTerminator != null ? (currentToken.type == objectTerminator.type && currentToken.value == objectTerminator.value) : currentToken == objectTerminator) {
 				break
@@ -34,7 +34,10 @@ export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOp
 				}
 				case VDFFormatTokenType.String: {
 					documentSymbol.key = currentToken.value
-					let valueToken = tokeniser.next(false, true)
+
+					const allowMultilineString = typeof options.multilineStrings == "boolean" ? options.multilineStrings : options.multilineStrings.has(documentSymbol.key.toLowerCase())
+
+					let valueToken = tokeniser.next({ skipNewlines: true, allowMultilineString: allowMultilineString })
 					if (valueToken == null) {
 						throw new Error()
 					}
@@ -42,7 +45,7 @@ export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOp
 					switch (valueToken.type) {
 						case VDFFormatTokenType.Comment: {
 							documentSymbol.inLineComment = valueToken.value.trim()
-							const nextToken = tokeniser.next(false, true)
+							const nextToken = tokeniser.next({ skipNewlines: true })
 							if (nextToken?.type == VDFFormatTokenType.ControlCharacter && nextToken.value == "{") {
 								documentSymbol.value = parseObject(true)
 							}
@@ -53,14 +56,14 @@ export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOp
 						}
 						case VDFFormatTokenType.Conditional: {
 							documentSymbol.conditional = <`[${string}]`>valueToken.value
-							valueToken = tokeniser.next(false, true)
+							valueToken = tokeniser.next({ skipNewlines: true, allowMultilineString: allowMultilineString })
 							if (valueToken == null) {
 								throw new Error()
 							}
 							switch (valueToken.type) {
 								case VDFFormatTokenType.Comment: {
 									documentSymbol.inLineComment = valueToken.value.trim()
-									valueToken = tokeniser.next(false, true)
+									valueToken = tokeniser.next({ skipNewlines: true })
 									if (valueToken == null) {
 										throw new Error()
 									}
@@ -99,21 +102,21 @@ export function getVDFFormatDocumentSymbols(str: string, options: VDFTokeniserOp
 						case VDFFormatTokenType.String: {
 							documentSymbol.value = valueToken.value
 
-							const nextToken = tokeniser.next(true, false)
+							const nextToken = tokeniser.next({ skipNewlines: false, peek: true })
 							switch (nextToken?.type) {
 								case VDFFormatTokenType.Conditional: {
 									documentSymbol.conditional = <`[${string}]`>nextToken.value
-									tokeniser.next(false, false)
-									const lookAheadToken = tokeniser.next(true, false)
+									tokeniser.next({ skipNewlines: false })
+									const lookAheadToken = tokeniser.next({ skipNewlines: false, peek: true })
 									if (lookAheadToken?.type == VDFFormatTokenType.Comment) {
 										documentSymbol.inLineComment = lookAheadToken.value.trim()
-										tokeniser.next(false, false)
+										tokeniser.next({ skipNewlines: false })
 									}
 									break
 								}
 								case VDFFormatTokenType.Comment: {
 									documentSymbol.inLineComment = nextToken.value.trim()
-									tokeniser.next()
+									tokeniser.next({ skipNewlines: false })
 								}
 							}
 						}

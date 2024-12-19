@@ -1,11 +1,11 @@
-import { UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFTokeniserOptions } from "vdf"
+import { UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFParserOptions } from "vdf"
 import { SymbolKind } from "vscode-languageserver"
 import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
 
-export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions): VDFDocumentSymbols {
+export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): VDFDocumentSymbols {
 
-	const tokeniser = new VDFTokeniser(str, options)
+	const tokeniser = new VDFTokeniser(str)
 
 	/**
 	 * Gets a list of key/value pairs between an opening and closing brace
@@ -41,14 +41,16 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 					key = keyToken.value
 					keyRange = keyToken.range
 
-					let valueToken = tokeniser.next()
+					const allowMultilineString = typeof options.multilineStrings == "boolean" ? options.multilineStrings : options.multilineStrings.has(key.toLowerCase())
+
+					let valueToken = tokeniser.next({ allowMultilineString })
 					if (valueToken == null) {
 						throw new UnexpectedEndOfFileError(["'{'", "value", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 					}
 
 					if (valueToken.type == VDFTokenType.Conditional) {
 						conditional = <`[${string}]`>valueToken.value
-						valueToken = tokeniser.next()
+						valueToken = tokeniser.next({ allowMultilineString })
 						if (valueToken == null) {
 							throw new UnexpectedEndOfFileError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 						}
@@ -69,7 +71,7 @@ export function getVDFDocumentSymbols(str: string, options?: VDFTokeniserOptions
 						case VDFTokenType.String: {
 							value = valueToken.value
 							valueRange = valueToken.range
-							const conditionalToken = tokeniser.next(true)
+							const conditionalToken = tokeniser.next({ peek: true })
 							if (conditionalToken?.type == VDFTokenType.Conditional) {
 								conditional = <`[${string}]`>conditionalToken.value
 								tokeniser.next()

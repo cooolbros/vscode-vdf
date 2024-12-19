@@ -94,7 +94,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 	) {
 		super(init, documentConfiguration, fileSystem$, documents, {
 			relativeFolderPath: "scripts/population",
-			VDFTokeniserOptions: { allowMultilineStrings: true },
+			VDFParserOptions: { multilineStrings: new Set(["RunScriptCode".toLowerCase()]) },
 			keyTransform: (key) => key,
 			dependencies$: fileSystem$.pipe(
 				switchMap((fileSystem) => fileSystem.resolveFile("scripts/items/items_game.txt")),

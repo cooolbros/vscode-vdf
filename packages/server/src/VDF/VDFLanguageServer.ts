@@ -321,7 +321,7 @@ export abstract class VDFLanguageServer<
 		return [
 			{
 				range: Range.create(0, 0, MAX_VALUE, MAX_VALUE),
-				newText: formatVDF(document.getText(), document.configuration.VDFTokeniserOptions, options),
+				newText: formatVDF(document.getText(), document.configuration.VDFParserOptions, options),
 			}
 		]
 	}

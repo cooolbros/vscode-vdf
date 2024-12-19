@@ -51,7 +51,7 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 	}
 
 	const documentSymbolResult = findDocumentSymbolPath(
-		getVDFDocumentSymbols(editor.document.getText(), { allowMultilineStrings: false }),
+		getVDFDocumentSymbols(editor.document.getText(), { multilineStrings: false }),
 		editor.selection.start
 	)
 

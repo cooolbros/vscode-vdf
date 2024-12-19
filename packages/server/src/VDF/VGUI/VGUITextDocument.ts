@@ -139,10 +139,18 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 	) {
 		super(init, documentConfiguration$, fileSystem$, documents, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
-			VDFTokeniserOptions: {
-				allowMultilineStrings: (() => {
+			VDFParserOptions: {
+				multilineStrings: (() => {
 					const basename = init.uri.basename()
-					return basename == "gamemenu.res" || /(tf|chat)_.*?\.txt/.test(basename)
+					if (basename == "gamemenu.res") {
+						return new Set(["command"])
+					}
+					else if (/(tf|chat)_.*?\.txt/.test(basename)) {
+						return true
+					}
+					else {
+						return false
+					}
 				})()
 			},
 			keyTransform: VGUITextDocument.KeyTransform,

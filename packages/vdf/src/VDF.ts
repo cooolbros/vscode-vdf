@@ -69,7 +69,7 @@ export class VDF {
 							}
 							case VDFTokenType.String: {
 								value = valueToken.value
-								const conditionalToken = tokeniser.next(true)
+								const conditionalToken = tokeniser.next({ peek: true })
 								if (conditionalToken?.type == VDFTokenType.Conditional) {
 									conditional = conditionalToken.value
 									tokeniser.next()
