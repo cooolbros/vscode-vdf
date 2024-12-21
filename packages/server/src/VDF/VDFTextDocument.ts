@@ -48,7 +48,7 @@ export interface VDFTextDocumentDependencies {
 }
 
 export interface VDFTextDocumentSchema {
-	keys: Record<string, { reference?: string[], values: { label: string, kind: number, multiple?: boolean }[] }>
+	keys: Record<string, { distinct?: boolean, reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	definitionReferences: {
 		type: symbol
@@ -385,6 +385,41 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 						const documentSymbolKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
 						const documentSymbolValue = documentSymbol.detail.toLowerCase()
+
+						// Distinct Keys
+						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct == true) {
+							const parent = path.at(-1)
+							if (parent?.children != undefined) {
+								const first = parent.children.find((i) => configuration.keyTransform(i.key.toLowerCase()) == documentSymbolKey && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+								if (first != documentSymbol) {
+									diagnostics.push({
+										range: documentSymbol.nameRange,
+										severity: DiagnosticSeverity.Warning,
+										code: "duplicate-key",
+										source: init.languageId,
+										message: `Duplicate ${first.key}`,
+										relatedInformation: [
+											{
+												location: {
+													uri: this.uri.toString(),
+													range: first.nameRange
+												},
+												message: `${first.key} is declared here.`
+											}
+										],
+										data: {
+											kind: CodeActionKind.QuickFix,
+											fix: (createDocumentWorkspaceEdit) => {
+												return {
+													title: `Remove duplicate ${documentSymbol.key}`,
+													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+												}
+											}
+										}
+									})
+								}
+							}
+						}
 
 						// Static
 						if (documentSymbolKey in dependencies.schema.values) {

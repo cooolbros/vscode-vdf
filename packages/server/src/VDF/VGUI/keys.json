@@ -1,4 +1,7 @@
 {
+    "autoresize": {
+        "distinct": true
+    },
     "button": {
         "reference": [
             "cexlabel"
@@ -48,6 +51,9 @@
             }
         ]
     },
+    "controlname": {
+        "distinct": true
+    },
     "ctfimagepanel": {
         "reference": [
             "imagepanel"
@@ -81,6 +87,12 @@
                 "kind": 5
             }
         ]
+    },
+    "enabled": {
+        "distinct": true
+    },
+    "fieldname": {
+        "distinct": true
     },
     "imagepanel": {
         "reference": [
@@ -263,5 +275,26 @@
                 "kind": 5
             }
         ]
+    },
+    "pincorner": {
+        "distinct": true
+    },
+    "tall": {
+        "distinct": true
+    },
+    "visible": {
+        "distinct": true
+    },
+    "wide": {
+        "distinct": true
+    },
+    "xpos": {
+        "distinct": true
+    },
+    "ypos": {
+        "distinct": true
+    },
+    "zpos": {
+        "distinct": true
     }
 }

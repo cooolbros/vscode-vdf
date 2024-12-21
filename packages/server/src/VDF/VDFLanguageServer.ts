@@ -111,7 +111,7 @@ export abstract class VDFLanguageServer<
 					// @ts-ignore
 					return [
 						...(value.reference ? value.reference.flatMap(include) : []),
-						...value.values.filter((value) => (text ? value.label.toLowerCase().startsWith(text.toLowerCase()) : true) && (value.multiple ? true : !documentSymbol.children?.some((d) => d.key.toLowerCase() == value.label.toLowerCase())))
+						...value.values?.filter((value) => (text ? value.label.toLowerCase().startsWith(text.toLowerCase()) : true) && (value.multiple ? true : !documentSymbol.children?.some((d) => d.key.toLowerCase() == value.label.toLowerCase()))) ?? []
 					]
 				}
 
