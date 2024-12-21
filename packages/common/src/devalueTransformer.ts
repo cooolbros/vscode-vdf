@@ -175,12 +175,10 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 						})
 					)
 
-					const registry = new FinalizationRegistry<string>((heldValue) => {
+					new FinalizationRegistry<string>((heldValue) => {
 						subjects.delete(heldValue)
 						sendRequest(value.server, "vscode-vdf/observable/free", params)
-					})
-
-					registry.register(s, value.id)
+					}).register(s, value.id)
 
 					subject = { subject: new WeakRef(s), observable: new WeakRef(o) }
 					subjects.set(value.id, subject)
