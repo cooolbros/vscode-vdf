@@ -1,5 +1,5 @@
 import { Uri } from "common/Uri"
-import { combineLatest, distinctUntilChanged, map, Observable } from "rxjs"
+import { combineLatest, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
 import type { FileSystemMountPoint } from "./FileSystemMountPoint"
 
 /**
@@ -13,7 +13,8 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 			if (!observable) {
 				observable = combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path))).pipe(
 					map((uris) => uris.find((uri) => uri != null) ?? null),
-					distinctUntilChanged(Uri.equals)
+					distinctUntilChanged(Uri.equals),
+					shareReplay(1)
 				)
 				observables.set(path, observable)
 			}
