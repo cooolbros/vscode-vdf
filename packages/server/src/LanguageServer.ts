@@ -115,9 +115,6 @@ export abstract class LanguageServer<
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
 		const teamFortress2Folder$ = onDidChangeConfiguration$.pipe(
-			// concatMap(async () => {
-			// 	await this.ready
-			// }),
 			concatMap(async () => {
 				return VSCodeVDFConfigurationSchema.shape.teamFortress2Folder.parse(await this.connection.workspace.getConfiguration({ section: "vscode-vdf.teamFortress2Folder" }))
 			}),
