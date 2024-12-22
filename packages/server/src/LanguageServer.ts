@@ -7,7 +7,7 @@ import { devalueTransformer } from "common/devalueTransformer"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap, tap, zip } from "rxjs"
+import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, map, Observable, shareReplay, Subject, Subscription, switchMap, tap, zip } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -122,56 +122,75 @@ export abstract class LanguageServer<
 			shareReplay(1)
 		)
 
-		const fileSystems = new Map<string, Observable<TeamFortress2FileSystem>>()
-		this.fileSystems = {
-			get: (paths) => {
-				return teamFortress2Folder$.pipe(
-					concatMap(async (teamFortress2Folder) => {
-						return await this.trpc.client.teamFortress2FileSystem.open.mutate({
-							paths: paths(teamFortress2Folder).filter((path, index, arr): path is NonNullable<typeof path> => path != null && arr.indexOf(path) == index)
-						})
-					}),
-					distinctUntilKeyChanged("key"),
-					switchMap(({ key, paths }) => {
-						let fileSystem$ = fileSystems.get(key)
-						if (!fileSystem$) {
-							fileSystem$ = of(
-								new TeamFortress2FileSystem(paths.map((path) => path.uri), {
-									resolveFile: (path) => {
-										return from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
-											switchMap((observable) => observable)
-										)
-									},
-									readDirectory: async (path, options) => {
-										return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
-									},
-									dispose: async () => {
-										await this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
-									}
-								})
-							).pipe(
-								(source) => defer(() => {
-									let previous: { dispose(): void } | undefined = undefined
-									return source.pipe(
-										tap((value) => {
-											previous?.dispose()
-											previous = value
-										})
-									)
-								}),
-								shareReplay({
-									bufferSize: 1,
-									refCount: true,
-								})
-							)
+		const fileSystems = new Map<string, { value: TeamFortress2FileSystem, references: 0 }>()
 
-							fileSystems.set(key, fileSystem$)
-						}
-						return fileSystem$
+		this.fileSystems = {
+			get: (paths): Observable<TeamFortress2FileSystem> => {
+				return teamFortress2Folder$.pipe(
+					map((teamFortress2Folder) => {
+						return paths(teamFortress2Folder)
+							.filter((path, index, arr): path is NonNullable<typeof path> => {
+								return path != null && arr.indexOf(path) == index
+							})
 					}),
-					shareReplay(1)
+					distinctUntilChanged((a, b) => {
+						return a.length == b.length && a.every((value, i) => value.type == b[i].type && value.uri.equals(b[i].uri))
+					}),
+					concatMap(async (paths) => {
+						return await this.trpc.client.teamFortress2FileSystem.open.mutate({ paths })
+					}),
+					map(({ key, paths }) => {
+						let fileSystem = fileSystems.get(key)
+						if (!fileSystem) {
+							fileSystem = {
+								value: new TeamFortress2FileSystem(
+									paths.map(({ uri }) => uri),
+									{
+										resolveFile: (path) => {
+											return from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
+												switchMap((observable) => observable)
+											)
+										},
+										readDirectory: async (path, options) => {
+											return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
+										},
+										dispose: () => {
+											fileSystem!.references--
+											if (fileSystem!.references == 0) {
+												this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
+											}
+										}
+									}
+								),
+								references: 0
+							}
+
+							fileSystems.set(key, fileSystem)
+						}
+
+						fileSystem.references++
+						return fileSystem.value
+					}),
+					(source) => defer(() => {
+						let previous: { dispose(): any } | undefined = undefined
+						return source.pipe(
+							tap((value) => {
+								previous?.dispose()
+								previous = value
+							}),
+
+						)
+					}),
+					finalize(() => {
+						console.log(`FINALIZE called`)
+						// previous?.dispose()
+					}),
+					shareReplay({
+						bufferSize: 1,
+						refCount: true
+					})
 				)
-			},
+			}
 		}
 
 		this.connection.onDidChangeConfiguration((params) => {
@@ -183,7 +202,7 @@ export abstract class LanguageServer<
 				return await this.trpc.client.workspace.openTextDocument.query({ uri, languageId: languageId })
 			},
 			create: async (init) => {
-				return languageServerConfiguration.createDocument(init, onDidChangeConfiguration$.pipe(
+				return await languageServerConfiguration.createDocument(init, onDidChangeConfiguration$.pipe(
 					concatMap(async () => {
 						return VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: init.uri.toString(), section: "vscode-vdf" }))
 					}),
