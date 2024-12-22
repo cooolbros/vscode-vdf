@@ -94,7 +94,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 	) {
 		super(init, documentConfiguration, fileSystem$, documents, {
 			relativeFolderPath: "scripts/population",
-			VDFParserOptions: { multilineStrings: new Set(["RunScriptCode".toLowerCase()]) },
+			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase()]) },
 			keyTransform: (key) => key,
 			dependencies$: fileSystem$.pipe(
 				switchMap((fileSystem) => fileSystem.resolveFile("scripts/items/items_game.txt")),
@@ -196,7 +196,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 
 
 		// https://github.com/cooolbros/vscode-vdf/issues/29
-		if ((key == "RunScriptCode".toLowerCase() || key == "RunScriptFile".toLowerCase()) && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
+		if (key == "Param".toLowerCase() && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
 			return {
 				range: documentSymbol.detailRange!,
 				severity: DiagnosticSeverity.Warning,

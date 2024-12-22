@@ -58,9 +58,9 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 					return
 				}
 
-				const vscript = documentSymbols.findRecursive((documentSymbol) =>
-					documentSymbol.detail != undefined && (documentSymbol.key.toLowerCase() == "RunScriptCode".toLowerCase() || documentSymbol.key.toLowerCase() == "RunScriptFile".toLowerCase())
-				)
+				const vscript = documentSymbols.findRecursive((documentSymbol) => {
+					return documentSymbol.key.toLowerCase() == "Action".toLowerCase() && (documentSymbol.detail == "RunScriptCode".toLowerCase() || documentSymbol.detail == "RunScriptFile".toLowerCase())
+				})
 
 				if (vscript) {
 					this.vscript = true
@@ -80,7 +80,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		return ((await firstValueFrom((await this.documents.get(params.textDocument.uri)).documentSymbols$)).reduceRecursive(
 			[] as FoldingRange[],
 			(foldingRanges, documentSymbol) => {
-				if (documentSymbol.key.toLowerCase() == "RunScriptCode".toLowerCase() && documentSymbol.detailRange) {
+				if (documentSymbol.key.toLowerCase() == "Param".toLowerCase() && documentSymbol.detailRange) {
 					foldingRanges.push({
 						startLine: documentSymbol.detailRange.start.line,
 						startCharacter: documentSymbol.detailRange.start.character,
