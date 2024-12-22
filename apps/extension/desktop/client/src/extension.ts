@@ -61,7 +61,15 @@ export function activate(context: ExtensionContext): void {
 				{
 					run: {
 						module: serverModule,
-						transport: TransportKind.ipc
+						transport: TransportKind.ipc,
+						...(process.env.NODE_ENV == "none" && {
+							options: {
+								execArgv: [
+									"--nolazy",
+									`--inspect=${6000 + Object.keys(VSCodeVDFLanguageNameSchema.shape).indexOf(languageId)}`
+								]
+							}
+						})
 					},
 					debug: {
 						module: serverModule,
