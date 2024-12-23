@@ -206,7 +206,10 @@ export abstract class LanguageServer<
 					concatMap(async () => {
 						return VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: init.uri.toString(), section: "vscode-vdf" }))
 					}),
-					shareReplay(1)
+					shareReplay({
+						bufferSize: 1,
+						refCount: true
+					})
 				))
 			},
 			onDidOpen: async (event) => {
