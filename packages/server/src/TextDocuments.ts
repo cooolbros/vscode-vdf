@@ -78,10 +78,10 @@ export class TextDocuments<
 
 		connection.onDidCloseTextDocument(async (params) => {
 			const key = new Uri(params.textDocument.uri).toString()
-			this._onDidClose.get(key)?.then((onDidClose) => {
-				onDidClose?.()
-				this._onDidClose.delete(key)
-			})
+
+			const onDidClose = await this._onDidClose.get(key)
+			onDidClose?.()
+			this._onDidClose.delete(key)
 		})
 	}
 }
