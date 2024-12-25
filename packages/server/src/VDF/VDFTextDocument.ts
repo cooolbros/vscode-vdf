@@ -734,8 +734,12 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 						for (const { pattern, parse, stringify } of dependencies.schema.colours.colours) {
 							if (pattern.test(documentSymbol.detail)) {
+								const inset = Number(/\s/.test(documentSymbol.detail))
 								colours.push({
-									range: documentSymbol.detailRange!,
+									range: new VDFRange(
+										new VDFPosition(documentSymbol.detailRange!.start.line, documentSymbol.detailRange!.start.character + inset),
+										new VDFPosition(documentSymbol.detailRange!.end.line, documentSymbol.detailRange!.end.character - inset)
+									),
 									color: parse(documentSymbol.detail),
 									stringify: stringify,
 								})

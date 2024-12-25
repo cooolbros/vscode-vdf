@@ -110,9 +110,9 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 			keys: null,
 			colours: [
 				{
-					pattern: /^\s?\d+\s+\d+\s+\d+\s+\d+\s?$/,
+					pattern: /^\s*?\d+\s+\d+\s+\d+\s+\d+\s*?$/,
 					parse(value) {
-						const colour = value.split(/\s+/)
+						const colour = value.trim().split(/\s+/)
 						return {
 							red: parseInt(colour[0]) / 255,
 							green: parseInt(colour[1]) / 255,
