@@ -26,7 +26,7 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
-> {
+> implements Disposable {
 
 	public readonly uri: Uri
 	protected readonly document: TextDocument
@@ -42,10 +42,13 @@ export abstract class TextDocumentBase<
 	public readonly codeLens$: Observable<CodeLens[]>
 	public abstract readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>
 
+	private readonly refCountDispose: (dispose: () => void) => void
+
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
+		refCountDispose: (dispose: () => void) => void,
 		configuration: TextDocumentBaseConfiguration<TDocumentSymbols, TDependencies>,
 	) {
 		this.uri = init.uri
@@ -198,6 +201,8 @@ export abstract class TextDocumentBase<
 			}),
 			shareReplay(1)
 		)
+
+		this.refCountDispose = refCountDispose
 	}
 
 	public update(changes: TextDocumentContentChangeEvent[], version: number) {
@@ -210,6 +215,10 @@ export abstract class TextDocumentBase<
 	}
 
 	public dispose() {
-		this.text$.complete()
+		this.refCountDispose(() => this.text$.complete())
+	}
+
+	[Symbol.dispose](): void {
+		this.dispose()
 	}
 }

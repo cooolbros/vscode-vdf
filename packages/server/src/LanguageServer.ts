@@ -53,7 +53,7 @@ export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<
 	 * https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
 	 */
 	capabilities: Omit<ServerCapabilities, keyof typeof capabilities>
-	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
+	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>, refCountDispose: (dispose: () => void) => void): Promise<TDocument>
 }
 
 export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
@@ -201,16 +201,20 @@ export abstract class LanguageServer<
 			open: async (uri) => {
 				return await this.trpc.client.workspace.openTextDocument.query({ uri, languageId: languageId })
 			},
-			create: async (init) => {
-				return await languageServerConfiguration.createDocument(init, onDidChangeConfiguration$.pipe(
-					concatMap(async () => {
-						return VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: init.uri.toString(), section: "vscode-vdf" }))
-					}),
-					shareReplay({
-						bufferSize: 1,
-						refCount: true
-					})
-				))
+			create: async (init, dispose) => {
+				return await languageServerConfiguration.createDocument(
+					init,
+					onDidChangeConfiguration$.pipe(
+						concatMap(async () => {
+							return VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: init.uri.toString(), section: "vscode-vdf" }))
+						}),
+						shareReplay({
+							bufferSize: 1,
+							refCount: true
+						})
+					),
+					dispose
+				)
 			},
 			onDidOpen: async (event) => {
 				const subscriptions: { unsubscribe(): void }[] = []

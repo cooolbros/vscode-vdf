@@ -13,7 +13,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument,
 			name: "vmt",
 			servers: new Set(),
 			capabilities: {},
-			createDocument: async (init, documentConfiguration$) => {
+			createDocument: async (init, documentConfiguration$, refCountDispose) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
 				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
@@ -41,7 +41,8 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument,
 					documentConfiguration$,
 					fileSystem$,
 					this.documents,
-					workspace
+					workspace,
+					refCountDispose
 				)
 			},
 			completion: {

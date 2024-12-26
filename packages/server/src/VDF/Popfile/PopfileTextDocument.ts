@@ -90,9 +90,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		init: TextDocumentInit,
 		documentConfiguration: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<PopfileTextDocument>
+		documents: TextDocuments<PopfileTextDocument>,
+		refCountDispose: (dispose: () => void) => void,
 	) {
-		super(init, documentConfiguration, fileSystem$, documents, {
+		super(init, documentConfiguration, fileSystem$, documents, refCountDispose, {
 			relativeFolderPath: "scripts/population",
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase()]) },
 			keyTransform: (key) => key,

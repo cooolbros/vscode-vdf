@@ -41,9 +41,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
-		workspace: HUDAnimationsWorkspace | null
+		workspace: HUDAnimationsWorkspace | null,
+		refCountDispose: (dispose: () => void) => void,
 	) {
-		super(init, documentConfiguration$, fileSystem$, {
+		super(init, documentConfiguration$, fileSystem$, refCountDispose, {
 			getDocumentSymbols: (text: string) => getHUDAnimationsDocumentSymbols(text),
 			defaultDocumentSymbols: new HUDAnimationsDocumentSymbols(),
 			definitionReferences$: defer(() => {

@@ -135,9 +135,10 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<VGUITextDocument>,
-		workspace: VGUIWorkspace | null
+		workspace: VGUIWorkspace | null,
+		refCountDispose: (dispose: () => void) => void,
 	) {
-		super(init, documentConfiguration$, fileSystem$, documents, {
+		super(init, documentConfiguration$, fileSystem$, documents, refCountDispose, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: {
 				multilineStrings: (() => {

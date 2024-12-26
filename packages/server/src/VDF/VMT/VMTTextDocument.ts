@@ -24,9 +24,10 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<VMTTextDocument>,
-		workspace: WorkspaceBase | null
+		workspace: WorkspaceBase | null,
+		refCountDispose: (dispose: () => void) => void,
 	) {
-		super(init, documentConfiguration$, fileSystem$, documents, {
+		super(init, documentConfiguration$, fileSystem$, documents, refCountDispose, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,

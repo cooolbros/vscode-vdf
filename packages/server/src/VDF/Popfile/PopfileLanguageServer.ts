@@ -16,14 +16,15 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 			capabilities: {
 				foldingRangeProvider: true
 			},
-			createDocument: async (init, documentConfiguration$) => {
+			createDocument: async (init, documentConfiguration$, refCountDispose) => {
 				return new PopfileTextDocument(
 					init,
 					documentConfiguration$,
 					this.fileSystems.get((teamFortress2Folder) => [
 						{ type: "tf2", uri: teamFortress2Folder }
 					]),
-					this.documents
+					this.documents,
+					refCountDispose
 				)
 			},
 			completion: {
