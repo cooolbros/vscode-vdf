@@ -5,7 +5,7 @@ import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCo
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
-import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
+import { fileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 export * from "common/VSCodeVDFLanguageID"
 
@@ -28,9 +28,6 @@ export class Client<T extends BaseLanguageClient> {
 		method: z.string(),
 		param: z.any()
 	})
-
-	private static readonly FileSystemMountPointFactory = new FileSystemMountPointFactory()
-
 	public readonly client: T
 	private router?: ReturnType<typeof TRPCClientRouter>
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
@@ -68,7 +65,7 @@ export class Client<T extends BaseLanguageClient> {
 								},
 							})
 						}),
-						Client.FileSystemMountPointFactory
+						fileSystemMountPointFactory
 					)
 
 					const response = await fetchRequestHandler<AnyRouter>({

@@ -1,5 +1,6 @@
 import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
+import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
@@ -18,6 +19,7 @@ export function activate(context: ExtensionContext): void {
 	// Commands
 
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))

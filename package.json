@@ -50,6 +50,12 @@
                 "icon": "$(file-add)"
             },
             {
+                "category": "Popfile",
+                "title": "Import #base templates into current popfile",
+                "command": "vscode-vdf.importPopfileTemplates",
+                "when": "editorLangId == popfile"
+            },
+            {
                 "category": "VDF",
                 "title": "Convert JSON to VDF",
                 "command": "vscode-vdf.JSONToVDF"
