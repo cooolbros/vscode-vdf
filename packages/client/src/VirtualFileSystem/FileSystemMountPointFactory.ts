@@ -5,7 +5,7 @@ import { TeamFortress2FileSystem } from "./mounts/TeamFortress2FileSystem"
 import { VPKFileSystem } from "./mounts/VPKFileSystem"
 import { WildcardFileSystem } from "./mounts/WildcardFileSystem"
 
-class FileSystemMountPointFactory {
+export class FileSystemMountPointFactory {
 
 	private readonly fileSystems = new Map<keyof FileSystemMountPointFactory, Map<string, { value: FileSystemMountPoint, references: number }>>()
 
