@@ -271,9 +271,6 @@ export abstract class LanguageServer<
 						subscription.unsubscribe()
 					}
 
-					this.documentDiagnostics.delete(event.document)
-					this.documentsLinks.delete(event.document)
-
 					event.document.dispose()
 				}
 			}
