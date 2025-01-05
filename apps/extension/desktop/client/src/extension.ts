@@ -64,7 +64,7 @@ export function activate(context: ExtensionContext): void {
 					run: {
 						module: serverModule,
 						transport: TransportKind.ipc,
-						...(process.env.NODE_ENV == "development" && {
+						...(process.env.NODE_ENV != "production" && {
 							options: {
 								execArgv: [
 									"--nolazy",
