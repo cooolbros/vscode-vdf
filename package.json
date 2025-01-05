@@ -345,16 +345,6 @@
                 "configuration": "./language-configuration/popfile-language-configuration.json"
             },
             {
-                "id": "vmt",
-                "aliases": [
-                    "Valve Material Type"
-                ],
-                "extensions": [
-                    ".vmt"
-                ],
-                "configuration": "./language-configuration/vdf-language-configuration.json"
-            },
-            {
                 "id": "vdf",
                 "aliases": [
                     "VDF"
@@ -375,6 +365,16 @@
                     "chat_*.txt",
                     "game_sounds_*.txt",
                     "tf_*.txt"
+                ],
+                "configuration": "./language-configuration/vdf-language-configuration.json"
+            },
+            {
+                "id": "vmt",
+                "aliases": [
+                    "Valve Material Type"
+                ],
+                "extensions": [
+                    ".vmt"
                 ],
                 "configuration": "./language-configuration/vdf-language-configuration.json"
             }
