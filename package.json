@@ -22,7 +22,8 @@
     "categories": [
         "Formatters",
         "Linters",
-        "Programming Languages"
+        "Programming Languages",
+        "Snippets"
     ],
     "repository": {
         "type": "git",
