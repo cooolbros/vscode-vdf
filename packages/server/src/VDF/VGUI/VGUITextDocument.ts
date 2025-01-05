@@ -139,7 +139,17 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 		refCountDispose: (dispose: () => void) => void,
 	) {
 		super(init, documentConfiguration$, fileSystem$, documents, refCountDispose, {
-			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
+			relativeFolderPath: (() => {
+				if (workspace) {
+					return posix.dirname(workspace.relative(init.uri))
+				}
+				else if (init.uri.scheme == "vpk") {
+					return init.uri.dirname().path.substring(1)
+				}
+				else {
+					return null
+				}
+			})(),
 			VDFParserOptions: {
 				multilineStrings: (() => {
 					const basename = init.uri.basename()

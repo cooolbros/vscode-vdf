@@ -78,7 +78,8 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 	}
 
 	private async onFoldingRanges(params: TextDocumentRequestParams<FoldingRangeParams>) {
-		return ((await firstValueFrom((await this.documents.get(params.textDocument.uri)).documentSymbols$)).reduceRecursive(
+		using document = await this.documents.get(params.textDocument.uri)
+		return (await firstValueFrom(document.documentSymbols$)).reduceRecursive(
 			[] as FoldingRange[],
 			(foldingRanges, documentSymbol) => {
 				if (documentSymbol.key.toLowerCase() == "Param".toLowerCase() && documentSymbol.detailRange) {
@@ -92,6 +93,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 				}
 				return foldingRanges
 			}
-		))
+		)
 	}
 }

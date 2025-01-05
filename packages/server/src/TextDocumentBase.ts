@@ -1,6 +1,6 @@
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, share, shareReplay, switchMap } from "rxjs"
 import { VDFSyntaxError, type IRange } from "vdf"
 import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
@@ -77,7 +77,8 @@ export abstract class TextDocumentBase<
 						throw error
 					}
 				}
-			})
+			}),
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.documentSymbols$ = result$.pipe(
@@ -95,9 +96,13 @@ export abstract class TextDocumentBase<
 			shareReplay(1)
 		)
 
-		this.definitionReferences$ = configuration.definitionReferences$.pipe(
+		const definitionReferences$ = configuration.definitionReferences$.pipe(
+			share()
+		)
+
+		this.definitionReferences$ = definitionReferences$.pipe(
 			map(({ definitionReferences }) => definitionReferences),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.diagnostics$ = result$.pipe(
@@ -123,7 +128,7 @@ export abstract class TextDocumentBase<
 			}),
 			switchMap((result) => {
 				if (result.success) {
-					return configuration.definitionReferences$.pipe(
+					return definitionReferences$.pipe(
 						map(({ dependencies, documentSymbols, definitionReferences }) => {
 							return configuration.getDiagnostics(dependencies, documentSymbols, definitionReferences)
 						}),
@@ -199,7 +204,7 @@ export abstract class TextDocumentBase<
 						<CodeLens[]>[]
 					)
 			}),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.refCountDispose = refCountDispose

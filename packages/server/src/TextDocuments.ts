@@ -35,6 +35,7 @@ export class TextDocuments<
 				}
 			}
 
+			// Don't await in this method or document will be opened twice
 			document = {
 				value: callbackFunction().then((init) => this.configuration.create(init, refCountDispose)),
 				references: references
@@ -56,7 +57,6 @@ export class TextDocuments<
 		}
 
 		if (open) {
-			// Don't await in this method or document will be opened twice
 			return this.getOrInsertComputed(key, () => this.configuration.open(uri))
 		}
 

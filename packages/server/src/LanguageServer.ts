@@ -217,7 +217,7 @@ export abstract class LanguageServer<
 				)
 			},
 			onDidOpen: async (event) => {
-				const subscriptions: { unsubscribe(): void }[] = []
+				const subscriptions: Subscription[] = []
 
 				subscriptions.push(
 					event.document.documentConfiguration$.pipe(
@@ -273,6 +273,8 @@ export abstract class LanguageServer<
 
 					this.documentDiagnostics.delete(event.document)
 					this.documentsLinks.delete(event.document)
+
+					event.document.dispose()
 				}
 			}
 		})
@@ -310,7 +312,8 @@ export abstract class LanguageServer<
 			this.connection.onDocumentFormatting,
 			async (params: TextDocumentRequestParams<DocumentFormattingParams>) => {
 				try {
-					return await this.onDocumentFormatting(await this.documents.get(params.textDocument.uri), params)
+					using document = await this.documents.get(params.textDocument.uri)
+					return await this.onDocumentFormatting(document, params)
 				}
 				catch (error) {
 					console.error(error)
@@ -467,7 +470,7 @@ export abstract class LanguageServer<
 						})
 					)
 					.query(async ({ input }) => {
-						const document = await this.documents.get(input.textDocument.uri, true)
+						using document = await this.documents.get(input.textDocument.uri, true)
 						return await this.rename(document, input.oldName.type, input.oldName.key, input.newName)
 					})
 			}),
@@ -504,7 +507,7 @@ export abstract class LanguageServer<
 	}
 
 	protected async onDidSaveTextDocument(params: TextDocumentRequestParams<DidSaveTextDocumentParams>) {
-		const document = await this.documents.get(params.textDocument.uri)
+		using document = await this.documents.get(params.textDocument.uri)
 		const documentConfiguration = await firstValueFrom(document.documentConfiguration$)
 
 		if (documentConfiguration.updateDiagnosticsEvent == "save") {
@@ -518,7 +521,7 @@ export abstract class LanguageServer<
 
 	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
 
-		const document = await this.documents.get(params.textDocument.uri)
+		using document = await this.documents.get(params.textDocument.uri)
 		const links = await firstValueFrom(document.links$)
 
 		this.documentsLinks.set(
@@ -534,7 +537,7 @@ export abstract class LanguageServer<
 		const { range, data } = documentLink
 
 		const { uri } = z.object({ uri: Uri.schema }).parse(data)
-		const document = await this.documents.get(uri)
+		using document = await this.documents.get(uri)
 
 		const resolve = this.documentsLinks
 			?.get(document)
@@ -552,7 +555,7 @@ export abstract class LanguageServer<
 
 	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {
 		try {
-			const document = await this.documents.get(params.textDocument.uri)
+			using document = await this.documents.get(params.textDocument.uri)
 			return await this.getCompletion(
 				document,
 				new VDFPosition(params.position.line, params.position.character),
@@ -613,7 +616,8 @@ export abstract class LanguageServer<
 	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null>
 
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
-		const definitionReferences = await firstValueFrom((await this.documents.get(params.textDocument.uri)).definitionReferences$)
+		using document = await this.documents.get(params.textDocument.uri)
+		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		for (const { type, key, value: ranges } of definitionReferences.references.get(params.textDocument.uri.toString()) ?? []) {
 			if (ranges.some((range) => range.contains(params.position))) {
 				return definitionReferences.definitions.get(type, key)?.map((definition) => ({
@@ -626,7 +630,8 @@ export abstract class LanguageServer<
 	}
 
 	private async onReferences(params: TextDocumentRequestParams<ReferenceParams>) {
-		const definitionReferences = await firstValueFrom((await this.documents.get(params.textDocument.uri)).definitionReferences$)
+		using document = await this.documents.get(params.textDocument.uri)
+		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		for (const { type, key, value: definitions } of definitionReferences.definitions) {
 			if (definitions.some((definition) => definition.keyRange.contains(params.position))) {
 				return definitionReferences
@@ -640,12 +645,13 @@ export abstract class LanguageServer<
 	}
 
 	private async onDocumentSymbol(params: TextDocumentRequestParams<DocumentSymbolParams>) {
-		return await firstValueFrom((await this.documents.get(params.textDocument.uri, true)).documentSymbols$)
+		using document = await this.documents.get(params.textDocument.uri, true)
+		return await firstValueFrom(document.documentSymbols$)
 	}
 
 	private async onCodeAction(params: TextDocumentRequestParams<CodeActionParams>): Promise<CodeAction[] | null> {
 
-		const document = await this.documents.get(params.textDocument.uri)
+		using document = await this.documents.get(params.textDocument.uri)
 
 		const diagnostics = this.documentDiagnostics.get(document)
 		if (!diagnostics) {
@@ -704,14 +710,16 @@ export abstract class LanguageServer<
 	}
 
 	private async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
-		return await firstValueFrom((await this.documents.get(params.textDocument.uri)).codeLens$)
+		using document = await this.documents.get(params.textDocument.uri)
+		return await firstValueFrom(document.codeLens$)
 	}
 
 	protected abstract onDocumentFormatting(document: TDocument, params: TextDocumentRequestParams<DocumentFormattingParams>): Promise<TextEdit[]>
 
 	private async onPrepareRename(params: TextDocumentRequestParams<PrepareRenameParams>) {
 
-		const definitionReferences = await firstValueFrom((await this.documents.get(params.textDocument.uri)).definitionReferences$)
+		using document = await this.documents.get(params.textDocument.uri)
+		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 
 		for (const { type, key, value: definitions } of definitionReferences.definitions) {
 			for (const definition of definitions) {
@@ -755,7 +763,7 @@ export abstract class LanguageServer<
 			throw new Error(`this.oldName == null`)
 		}
 
-		const document = await this.documents.get(params.textDocument.uri)
+		using document = await this.documents.get(params.textDocument.uri)
 		const [type, key] = this.oldName
 		this.oldName = null
 		return { changes: await this.rename(document, type, key, params.newName) }

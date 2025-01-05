@@ -1,5 +1,6 @@
+import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { Uri } from "common/Uri"
-import { BehaviorSubject, distinctUntilChanged, map, Observable, Subscription } from "rxjs"
+import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
 import * as vscode from "vscode"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory"
@@ -97,55 +98,11 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 			let observable = observables.get(path)
 			if (!observable) {
 				observable = fileSystems$.pipe(
-					(source) => {
-						const uris = new SortedArray<{ name: string, value: Uri | null }>((a, b) => a.name.localeCompare(b.name))
-						return new Observable<SortedArray<{ name: string, value: Uri | null }>>((subscriber) => {
-							const subscriptions = new Map<string, Subscription>()
-							const subscription = source.subscribe((fileSystems) => {
-
-								let added = fileSystems.filter(({ name }) => subscriptions.has(name)).length
-
-								for (const fileSystem of fileSystems) {
-									if (!subscriptions.has(fileSystem.name)) {
-										subscriptions.set(
-											fileSystem.name,
-											fileSystem.fileSystem.resolveFile(path).subscribe((uri) => {
-												const existing = uris.find((value) => value.name == fileSystem.name)
-												if (existing) {
-													existing.value = uri
-												}
-												else {
-													uris.push({ name: fileSystem.name, value: uri })
-												}
-
-												added = Math.max(added - 1, 0)
-												if (added == 0) {
-													subscriber.next(uris)
-												}
-											})
-										)
-									}
-								}
-
-								for (const [name, subscription] of subscriptions) {
-									if (!fileSystems.some((value) => value.name == name)) {
-										subscription.unsubscribe()
-										subscriptions.delete(name)
-									}
-								}
-							})
-
-							return () => {
-								for (const subscription of subscriptions.values()) {
-									subscription.unsubscribe()
-								}
-								subscription.unsubscribe()
-							}
-						})
-					},
-					map((uris) => uris.map(({ value }) => value)),
+					map((fileSystems) => fileSystems.map(({ fileSystem }) => fileSystem.resolveFile(path))),
+					combineLatestPersistent(),
 					map((uris) => uris.find((uri) => uri != null) ?? null),
-					distinctUntilChanged(Uri.equals)
+					distinctUntilChanged(Uri.equals),
+					shareReplay(1)
 				)
 				observables.set(path, observable)
 			}

@@ -1,8 +1,11 @@
-import type { Uri } from "common/Uri"
+import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
+import { finalizeWithValue } from "common/operators/finalizeWithValue"
+import { usingAsync } from "common/operators/usingAsync"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, concatMap, defer, firstValueFrom, from, map, of, shareReplay, switchMap, type Observable } from "rxjs"
-import type { VDFParserOptions, VDFRange } from "vdf"
+import { catchError, combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
+import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
 import { DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
@@ -119,165 +122,247 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
 			},
 			defaultDocumentSymbols: new VDFDocumentSymbols(),
-			definitionReferences$: combineLatest({ dependencies: configuration.dependencies$, documentSymbols: defer(() => this.documentSymbols$) }).pipe(
-				switchMap(({ dependencies, documentSymbols }) => {
-					const base = documentSymbols
-						.filter((documentSymbol) => documentSymbol.key == "#base" && documentSymbol.detail != undefined)
-						.map((documentSymbol) => {
-							const value = documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")
-							return (
-								configuration.relativeFolderPath
-									? fileSystem$.pipe(switchMap((fileSystem) => fileSystem.resolveFile(posix.resolve(`/${configuration.relativeFolderPath}`, value).substring(1))))
-									: of(this.uri.dirname().joinPath(value))
-							).pipe(
-								switchMap((uri) => {
-									if (uri == null || uri.equals(this.uri)) {
-										return of(null)
-									}
+			definitionReferences$: defer(() => this.documentSymbols$).pipe(
+				combineLatestWith(configuration.dependencies$),
+				(source) => defer(() => {
 
-									return from(documents.get(uri, true)).pipe(
-										switchMap((baseDocument) => {
-											function check(document: TDocument, stack: Uri[]): Observable<boolean> {
-												return document.documentSymbols$.pipe(
-													map((documentSymbols) => {
-														return documentSymbols
-															.filter((documentSymbol) => documentSymbol.key == "#base" && documentSymbol.detail != undefined)
-															.map((documentSymbol) => {
-																const value = documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")
-																return (
-																	document.configuration.relativeFolderPath
-																		? fileSystem$.pipe(switchMap((fileSystem) => fileSystem.resolveFile(posix.resolve(`/${baseDocument.configuration.relativeFolderPath}`, value).substring(1))))
-																		: of(baseDocument.uri.dirname().joinPath(value))
-																).pipe(
-																	switchMap((baseUri) => {
-																		if (!baseUri) {
-																			return of(true)
-																		}
-																		else if (stack.some((uri) => uri.equals(baseUri))) {
-																			return of(false)
-																		}
-																		else {
-																			return from(documents.get(baseUri, true)).pipe(
-																				switchMap((baseDocument) => {
-																					return check(baseDocument, [...stack, document.uri])
-																				})
-																			)
-																		}
-																	})
-																)
-															})
-													}),
-													switchMap((base) => {
-														return base.length != 0
-															? combineLatest(base).pipe(map((results) => results.every((result) => result)))
-															: of(true)
-													})
-												)
-											}
+					const withContext = <T, TContext>(context: TContext) => {
+						return (source: Observable<T>) => defer(() => {
+							return source.pipe(
+								map((value) => <const>[value, context])
+							)
+						})
+					}
 
-											return check(baseDocument, [init.uri, baseDocument.uri]).pipe(
-												switchMap((result) => {
-													return result
-														? baseDocument.definitionReferences$
-														: of(null)
-												})
-											)
-										})
+					const baseFiles = (uri: Uri, relativeFolderPath: string | null) => {
+						const callbackfn = relativeFolderPath != null
+							? (value: string) => fileSystem$.pipe(
+								switchMap((fileSystem) => {
+									return fileSystem.resolveFile(posix.resolve(`/${relativeFolderPath}`, value).substring(1)).pipe(
+
 									)
 								})
 							)
-						})
+							: (value: string) => of(uri.dirname().joinPath(value))
 
-					const base$ = base.length != 0
-						? combineLatest(base).pipe(map((dependencies) => dependencies.filter((definitionReferences) => definitionReferences != null)))
-						: of([])
+						return (source: Observable<VDFDocumentSymbols>) => {
+							return source.pipe(
+								map((documentSymbols) => {
+									return documentSymbols
+										.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
+										.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
+								}),
+								distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])),
+								map((values) => values.map(callbackfn)),
+								combineLatestPersistent(),
+								map((uris) => uris.filter((uri) => uri != null)),
+							)
+						}
+					}
 
-					return base$.pipe(
-						map((base) => {
-							const definitionReferences = new DefinitionReferences({
-								dependencies: [
-									...base,
+					const check = (document: TDocument, stack: Uri[]): Observable<boolean> => {
+						return document.documentSymbols$.pipe(
+							baseFiles(document.uri, document.configuration.relativeFolderPath),
+							withContext(new Map<string, Observable<boolean>>()),
+							finalizeWithValue(([_, context]) => context.clear()),
+							map(([baseUris, context]) => {
+								const observables = baseUris.map((baseUri) => {
+									if (baseUri == null) {
+										return of(true)
+									}
+									else if (baseUri.equals(document.uri) || stack.some((u) => baseUri.equals(u))) {
+										return of(false)
+									}
+									else {
+										const key = baseUri.toString()
+										let observable = context.get(key)
+										if (!observable) {
+											observable = usingAsync(() => documents.get(baseUri, true)).pipe(
+												switchMap((baseDocument) => {
+													return check(baseDocument, [...stack, baseUri])
+												}),
+												catchError((error) => {
+													console.error(error)
+													return of(true)
+												})
+											)
+											context.set(key, observable)
+										}
+										return observable
+									}
+								})
 
-									// Add document references to workspace
-									...dependencies.global
-								],
-								globals: dependencies.global.map((definitionReferences) => definitionReferences.definitions)
+								for (const key in context.keys().filter((key) => !baseUris.some((uri) => uri.toString() == key))) {
+									context.delete(key)
+								}
+
+								return observables
+							}),
+							combineLatestPersistent(),
+							map((results) => results.every((result) => result))
+						)
+					}
+
+					const input = new Subject<VDFDocumentSymbols>()
+
+					const observable = input.pipe(
+						baseFiles(this.uri, this.configuration.relativeFolderPath),
+						withContext(new Map<string, Observable<DefinitionReferences | null>>()),
+						finalizeWithValue(([_, context]) => context.clear()),
+						map(([uris, context]) => {
+
+							const observables = uris.map((uri) => {
+								if (uri == null) {
+									return of(null)
+								}
+								else if (uri.equals(this.uri)) {
+									return of(null)
+								}
+								else {
+									const key = uri.toString()
+									let observable = context.get(key)
+									if (!observable) {
+										observable = usingAsync(() => documents.get(uri, true)).pipe(
+											switchMap((document) => {
+												return check(document, [this.uri, uri]).pipe(
+													switchMap((result) => {
+														return result
+															? document.definitionReferences$
+															: of(null)
+													})
+												)
+											}),
+											catchError((error) => {
+												console.error(error)
+												return of(null)
+											})
+										)
+										context.set(key, observable)
+									}
+									return observable
+								}
 							})
 
-							const references = new References(this.uri)
+							for (const key in context.keys().filter((key) => !uris.some((uri) => uri.toString() == key))) {
+								context.delete(key)
+							}
 
-							documentSymbols.forAll((documentSymbol, path) => {
-								const referenceKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
-								for (const { type, definition, reference } of dependencies.schema.definitionReferences) {
+							return observables
+						}),
+						combineLatestPersistent(),
+						map((definitionReferences) => {
+							return definitionReferences.filter((definitionReferences) => definitionReferences != null)
+						})
+					)
+					const output = new ReplaySubject<DefinitionReferences[]>(1)
 
-									if (definition) {
+					const subscription = observable.subscribe((value) => {
+						output.next(value)
+					})
 
-										let key: string | undefined, keyRange: VDFRange | undefined, nameRange: VDFRange | undefined
+					return source.pipe(
+						switchMap(([documentSymbols, dependencies]) => {
+							input.next(documentSymbols)
+							return output.pipe(
+								map((base) => {
+									return {
+										dependencies,
+										documentSymbols,
+										base
+									}
+								})
+							)
+						}),
+						finalize(() => {
+							input.complete()
+							output.complete()
+							subscription.unsubscribe()
+						})
+					)
+				}),
+				map(({ dependencies, documentSymbols, base }) => {
 
-										if (definition.key != null) {
-											const keyDocumentSymbol = documentSymbol.children?.find((i) => i.key.toLowerCase() == definition.key!.name && i.detail != undefined)
-											if (keyDocumentSymbol) {
-												if (definition.key.priority) {
-													key = keyDocumentSymbol.detail!
-													keyRange = keyDocumentSymbol.detailRange!
-													nameRange = undefined
-												}
-												else {
-													key = documentSymbol.key
-													keyRange = documentSymbol.nameRange
-													nameRange = keyDocumentSymbol.detailRange!
-												}
-											}
-											else {
-												key = undefined
-												keyRange = undefined
-												nameRange = undefined
-											}
+					const definitionReferences = new DefinitionReferences({
+						dependencies: [
+							...base,
+
+							// Add document references to workspace
+							...dependencies.global
+						],
+						globals: dependencies.global.map((definitionReferences) => definitionReferences.definitions)
+					})
+
+					const references = new References(this.uri)
+
+					documentSymbols.forAll((documentSymbol, path) => {
+						const referenceKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
+						for (const { type, definition, reference } of dependencies.schema.definitionReferences) {
+
+							if (definition) {
+
+								let key: string | undefined, keyRange: VDFRange | undefined, nameRange: VDFRange | undefined
+
+								if (definition.key != null) {
+									const keyDocumentSymbol = documentSymbol.children?.find((i) => i.key.toLowerCase() == definition.key!.name && i.detail != undefined)
+									if (keyDocumentSymbol) {
+										if (definition.key.priority) {
+											key = keyDocumentSymbol.detail!
+											keyRange = keyDocumentSymbol.detailRange!
+											nameRange = undefined
 										}
 										else {
 											key = documentSymbol.key
 											keyRange = documentSymbol.nameRange
-											nameRange = undefined
-										}
-
-										if (key && keyRange && ArrayEndsWithArray(path, definition.directParentKeys, (a, b,) => a.key.toLowerCase() == b.toLowerCase()) && ((definition.children ? documentSymbol.children : documentSymbol.detail) != undefined)) {
-											definitionReferences.definitions.add(type, key, {
-												uri: this.uri,
-												key: key,
-												range: documentSymbol.range,
-												keyRange: keyRange,
-												nameRange: nameRange,
-												detail: documentSymbol.detail
-											})
+											nameRange = keyDocumentSymbol.detailRange!
 										}
 									}
-
-									if (reference && documentSymbol.detail != undefined && reference.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
-										references.addReference(type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
+									else {
+										key = undefined
+										keyRange = undefined
+										nameRange = undefined
 									}
 								}
-							})
+								else {
+									key = documentSymbol.key
+									keyRange = documentSymbol.nameRange
+									nameRange = undefined
+								}
 
-							for (const baseDefinitionReferences of base) {
-								for (const { type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
-									// Add #base definitions to document, used for Goto Definition
-									definitionReferences.definitions.add(type, key, ...baseDefinitions)
+								if (key && keyRange && ArrayEndsWithArray(path, definition.directParentKeys, (a, b,) => a.key.toLowerCase() == b.toLowerCase()) && ((definition.children ? documentSymbol.children : documentSymbol.detail) != undefined)) {
+									definitionReferences.definitions.add(type, key, {
+										uri: this.uri,
+										key: key,
+										range: documentSymbol.range,
+										keyRange: keyRange,
+										nameRange: nameRange,
+										detail: documentSymbol.detail
+									})
 								}
 							}
 
-							// Add references to document, used for Find References and Code Lens
-							definitionReferences.setDocumentReferences([references], false)
-
-							return definitionReferences
-						}),
-						map((definitionReferences) => {
-							return {
-								dependencies: dependencies,
-								documentSymbols: documentSymbols,
-								definitionReferences: definitionReferences
+							if (reference && documentSymbol.detail != undefined && reference.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
+								references.addReference(type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
 							}
-						})
-					)
+						}
+					})
+
+					for (const baseDefinitionReferences of base) {
+						for (const { type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
+							// Add #base definitions to document, used for Goto Definition
+							definitionReferences.definitions.add(type, key, ...baseDefinitions)
+						}
+					}
+
+					// Add references to document, used for Find References and Code Lens
+					// Set notify to true even though the current document has no subscribers,
+					// because it might have #base files that need to notify
+					definitionReferences.setDocumentReferences([references], true)
+
+					return {
+						dependencies: dependencies,
+						documentSymbols: documentSymbols,
+						definitionReferences: definitionReferences
+					}
 				})
 			),
 			getDiagnostics: (dependencies, documentSymbols, definitionReferences) => {
@@ -631,8 +716,9 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 		this.configuration = configuration
 
-		this.links$ = combineLatest({ documentSymbols: this.documentSymbols$, dependencies: configuration.dependencies$ }).pipe(
-			map(({ documentSymbols, dependencies }) => {
+		this.links$ = this.documentSymbols$.pipe(
+			combineLatestWith(configuration.dependencies$),
+			map(([documentSymbols, dependencies]) => {
 				return documentSymbols.reduceRecursive(
 					<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>[],
 					(links, documentSymbol, path) => {
@@ -707,7 +793,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			shareReplay(1)
 		)
 
-		this.colours$ = combineLatest([this.documentSymbols$, configuration.dependencies$]).pipe(
+		this.colours$ = this.documentSymbols$.pipe(
+			combineLatestWith(configuration.dependencies$),
 			map(([documentSymbols, dependencies]) => {
 				return documentSymbols.reduceRecursive(
 					[] as (ColorInformation & { stringify(colour: Color): string })[],

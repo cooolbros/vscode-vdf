@@ -159,11 +159,9 @@ export function devalueTransformer({ reducers, revivers, name, subscriptions, on
 					const o = new Observable((subscriber) => {
 						const subscription = s.subscribe(subscriber)
 						sendRequest(value.server, "vscode-vdf/observable/subscribe", { ...params, ...(value.current != undefined && { skip1: true }) })
-						return {
-							unsubscribe: () => {
-								subscription.unsubscribe()
-								sendRequest(value.server, "vscode-vdf/observable/unsubscribe", params)
-							}
+						return () => {
+							subscription.unsubscribe()
+							sendRequest(value.server, "vscode-vdf/observable/unsubscribe", params)
 						}
 					}).pipe(
 						value.current != undefined

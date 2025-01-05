@@ -1,6 +1,6 @@
+import { finalizeWithValue } from "common/operators/finalizeWithValue"
 import type { Uri } from "common/Uri"
-import { defer, distinctUntilChanged, finalize, Observable, shareReplay, tap } from "rxjs"
-import { } from "vscode-languageserver"
+import { distinctUntilChanged, Observable, shareReplay } from "rxjs"
 
 export interface FileSystemService {
 	resolveFile(path: string): Observable<Uri | null>
@@ -25,17 +25,10 @@ export class TeamFortress2FileSystem {
 		if (!file$) {
 			file$ = this.fileSystemService.resolveFile(path).pipe(
 				distinctUntilChanged(),
-				// https://github.com/ReactiveX/rxjs/issues/4803#issuecomment-496711335
-				(source) => defer(() => {
-					let lastValue: Uri | null
-					return source.pipe(
-						tap((value) => lastValue = value),
-						finalize(() => {
-							if (lastValue == null) {
-								this.files.delete(path)
-							}
-						})
-					)
+				finalizeWithValue((value) => {
+					if (value == null) {
+						this.files.delete(path)
+					}
 				}),
 				shareReplay({
 					bufferSize: 1,

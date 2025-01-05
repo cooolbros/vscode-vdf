@@ -278,7 +278,8 @@ export abstract class VDFLanguageServer<
 
 	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {
 
-		const colours = await firstValueFrom((await this.documents.get(params.textDocument.uri)).colours$)
+		using document = await this.documents.get(params.textDocument.uri)
+		const colours = await firstValueFrom(document.colours$)
 
 		this.documentsColours.set(
 			params.textDocument.uri.toString(),

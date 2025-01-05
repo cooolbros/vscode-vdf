@@ -2,7 +2,7 @@ import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
-import { firstValueFrom } from "rxjs"
+import { firstValueFrom, Subscription } from "rxjs"
 import { VDFPosition, VDFTokeniser, type VDFToken } from "vdf"
 import { CompletionItem, CompletionItemKind, InsertTextFormat, Range, TextEdit, type Connection, type DocumentFormattingParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
@@ -161,7 +161,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 		})
 
-		const subscriptions: { unsubscribe(): void }[] = []
+		const subscriptions: Subscription[] = []
 
 		const workspace = event.document.workspace
 

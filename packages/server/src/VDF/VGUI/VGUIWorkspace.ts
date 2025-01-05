@@ -1,3 +1,4 @@
+import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
 import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
@@ -268,10 +269,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 		const files = (path: string): Observable<string[]> => {
 			return fileSystem$.pipe(
 				switchMap((fileSystem) => fileSystem.resolveFile(path)),
-				concatMap(async (uri) => {
+				switchMap((uri) => {
 					return uri != null
-						? await documents.get(uri, true)
-						: null
+						? usingAsync(() => documents.get(uri, true))
+						: of(null)
 				}),
 				switchMap((document) => {
 					if (!document) {
@@ -388,7 +389,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 				setTimeout(async () => {
 					const uri = await firstValueFrom(fileSystem.resolveFile(name))
 					if (uri) {
-						await firstValueFrom((await documents.get(uri, true)).definitionReferences$)
+						using document = await documents.get(uri, true)
+						await firstValueFrom(document.definitionReferences$)
 					}
 					resolve()
 				}, 0)
