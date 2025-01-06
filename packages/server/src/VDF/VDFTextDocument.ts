@@ -143,9 +143,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						const callbackfn = relativeFolderPath != null
 							? (value: string) => fileSystem$.pipe(
 								switchMap((fileSystem) => {
-									return fileSystem.resolveFile(posix.resolve(`/${relativeFolderPath}`, value).substring(1)).pipe(
-
-									)
+									return fileSystem.resolveFile(posix.resolve(`/${relativeFolderPath}`, value).substring(1))
 								})
 							)
 							: (value: string) => of(uri.dirname().joinPath(value))

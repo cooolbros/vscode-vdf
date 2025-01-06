@@ -1,6 +1,6 @@
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, share, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFSyntaxError, type IRange } from "vdf"
 import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
@@ -97,7 +97,7 @@ export abstract class TextDocumentBase<
 		)
 
 		const definitionReferences$ = configuration.definitionReferences$.pipe(
-			share()
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.definitionReferences$ = definitionReferences$.pipe(
