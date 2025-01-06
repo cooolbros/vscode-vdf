@@ -16,11 +16,6 @@ export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocumen
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>, refCountDispose: (dispose: () => void) => void): Promise<TDocument>
-	completion: {
-		root: CompletionItem[]
-		typeKey: string | null
-		defaultType: string | null
-	}
 }
 
 export abstract class VDFLanguageServer<
@@ -77,29 +72,29 @@ export abstract class VDFLanguageServer<
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
 			const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(position)
 
+			const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
+
 			if (!documentSymbol) {
 				return [
 					{
 						label: "#base",
 						kind: CompletionItemKind.Keyword,
 					},
-					...this.VDFLanguageServerConfiguration.completion.root.filter((item) => !documentSymbols.some((i) => i.key == item.label))
+					...schema.completion.root.filter((item) => !documentSymbols.some((i) => i.key == item.label))
 				]
 			}
 			else {
-				const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
-
 				const type = ((): string | null => {
 
-					const documentSymbolKey = this.VDFLanguageServerConfiguration.completion.typeKey
-						? documentSymbol.children?.find((d) => d.key.toLowerCase() == this.VDFLanguageServerConfiguration.completion.typeKey)?.detail?.toLowerCase()
+					const documentSymbolKey = schema.completion.typeKey
+						? documentSymbol.children?.find((d) => d.key.toLowerCase() == schema.completion.typeKey)?.detail?.toLowerCase()
 						: documentSymbol.key.toLowerCase()
 
 					if (documentSymbolKey && documentSymbolKey in schema.keys) {
 						return documentSymbolKey
 					}
 
-					return this.VDFLanguageServerConfiguration.completion.defaultType
+					return schema.completion.defaultType
 				})()
 
 				if (!type) {

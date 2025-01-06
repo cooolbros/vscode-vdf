@@ -1,4 +1,4 @@
-import { CompletionItemKind, InsertTextFormat, type Connection } from "vscode-languageserver"
+import { type Connection } from "vscode-languageserver"
 import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { VMTTextDocument, type VMTTextDocumentDependencies } from "./VMTTextDocument"
@@ -44,33 +44,6 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument,
 					workspace,
 					refCountDispose
 				)
-			},
-			completion: {
-				root: [
-					{
-						label: "LightmappedGeneric",
-						kind: CompletionItemKind.Class,
-						preselect: true,
-						insertText: "WaveSchedule\n{\n\t$0\n}",
-						insertTextFormat: InsertTextFormat.Snippet
-					},
-					{
-						label: "UnlitGeneric",
-						kind: CompletionItemKind.Class,
-						preselect: true,
-						insertText: "WaveSchedule\n{\n\t$0\n}",
-						insertTextFormat: InsertTextFormat.Snippet
-					},
-					{
-						label: "VertexlitGeneric",
-						kind: CompletionItemKind.Class,
-						preselect: true,
-						insertText: "WaveSchedule\n{\n\t$0\n}",
-						insertTextFormat: InsertTextFormat.Snippet
-					}
-				],
-				typeKey: null,
-				defaultType: null
 			}
 		})
 		this.workspaces = new Map()

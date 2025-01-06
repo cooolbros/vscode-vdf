@@ -1,7 +1,7 @@
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { concatMap, map, switchMap, type Observable } from "rxjs"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, DiagnosticSeverity } from "vscode-languageserver"
+import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -83,6 +83,19 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					}
 				}
 			]
+		},
+		completion: {
+			root: [
+				{
+					label: "WaveSchedule",
+					kind: CompletionItemKind.Class,
+					preselect: true,
+					insertText: "WaveSchedule\n{\n\t$0\n}",
+					insertTextFormat: InsertTextFormat.Snippet
+				}
+			],
+			typeKey: null,
+			defaultType: null,
 		}
 	}
 

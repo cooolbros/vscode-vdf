@@ -1,14 +1,12 @@
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, shareReplay, Subscription, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CompletionItemKind } from "vscode-languageserver"
 import { DefinitionReferences, References } from "../../DefinitionReferences"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocuments } from "../../TextDocuments"
 import { WorkspaceBase } from "../../WorkspaceBase"
-import type { VDFTextDocumentSchema } from "../VDFTextDocument"
 import { VGUITextDocument } from "./VGUITextDocument"
 
 export const enum VGUIFileType {
@@ -16,222 +14,12 @@ export const enum VGUIFileType {
 	ClientScheme = 1,
 	SourceScheme = 2,
 	LanguageTokens = 3,
+	HUDAnimationsManifest = 4,
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
 
-	public static readonly ClientSchemeSchema: VDFTextDocumentSchema = {
-		keys: {},
-		values: {
-			backgroundtype: {
-				kind: 13,
-				values: [
-					"0",
-					"2",
-				]
-			},
-			bordertype: {
-				kind: 13,
-				values: [
-					"image",
-					"scalable_image",
-				]
-			}
-		},
-		definitionReferences: [
-			{
-				type: Symbol.for("color"),
-				definition: {
-					directParentKeys: [
-						"Scheme".toLowerCase(),
-						"Colors".toLowerCase(),
-					],
-					children: false,
-					key: null,
-				},
-				reference: {
-					keys: new Set("color"),
-					match: null
-				},
-				toCompletionItem: (definition) => {
-					if (!definition.detail) {
-						return undefined
-					}
-
-					try {
-						const [r, g, b] = definition.detail.split(/\s+/).map(parseFloat)
-						return { kind: CompletionItemKind.Color, documentation: `rgb(${r},${g},${b})` }
-					}
-					catch (_) {
-						return undefined
-					}
-				},
-			},
-			{
-				type: Symbol.for("color"),
-				definition: {
-					directParentKeys: [
-						"Scheme".toLowerCase(),
-						"BaseSettings".toLowerCase(),
-					],
-					children: false,
-					key: null,
-				},
-				reference: {
-					keys: new Set("color"),
-					match: null
-				},
-				toCompletionItem: (definition) => {
-					if (!definition.detail) {
-						return undefined
-					}
-
-					try {
-						const [r, g, b] = definition.detail.split(/\s+/).map(parseFloat)
-						return { kind: CompletionItemKind.Color, documentation: `rgb(${r},${g},${b})` }
-					}
-					catch (_) {
-						return undefined
-					}
-				},
-			},
-			{
-				type: Symbol.for("border"),
-				definition: {
-					directParentKeys: [
-						"Scheme".toLowerCase(),
-						"Borders".toLowerCase(),
-					],
-					children: true,
-					key: null,
-				},
-				reference: {
-					keys: new Set(),
-					match: null
-				},
-				toCompletionItem: () => ({ kind: CompletionItemKind.Snippet })
-			},
-			{
-				type: Symbol.for("font"),
-				definition: {
-					directParentKeys: [
-						"Scheme".toLowerCase(),
-						"Fonts".toLowerCase(),
-					],
-					children: true,
-					key: null,
-				},
-				reference: {
-					keys: new Set(),
-					match: null
-				},
-				toCompletionItem: () => ({ kind: CompletionItemKind.Snippet })
-			}
-		],
-		files: [
-			{
-				name: "font file",
-				parentKeys: [
-					"Scheme".toLowerCase(),
-					"CustomFontFiles".toLowerCase()
-				],
-				keys: new Set([
-					"font",
-				]),
-				folder: null,
-				resolve: (name) => name,
-				extensionsPattern: ".*tf",
-				displayExtensions: true
-			},
-			{
-				name: "bitmap font file",
-				parentKeys: [
-					"Scheme".toLowerCase(),
-					"BitmapFontFiles".toLowerCase()
-				],
-				keys: new Set([
-					"Buttons".toLowerCase(),
-					"ButtonsSC".toLowerCase(),
-				]),
-				folder: null,
-				resolve: (name) => name,
-				extensionsPattern: null,
-				displayExtensions: true
-			},
-			{
-				name: "image",
-				parentKeys: [],
-				keys: new Set([
-					"image",
-				]),
-				folder: "materials/vgui",
-				resolve: (name) => name.endsWith(".vmt") ? name : `${name}.vmt`,
-				extensionsPattern: ".vmt",
-				displayExtensions: false
-			},
-		],
-		colours: {
-			keys: {
-				include: null,
-				exclude: new Set(["inset"])
-			},
-			colours: [
-				{
-					pattern: /^\s?\d+\s+\d+\s+\d+\s+\d+\s?$/,
-					parse(value) {
-						const colour = value.trim().split(/\s+/)
-						return {
-							red: parseInt(colour[0]) / 255,
-							green: parseInt(colour[1]) / 255,
-							blue: parseInt(colour[2]) / 255,
-							alpha: parseInt(colour[3]) / 255
-						}
-					},
-					stringify(colour) {
-						return `${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} ${Math.round(colour.alpha * 255)}`
-					},
-				}
-			]
-		}
-	}
-
-	public static readonly SourceSchemeSchema: VDFTextDocumentSchema = {
-		keys: {},
-		values: {},
-		definitionReferences: [],
-		files: [],
-		colours: {
-			keys: null,
-			colours: []
-		}
-	}
-
-	public static readonly LanguageTokensSchema: VDFTextDocumentSchema = {
-		keys: {},
-		values: {},
-		definitionReferences: [
-			{
-				type: Symbol.for("string"),
-				definition: {
-					directParentKeys: [
-						"lang",
-						"Tokens".toLowerCase()
-					],
-					children: false,
-					key: null,
-				},
-				toReference: (value) => `#${value}`,
-				toCompletionItem: (definition) => ({ kind: CompletionItemKind.Text, insertText: `#${definition.key}` })
-			}
-		],
-		files: [],
-		colours: {
-			keys: null,
-			colours: []
-		}
-	}
-
-	private readonly subscriptions: { unsubscribe: () => void }[]
+	private readonly subscriptions: Subscription[]
 	private readonly fileSystem$: Observable<TeamFortress2FileSystem>
 	private readonly documents: TextDocuments<VGUITextDocument>
 
@@ -417,6 +205,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 				}
 				else if (languageTokensFiles.has(path)) {
 					return VGUIFileType.LanguageTokens
+				}
+				else if (path == "scripts/hudanimations_manifest.txt") {
+					return VGUIFileType.HUDAnimationsManifest
 				}
 				return VGUIFileType.None
 			}),

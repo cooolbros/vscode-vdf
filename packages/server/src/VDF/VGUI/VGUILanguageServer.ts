@@ -53,11 +53,6 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 					workspace,
 					refCountDispose,
 				)
-			},
-			completion: {
-				root: [],
-				typeKey: "ControlName".toLowerCase(),
-				defaultType: "Panel".toLowerCase()
 			}
 		})
 

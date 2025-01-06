@@ -1,6 +1,6 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { firstValueFrom } from "rxjs"
-import { CompletionItemKind, FoldingRange, FoldingRangeKind, InsertTextFormat, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { PopfileTextDocument, type PopfileTextDocumentDependencies } from "./PopfileTextDocument"
@@ -26,19 +26,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 					this.documents,
 					refCountDispose
 				)
-			},
-			completion: {
-				root: [
-					{
-						label: "WaveSchedule",
-						kind: CompletionItemKind.Class,
-						preselect: true,
-						insertText: "WaveSchedule\n{\n\t$0\n}",
-						insertTextFormat: InsertTextFormat.Snippet
-					}
-				],
-				typeKey: null,
-				defaultType: null,
 			}
 		})
 

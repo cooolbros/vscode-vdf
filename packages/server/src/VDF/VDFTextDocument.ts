@@ -100,6 +100,11 @@ export interface VDFTextDocumentSchema {
 			stringify(colour: Color): string
 		}[]
 	}
+	completion: {
+		root: CompletionItem[]
+		typeKey: string | null
+		defaultType: string | null
+	}
 }
 
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies> {

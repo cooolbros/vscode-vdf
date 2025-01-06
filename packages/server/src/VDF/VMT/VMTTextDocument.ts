@@ -2,6 +2,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { of, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
+import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -82,13 +83,39 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 							}
 						]
 					},
-
+					completion: {
+						root: [
+							{
+								label: "LightmappedGeneric",
+								kind: CompletionItemKind.Class,
+								preselect: true,
+								insertText: "WaveSchedule\n{\n\t$0\n}",
+								insertTextFormat: InsertTextFormat.Snippet
+							},
+							{
+								label: "UnlitGeneric",
+								kind: CompletionItemKind.Class,
+								preselect: true,
+								insertText: "WaveSchedule\n{\n\t$0\n}",
+								insertTextFormat: InsertTextFormat.Snippet
+							},
+							{
+								label: "VertexlitGeneric",
+								kind: CompletionItemKind.Class,
+								preselect: true,
+								insertText: "WaveSchedule\n{\n\t$0\n}",
+								insertTextFormat: InsertTextFormat.Snippet
+							}
+						],
+						typeKey: null,
+						defaultType: null
+					}
 				},
 				global: []
 			}),
 			getCodeLens: (definitionReferences$) => {
 				return definitionReferences$
-			}
+			},
 		})
 		this.workspace = workspace
 	}
