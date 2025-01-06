@@ -105,13 +105,15 @@ export class VDFTokeniser {
 		switch (this.str[index]) {
 			case "{":
 			case "}": {
+				const range = new VDFRange(
+					new VDFPosition(line, character),
+					new VDFPosition(line, character + 1),
+				)
 				token = {
 					type: VDFTokenType.ControlCharacter,
 					value: <"{" | "}">this.str[index],
-					range: new VDFRange(
-						new VDFPosition(line, character),
-						new VDFPosition(line, character + 1),
-					)
+					range: range,
+					exteriorRange: range
 				}
 				index++
 				character++
@@ -135,20 +137,23 @@ export class VDFTokeniser {
 				const end = index
 				const endPosition = new VDFPosition(line, character)
 				const value = this.str.slice(start, end)
+				const range = new VDFRange(
+					startPosition,
+					endPosition
+				)
 				token = {
 					type: VDFTokenType.Conditional,
 					value: <`[${string}]`>value,
-					range: new VDFRange(
-						startPosition,
-						endPosition
-					)
+					range: range,
+					exteriorRange: range,
 				}
 				break
 			}
 			case "\"": {
-				const startPosition = new VDFPosition(line, character)
+				const exteriorStartPosition = new VDFPosition(line, character)
 				index++
 				character++
+				const startPosition = new VDFPosition(line, character)
 				const start = index
 				while (this.str[index] != "\"") {
 					if (index >= this.str.length) {
@@ -178,13 +183,15 @@ export class VDFTokeniser {
 					index++
 				}
 				const end = index
+				const endPosition = new VDFPosition(line, character)
 				index++
 				character++
-				const endPosition = new VDFPosition(line, character)
+				const exteriorEndPosition = new VDFPosition(line, character)
 				token = {
 					type: VDFTokenType.String,
 					value: this.str.slice(start, end),
-					range: new VDFRange(startPosition, endPosition)
+					range: new VDFRange(startPosition, endPosition),
+					exteriorRange: new VDFRange(exteriorStartPosition, exteriorEndPosition)
 				}
 				break
 			}
@@ -201,13 +208,15 @@ export class VDFTokeniser {
 				const end = index
 				const endPosition = new VDFPosition(line, character)
 				const value = this.str.slice(start, end)
+				const range = new VDFRange(
+					startPosition,
+					endPosition
+				)
 				token = {
 					type: VDFTokenType.String,
 					value: value,
-					range: new VDFRange(
-						startPosition,
-						endPosition
-					)
+					range: range,
+					exteriorRange: range
 				}
 				break
 			}

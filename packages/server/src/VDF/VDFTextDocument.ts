@@ -5,7 +5,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { catchError, combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
-import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
+import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
 import { DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
@@ -827,12 +827,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 						for (const { pattern, parse, stringify } of dependencies.schema.colours.colours) {
 							if (pattern.test(documentSymbol.detail)) {
-								const inset = Number(/\s/.test(documentSymbol.detail))
 								colours.push({
-									range: new VDFRange(
-										new VDFPosition(documentSymbol.detailRange!.start.line, documentSymbol.detailRange!.start.character + inset),
-										new VDFPosition(documentSymbol.detailRange!.end.line, documentSymbol.detailRange!.end.character - inset)
-									),
+									range: documentSymbol.detailRange!,
 									color: parse(documentSymbol.detail),
 									stringify: stringify,
 								})

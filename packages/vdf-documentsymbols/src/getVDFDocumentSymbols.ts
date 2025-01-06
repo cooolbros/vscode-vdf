@@ -39,7 +39,7 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 			switch (keyToken.type) {
 				case VDFTokenType.String: {
 					key = keyToken.value
-					keyRange = keyToken.range
+					keyRange = keyToken.exteriorRange
 
 					const allowMultilineString = typeof options.multilineStrings == "boolean" ? options.multilineStrings : options.multilineStrings.has(key.toLowerCase())
 
