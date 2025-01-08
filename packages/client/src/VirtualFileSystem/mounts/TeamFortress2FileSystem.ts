@@ -1,10 +1,10 @@
 import { Uri } from "common/Uri"
-import { combineLatest, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
 import * as vscode from "vscode"
 import { z } from "zod"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { FileSystemMountPointFactory } from "../FileSystemMountPointFactory"
+import { VirtualFileSystem } from "../VirtualFileSystem"
 
 /**
  * @class
@@ -76,40 +76,5 @@ export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory:
 		throw new Error()
 	}
 
-	const observables = new Map<string, Observable<Uri | null>>()
-
-	return {
-		resolveFile: (path) => {
-			let observable = observables.get(path)
-			if (!observable) {
-				observable = combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path))).pipe(
-					map((uris) => uris.find((uri) => uri != null) ?? null),
-					distinctUntilChanged(Uri.equals),
-					shareReplay(1)
-				)
-				observables.set(path, observable)
-			}
-			return observable
-		},
-		readDirectory: async (path, options) => {
-			const results = await Promise.allSettled(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))
-
-			return results
-				.values()
-				.filter((result) => result.status == "fulfilled")
-				.map((result) => result.value)
-				.flatMap((value) => value)
-				.reduce((a, b) => {
-					if (!a.some(([n]) => n == b[0])) {
-						a.push(b)
-					}
-					return a
-				}, <[string, vscode.FileType][]>[])
-		},
-		dispose: () => {
-			for (const fileSystem of fileSystems) {
-				fileSystem.dispose()
-			}
-		}
-	}
+	return VirtualFileSystem(fileSystems)
 }
