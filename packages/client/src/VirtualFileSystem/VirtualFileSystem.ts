@@ -1,5 +1,6 @@
 import { Uri } from "common/Uri"
 import { combineLatest, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
+import type { FileType } from "vscode"
 import type { FileSystemMountPoint } from "./FileSystemMountPoint"
 
 /**
@@ -33,7 +34,7 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 						a.push(b)
 					}
 					return a
-				}, <[string, number][]>[])
+				}, <[string, FileType][]>[])
 		},
 		dispose: () => {
 			for (const fileSystem of fileSystems) {

@@ -104,7 +104,7 @@ export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory:
 						a.push(b)
 					}
 					return a
-				}, <[string, number][]>[])
+				}, <[string, vscode.FileType][]>[])
 		},
 		dispose: () => {
 			for (const fileSystem of fileSystems) {

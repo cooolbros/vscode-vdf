@@ -10,6 +10,7 @@ import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VS
 import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, firstValueFrom, from, map, Observable, shareReplay, Subject, Subscription, switchMap, tap, zip } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
+import type { FileType } from "vscode"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
@@ -585,7 +586,7 @@ export abstract class LanguageServer<
 									startsWithFilter,
 								].filter((f) => f != null)
 
-								const filter = ([name, type]: [string, number]) => filters.every((filter) => filter(name, type))
+								const filter = ([name, type]: [string, FileType]) => filters.every((filter) => filter(name, type))
 
 								return entries
 									.values()

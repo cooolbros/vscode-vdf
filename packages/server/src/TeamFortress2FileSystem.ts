@@ -1,10 +1,11 @@
 import { finalizeWithValue } from "common/operators/finalizeWithValue"
 import type { Uri } from "common/Uri"
 import { distinctUntilChanged, Observable, shareReplay } from "rxjs"
+import type { FileType } from "vscode"
 
 export interface FileSystemService {
 	resolveFile(path: string): Observable<Uri | null>
-	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, number][]>
+	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, FileType][]>
 	dispose(): any
 }
 
@@ -40,7 +41,7 @@ export class TeamFortress2FileSystem {
 		return file$
 	}
 
-	public async readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, number][]> {
+	public async readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, FileType][]> {
 		return await this.fileSystemService.readDirectory(path, options)
 	}
 
