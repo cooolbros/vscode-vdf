@@ -72,9 +72,5 @@ export async function TeamFortress2FileSystem(teamFortress2Folder: Uri, factory:
 		.filter((result) => result.status == "fulfilled")
 		.map((result) => result.value)
 
-	if (fileSystems.length == 0) {
-		throw new Error()
-	}
-
 	return VirtualFileSystem(fileSystems)
 }

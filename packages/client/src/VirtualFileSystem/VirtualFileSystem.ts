@@ -1,5 +1,5 @@
 import { Uri } from "common/Uri"
-import { combineLatest, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
+import { combineLatest, defer, distinctUntilChanged, map, Observable, of, shareReplay } from "rxjs"
 import type { FileType } from "vscode"
 import type { FileSystemMountPoint } from "./FileSystemMountPoint"
 
@@ -12,7 +12,11 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 		resolveFile: (path) => {
 			let observable = observables.get(path)
 			if (!observable) {
-				observable = combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path))).pipe(
+				observable = defer(() => {
+					return fileSystems.length != 0
+						? combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path)))
+						: of([])
+				}).pipe(
 					map((uris) => uris.find((uri) => uri != null) ?? null),
 					distinctUntilChanged(Uri.equals),
 					shareReplay(1)

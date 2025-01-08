@@ -6,7 +6,7 @@ import type { FileType } from "vscode"
 export interface FileSystemService {
 	resolveFile(path: string): Observable<Uri | null>
 	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, FileType][]>
-	dispose(): any
+	dispose(): void
 }
 
 export class TeamFortress2FileSystem {
