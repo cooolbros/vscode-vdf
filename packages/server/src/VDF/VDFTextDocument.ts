@@ -494,7 +494,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct == true) {
 							const parent = path.at(-1)
 							if (parent?.children != undefined) {
-								const first = parent.children.find((i) => configuration.keyTransform(i.key.toLowerCase()) == documentSymbolKey && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+								const first = parent.children.find((i) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
 								if (first != documentSymbol) {
 									diagnostics.push({
 										range: documentSymbol.nameRange,
