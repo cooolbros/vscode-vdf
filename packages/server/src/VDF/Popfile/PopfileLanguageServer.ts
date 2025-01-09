@@ -1,5 +1,5 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
-import { firstValueFrom } from "rxjs"
+import { firstValueFrom, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -37,7 +37,29 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<PopfileTextDocument>): Promise<{ onDidClose: () => void }> {
+
 		const { onDidClose } = await super.onDidOpen(event)
+
+		const key = await this.trpc.client.window.createTextEditorDecorationType.mutate({
+			options: {
+				after: {
+					margin: "0 0 0 0.5rem",
+					color: "#99999959",
+				}
+			}
+		})
+
+		const subscriptions: Subscription[] = []
+
+		subscriptions.push(
+			event.document.decorations$.subscribe((decorations) => {
+				this.trpc.client.textDocument.decoration.mutate({
+					uri: event.document.uri,
+					key: key,
+					decorations: decorations
+				})
+			})
+		)
 
 		if (this.vscript == false) {
 			firstValueFrom(event.document.documentSymbols$).then((documentSymbols) => {
@@ -60,6 +82,9 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		return {
 			onDidClose: () => {
 				onDidClose()
+				for (const subscription of subscriptions) {
+					subscription.unsubscribe()
+				}
 			}
 		}
 	}

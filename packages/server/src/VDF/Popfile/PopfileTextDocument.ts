@@ -1,5 +1,6 @@
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { concatMap, map, switchMap, type Observable } from "rxjs"
+import type { VDFRange } from "vdf"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
@@ -110,6 +111,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		}
 	}
 
+	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
+
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration: Observable<VSCodeVDFConfiguration>,
@@ -155,6 +158,32 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				return definitionReferences$
 			}
 		})
+
+		this.decorations$ = this.documentSymbols$.pipe(
+			map((documentSymbols) => {
+				const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key != "#base" && documentSymbol)?.children
+				if (!waveSchedule) {
+					return []
+				}
+
+				return waveSchedule.reduce(
+					(decorations, documentSymbol) => {
+						if (documentSymbol.key.toLowerCase() == "Wave".toLowerCase() && documentSymbol.children != undefined) {
+							decorations.push({
+								range: documentSymbol.nameRange,
+								renderOptions: {
+									after: {
+										contentText: `${decorations.length + 1}`
+									}
+								}
+							})
+						}
+						return decorations
+					},
+					<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>[]
+				)
+			})
+		)
 	}
 
 	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
