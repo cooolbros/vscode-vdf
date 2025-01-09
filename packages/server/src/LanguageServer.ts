@@ -66,7 +66,7 @@ export type CompletionFiles = (path: string, options: CompletionFilesOptions) =>
 export interface CompletionFilesOptions {
 	value: string | null
 	extensionsPattern: `.${string}` | null
-	displayExtensions: boolean
+	callbackfn?: (name: string, type: FileType) => Partial<Omit<CompletionItem, "label" | "kind">> | null
 }
 
 export abstract class LanguageServer<
@@ -83,10 +83,6 @@ export abstract class LanguageServer<
 		get: (paths: (teamFortress2Folder: Uri) => ({ type: "folder" | "tf2" | "vpk" | "wildcard", uri: Uri } | null)[]) => Observable<TeamFortress2FileSystem>
 	}
 	protected readonly documents: TextDocuments<TDocument>
-
-	private readonly observables = new Map<string, Observable<any>>()
-	private readonly subscriptions = new Map<Observable<any>, Map<string, Subscription | null>>()
-	private readonly subjects = new Map<string, WeakRef<Subject<unknown>>>()
 
 	private readonly documentDiagnostics: WeakMap<TDocument, Map<string, DiagnosticCodeAction>>
 	private readonly documentsLinks: WeakMap<TDocument, Map<string, (documentLink: DocumentLink) => Promise<Uri | null>>>
@@ -557,47 +553,63 @@ export abstract class LanguageServer<
 			return await this.getCompletion(
 				document,
 				new VDFPosition(params.position.line, params.position.character),
-				async (path: string, { value, extensionsPattern, displayExtensions }: CompletionFilesOptions) => {
+				async (path: string, { value, extensionsPattern, callbackfn }: CompletionFilesOptions) => {
 					return await firstValueFrom(
 						zip([document.fileSystem$, document.documentConfiguration$]).pipe(
 							concatMap(async ([fileSystem, documentConfiguration]) => {
 
-								let startsWithFilter: ((name: string, type: number) => boolean) | null = null
+								let startsWithFilter: ([name, type]: [string, FileType]) => boolean
 
 								if (value) {
 									const [last, ...rest] = value.split("/").reverse()
 									if (rest.length) {
 										path += `/${rest.reverse().join("/")}`
 									}
-									startsWithFilter = (name: string, type: number) => name.toLowerCase().startsWith(last)
+									startsWithFilter = ([name]) => name.toLowerCase().startsWith(last)
+								}
+								else {
+									startsWithFilter = () => true
 								}
 
 								const entries = await fileSystem.readDirectory(path, {
 									recursive: documentConfiguration.filesAutoCompletionKind == "all",
 									pattern: extensionsPattern != null
-										? `**/*.${extensionsPattern}`
+										? `**/*${extensionsPattern}`
 										: undefined
 								})
 
 								const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
 
-								const filters = [
-									!incremental ? (name: string, type: number) => type == 1 : null, // Hide folders when filesAutoCompletionKind is "all", because the user will not #base a folder
-									startsWithFilter,
-								].filter((f) => f != null)
-
-								const filter = ([name, type]: [string, FileType]) => filters.every((filter) => filter(name, type))
-
 								return entries
 									.values()
-									.filter(filter)
-									.map(([name, type]): CompletionItem => ({
-										label: name,
-										kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-										...(incremental && {
-											commitCharacters: ["/"],
-										})
-									}))
+									.filter(startsWithFilter)
+									.map(
+										callbackfn == undefined
+											? ([name, type]: [string, FileType]): CompletionItem | null => ({
+												label: name,
+												kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+												...(incremental && {
+													commitCharacters: ["/"],
+												}),
+											})
+											: ([name, type]: [string, FileType], index: number): CompletionItem | null => {
+												const rest = callbackfn(name, type)
+												if (!rest) {
+													return null
+												}
+
+												return {
+													label: name,
+													kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+													sortText: index.toString().padStart(entries.length.toString().length, "0"),
+													...(incremental && {
+														commitCharacters: ["/"],
+													}),
+													...rest
+												}
+											}
+									)
+									.filter((item) => item != null)
 									.toArray()
 							})
 						)

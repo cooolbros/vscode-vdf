@@ -56,9 +56,20 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					"ClassIcon".toLowerCase()
 				]),
 				folder: "materials/hud",
-				resolve: (name) => `leaderboard_class_${name}` + (name.endsWith(".vmt") ? "" : ".vmt"),
 				extensionsPattern: ".vmt",
-				displayExtensions: false
+				resolveBaseName: (value, withExtension) => `leaderboard_class_${withExtension(".vmt")}`,
+				toCompletionItem: (name, type, withoutExtension) => {
+					if (type == 1 && name.startsWith("leaderboard_class_")) {
+						const insertText = withoutExtension().substring("leaderboard_class_".length)
+						return {
+							label: name.substring("leaderboard_class_".length),
+							insertText: insertText,
+						}
+					}
+					else {
+						return null
+					}
+				},
 			}
 		],
 		colours: {

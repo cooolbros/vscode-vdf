@@ -1,6 +1,8 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import { generateTokens } from "common/generateTokens"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
+import { posix } from "path"
 import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
@@ -116,10 +118,9 @@ export abstract class VDFLanguageServer<
 
 		const values = async (key: string, text?: string): Promise<CompletionItem[] | null> => {
 			if (key == "#base") {
-				return files(document.configuration.relativeFolderPath ?? "", {
+				return await files(document.configuration.relativeFolderPath ?? "", {
 					value: text ?? null,
 					extensionsPattern: null,
-					displayExtensions: true
 				})
 			}
 
@@ -169,10 +170,15 @@ export abstract class VDFLanguageServer<
 			// Files
 			const fileConfiguration = schema.files.find(({ keys }) => keys.has(key))
 			if (fileConfiguration != undefined) {
-				return await files(fileConfiguration.folder ?? "", {
+				return await files(fileConfiguration.folder, {
 					value: text ?? null,
 					extensionsPattern: fileConfiguration.extensionsPattern,
-					displayExtensions: fileConfiguration.displayExtensions
+					callbackfn: fileConfiguration.toCompletionItem != null
+						? (name, type) => fileConfiguration.toCompletionItem!(name, type, () => {
+							const { dir, name: nameNoExt } = posix.parse(name)
+							return posix.join(dir, nameNoExt)
+						})
+						: undefined
 				})
 			}
 
@@ -198,42 +204,7 @@ export abstract class VDFLanguageServer<
 		}
 
 		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })
-
-		// Error tolerant VDF line tokeniser
-		function* generateTokens() {
-			let i = 0
-
-			while (i < line.length) {
-				while (line[i] == " " || line[i] == "\t") {
-					i++
-				}
-
-				if (i >= line.length) {
-					return
-				}
-
-				if (line[i] == "\"") {
-					i++
-					const start = i
-					while (i < line.length && line[i] != "\"") {
-						i++
-					}
-					const end = i
-					i++
-					yield line.slice(start, end)
-				}
-				else {
-					const start = i
-					while (i < line.length && line[i] != " " && line[i] != "\t") {
-						i++
-					}
-					const end = i
-					yield line.slice(start, end)
-				}
-			}
-		}
-
-		const tokens = Array.from(generateTokens())
+		const tokens = Array.from(generateTokens(line))
 
 		switch (tokens.length) {
 			case 0: {

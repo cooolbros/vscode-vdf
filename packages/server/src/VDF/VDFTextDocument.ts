@@ -37,6 +37,20 @@ function ArrayEndsWithArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b:
 	return arr2.every((value, index) => comparer(arr1[start + index], value))
 }
 
+function resolveFileDetail(detail: string, configuration: VDFTextDocumentSchema["files"][number]) {
+	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
+
+	return posix.resolve(
+		`/${configuration.folder}`,
+		rest.reverse().join("/"),
+		configuration.resolveBaseName(basename, (extension) => {
+			return posix.extname(basename) == ""
+				? basename + extension
+				: basename
+		})
+	).substring(1)
+}
+
 export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> {
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions
@@ -84,10 +98,11 @@ export interface VDFTextDocumentSchema {
 		// Used for "font" links in ClientSchemeSchema
 		parentKeys: string[]
 		keys: Set<string>
-		folder: string | null
-		resolve: (name: string) => string
+		folder: string
 		extensionsPattern: `.${string}` | null
-		displayExtensions: boolean
+		resolveBaseName: (value: string, withExtension: (extension: `.${string}`) => string) => string,
+		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
+
 	}[]
 	colours: {
 		keys: {
@@ -649,18 +664,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							keys.has(documentSymbolKey) && ArrayContainsArray(path, parentKeys, (a, b) => a.key.toLowerCase() == b.toLowerCase())
 						)
 
-						if (fileConfiguration && documentSymbol.detail != "") {
-							const detail = documentSymbol.detail.replaceAll(/[/\\]+/g, "/")
-
-							let path: string
-							if (fileConfiguration.folder) {
-								const [basename, ...rest] = detail.split("/").reverse()
-								path = posix.resolve(`/${fileConfiguration.folder}/${rest.reverse().join("/")}/${fileConfiguration.resolve(basename)}`).substring(1)
-							}
-							else {
-								path = posix.resolve("/", detail).substring(1)
-							}
-
+						if (fileConfiguration && documentSymbol.detail.trim() != "") {
+							const path = resolveFileDetail(documentSymbol.detail, fileConfiguration)
 							diagnostics.push(
 								fileSystem$.pipe(
 									switchMap((fileSystem) => fileSystem.resolveFile(path)),
@@ -678,12 +683,17 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								)
 							)
 
+							const detail = documentSymbol.detail.replaceAll(/[/\\]+/g, "/")
+
 							let newPath: string
 							if (fileConfiguration.folder) {
-								newPath = posix.relative(fileConfiguration.folder, posix.resolve(`/${fileConfiguration.folder}`, detail).substring(1))
+								newPath = posix.relative(
+									fileConfiguration.folder,
+									posix.resolve(`/${fileConfiguration.folder}`, detail).substring(1)
+								)
 							}
 							else {
-								newPath = posix.resolve("/", detail).substring(1)
+								newPath = posix.resolve("/", ...documentSymbol.detail.split(/[/\\]+/)).substring(1)
 							}
 
 							if (detail != newPath) {
@@ -761,14 +771,15 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 						key = configuration.keyTransform(key)
 
-						for (const { parentKeys, keys, folder, resolve } of dependencies.schema.files) {
+						for (const configuration of dependencies.schema.files) {
+							const { parentKeys, keys } = configuration
 							if (keys.has(key) && ArrayContainsArray(path, parentKeys, (a, b) => a.key.toLowerCase() == b.toLowerCase()) && documentSymbol.detail != "") {
 								links.push({
 									range: documentSymbol.detailRange!,
 									data: {
 										uri: this.uri,
 										resolve: async () => {
-											const path = posix.resolve(folder ? `/${folder}` : "/", resolve(documentSymbol.detail!.replace(/[/\\]+/, "/"))).substring(1)
+											const path = resolveFileDetail(documentSymbol.detail!, configuration)
 											return await firstValueFrom(
 												fileSystem$.pipe(
 													switchMap((fileSystem) => {

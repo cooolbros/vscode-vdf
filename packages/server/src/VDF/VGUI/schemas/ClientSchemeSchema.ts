@@ -119,10 +119,9 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 			keys: new Set([
 				"font",
 			]),
-			folder: null,
-			resolve: (name) => name,
+			folder: "",
 			extensionsPattern: ".*tf",
-			displayExtensions: true
+			resolveBaseName: (value, withExtension) => value,
 		},
 		{
 			name: "bitmap font file",
@@ -134,10 +133,9 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 				"Buttons".toLowerCase(),
 				"ButtonsSC".toLowerCase(),
 			]),
-			folder: null,
-			resolve: (name) => name,
+			folder: "",
 			extensionsPattern: null,
-			displayExtensions: true
+			resolveBaseName: (value, withExtension) => value,
 		},
 		{
 			name: "image",
@@ -146,9 +144,8 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 				"image",
 			]),
 			folder: "materials/vgui",
-			resolve: (name) => name.endsWith(".vmt") ? name : `${name}.vmt`,
 			extensionsPattern: ".vmt",
-			displayExtensions: false
+			resolveBaseName: (value, withExtension) => withExtension(".vmt"),
 		},
 	],
 	colours: {

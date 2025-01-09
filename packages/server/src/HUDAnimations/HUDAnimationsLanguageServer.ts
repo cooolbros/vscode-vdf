@@ -1,9 +1,10 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
+import { generateTokens } from "common/generateTokens"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
 import { firstValueFrom, Subscription } from "rxjs"
-import { VDFPosition, VDFTokeniser, type VDFToken } from "vdf"
+import { VDFPosition } from "vdf"
 import { CompletionItem, CompletionItemKind, InsertTextFormat, Range, TextEdit, type Connection, type DocumentFormattingParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
@@ -211,13 +212,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 
 		const eventDocumentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.range.contains(position))
 
-		let line = document.getText({ start: { line: position.line, character: 0 }, end: position })
-
-		// When editor.autoClosingQuotes, line ends with '"'
-		// Remove last character from line so it can parse
-		if (line.endsWith("\"")) {
-			line = line.slice(0, line.length - 1)
-		}
+		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })
 
 		if (!eventDocumentSymbol && !line.includes("event")) {
 			return [{
@@ -229,45 +224,37 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}]
 		}
 
-		const tokeniser = new VDFTokeniser(line)
-
-		const tokens: VDFToken[] = []
-		let token: VDFToken | null
-		while ((token = tokeniser.next())) {
-			tokens.push(token)
-		}
-
-		console.log(JSON.stringify(tokens))
+		const tokens = Array.from(generateTokens(line))
 
 		if (tokens.length == 0) {
 			return keywords()
 		}
-		else if (tokens.length == 1 && line.endsWith(tokens[0].value)) {
-			return keywords(tokens[0].value)
+		else if (tokens.length == 1 && line.endsWith(tokens[0])) {
+			return keywords(tokens[0])
 		}
 
-		switch (tokens[0].value.toLowerCase()) {
+		switch (tokens[0].toLowerCase()) {
 			case "animate": {
 				switch (tokens.length) {
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? elements(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? elements(tokens[1])
 							: properties()
 					case 3:
-						return line.endsWith(tokens[2].value)
-							? properties(tokens[2].value)
-							: HUDAnimationsTextDocument.colourProperties.has(tokens[2].value.toLowerCase())
+						return line.endsWith(tokens[2])
+							? properties(tokens[2])
+							: HUDAnimationsTextDocument.colourProperties.has(tokens[2].toLowerCase())
 								? colours()
 								: null
 					case 4:
-						return line.endsWith(tokens[3].value)
-							? colours(tokens[3].value)
+						return line.endsWith(tokens[3])
+							? colours(tokens[3])
 							: interpolators()
 					case 5: {
-						return line.endsWith(tokens[4].value)
-							? interpolators(tokens[4].value)
+						return line.endsWith(tokens[4])
+							? interpolators(tokens[4])
 							: null
 					}
 					default:
@@ -280,8 +267,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return events()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? events(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? events(tokens[1])
 							: null
 					default:
 						return null
@@ -292,8 +279,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? elements(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? elements(tokens[1])
 							: null
 					default:
 						return null
@@ -303,12 +290,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? elements(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? elements(tokens[1])
 							: events()
 					case 3:
-						return line.endsWith(tokens[2].value)
-							? events(tokens[2].value)
+						return line.endsWith(tokens[2])
+							? events(tokens[2])
 							: null
 					default:
 						return null
@@ -318,9 +305,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
+						return line.endsWith(tokens[1])
 							? null
-							: elements(tokens[1].value)
+							: elements(tokens[1])
 					default:
 						return null
 				}
@@ -329,12 +316,12 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return null
 					case 2:
-						return line.endsWith(tokens[1].value)
+						return line.endsWith(tokens[1])
 							? null
 							: sounds()
 					case 3:
-						return line.endsWith(tokens[2].value)
-							? sounds(tokens[2].value)
+						return line.endsWith(tokens[2])
+							? sounds(tokens[2])
 							: null
 					default:
 						return null
@@ -344,8 +331,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? elements(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? elements(tokens[1])
 							: null
 					default:
 						return null
@@ -355,17 +342,17 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? elements(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? elements(tokens[1])
 							: fontProperties()
 					case 3: {
-						return line.endsWith(tokens[2].value)
-							? fontProperties(tokens[2].value)
+						return line.endsWith(tokens[2])
+							? fontProperties(tokens[2])
 							: fonts()
 					}
 					case 4: {
-						return line.endsWith(tokens[3].value)
-							? fonts(tokens[3].value)
+						return line.endsWith(tokens[3])
+							? fonts(tokens[3])
 							: null
 					}
 					default:
@@ -377,8 +364,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 1:
 						return elements()
 					case 2:
-						return line.endsWith(tokens[1].value)
-							? elements(tokens[1].value)
+						return line.endsWith(tokens[1])
+							? elements(tokens[1])
 							: null
 					default:
 						return null
@@ -514,7 +501,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		}
 
 		function sounds(text?: string) {
-			return files("sound", { value: text ?? null, extensionsPattern: null, displayExtensions: false })
+			return files("sound", { value: text ?? null, extensionsPattern: null })
 		}
 
 		return []

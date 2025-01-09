@@ -72,21 +72,21 @@ export const VGUISchema: VDFTextDocumentSchema = {
 				...Array.from({ length: 3 }, (_, index) => `teambg_${index + 1}`)
 			]),
 			folder: "materials/vgui",
-			resolve: (name) => name.endsWith(".vmt") ? name : `${name}.vmt`,
 			extensionsPattern: ".vmt",
-			displayExtensions: false,
+			resolveBaseName: (value, withExtension) => withExtension(".vmt"),
+			toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
 		},
 		{
 			name: "sound",
 			parentKeys: [],
 			keys: new Set([
+				"sound_armed",
 				"sound_depressed",
 				"sound_released"
 			]),
 			folder: "sound",
-			resolve: (name) => name,
 			extensionsPattern: null,
-			displayExtensions: true
+			resolveBaseName: (value, withExtension) => value,
 		}
 	],
 	colours: {

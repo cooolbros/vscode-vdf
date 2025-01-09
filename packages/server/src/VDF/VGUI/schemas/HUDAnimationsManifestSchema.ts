@@ -23,10 +23,9 @@ export const HUDAnimationsManifestSchema: VDFTextDocumentSchema = {
 			keys: new Set([
 				"file"
 			]),
-			folder: null,
-			resolve: (name) => name,
+			folder: "",
 			extensionsPattern: null,
-			displayExtensions: true,
+			resolveBaseName: (value, withExtension) => value,
 		},
 	],
 	colours: {
