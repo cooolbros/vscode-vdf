@@ -6,6 +6,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 	private static readonly decoder = new TextDecoder("utf-8")
 	public static readonly commandSchema = z.union([
+		z.object({ type: z.literal("buf") }),
 		z.object({ type: z.literal("flags"), label: z.string(), value: z.number() }),
 		z.object({ type: z.literal("scale"), scale: z.number().min(10).max(200) }),
 		z.object({ type: z.literal("showErrorMessage"), message: z.string(), items: z.string().array() }),
@@ -76,7 +77,6 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 			.replaceAll("%READONLY%", `${document.readonly}`)
 			.replaceAll("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
 
-		webviewPanel.webview.postMessage(document.buf)
 		document.show()
 
 		webviewPanel.onDidChangeViewState(() => {
@@ -100,6 +100,10 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		webviewPanel.webview.onDidReceiveMessage(async (message) => {
 			const command = VTFEditor.commandSchema.parse(message)
 			switch (command.type) {
+				case "buf": {
+					webviewPanel.webview.postMessage(document.buf)
+					break
+				}
 				case "flags": {
 					const prev = document.flags$.value
 					document.flags$.next(prev ^ command.value)

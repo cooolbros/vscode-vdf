@@ -4,14 +4,21 @@ import init from "vtf"
 import App from "./App.svelte"
 import "./app.css"
 
+const vscode = acquireVsCodeApi<State>()
+
 const app = mount(App, {
 	target: document.getElementById("app")!,
 	props: {
-		vscode: acquireVsCodeApi<State>(),
+		vscode: vscode,
 		readonly: document.head.querySelector<HTMLMetaElement>("meta[name=readonly]")?.content == "true",
 		buf: await Promise.all([
 			init(),
-			(await firstValueFrom(fromEvent<MessageEvent<Uint8Array>>(window, "message"))).data
+			new Promise<Uint8Array>(async (resolve) => {
+				const promise = firstValueFrom(fromEvent<MessageEvent<Uint8Array>>(window, "message"))
+				vscode.postMessage({ type: "buf" })
+				const { data } = await promise
+				resolve(data)
+			})
 		]).then(([_, buf]) => buf)
 	}
 })
