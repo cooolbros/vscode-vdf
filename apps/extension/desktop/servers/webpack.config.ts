@@ -6,12 +6,12 @@ export default {
 	mode: "production",
 	target: "node",
 	entry: Object.fromEntries(
-		readdirSync(__dirname, { withFileTypes: true })
+		readdirSync(import.meta.dirname, { withFileTypes: true })
 			.filter(i => i.isDirectory() && existsSync(`${i.name}/src/server.ts`))
-			.map((server) => [`${server.name.toLowerCase()}`, join(__dirname, `${server.name}/src/server.ts`)])
+			.map((server) => [`${server.name.toLowerCase()}`, join(import.meta.dirname, `${server.name}/src/server.ts`)])
 	),
 	output: {
-		path: join(__dirname, "dist"),
+		path: join(import.meta.dirname, "dist"),
 		libraryTarget: "commonjs2"
 	},
 	resolve: {

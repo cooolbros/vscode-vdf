@@ -1,14 +1,15 @@
 import { join } from "path"
+import { fileURLToPath } from "url"
 import type { Configuration } from "webpack"
 
 export default {
 	mode: "production",
 	target: "webworker",
 	entry: {
-		extension: join(__dirname, "src/extension.ts")
+		extension: join(import.meta.dirname, "src/extension.ts")
 	},
 	output: {
-		path: join(__dirname, "dist"),
+		path: join(import.meta.dirname, "dist"),
 		libraryTarget: "commonjs"
 	},
 	externals: {
@@ -17,7 +18,7 @@ export default {
 	resolve: {
 		extensions: [".js", ".ts"],
 		fallback: {
-			"path": require.resolve("path-browserify")
+			"path": fileURLToPath(import.meta.resolve("path-browserify"))
 		}
 	},
 	module: {

@@ -1,24 +1,25 @@
 import { existsSync, readdirSync } from "fs"
 import { join } from "path"
+import { fileURLToPath } from "url"
 import type { Configuration } from "webpack"
 
 export default {
 	mode: "production",
 	target: "webworker",
 	entry: Object.fromEntries(
-		readdirSync(__dirname, { withFileTypes: true })
+		readdirSync(import.meta.dirname, { withFileTypes: true })
 			.filter(i => i.isDirectory() && existsSync(`${i.name}/src/server.ts`))
-			.map((server) => [`${server.name.toLowerCase()}`, join(__dirname, `${server.name}/src/server.ts`)])
+			.map((server) => [`${server.name.toLowerCase()}`, join(import.meta.dirname, `${server.name}/src/server.ts`)])
 	),
 	output: {
-		path: join(__dirname, "dist"),
+		path: join(import.meta.dirname, "dist"),
 		libraryTarget: "var",
 		library: "serverExportVar",
 	},
 	resolve: {
 		extensions: [".js", ".ts"],
 		fallback: {
-			"path": require.resolve("path-browserify")
+			"path": fileURLToPath(import.meta.resolve("path-browserify"))
 		}
 	},
 	module: {

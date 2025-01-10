@@ -5,10 +5,10 @@ export default {
 	mode: "production",
 	target: "node",
 	entry: {
-		extension: join(__dirname, "src/extension.ts")
+		extension: join(import.meta.dirname, "src/extension.ts")
 	},
 	output: {
-		path: join(__dirname, "dist"),
+		path: join(import.meta.dirname, "dist"),
 		libraryTarget: "commonjs2"
 	},
 	externals: {
