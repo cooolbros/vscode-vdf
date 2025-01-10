@@ -55,7 +55,13 @@ export const VGUISchema: VDFTextDocumentSchema = {
 			type: Symbol.for("string"),
 			definition: null,
 			reference: {
-				keys: new Set(["labelText".toLowerCase(), "title", "tooltip"]),
+				keys: new Set([
+					"button_token",
+					"desc_token",
+					"labelText".toLowerCase(),
+					"title",
+					"tooltip",
+				]),
 				match: (string) => /^#/.test(string),
 				toDefinition: (string) => string.substring("#".length)
 			},
@@ -68,6 +74,10 @@ export const VGUISchema: VDFTextDocumentSchema = {
 			name: "image",
 			parentKeys: [],
 			keys: new Set([
+				"image_armed",
+				"image_default",
+				"image_name",
+				"image_selected",
 				"image",
 				...Array.from({ length: 3 }, (_, index) => `teambg_${index + 1}`)
 			]),
@@ -87,6 +97,14 @@ export const VGUISchema: VDFTextDocumentSchema = {
 			folder: "sound",
 			extensionsPattern: null,
 			resolveBaseName: (value, withExtension) => value,
+		},
+		{
+			name: "model",
+			parentKeys: [],
+			keys: new Set(["modelname"]),
+			folder: "",
+			extensionsPattern: ".mdl",
+			resolveBaseName: (value, withExtension) => withExtension(".mdl"),
 		}
 	],
 	colours: {
