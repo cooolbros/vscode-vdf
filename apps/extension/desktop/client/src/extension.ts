@@ -87,7 +87,12 @@ export function activate(context: ExtensionContext): void {
 				{
 					documentSelector: [
 						languageId
-					]
+					],
+					...(process.env.NODE_ENV != "production" && {
+						connectionOptions: {
+							maxRestartCount: 1
+						}
+					})
 				} satisfies LanguageClientOptions
 			)
 		)
