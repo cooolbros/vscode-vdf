@@ -4,7 +4,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
+import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
@@ -155,14 +155,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 
 					const baseFiles = (uri: Uri, relativeFolderPath: string | null) => {
-						const callbackfn = relativeFolderPath != null
-							? (value: string) => fileSystem$.pipe(
-								switchMap((fileSystem) => {
-									return fileSystem.resolveFile(posix.resolve(`/${relativeFolderPath}`, value).substring(1))
-								})
-							)
-							: (value: string) => of(uri.dirname().joinPath(value))
-
 						return (source: Observable<VDFDocumentSymbols>) => {
 							return source.pipe(
 								map((documentSymbols) => {
@@ -171,7 +163,13 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
 								}),
 								distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])),
-								map((values) => values.map(callbackfn)),
+								map((values) => values.map((value) => {
+									return fileSystem$.pipe(
+										switchMap((fileSystem) => {
+											return fileSystem.resolveFile(posix.resolve("/", relativeFolderPath ?? "", value).substring(1))
+										})
+									)
+								})),
 								combineLatestPersistent(),
 								map((uris) => uris.filter((uri) => uri != null)),
 							)
@@ -198,10 +196,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 											observable = usingAsync(() => documents.get(baseUri, true)).pipe(
 												switchMap((baseDocument) => {
 													return check(baseDocument, [...stack, baseUri])
-												}),
-												catchError((error) => {
-													console.error(error)
-													return of(true)
 												})
 											)
 											context.set(key, observable)
@@ -249,10 +243,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 															: of(null)
 													})
 												)
-											}),
-											catchError((error) => {
-												console.error(error)
-												return of(null)
 											})
 										)
 										context.set(key, observable)
