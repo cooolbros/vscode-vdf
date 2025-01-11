@@ -65,7 +65,7 @@ VDF/Valve KeyValues language support for VSCode
  - Autocompletion for property values:
     - $baseTexture => Will suggest texture files
  - Colour picker for $color (Supports int and float colours)
- - Link to $baseTexture
+ - Link to `$baseTexture`, `$detail`
 
 ### Credits
  - [Revan](https://github.com/cooolbros) - Code
