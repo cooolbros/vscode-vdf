@@ -71,6 +71,19 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 						return null
 					}
 				},
+			},
+			{
+				name: "sound",
+				parentKeys: [],
+				keys: new Set([
+					"DoneWarningSound".toLowerCase(),
+					"FirstSpawnWarningSound".toLowerCase(),
+					"LastSpawnWarningSound".toLowerCase(),
+					"StartWaveWarningSound".toLowerCase(),
+				]),
+				folder: "sound",
+				extensionsPattern: null,
+				resolveBaseName: (value, withExtension) => value,
 			}
 		],
 		colours: {
