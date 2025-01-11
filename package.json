@@ -3,6 +3,7 @@
     "displayName": "VSCode VDF",
     "description": "VDF language support for VSCode",
     "keywords": [
+        "hud",
         "hudanimations",
         "mvm",
         "pop",
