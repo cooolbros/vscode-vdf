@@ -182,6 +182,22 @@ export abstract class VDFLanguageServer<
 				})
 			}
 
+			// Colours
+			if (schema.colours.completion && schema.colours.keys) {
+
+				const include = schema.colours.keys.include != null
+					? schema.colours.keys.include.has(key)
+					: true
+
+				const exclude = schema.colours.keys.exclude != null
+					? schema.colours.keys.exclude.has(key)
+					: false
+
+				if (include && !exclude) {
+					return schema.colours.completion.presets
+				}
+			}
+
 			return null
 		}
 

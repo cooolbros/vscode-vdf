@@ -113,7 +113,10 @@ export interface VDFTextDocumentSchema {
 			pattern: RegExp
 			parse(value: string): Color
 			stringify(colour: Color): string
-		}[]
+		}[],
+		completion?: {
+			presets: CompletionItem[]
+		}
 	}
 	completion: {
 		root: CompletionItem[]

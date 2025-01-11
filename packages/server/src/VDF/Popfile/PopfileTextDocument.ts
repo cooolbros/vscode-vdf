@@ -2,13 +2,14 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { concatMap, map, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
+import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import type { TextDocuments } from "../../TextDocuments"
 import { VDFTextDocument, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import colours from "./colours.json"
 import keys from "./keys.json"
 import values from "./values.json"
 
@@ -107,7 +108,25 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 						return (colour.red * 255 << 16 | colour.green * 255 << 8 | colour.blue * 255 << 0).toString()
 					}
 				}
-			]
+			],
+			completion: {
+				presets: Object.entries(colours).map(([value, name]): CompletionItem => {
+					const colour = parseInt(value)
+					const r = (colour >> 16) & 255
+					const g = (colour >> 8) & 255
+					const b = (colour >> 0) & 255
+					return {
+						label: value,
+						labelDetails: {
+							description: name
+						},
+						kind: CompletionItemKind.Color,
+						documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
+						filterText: name,
+						insertText: value,
+					}
+				})
+			}
 		},
 		completion: {
 			root: [
