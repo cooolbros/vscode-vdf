@@ -1,4 +1,4 @@
-import { firstValueFrom, fromEvent } from "rxjs"
+import { filter, firstValueFrom, fromEvent } from "rxjs"
 import { mount } from "svelte"
 import init from "vtf"
 import App from "./App.svelte"
@@ -14,7 +14,7 @@ const app = mount(App, {
 		buf: await Promise.all([
 			init(),
 			new Promise<Uint8Array>(async (resolve) => {
-				const promise = firstValueFrom(fromEvent<MessageEvent<Uint8Array>>(window, "message"))
+				const promise = firstValueFrom(fromEvent<MessageEvent<Uint8Array>>(window, "message").pipe(filter((message) => message.data instanceof Uint8Array)))
 				vscode.postMessage({ type: "buf" })
 				const { data } = await promise
 				resolve(data)
