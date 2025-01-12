@@ -172,7 +172,7 @@
                 "properties": {
                     "vscode-vdf.hudanimations.format.insertNewlineAfterEvents": {
                         "type": "boolean",
-                        "description": "Whehter to insert a newline after events when formatting.",
+                        "description": "Whether to insert a newline after events when formatting.",
                         "default": true
                     },
                     "vscode-vdf.hudanimations.format.layoutScope": {
