@@ -316,16 +316,15 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								if (definition.key != null) {
 									const keyDocumentSymbol = documentSymbol.children?.find((i) => i.key.toLowerCase() == definition.key!.name && i.detail != undefined)
 									if (keyDocumentSymbol) {
-										if (definition.key.priority) {
-											key = keyDocumentSymbol.detail!
-											keyRange = keyDocumentSymbol.detailRange!
-											nameRange = undefined
-										}
-										else {
-											key = documentSymbol.key
-											keyRange = documentSymbol.nameRange
-											nameRange = keyDocumentSymbol.detailRange!
-										}
+										key = documentSymbol.key
+										keyRange = documentSymbol.nameRange
+										nameRange = keyDocumentSymbol.detailRange!
+									}
+									else if (!definition.key.priority) {
+										// If key does not need priority, fall back to documentSymbol.key, used for VGUI elements that don't have a fieldName
+										key = documentSymbol.key
+										keyRange = documentSymbol.nameRange
+										nameRange = undefined
 									}
 									else {
 										key = undefined
