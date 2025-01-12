@@ -10,7 +10,7 @@ const DIST = "./dist"
 const preprocessors = {
 	popfile: {
 		entity_name_type_enum: [...Object.keys(values), "where"],
-		keyword: Object.entries(keys).flatMap(([k, v]) => [k, ...v.values.map((value) => value.label)]),
+		keyword: [...Object.entries(keys).flatMap(([k, v]) => [k, ...v.values.map((value) => value.label)]), "ItemName".toLowerCase()],
 		variable_other_enummember: [...Object.values(values).flatMap((value) => value.values), "spawnbot.*"]
 	}
 }
