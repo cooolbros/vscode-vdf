@@ -66,7 +66,7 @@ export type CompletionFiles = (path: string, options: CompletionFilesOptions) =>
 export interface CompletionFilesOptions {
 	value: string | null
 	extensionsPattern: `.${string}` | null
-	callbackfn?: (name: string, type: FileType) => Partial<Omit<CompletionItem, "label" | "kind">> | null
+	callbackfn?: (name: string, type: FileType) => Partial<Omit<CompletionItem, "label" | "kind" | "sortText">> | null
 }
 
 export abstract class LanguageServer<
@@ -547,7 +547,7 @@ export abstract class LanguageServer<
 	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {
 		try {
 			using document = await this.documents.get(params.textDocument.uri)
-			return await this.getCompletion(
+			const items = await this.getCompletion(
 				document,
 				new VDFPosition(params.position.line, params.position.character),
 				async (path: string, { value, extensionsPattern, callbackfn }: CompletionFilesOptions) => {
@@ -598,7 +598,6 @@ export abstract class LanguageServer<
 												return {
 													label: name,
 													kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-													sortText: index.toString().padStart(entries.length.toString().length, "0"),
 													...(incremental && {
 														commitCharacters: ["/"],
 													}),
@@ -613,6 +612,16 @@ export abstract class LanguageServer<
 					)
 				}
 			)
+
+			if (!items) {
+				return null
+			}
+
+			const length = items.length.toString().length
+			return items.map((item, index) => ({
+				...item,
+				sortText: index.toString().padStart(length, "0")
+			}))
 		}
 		catch (error) {
 			console.log(error)
