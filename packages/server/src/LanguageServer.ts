@@ -225,24 +225,7 @@ export abstract class LanguageServer<
 								: new Subject<DiagnosticCodeAction[]>()
 						})
 					).subscribe((diagnostics) => {
-						const uri = event.document.uri.toString()
-
-						const result: Diagnostic[] = []
-						const map = new Map<string, DiagnosticCodeAction>()
-
-						for (const diagnostic of diagnostics) {
-							const id = crypto.randomUUID()
-							const { data, ...rest } = diagnostic
-							map.set(id, diagnostic)
-							result.push({ ...rest, data: { id } })
-						}
-
-						this.documentDiagnostics.set(event.document, map)
-
-						this.connection.sendDiagnostics({
-							uri: uri,
-							diagnostics: result
-						})
+						this.sendDiagnostics(event.document, diagnostics)
 					})
 				)
 
@@ -257,10 +240,7 @@ export abstract class LanguageServer<
 				const { onDidClose } = await this.onDidOpen(event)
 
 				return () => {
-					this.connection.sendDiagnostics({
-						uri: event.document.uri.toString(),
-						diagnostics: []
-					})
+					this.sendDiagnostics(event.document, [])
 
 					onDidClose()
 
@@ -506,11 +486,28 @@ export abstract class LanguageServer<
 
 		if (documentConfiguration.updateDiagnosticsEvent == "save") {
 			const diagnostics = await firstValueFrom(document.diagnostics$)
-			this.connection.sendDiagnostics({
-				uri: params.textDocument.uri.toString(),
-				diagnostics: diagnostics
-			})
+			this.sendDiagnostics(document, diagnostics)
 		}
+	}
+
+	private sendDiagnostics(document: TDocument, diagnostics: DiagnosticCodeAction[]) {
+
+		const result: Diagnostic[] = []
+		const map = new Map<string, DiagnosticCodeAction>()
+
+		for (const diagnostic of diagnostics) {
+			const id = crypto.randomUUID()
+			const { data, ...rest } = diagnostic
+			map.set(id, diagnostic)
+			result.push({ ...rest, data: { id } })
+		}
+
+		this.documentDiagnostics.set(document, map)
+
+		this.connection.sendDiagnostics({
+			uri: document.uri.toString(),
+			diagnostics: result
+		})
 	}
 
 	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
