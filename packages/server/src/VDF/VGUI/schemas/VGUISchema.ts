@@ -33,7 +33,21 @@ export const VGUISchema: VDFTextDocumentSchema = {
 			reference: {
 				keys: new Set(clientscheme.Colors),
 				match: (string) => !/\d+\s+\d+\s+\d+\s+\d+/.test(string) // Exclude colour literals
-			}
+			},
+			toCompletionItem: (definition) => {
+				if (!definition.detail) {
+					return undefined
+				}
+
+				try {
+					const [r, g, b] = definition.detail.split(/\s+/).map(parseFloat)
+					return { kind: CompletionItemKind.Color, documentation: `rgb(${r},${g},${b})` }
+				}
+				catch (error) {
+					console.error(error)
+					return undefined
+				}
+			},
 		},
 		{
 			type: Symbol.for("border"),
