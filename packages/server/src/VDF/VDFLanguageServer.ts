@@ -118,9 +118,16 @@ export abstract class VDFLanguageServer<
 
 		const values = async (key: string, text?: string): Promise<CompletionItem[] | null> => {
 			if (key == "#base") {
+				const basename = document.uri.basename()
+				const documentSymbols = await firstValueFrom(document.documentSymbols$)
 				return await files(document.configuration.relativeFolderPath ?? "", {
 					value: text ?? null,
 					extensionsPattern: null,
+					callbackfn: (name, type) => {
+						return name == basename || documentSymbols.some((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail == name)
+							? null
+							: {}
+					},
 				})
 			}
 
