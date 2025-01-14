@@ -547,6 +547,11 @@ export abstract class LanguageServer<
 	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {
 		try {
 			using document = await this.documents.get(params.textDocument.uri)
+			const configuration = await firstValueFrom(document.documentConfiguration$)
+			if (!configuration[this.languageId].suggest.enable) {
+				return null
+			}
+
 			const items = await this.getCompletion(
 				document,
 				new VDFPosition(params.position.line, params.position.character),
