@@ -20,5 +20,6 @@
     },
     "optionalDependencies": {
         "@napi-rs/simple-git-linux-x64-gnu": "^0.1.16"
-    }
+    },
+    "type": "module"
 }
