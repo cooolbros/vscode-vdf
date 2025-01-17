@@ -424,8 +424,10 @@
         "dev:desktop": "turbo dev --filter=desktop-*",
         "dev:browser": "turbo dev --filter=browser-*",
         "dev:docs": "turbo dev --filter=docs",
+        "dev:syntaxes": "turbo dev --filter=syntaxes",
         "build": "turbo build",
         "build:docs": "turbo build --filter=docs",
+        "build:syntaxes": "turbo build --filter=syntaxes",
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
         "package": "vsce package --no-dependencies"
     },

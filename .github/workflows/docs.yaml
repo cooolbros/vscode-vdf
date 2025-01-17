@@ -16,6 +16,7 @@ jobs:
           node-version: 22
       - uses: pnpm/action-setup@v4
       - run: pnpm install
+      - run: pnpm build:syntaxes
       - run: pnpm build:docs
       - uses: peaceiris/actions-gh-pages@v4
         with:
