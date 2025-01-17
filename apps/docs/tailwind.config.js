@@ -2,7 +2,6 @@
 export default {
 	content: [
 		"./src/**/*.{js,ts,jsx,tsx,mdx}",
-		"./theme.config.tsx",
 	],
 	darkMode: "class",
 	theme: {
