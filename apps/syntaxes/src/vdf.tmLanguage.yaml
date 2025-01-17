@@ -1,5 +1,8 @@
 $schema: 'https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json'
 name: Valve KeyValues
+aliases:
+ - vdf
+ - VDF
 patterns:
   - match: '^\s*("#base"|#base)\s+(".*?"|\S+)'
     captures:

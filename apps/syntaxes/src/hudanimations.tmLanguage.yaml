@@ -1,5 +1,8 @@
 $schema: 'https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json'
 name: Valve HUD Animations
+aliases:
+ - hudanimations
+ - HUD Animations
 patterns:
   - match: //.*
     name: comment

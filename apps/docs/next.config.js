@@ -1,6 +1,5 @@
 import nextra from "nextra"
 import { createHighlighter } from "shiki"
-import vdf from "../syntaxes/dist/vdf.tmLanguage.json" with { type: "json" }
 
 const withNextra = nextra({
 	defaultShowCopyCode: true,
@@ -15,17 +14,9 @@ const withNextra = nextra({
 					...options,
 					themes: ["light-plus", "dark-plus"],
 					langs: [
-						() => {
-							return {
-								name: "Valve KeyValues",
-								scopeName: "source.vdf",
-								aliases: ["vdf", "VDF"],
-								repository: {},
-								patterns: vdf.patterns
-							}
-						},
 						// @ts-ignore
-						async () => await import("../syntaxes/dist/hudanimations.tmLanguage.json", { with: { type: "json" } })
+						async () => await import("../syntaxes/dist/hudanimations.tmLanguage.json", { with: { type: "json" } }),
+						async () => await import("../syntaxes/dist/vdf.tmLanguage.json", { with: { type: "json" } }),
 					]
 				})
 			}
