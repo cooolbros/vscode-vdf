@@ -196,7 +196,7 @@
                     },
                     "vscode-vdf.hudanimations.suggest.enable": {
                         "type": "boolean",
-                        "description": "Enabled/disable autocomplete suggestions.",
+                        "description": "Enable/disable autocomplete suggestions.",
                         "default": true
                     }
                 }
@@ -221,37 +221,12 @@
                     },
                     "vscode-vdf.popfile.suggest.enable": {
                         "type": "boolean",
-                        "description": "Enabled/disable autocomplete suggestions.",
+                        "description": "Enable/disable autocomplete suggestions.",
                         "default": true
                     },
                     "vscode-vdf.popfile.vscript.enable": {
                         "type": "boolean",
                         "description": "Enable/disable VScript language support.",
-                        "default": true
-                    }
-                }
-            },
-            {
-                "title": "VMT",
-                "properties": {
-                    "vscode-vdf.vmt.format.insertNewlineBeforeObjects": {
-                        "type": "boolean",
-                        "description": "Whether to insert a newline before objects when formatting.",
-                        "default": false
-                    },
-                    "vscode-vdf.vmt.format.quotes": {
-                        "type": "boolean",
-                        "description": "Whether to surround tokens with double quotes when formatting.",
-                        "default": true
-                    },
-                    "vscode-vdf.vmt.format.tabs": {
-                        "type": "number",
-                        "markdownDescription": "How many tabs to insert between keys and values when formatting. `-1` = Insert a single space",
-                        "default": 1
-                    },
-                    "vscode-vdf.vmt.suggest.enable": {
-                        "type": "boolean",
-                        "description": "Enabled/disable autocomplete suggestions.",
                         "default": true
                     }
                 }
@@ -276,7 +251,32 @@
                     },
                     "vscode-vdf.vdf.suggest.enable": {
                         "type": "boolean",
-                        "description": "Enabled/disable autocomplete suggestions.",
+                        "description": "Enable/disable autocomplete suggestions.",
+                        "default": true
+                    }
+                }
+            },
+            {
+                "title": "VMT",
+                "properties": {
+                    "vscode-vdf.vmt.format.insertNewlineBeforeObjects": {
+                        "type": "boolean",
+                        "description": "Whether to insert a newline before objects when formatting.",
+                        "default": false
+                    },
+                    "vscode-vdf.vmt.format.quotes": {
+                        "type": "boolean",
+                        "description": "Whether to surround tokens with double quotes when formatting.",
+                        "default": true
+                    },
+                    "vscode-vdf.vmt.format.tabs": {
+                        "type": "number",
+                        "markdownDescription": "How many tabs to insert between keys and values when formatting. `-1` = Insert a single space",
+                        "default": 1
+                    },
+                    "vscode-vdf.vmt.suggest.enable": {
+                        "type": "boolean",
+                        "description": "Enable/disable autocomplete suggestions.",
                         "default": true
                     }
                 }
@@ -456,7 +456,8 @@
         "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
         "publisherDisplayName": "pfwobcke",
         "publisherId": "0bca7cad-ed90-49e6-88a6-828825345806",
-        "isPreReleaseVersion": false
+        "isPreReleaseVersion": false,
+        "size": 2578099110
     },
     "packageManager": "pnpm@9.12.3"
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Footer, Layout, Navbar } from "nextra-theme-docs"
 import "nextra-theme-docs/style-prefixed.css"
-import { Head } from "nextra/components"
+import { Banner, Head } from "nextra/components"
 import { getPageMap } from "nextra/page-map"
 import type { ReactNode } from "react"
 import "./globals.css"
@@ -21,6 +21,10 @@ const navbar = (
 		logo={logo}
 		projectLink="https://github.com/cooolbros/vscode-vdf"
 	/>
+)
+
+const banner = (
+	<Banner>🚧 WIP</Banner>
 )
 
 const footer = (
@@ -53,6 +57,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 					footer={footer}
 					navbar={navbar}
 					pageMap={await getPageMap()}
+					banner={banner}
 					docsRepositoryBase="https://github.com/cooolbros/vscode-vdf/tree/main/apps/docs"
 					editLink="Edit this page"
 				>

@@ -1,4 +1,5 @@
 export default {
 	index: "Introduction",
-	installation: "Installation"
+	installation: "Installation",
+	settings: "Settings"
 }
