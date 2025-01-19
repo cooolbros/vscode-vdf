@@ -16,6 +16,7 @@ const withNextra = nextra({
 					langs: [
 						// @ts-ignore
 						async () => await import("../syntaxes/dist/hudanimations.tmLanguage.json", { with: { type: "json" } }),
+						async () => await import("../syntaxes/dist/popfile.tmLanguage.json", { with: { type: "json" } }),
 						async () => await import("../syntaxes/dist/vdf.tmLanguage.json", { with: { type: "json" } }),
 					]
 				})

@@ -1,0 +1,82 @@
+import Image from "next/image"
+
+# Popfile
+
+### Syntax Highlighting
+
+```popfile copy=false
+#base	robot_standard.pop
+#base	robot_giant.pop
+
+WaveSchedule
+{
+	StartingCurrency				400
+	CanBotsAttackWhileInSpawnRoom	No
+	RespawnWaveTime					5
+
+	Wave
+	{
+		WaveSpawn
+		{
+			Where				spawnbot
+			TotalCount			15
+			MaxActive			10
+			SpawnCount			5
+			TotalCurrency		400
+
+			TFBot
+			{
+				Class	Scout
+				Skill	Normal
+			}
+		}
+	}
+}
+```
+
+### Syntax Error Checking
+
+![syntax error](./mvm_bigrock_syntax_error.png)
+
+### Warnings
+
+![warning](./mvm_bigrock_warning.png)
+
+### Auto Completion
+
+#### Values
+
+![static autocompletion](./autocompletion_static.png)
+
+#### Templates
+
+![dynamic autocompletion](./autocompletion_dynamic.png)
+
+#### Paints
+
+![paints autocompletion](./autocompletion_paints.png)
+
+### Go to definition
+
+`Ctrl`+`Click` or `F12` on a template or wavespawn name to go to the definition
+
+*[VSCode Reference](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-definition)*
+
+Supports (Popfile):
+ - `Template`
+ - `WaitForAllSpawned`
+ - `WaitForAllDead`
+
+![go to definition](./go_to_definition.gif)
+
+### Links
+
+Links for `ClassIcon`
+
+![links](./links.gif)
+
+### Colour Picker
+
+Colour picker for `"set item tint RGB"{:popfile}`
+
+![colour picker](./colour_picker.png)

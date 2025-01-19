@@ -2,7 +2,6 @@ $schema: 'https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlangu
 name: Popfile
 aliases:
  - popfile
- - Popfile
 patterns:
   - match: '^\s*("#base"|#base)\s+(".*?"|\S+)'
     captures:
