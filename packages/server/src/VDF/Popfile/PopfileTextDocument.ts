@@ -25,9 +25,14 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			{
 				type: Symbol.for("template"),
 				definition: {
-					directParentKeys: ["Templates".toLowerCase()],
-					children: true,
-					key: null
+					match: (documentSymbol, path) => {
+						if (documentSymbol.children != undefined && path.length == 2 && path.at(-1)!.key.toLowerCase() == "Templates".toLowerCase()) {
+							return {
+								key: documentSymbol.key,
+								keyRange: documentSymbol.nameRange,
+							}
+						}
+					}
 				},
 				reference: {
 					keys: new Set(["Template".toLowerCase()]),
@@ -37,9 +42,18 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			{
 				type: Symbol.for("wavespawn"),
 				definition: {
-					directParentKeys: ["Wave".toLowerCase()],
-					children: true,
-					key: { name: "name", priority: true }
+					match: (documentSymbol, path) => {
+						if (documentSymbol.children != undefined && path.length == 2 && documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && path.at(-1)!.key.toLowerCase() == "Wave".toLowerCase()) {
+							const name = documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Name".toLowerCase())
+							if (name && name.detail != undefined) {
+								return {
+									key: name.detail,
+									keyRange: documentSymbol.nameRange,
+									nameRange: name.detailRange,
+								}
+							}
+						}
+					}
 				},
 				reference: {
 					keys: new Set([

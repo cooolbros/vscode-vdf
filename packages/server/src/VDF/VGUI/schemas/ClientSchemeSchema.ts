@@ -1,5 +1,19 @@
+import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { CompletionItemKind } from "vscode-languageserver"
-import type { VDFTextDocumentSchema } from "../../VDFTextDocument"
+import type { DefinitionMatcher, DefinitionResult, VDFTextDocumentSchema } from "../../VDFTextDocument"
+
+class SchemeDefinitionMatcher implements DefinitionMatcher {
+
+	constructor(private readonly type: string, private readonly children: boolean) { }
+	match(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DefinitionResult | undefined {
+		if (path.length == 2 && (documentSymbol.children != undefined) == this.children && path[0].key.toLowerCase() == "Scheme".toLowerCase() && path[1].key.toLowerCase() == this.type.toLowerCase()) {
+			return {
+				key: documentSymbol.key,
+				keyRange: documentSymbol.nameRange,
+			}
+		}
+	}
+}
 
 export const ClientSchemeSchema: VDFTextDocumentSchema = {
 	keys: {},
@@ -22,14 +36,7 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 	definitionReferences: [
 		{
 			type: Symbol.for("color"),
-			definition: {
-				directParentKeys: [
-					"Scheme".toLowerCase(),
-					"Colors".toLowerCase(),
-				],
-				children: false,
-				key: null,
-			},
+			definition: new SchemeDefinitionMatcher("Colors", false),
 			reference: {
 				keys: new Set("color"),
 				match: null
@@ -50,14 +57,7 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 		},
 		{
 			type: Symbol.for("color"),
-			definition: {
-				directParentKeys: [
-					"Scheme".toLowerCase(),
-					"BaseSettings".toLowerCase(),
-				],
-				children: false,
-				key: null,
-			},
+			definition: new SchemeDefinitionMatcher("BaseSettings", false),
 			reference: {
 				keys: new Set("color"),
 				match: null
@@ -78,14 +78,7 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 		},
 		{
 			type: Symbol.for("border"),
-			definition: {
-				directParentKeys: [
-					"Scheme".toLowerCase(),
-					"Borders".toLowerCase(),
-				],
-				children: true,
-				key: null,
-			},
+			definition: new SchemeDefinitionMatcher("Borders", true),
 			reference: {
 				keys: new Set(),
 				match: null
@@ -94,14 +87,7 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 		},
 		{
 			type: Symbol.for("font"),
-			definition: {
-				directParentKeys: [
-					"Scheme".toLowerCase(),
-					"Fonts".toLowerCase(),
-				],
-				children: true,
-				key: null,
-			},
+			definition: new SchemeDefinitionMatcher("Fonts", true),
 			reference: {
 				keys: new Set(),
 				match: null

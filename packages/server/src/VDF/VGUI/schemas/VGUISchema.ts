@@ -11,9 +11,15 @@ export const VGUISchema: VDFTextDocumentSchema = {
 		{
 			type: Symbol.for("element"),
 			definition: {
-				directParentKeys: [],
-				children: true,
-				key: { name: "fieldName".toLowerCase(), priority: false }
+				match: (documentSymbol, path) => {
+					if (documentSymbol.children != undefined && path.length != 0) {
+						return {
+							key: documentSymbol.key,
+							keyRange: documentSymbol.nameRange,
+							nameRange: documentSymbol.children?.find((i) => i.key.toLowerCase() == "fieldName".toLowerCase() && i.detail != undefined)?.detailRange
+						}
+					}
+				}
 			},
 			reference: {
 				keys: new Set([

@@ -8,12 +8,14 @@ export const LanguageTokensSchema: VDFTextDocumentSchema = {
 		{
 			type: Symbol.for("string"),
 			definition: {
-				directParentKeys: [
-					"lang",
-					"Tokens".toLowerCase()
-				],
-				children: false,
-				key: null,
+				match: (documentSymbol, path) => {
+					if (path.length == 2 && documentSymbol.detail != undefined && path[0].key.toLowerCase() == "lang".toLowerCase() && path[1].key.toLowerCase() == "Tokens".toLowerCase()) {
+						return {
+							key: documentSymbol.key,
+							keyRange: documentSymbol.nameRange,
+						}
+					}
+				}
 			},
 			toReference: (value) => `#${value}`,
 			toCompletionItem: (definition) => ({ kind: CompletionItemKind.Text, insertText: `#${definition.key}` })

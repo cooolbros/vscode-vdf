@@ -69,21 +69,7 @@ export interface VDFTextDocumentSchema {
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	definitionReferences: {
 		type: symbol
-		definition: {
-			directParentKeys: string[]
-			children: boolean
-			key: {
-				/**
-				 * @example "fieldName"
-				 * @example "name"
-				 */
-				name: string,
-				/**
-				 * Whether to override documentSymbol.key
-				 */
-				priority: boolean
-			} | null
-		} | null
+		definition: DefinitionMatcher | null
 		reference?: {
 			keys: Set<string>
 			match: ((string: string) => boolean) | null
@@ -123,6 +109,16 @@ export interface VDFTextDocumentSchema {
 		typeKey: string | null
 		defaultType: string | null
 	}
+}
+
+export interface DefinitionMatcher {
+	match(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DefinitionResult | void
+}
+
+export interface DefinitionResult {
+	key: string
+	keyRange: VDFRange
+	nameRange?: VDFRange
 }
 
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies> {
@@ -310,43 +306,18 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						for (const { type, definition, reference } of dependencies.schema.definitionReferences) {
 
 							if (definition) {
-
-								let key: string | undefined, keyRange: VDFRange | undefined, nameRange: VDFRange | undefined
-
-								if (definition.key != null) {
-									const keyDocumentSymbol = documentSymbol.children?.find((i) => i.key.toLowerCase() == definition.key!.name && i.detail != undefined)
-									if (keyDocumentSymbol) {
-										key = documentSymbol.key
-										keyRange = documentSymbol.nameRange
-										nameRange = keyDocumentSymbol.detailRange!
-									}
-									else if (!definition.key.priority) {
-										// If key does not need priority, fall back to documentSymbol.key, used for VGUI elements that don't have a fieldName
-										key = documentSymbol.key
-										keyRange = documentSymbol.nameRange
-										nameRange = undefined
-									}
-									else {
-										key = undefined
-										keyRange = undefined
-										nameRange = undefined
-									}
-								}
-								else {
-									key = documentSymbol.key
-									keyRange = documentSymbol.nameRange
-									nameRange = undefined
-								}
-
-								if (key && keyRange && ArrayEndsWithArray(path, definition.directParentKeys, (a, b,) => a.key.toLowerCase() == b.toLowerCase()) && ((definition.children ? documentSymbol.children : documentSymbol.detail) != undefined)) {
-									definitionReferences.definitions.add(type, key, {
+								const result = definition.match(documentSymbol, path)
+								if (result) {
+									definitionReferences.definitions.add(type, result.key, {
 										uri: this.uri,
-										key: key,
+										key: result.key,
 										range: documentSymbol.range,
-										keyRange: keyRange,
-										nameRange: nameRange,
+										keyRange: result.keyRange,
+										nameRange: result.nameRange,
 										detail: documentSymbol.detail
 									})
+
+									return
 								}
 							}
 
