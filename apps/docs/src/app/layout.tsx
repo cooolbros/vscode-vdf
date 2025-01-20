@@ -7,7 +7,12 @@ import type { ReactNode } from "react"
 import "./globals.css"
 
 // https://nextjs.org/docs/app/building-your-application/optimizing/metadata
-export const metadata: Metadata = {}
+export const metadata: Metadata = {
+	title: {
+		default: "VSCode VDF",
+		template: "%s - VSCode VDF"
+	}
+}
 
 const logo = (
 	<div className="flex gap-4 items-center">
