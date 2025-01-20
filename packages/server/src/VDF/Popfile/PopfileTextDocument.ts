@@ -48,8 +48,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 							if (name && name.detail != undefined) {
 								return {
 									key: name.detail,
-									keyRange: documentSymbol.nameRange,
-									nameRange: name.detailRange,
+									keyRange: name.detailRange!,
 								}
 							}
 						}
