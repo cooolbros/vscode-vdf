@@ -1,5 +1,45 @@
 # Change Log
 
+## [5.0.0]
+ - Add new reactive text documents system (Fixes some `#base` related diagnostics not updating)
+ - Add new standalone VTF Editor
+ - Enable VTF Editor in VSCode web
+ - Add restart language server commands
+ - Read `FileSystem`.`SearchPaths` from gameinfo.txt (Fixes all file not found false positives)
+ - Fix VPK file system case insensitivity
+ - Fix extension not activating for VPK files
+ - Add support for `gameinfo.txt`, `chapterbackgrounds.txt` and `game_sounds_*.txt`
+ - Fix Uri parser ignoring files or folders that start with `#` (#26)
+ - Update minimum VSCode to `^1.95.0`
+ - VGUI:
+   - Add snippets
+   - Add scheme colours reference support for `selectedcolor`, `titlebarfgcolor`, `unselectedcolor`
+   - Add scheme borders reference support for `activeborder_override`, `normalborder_override`
+   - Add language tokens reference support for `tooltip`, `button_token`, `desc_token`
+   - Add image links for `image_armed`, `image_default`, `image_name`, `image_selected`
+   - Add values support for `wrap`, `centerwrap`, `mouseinputenabled`, `scaleImage`
+   - Add sound links for `sound_armed`
+   - Add model links for `modelname`
+ - HUD Animations:
+   - Fix `SetInputEnabled` and `SetVisible` not referencing VGUI elements
+ - Popfile:
+   - Add embedded squirrel syntax highlighting support
+   - Add inlay hints for Paint colours for `"set item tint RGB"`
+   - Add auto completion for Paint colours for `"set item tint RGB"`
+   - Add Wave number decorations (#41)
+   - Only allow multiline strings for the `Param` key (Fixes syntax error positions being not accurate)
+   - Fix syntax highlighting for `#base` statement followed by a comment (#27)
+   - Add RunScriptCode `Param` value max length diagnostic (#29)
+   - Read attributes for `CharacterAttributes` and `ItemAttributes` from `items_game.txt` (#32)
+   - Add sound links for `DoneWarningSound`, `FirstSpawnWarningSound`, `LastSpawnWarningSound`, `StartWaveWarningSound`
+   - Add Squad with 1 subkey diagnostic (#33)
+   - Add SpawnCounter greater than MaxActive softlock diagnostic (#34)
+   - Add WaitForAllSpawned/WaitForAllDead WaveSpawn with Support 1 diagnostic (#35)
+   - Fix autocompletion for `EventChangeAttributes`
+   - Enable `"Import #base templates into current popfile"` in VSCode web
+ - VMT:
+   - Add support for `$detail` links (#37)
+
 ## [4.6.0]
  - Add support for nav keys (`navUp`, `navDown`, `navLeft`, `navRight`, `navToRelay`)
  - Disable element reference warnings for empty string values
