@@ -282,12 +282,6 @@
                 }
             }
         ],
-        "configurationDefaults": {
-            "[hudanimations][popfile][vdf][vmt]": {
-                "editor.formatOnSave": true,
-                "editor.wordBasedSuggestions": "off"
-            }
-        },
         "customEditors": [
             {
                 "viewType": "vscode-vdf.VTFEditor",
