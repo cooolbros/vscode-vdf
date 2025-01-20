@@ -229,6 +229,11 @@ export abstract class VDFLanguageServer<
 		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })
 		const tokens = Array.from(generateTokens(line))
 
+		// Remove tokens before and including opening brace,
+		// so we suggest for the innermost key
+		// https://github.com/cooolbros/vscode-vdf/issues/48
+		tokens.splice(0, tokens.lastIndexOf("{") + 1)
+
 		switch (tokens.length) {
 			case 0: {
 				return keys()
