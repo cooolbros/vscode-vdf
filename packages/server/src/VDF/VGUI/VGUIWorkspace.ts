@@ -264,12 +264,6 @@ export class VGUIWorkspace extends WorkspaceBase {
 		clientScheme.setDocumentReferences(references, true)
 	}
 
-	public async setLanguageTokensReferences(references: References[]) {
-		for (const documentReferences of references) {
-			this.languageTokensReferences.set(documentReferences.uri.toString(), documentReferences)
-		}
-	}
-
 	private getFileReferencesValue(path: string) {
 		let references$ = this.fileReferences.get(path)
 		if (!references$) {
