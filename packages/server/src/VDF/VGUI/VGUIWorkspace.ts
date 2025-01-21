@@ -175,7 +175,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 				promises.push(promise)
 
 				setTimeout(async () => {
-					const uri = await firstValueFrom(fileSystem.resolveFile(name))
+					const path = posix.join("resource/ui", name)
+					const uri = await firstValueFrom(fileSystem.resolveFile(path))
 					if (uri) {
 						using document = await documents.get(uri, true)
 						await firstValueFrom(document.definitionReferences$)
