@@ -4,10 +4,10 @@ import { firstValueFrom, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, InlayHint, InlayHintKind, InlayHintRequest, type Connection, type FoldingRangeParams, type InlayHintParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { PopfileTextDocument, type PopfileTextDocumentDependencies } from "./PopfileTextDocument"
+import { PopfileTextDocument } from "./PopfileTextDocument"
 import colours from "./colours.json"
 
-export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileTextDocument, PopfileTextDocumentDependencies> {
+export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileTextDocument> {
 
 	private vscript = false
 

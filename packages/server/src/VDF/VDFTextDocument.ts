@@ -51,7 +51,7 @@ function resolveFileDetail(detail: string, configuration: VDFTextDocumentSchema[
 	).substring(1)
 }
 
-export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> {
+export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
@@ -121,9 +121,9 @@ export interface DefinitionResult {
 	nameRange?: VDFRange
 }
 
-export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies> {
+export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies> {
 
-	public readonly configuration: VDFTextDocumentConfiguration<TDocument, TDependencies>
+	public readonly configuration: VDFTextDocumentConfiguration<TDocument>
 
 	public readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri; resolve: () => Promise<Uri | null> } })[]>
 	public readonly colours$: Observable<(ColorInformation & { stringify(colour: Color): string })[]>
@@ -134,7 +134,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<TDocument>,
 		refCountDispose: (dispose: () => void) => void,
-		configuration: VDFTextDocumentConfiguration<TDocument, TDependencies>,
+		configuration: VDFTextDocumentConfiguration<TDocument>,
 	) {
 		super(init, documentConfiguration$, fileSystem$, refCountDispose, {
 			getDocumentSymbols: (text) => {

@@ -16,10 +16,7 @@ import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
 import { SourceSchemeSchema } from "./schemas/SourceSchemeSchema"
 import { VGUISchema } from "./schemas/VGUISchema"
 
-export interface VGUITextDocumentDependencies {
-}
-
-export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUITextDocumentDependencies> {
+export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 
 	public static KeyTransform = (key: string) => key.replace(/_(minmode|override|(lo|hi)def)$/, "")
 	public readonly workspace: VGUIWorkspace | null

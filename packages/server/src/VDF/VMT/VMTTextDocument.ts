@@ -13,10 +13,7 @@ import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocument
 import keys from "./keys.json"
 import values from "./values.json"
 
-export interface VMTTextDocumentDependencies {
-}
-
-export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDocumentDependencies> {
+export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 	public readonly workspace: WorkspaceBase | null
 

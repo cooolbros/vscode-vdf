@@ -13,7 +13,7 @@ import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } 
 import type { TextDocumentInit } from "../TextDocumentBase"
 import type { VDFTextDocument, VDFTextDocumentDependencies } from "./VDFTextDocument"
 
-export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies> {
+export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	name: "popfile" | "vdf" | "vmt"
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
@@ -22,15 +22,14 @@ export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocumen
 
 export abstract class VDFLanguageServer<
 	TLanguageId extends Extract<VSCodeVDFLanguageID, "popfile" | "vdf" | "vmt">,
-	TDocument extends VDFTextDocument<TDocument, TDependencies>,
-	TDependencies
+	TDocument extends VDFTextDocument<TDocument>,
 > extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, VDFTextDocumentDependencies> {
 
-	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>
+	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>
 
 	private readonly documentsColours: Map<string, Map<string, (colour: Color) => string>>
 
-	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>) {
+	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
 		super(languageId, name, connection, {
 			servers: VDFLanguageServerConfiguration.servers,
 			capabilities: {

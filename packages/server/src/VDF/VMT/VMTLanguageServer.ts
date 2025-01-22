@@ -1,10 +1,10 @@
 import { type Connection } from "vscode-languageserver"
 import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { VMTTextDocument, type VMTTextDocumentDependencies } from "./VMTTextDocument"
+import { VMTTextDocument } from "./VMTTextDocument"
 import { VMTWorkspace } from "./VMTWorkspace"
 
-export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument, VMTTextDocumentDependencies> {
+export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument> {
 
 	private readonly workspaces: Map<string, VMTWorkspace>
 

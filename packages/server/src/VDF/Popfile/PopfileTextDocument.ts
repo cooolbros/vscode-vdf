@@ -13,10 +13,7 @@ import colours from "./colours.json"
 import keys from "./keys.json"
 import values from "./values.json"
 
-export interface PopfileTextDocumentDependencies {
-}
-
-export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, PopfileTextDocumentDependencies> {
+export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 	public static readonly Schema: VDFTextDocumentSchema = {
 		keys: keys,

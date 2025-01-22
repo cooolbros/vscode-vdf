@@ -5,10 +5,10 @@ import { type Connection, type TextDocumentChangeEvent } from "vscode-languagese
 import { z } from "zod"
 import { References } from "../../DefinitionReferences"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { VGUITextDocument, type VGUITextDocumentDependencies } from "./VGUITextDocument"
+import { VGUITextDocument } from "./VGUITextDocument"
 import { VGUIWorkspace } from "./VGUIWorkspace"
 
-export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocument, VGUITextDocumentDependencies> {
+export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocument> {
 
 	private readonly workspaces: Map<string, VGUIWorkspace>
 
