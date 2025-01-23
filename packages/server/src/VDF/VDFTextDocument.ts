@@ -153,7 +153,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						})
 					}
 
-					const baseFiles = (uri: Uri, relativeFolderPath: string | null) => {
+					const baseFiles = (relativeFolderPath: string | null) => {
 						return (source: Observable<VDFDocumentSymbols>) => {
 							return source.pipe(
 								map((documentSymbols) => {
@@ -177,7 +177,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 					const check = (document: TDocument, stack: Uri[]): Observable<boolean> => {
 						return document.documentSymbols$.pipe(
-							baseFiles(document.uri, document.configuration.relativeFolderPath),
+							baseFiles(document.configuration.relativeFolderPath),
 							withContext(new Map<string, Observable<boolean>>()),
 							finalizeWithValue(([_, context]) => context.clear()),
 							map(([baseUris, context]) => {
@@ -217,7 +217,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					const input = new Subject<VDFDocumentSymbols>()
 
 					const observable = input.pipe(
-						baseFiles(this.uri, this.configuration.relativeFolderPath),
+						baseFiles(this.configuration.relativeFolderPath),
 						withContext(new Map<string, Observable<DefinitionReferences | null>>()),
 						finalizeWithValue(([_, context]) => context.clear()),
 						map(([uris, context]) => {
