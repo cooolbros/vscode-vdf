@@ -146,11 +146,9 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				(source) => defer(() => {
 
 					const withContext = <T, TContext>(context: TContext) => {
-						return (source: Observable<T>) => defer(() => {
-							return source.pipe(
-								map((value) => <const>[value, context])
-							)
-						})
+						return (source: Observable<T>) => source.pipe(
+							map((value) => <const>[value, context])
+						)
 					}
 
 					const baseFiles = (relativeFolderPath: string | null) => {
