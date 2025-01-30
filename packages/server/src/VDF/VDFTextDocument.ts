@@ -4,7 +4,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, identity, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
+import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
@@ -150,7 +150,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						)
 					}
 
-					const baseFiles = (relativeFolderPath: string | null, distinct: boolean) => {
+					const baseFiles = (relativeFolderPath: string | null) => {
 						return (source: Observable<VDFDocumentSymbols>) => {
 							return source.pipe(
 								map((documentSymbols) => {
@@ -158,7 +158,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
 										.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
 								}),
-								distinct ? distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])) : identity,
+								distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])),
 								map((values) => values.map((value) => {
 									return fileSystem$.pipe(
 										switchMap((fileSystem) => {
@@ -174,7 +174,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 					const check = (document: TDocument, stack: Uri[]): Observable<boolean> => {
 						return document.documentSymbols$.pipe(
-							baseFiles(document.configuration.relativeFolderPath, true),
+							baseFiles(document.configuration.relativeFolderPath),
 							withContext(new Map<string, Observable<boolean>>()),
 							finalizeWithValue(([_, context]) => context.clear()),
 							map(([baseUris, context]) => {
@@ -214,7 +214,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					const input = new Subject<VDFDocumentSymbols>()
 
 					const observable = input.pipe(
-						baseFiles(this.configuration.relativeFolderPath, false),
+						baseFiles(this.configuration.relativeFolderPath),
 						withContext(new Map<string, Observable<DefinitionReferences | null>>()),
 						map(([uris, context]) => {
 
