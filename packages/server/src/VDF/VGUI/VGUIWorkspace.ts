@@ -1,9 +1,9 @@
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, shareReplay, Subscription, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, Subscription, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { DefinitionReferences, References } from "../../DefinitionReferences"
+import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../../DefinitionReferences"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocuments } from "../../TextDocuments"
 import { WorkspaceBase } from "../../WorkspaceBase"
@@ -31,12 +31,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public readonly languageTokensFiles$: Observable<Set<string>>
 	public readonly languageTokens$: Observable<DefinitionReferences>
 
-	public readonly clientSchemeReferences: Map<string, References>
-	public readonly languageTokensReferences: Map<string, References>
 	public readonly workspaceReferencesReady: Promise<void>
 
 	private readonly documentSymbols: Map<string, Observable<VDFDocumentSymbols | null>>
-	public readonly fileReferences: Map<string, { references: Map<string, References>, subject$: BehaviorSubject<References[]> }>
+	public readonly fileReferences: Map<string, { references$: BehaviorSubject<Map<string, References | null>>, document$: Observable<VGUITextDocument | null> }>
 
 	constructor({
 		uri,
@@ -131,16 +129,26 @@ export class VGUIWorkspace extends WorkspaceBase {
 			map((paths) => new Set(paths.flat())),
 			shareReplay(1)
 		)
-		this.languageTokens$ = combineLatest([definitions("resource/chat_english.txt"), definitions("resource/tf_english.txt")]).pipe(
+
+		this.languageTokens$ = combineLatest([
+			definitions("resource/chat_english.txt"),
+			definitions("resource/tf_english.txt")
+		]).pipe(
 			map((dependencies) => {
-				return dependencies.reduce(
-					(result, definitionReferences) => {
-						for (const definition of definitionReferences.definitions) {
-							result.definitions.add(definition.type, definition.key, ...definition.value)
-						}
-						return result
-					},
-					new DefinitionReferences({ dependencies: dependencies })
+				const definitions = new Collection<Definition>()
+
+				for (const definitionReferences of dependencies) {
+					for (const definition of definitionReferences.definitions) {
+						definitions.set(definition.type, definition.key, ...definition.value)
+					}
+				}
+
+				return new DefinitionReferences(
+					new Definitions({
+						collection: definitions,
+						globals: [],
+					}),
+					new References(this.uri, undefined, dependencies.map(({ references }) => references))
 				)
 			}),
 			shareReplay(1)
@@ -148,9 +156,6 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 		this.documentSymbols = new Map()
 		this.fileReferences = new Map()
-
-		this.clientSchemeReferences = new Map()
-		this.languageTokensReferences = new Map()
 
 		const { promise, resolve } = Promise.withResolvers<void>()
 		this.workspaceReferencesReady = promise
@@ -242,49 +247,52 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public getDefinitionReferences(path: string) {
 		return this.fileSystem$.pipe(
 			switchMap((fileSystem) => fileSystem.resolveFile(path)),
-			concatMap(async (uri) => {
-				return uri
-					? this.documents.get(uri, true)
-					: null
-			}),
-			switchMap((document) => {
-				return document != null
-					? document.definitionReferences$
-					: of(null)
-			}),
+			switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri, true)) : of(null)),
+			switchMap((document) => document != null ? document.definitionReferences$ : of(null)),
 			shareReplay(1)
 		)
 	}
 
-	public async setClientSchemeReferences(references: References[]) {
-		for (const documentReferences of references) {
-			this.clientSchemeReferences.set(documentReferences.uri.toString(), documentReferences)
+	public async setFileReferences(path: string, references: Map<string, References | null>) {
+		let fileReferences = this.fileReferences.get(path)
+		if (!fileReferences) {
+			fileReferences = {
+				references$: new BehaviorSubject(new Map()),
+				document$: this.fileSystem$.pipe(
+					switchMap((fileSystem) => fileSystem.resolveFile(path)),
+					switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri, true)) : of(null)),
+					startWith(null),
+					pairwise(),
+					map(([previous, current]) => {
+						if (previous) {
+							previous.setDocumentReferences(new Map(references.keys().map((uri) => [uri, null])))
+						}
+
+						if (current) {
+							current.setDocumentReferences(references)
+						}
+
+						return current
+					})
+				)
+			}
+			this.fileReferences.set(path, fileReferences)
+
+			combineLatest({
+				references: fileReferences.references$,
+				document: fileReferences.document$,
+			}).subscribe(({ references, document }) => {
+				if (document) {
+					document.setDocumentReferences(references)
+				}
+			})
 		}
 
-		const clientScheme = await firstValueFrom(this.clientScheme$)
-		clientScheme.setDocumentReferences(references, true)
-	}
-
-	private getFileReferencesValue(path: string) {
-		let references$ = this.fileReferences.get(path)
-		if (!references$) {
-			const references = new Map<string, References>()
-			references$ = { references: references, subject$: new BehaviorSubject(references.values().toArray()) }
-			this.fileReferences.set(path, references$)
+		for (const [uri, documentReferences] of references) {
+			fileReferences.references$.value.set(uri, documentReferences)
 		}
-		return references$
-	}
 
-	public getFileReferences(path: string) {
-		return this.getFileReferencesValue(path).subject$
-	}
-
-	public async setFileReferences(path: string, references: References[]) {
-		const fileReferences = this.getFileReferencesValue(path)
-		for (const documentReferences of references) {
-			fileReferences.references.set(documentReferences.uri.toString(), documentReferences)
-		}
-		fileReferences.subject$.next(fileReferences.references.values().toArray())
+		fileReferences.references$.next(fileReferences.references$.value)
 	}
 
 	public dispose() {

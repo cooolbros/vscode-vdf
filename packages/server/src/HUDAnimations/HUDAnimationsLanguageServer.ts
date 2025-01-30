@@ -88,7 +88,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 							request: this.trpc.servers.vgui.workspace.open.mutate({ uri: hudRoot }),
 							getVDFDocumentSymbols: async (path) => await this.trpc.servers.vgui.workspace.documentSymbol.query({ key: hudRoot, path }),
 							getDefinitions: async (path) => await this.trpc.servers.vgui.workspace.definitions.query({ key: hudRoot, path: path }),
-							setClientSchemeReferences: async (references) => await this.trpc.servers.vgui.workspace.setClientSchemeReferences.mutate({ key: hudRoot, references: references }),
 							setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: hudRoot, references: references })
 						})
 						this.workspaces.set(key, w)
@@ -138,7 +137,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 										request: Promise.resolve(),
 										getVDFDocumentSymbols: async (path) => await this.trpc.servers.vgui.workspace.documentSymbol.query({ key: input.uri, path: path }),
 										getDefinitions: async (path) => await this.trpc.servers.vgui.workspace.definitions.query({ key: input.uri, path: path }),
-										setClientSchemeReferences: async (references) => await this.trpc.servers.vgui.workspace.setClientSchemeReferences.mutate({ key: input.uri, references: references }),
 										setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: input.uri, references: references })
 									})
 								)
@@ -169,19 +167,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		if (workspace) {
 			subscriptions.push(
 				event.document.definitionReferences$.subscribe(async (documentDefinitionReferences) => {
-
-					const { workspaceClientSchemeReferences, workspaceFilesReferences } = workspace.extractWorkspaceReferences(event.document.uri, documentDefinitionReferences)
-
-					await Promise.all([
-						this.trpc.servers.vgui.workspace.setClientSchemeReferences.mutate({
-							key: workspace.uri,
-							references: [workspaceClientSchemeReferences]
-						}),
-						this.trpc.servers.vgui.workspace.setFilesReferences.mutate({
-							key: workspace.uri,
-							references: new Map(workspaceFilesReferences.entries().map(([key, value]) => [key, [value]]))
-						})
-					])
+					await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({
+						key: workspace.uri,
+						references: HUDAnimationsWorkspace.extractWorkspaceReferences(event.document.uri, documentDefinitionReferences.references)
+					})
 				})
 			)
 		}
@@ -542,11 +531,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 				(changes[definition.uri.toString()] ??= []).push(TextEdit.replace(definition.keyRange, newName))
 			}
 
-			for (const [uri, references] of definitionReferences.references) {
-				const edits = changes[uri] ??= []
-				for (const range of references.get(type, key)) {
-					edits.push(TextEdit.replace(range, newName))
-				}
+			for (const { uri, range } of definitionReferences.references.collect(type, key)) {
+				(changes[uri.toString()] ??= []).push(TextEdit.replace(range, newName))
 			}
 		}
 		else {

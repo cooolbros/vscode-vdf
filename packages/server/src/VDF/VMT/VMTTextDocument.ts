@@ -108,11 +108,8 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 						defaultType: null
 					}
 				},
-				global: []
+				globals: []
 			}),
-			getCodeLens: (definitionReferences$) => {
-				return definitionReferences$
-			},
 		})
 		this.workspace = workspace
 	}

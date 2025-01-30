@@ -4,7 +4,7 @@ import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, 
 import { VDFSyntaxError, type IRange } from "vdf"
 import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
-import { DefinitionReferences } from "./DefinitionReferences"
+import { DefinitionReferences, References } from "./DefinitionReferences"
 import type { DiagnosticCodeAction } from "./LanguageServer"
 import { TeamFortress2FileSystem } from "./TeamFortress2FileSystem"
 
@@ -20,7 +20,6 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 	defaultDocumentSymbols: TDocumentSymbols
 	definitionReferences$: Observable<{ dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences }>
 	getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
-	getCodeLens(definitionReferences$: Observable<DefinitionReferences>): Observable<DefinitionReferences>
 }
 
 export abstract class TextDocumentBase<
@@ -30,6 +29,8 @@ export abstract class TextDocumentBase<
 
 	public readonly uri: Uri
 	protected readonly document: TextDocument
+	protected readonly references: Map<string, References>
+	protected readonly references$: BehaviorSubject<void>
 
 	public readonly documentConfiguration$: Observable<VSCodeVDFConfiguration>
 	public readonly fileSystem$: Observable<TeamFortress2FileSystem>
@@ -53,6 +54,8 @@ export abstract class TextDocumentBase<
 	) {
 		this.uri = init.uri
 		this.document = TextDocument.create(init.uri.toString(), init.languageId, init.version, init.content)
+		this.references = new Map()
+		this.references$ = new BehaviorSubject<void>(undefined)
 
 		this.documentConfiguration$ = documentConfiguration$
 		this.fileSystem$ = fileSystem$
@@ -162,9 +165,9 @@ export abstract class TextDocumentBase<
 			})
 		)
 
-		this.codeLens$ = configuration.getCodeLens(this.definitionReferences$).pipe(
+		this.codeLens$ = this.definitionReferences$.pipe(
 			switchMap((definitionReferences) => {
-				return definitionReferences.references$.pipe(
+				return definitionReferences.references.references$.pipe(
 					map(() => {
 						return definitionReferences
 					})
@@ -177,12 +180,7 @@ export abstract class TextDocumentBase<
 						(codeLens, { type, key, value: definitions }) => {
 							const definition = definitions[0]
 							if (definition != undefined && definition.uri.equals(this.uri)) {
-
-								const references = definitionReferences
-									.references
-									.values()
-									.flatMap((references) => references.get(type, key).map((range) => ({ uri: references.uri, range: range })))
-									.toArray()
+								const references = definitionReferences.references.collect(type, key).toArray()
 
 								if (references.length > 0) {
 									codeLens.push({
@@ -217,6 +215,19 @@ export abstract class TextDocumentBase<
 
 	public getText(range?: IRange) {
 		return this.document.getText(range)
+	}
+
+	public setDocumentReferences(references: Map<string, References | null>) {
+		for (const [uri, documentReferences] of references) {
+			if (documentReferences != null) {
+				this.references.set(uri, documentReferences)
+			}
+			else {
+				this.references.delete(uri)
+			}
+		}
+
+		this.references$.next()
 	}
 
 	public dispose() {

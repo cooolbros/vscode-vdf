@@ -3,7 +3,7 @@ import { BehaviorSubject } from "rxjs"
 import { VDFRange } from "vdf"
 import { z, type ZodTypeAny } from "zod"
 
-class Collection<T> {
+export class Collection<T> {
 
 	public static readonly createSchema = <T extends ZodTypeAny>(schema: T) => z.map(z.symbol(), z.map(z.string(), schema.array())).transform((arg) => new Collection([arg]))
 	private readonly map: Map<symbol, Map<string, T[]>>
@@ -94,10 +94,6 @@ export class Definitions {
 		return null
 	}
 
-	public add(type: symbol, key: string, ...definitions: Definition[]) {
-		this.collection.set(type, key, ...definitions)
-	}
-
 	public ofType(type: symbol): ReadonlyMap<string, Definition[]> {
 
 		const map = this.collection.ofType(type)
@@ -128,19 +124,41 @@ export class Definitions {
 
 export class References {
 
-	public static readonly schema = z.object({
-		uri: Uri.schema,
-		collection: Collection.createSchema(VDFRange.schema),
-	}).transform((arg) => {
-		return new References(arg.uri, arg.collection)
+	public static readonly schema: z.ZodType<References, z.ZodTypeDef, any> = z.lazy(() => {
+		return z.object({
+			uri: Uri.schema,
+			collection: Collection.createSchema(VDFRange.schema),
+			dependencies: References.schema.array(),
+			rest: z.map(z.string(), References.schema)
+		}).transform((arg) => {
+			return new References(arg.uri, arg.collection, arg.dependencies, arg.rest, new BehaviorSubject<void>(undefined))
+		})
 	})
 
 	public readonly uri: Uri
-	private readonly collection: Collection<VDFRange>
+	public readonly collection: Collection<VDFRange>
+	private readonly dependencies: References[]
 
-	constructor(uri: Uri, collection = new Collection<VDFRange>()) {
+	public readonly rest: Map<string, References>
+	public readonly references$: BehaviorSubject<void>
+
+	constructor(
+		uri: Uri,
+		collection = new Collection<VDFRange>(),
+		dependencies: References[],
+		rest = new Map<string, References>(),
+		references$ = new BehaviorSubject<void>(undefined)
+	) {
 		this.uri = uri
 		this.collection = collection
+		this.dependencies = dependencies
+		this.rest = rest
+
+		this.references$ = references$
+
+		for (const dependency of this.dependencies) {
+			dependency.setDocumentReferences(this.uri, this, false)
+		}
 	}
 
 	public get(type: symbol, key: string) {
@@ -151,45 +169,54 @@ export class References {
 		return this.collection[Symbol.iterator]()
 	}
 
-	public addReference(type: symbol, key: string, range: VDFRange) {
-		this.collection.set(type, key, range)
+	public setDocumentReferences(uri: Uri, references: References | null, notify: boolean) {
+		if (references != null) {
+			this.rest.set(uri.toString(), references)
+		}
+		else {
+			this.rest.delete(uri.toString())
+		}
+
+		for (const dependency of this.dependencies) {
+			dependency.setDocumentReferences(this.uri, this, notify)
+		}
+
+		if (notify) {
+			this.references$.next()
+		}
+	}
+
+	public *collect(type: symbol, key: string) {
+		function* walk(references: References): Generator<{ uri: Uri, range: VDFRange }> {
+			for (const range of references.get(type, key)) {
+				yield { uri: references.uri, range: range }
+			}
+
+			for (const dependency of references.rest.values()) {
+				yield* dependency.collect(type, key)
+			}
+		}
+
+		yield* walk(this)
 	}
 
 	public toJSON() {
 		return {
-			uri: this.uri.toJSON(),
+			uri: this.uri,
 			collection: this.collection.toJSON(),
+			dependencies: this.dependencies,
+			rest: this.rest
 		}
 	}
 }
 
 export class DefinitionReferences {
 
-	private readonly dependencies: DefinitionReferences[]
 	public readonly definitions: Definitions
-	public readonly references: Map<string /* Uri */, References>
-	public readonly references$: BehaviorSubject<void>
+	public readonly references: References
 
-	constructor({ dependencies = [], globals = [] }: { dependencies?: DefinitionReferences[], globals?: Definitions[] } = {}) {
-		this.dependencies = dependencies
-		this.definitions = new Definitions({ globals })
-
-		this.references = new Map()
-		this.references$ = new BehaviorSubject<void>(undefined)
-	}
-
-	public setDocumentReferences(references: References[], notify: boolean) {
-
-		for (const documentReferences of references) {
-			this.references.set(documentReferences.uri.toString(), documentReferences)
-		}
-
-		for (const dependency of this.dependencies) {
-			dependency.setDocumentReferences(references, notify)
-		}
-
-		if (notify) {
-			this.references$.next()
-		}
+	constructor(definitions: Definitions, references: References) {
+		this.definitions = definitions
+		this.references = references
 	}
 }

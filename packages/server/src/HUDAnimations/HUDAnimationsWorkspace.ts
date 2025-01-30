@@ -1,8 +1,9 @@
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import { BehaviorSubject, combineLatest, concatMap, firstValueFrom, from, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { DefinitionReferences, Definitions, References } from "../DefinitionReferences"
+import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import type { TextDocuments } from "../TextDocuments"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -12,10 +13,9 @@ import { EventType, HUDAnimationsTextDocument } from "./HUDAnimationsTextDocumen
 interface HUDAnimationsWorkspaceDocumentDependencies {
 	document: HUDAnimationsTextDocument
 	documentSymbols: HUDAnimationsDocumentSymbols
-	definitions: Definitions
-	references: References
+	definitions: Collection<Definition>
+	references: Collection<VDFRange>
 	eventNames: string[]
-	sounds: Record<string, Observable<Uri | null>>
 }
 
 export class HUDAnimationsWorkspace extends WorkspaceBase {
@@ -37,7 +37,6 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		request,
 		getVDFDocumentSymbols,
 		getDefinitions,
-		setClientSchemeReferences,
 		setFileReferences,
 	}: {
 		uri: Uri
@@ -46,8 +45,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		request: Promise<void>,
 		getVDFDocumentSymbols: (path: string) => Promise<Observable<VDFDocumentSymbols | null>>,
 		getDefinitions: (path: string) => Promise<Observable<DefinitionReferences["definitions"] | null>>,
-		setClientSchemeReferences: (references: References[]) => Promise<void>,
-		setFileReferences: (references: Map<string, References[]>) => Promise<void>,
+		setFileReferences: (references: Map<string /* path */, Map<string /* Uri */, References | null>>) => Promise<void>,
 	}) {
 		super(uri)
 		this.fileSystem$ = fileSystem$
@@ -128,7 +126,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 								map((documentSymbols) => {
 									return documentSymbols.reduce(
 										(result, documentSymbol) => {
-											result.definitions.add(EventType, documentSymbol.eventName, {
+											result.definitions.set(EventType, documentSymbol.eventName, {
 												uri: document.uri,
 												key: documentSymbol.eventName,
 												range: documentSymbol.range,
@@ -143,29 +141,22 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 											for (const statement of documentSymbol.children) {
 												if ("event" in statement) {
-													result.references.addReference(EventType, statement.event, statement.eventRange)
+													result.references.set(EventType, statement.event, statement.eventRange)
 												}
 
 												if ("element" in statement) {
-													result.references.addReference(type, statement.element, statement.elementRange)
+													result.references.set(type, statement.element, statement.elementRange)
 												}
 
 												if (statement.type == HUDAnimationStatementType.Animate) {
 													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														result.references.addReference(Symbol.for("color"), statement.value, statement.valueRange)
+														result.references.set(Symbol.for("color"), statement.value, statement.valueRange)
 													}
 												}
 
 												// HUDAnimationStatementType.SetFont
 												if ("font" in statement) {
-													result.references.addReference(Symbol.for("font"), statement.font, statement.fontRange)
-												}
-
-												if ("sound" in statement) {
-													const path = `sound/${statement.sound.replaceAll(/[/\\]+/g, "/")}`
-													result.sounds[statement.sound] = fileSystem$.pipe(
-														switchMap((fileSystem) => fileSystem.resolveFile(path))
-													)
+													result.references.set(Symbol.for("font"), statement.font, statement.fontRange)
 												}
 											}
 
@@ -174,11 +165,10 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 										{
 											document: document,
 											documentSymbols: documentSymbols,
-											definitions: new Definitions(),
-											references: new References(document.uri),
-											eventNames: <string[]>[],
-											sounds: <Record<string, Observable<Uri | null>>>{}
-										} satisfies HUDAnimationsWorkspaceDocumentDependencies
+											definitions: new Collection<Definition>(),
+											references: new Collection<VDFRange>(),
+											eventNames: [],
+										} as HUDAnimationsWorkspaceDocumentDependencies
 									)
 								})
 							)
@@ -204,20 +194,32 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			),
 		}).pipe(
 			map(({ manifest: { files, elements }, clientScheme }) => {
-				const definitionReferences = new DefinitionReferences({
-					globals: [
-						clientScheme,
-						...elements.map(({ elements: { definitions } }) => definitions),
-					]
-				})
 
-				for (const { definitions, references } of files) {
-					for (const [key, value] of definitions.ofType(EventType)) {
-						definitionReferences.definitions.add(EventType, key, ...value)
+				const definitions = new Collection<Definition>()
+
+				for (const file of files) {
+					for (const { type, key, value } of file.definitions) {
+						definitions.set(type, key, ...value)
 					}
-
-					definitionReferences.setDocumentReferences([references], false)
 				}
+
+				const definitionReferences = new DefinitionReferences(
+					new Definitions({
+						collection: definitions,
+						globals: [
+							clientScheme,
+							...elements.map(({ elements: { definitions } }) => definitions),
+						]
+					}),
+					new References(
+						this.uri,
+						undefined,
+						[],
+						new Map<string, References>(
+							files.map((file) => <const>[file.document.uri.toString(), new References(file.document.uri, file.references, [])])
+						)
+					)
+				)
 
 				return {
 					definitionReferences: definitionReferences,
@@ -230,28 +232,27 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		this.ready = firstValueFrom(this.manifest$).then(async (manifest) => {
 			const [_, documentsReferences] = await Promise.all([
 				request,
-				Promise.all(manifest.map(async (document) => this.extractWorkspaceReferences(document.uri, await firstValueFrom(document.definitionReferences$))))
+				Promise.all(manifest.map(async (document) => HUDAnimationsWorkspace.extractWorkspaceReferences(document.uri, (await firstValueFrom(document.definitionReferences$)).references)))
 			])
 
-			const clientSchemeReferences: References[] = []
-			const filesReferences = new Map<string, References[]>()
+			const paths = documentsReferences.values().flatMap((map) => map.keys())
 
-			for (const references of documentsReferences) {
-				clientSchemeReferences.push(references.workspaceClientSchemeReferences)
-				for (const [path, fileReferences] of references.workspaceFilesReferences) {
-					let pathReferences = filesReferences.get(path)
-					if (!pathReferences) {
-						pathReferences = []
-						filesReferences.set(path, pathReferences)
-					}
-					pathReferences.push(fileReferences)
-				}
-			}
-
-			await Promise.all([
-				setClientSchemeReferences(clientSchemeReferences),
-				setFileReferences(filesReferences)
-			])
+			await setFileReferences(
+				new Map(
+					paths.map((path) => {
+						return [
+							path,
+							new Map(
+								documentsReferences
+									.values()
+									.map((map) => map.get(path))
+									.filter((map) => map != null)
+									.flatMap((map) => map.entries())
+							)
+						]
+					})
+				)
+			)
 		})
 	}
 
@@ -275,7 +276,6 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						)
 
 						const definitions$ = from(this.getDefinitions(path)).pipe(shareReplay(1))
-						// firstValueFrom(definitions$)
 
 						return uri$.pipe(
 							switchMap((uri) => {
@@ -293,15 +293,17 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 					map((files) => {
 						return {
 							uris: files.map((file) => file.uri),
-							definitions: files.reduce(
-								(definitions, file) => {
-									for (const { key, value } of file.definitions) {
-										definitions.add(Symbol.for(event), key, ...value)
-									}
-									return definitions
-								},
-								new Definitions()
-							)
+							definitions: new Definitions({
+								collection: files.reduce(
+									(collection, file) => {
+										for (const { key, value } of file.definitions) {
+											collection.set(Symbol.for(event), key, ...value)
+										}
+										return collection
+									},
+									new Collection<Definition>()
+								)
+							})
 						}
 					}),
 					shareReplay(1)
@@ -317,41 +319,75 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		return definitions$
 	}
 
-	public extractWorkspaceReferences(uri: Uri, definitionReferences: DefinitionReferences) {
+	public static extractWorkspaceReferences(uri: Uri, references: References) {
 
-		const workspaceClientSchemeReferences = new References(uri)
-		const workspaceFilesReferences = new Map<string, References>()
+		const workspaceFilesReferences = new Map<string, Map<string, Collection<VDFRange>>>()
 
-		for (const { type, key, value: ranges } of definitionReferences.references.get(uri.toString()) ?? []) {
-			const path = Symbol.keyFor(type)!
-
-			// @ts-ignore
-			const eventFile: string | string[] | undefined = eventFiles[path]
-			if (eventFile) {
-				for (const file of typeof eventFile == "string" ? [eventFile] : eventFile) {
-
-					let references = workspaceFilesReferences.get(file)
-					if (!references) {
-						references = new References(uri)
-						workspaceFilesReferences.set(file, references)
-					}
-
-					for (const range of ranges) {
-						references.addReference(Symbol.for("element"), key, range)
-					}
-				}
+		const iterator = (function*() {
+			yield* Iterator.from(references).map(s => ({ uri: uri, ...s }))
+			for (const documentReferences of references.rest.values()) {
+				yield* Iterator.from(documentReferences).map(s => ({ uri: documentReferences.uri, ...s }))
 			}
+		})()
+
+		for (const { uri, type, key, value: ranges } of iterator) {
+
+			let target: { paths: string[], type: symbol } | null
 
 			if (type == Symbol.for("color") || type == Symbol.for("font")) {
-				for (const range of ranges) {
-					workspaceClientSchemeReferences.addReference(type, key, range)
+				target = {
+					paths: ["resource/clientscheme.res"],
+					type: type
 				}
+			}
+			else {
+				const key = Symbol.keyFor(type)!
+				if (key in eventFiles) {
+					// @ts-ignore
+					const eventFile: string | string[] = eventFiles[key]!
+					target = {
+						paths: typeof eventFile == "string" ? [eventFile] : eventFile,
+						type: Symbol.for("element")
+					}
+				}
+				else {
+					target = null
+				}
+			}
+
+			if (!target) {
+				continue
+			}
+
+			for (const path of target.paths) {
+				let pathReferences = workspaceFilesReferences.get(path)
+				if (!pathReferences) {
+					pathReferences = new Map<string, Collection<VDFRange>>()
+					workspaceFilesReferences.set(path, pathReferences)
+				}
+
+				let uriReferences = pathReferences.get(uri.toString())
+				if (!uriReferences) {
+					uriReferences = new Collection<VDFRange>()
+					pathReferences.set(uri.toString(), uriReferences)
+				}
+
+				uriReferences.set(target.type, key, ...ranges)
 			}
 		}
 
-		return {
-			workspaceClientSchemeReferences,
-			workspaceFilesReferences,
-		}
+		return new Map(
+			workspaceFilesReferences.entries().map(([path, pathReferences]) => {
+				return [
+					path,
+					new Map(pathReferences.entries().map(([uri, collection]) => {
+						return [
+							uri,
+							new References(new Uri(uri), collection, [])
+						]
+					}))
+				]
+			})
+		)
 	}
 }

@@ -1,6 +1,6 @@
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, concatMap, distinctUntilChanged, map, of, switchMap, type Observable } from "rxjs"
+import { combineLatest, distinctUntilChanged, map, of, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
@@ -116,7 +116,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 
 							return of({
 								schema: schemas[type],
-								global: []
+								globals: []
 							} satisfies VDFTextDocumentDependencies)
 						}
 						else {
@@ -127,61 +127,17 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 								map(({ clientScheme, languageTokens }) => {
 									return {
 										schema: VGUISchema,
-										global: [
+										globals: [
 											clientScheme,
 											languageTokens
 										]
-									}
+									} satisfies VDFTextDocumentDependencies
 								})
 							)
 						}
 					})
 				)
 			})(),
-			getCodeLens: (definitionReferences$) => {
-				if (workspace == null) {
-					return definitionReferences$
-				}
-
-				return workspace.fileType(init.uri).pipe(
-					switchMap((type) => {
-						switch (type) {
-							case VGUIFileType.None:
-								const path = workspace.relative(init.uri)
-								return definitionReferences$.pipe(
-									switchMap((definitionReferences) => {
-										return workspace.getFileReferences(path).pipe(
-											map((references) => {
-												definitionReferences.setDocumentReferences(references, false)
-												return definitionReferences
-											})
-										)
-									})
-								)
-							case VGUIFileType.ClientScheme:
-								return definitionReferences$.pipe(
-									concatMap(async (definitionReferences) => {
-										await workspace.workspaceReferencesReady
-										definitionReferences.setDocumentReferences(workspace.clientSchemeReferences.values().toArray(), false)
-										return definitionReferences
-									})
-								)
-							case VGUIFileType.SourceScheme:
-								return definitionReferences$
-							case VGUIFileType.LanguageTokens:
-								return definitionReferences$.pipe(
-									concatMap(async (definitionReferences) => {
-										await workspace.workspaceReferencesReady
-										definitionReferences.setDocumentReferences(workspace.languageTokensReferences.values().toArray(), false)
-										return definitionReferences
-									})
-								)
-							case VGUIFileType.HUDAnimationsManifest:
-								return definitionReferences$
-						}
-					})
-				)
-			},
 		})
 		this.workspace = workspace
 	}

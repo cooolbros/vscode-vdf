@@ -4,11 +4,11 @@ import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
+import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, identity, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
-import { DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
+import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
 import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
@@ -56,12 +56,11 @@ export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<
 	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
 	dependencies$: Observable<VDFTextDocumentDependencies>
-	getCodeLens(definitionReferences$: Observable<DefinitionReferences>): Observable<DefinitionReferences>
 }
 
 export interface VDFTextDocumentDependencies {
 	schema: VDFTextDocumentSchema
-	global: DefinitionReferences[]
+	globals: DefinitionReferences[]
 }
 
 export interface VDFTextDocumentSchema {
@@ -151,7 +150,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						)
 					}
 
-					const baseFiles = (relativeFolderPath: string | null) => {
+					const baseFiles = (relativeFolderPath: string | null, distinct: boolean) => {
 						return (source: Observable<VDFDocumentSymbols>) => {
 							return source.pipe(
 								map((documentSymbols) => {
@@ -159,7 +158,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
 										.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
 								}),
-								distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])),
+								distinct ? distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])) : identity,
 								map((values) => values.map((value) => {
 									return fileSystem$.pipe(
 										switchMap((fileSystem) => {
@@ -175,7 +174,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 					const check = (document: TDocument, stack: Uri[]): Observable<boolean> => {
 						return document.documentSymbols$.pipe(
-							baseFiles(document.configuration.relativeFolderPath),
+							baseFiles(document.configuration.relativeFolderPath, true),
 							withContext(new Map<string, Observable<boolean>>()),
 							finalizeWithValue(([_, context]) => context.clear()),
 							map(([baseUris, context]) => {
@@ -192,7 +191,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										if (!observable) {
 											observable = usingAsync(() => documents.get(baseUri, true)).pipe(
 												switchMap((baseDocument) => {
-													return check(baseDocument, [...stack, baseUri])
+													return check(baseDocument, [...stack, document.uri])
 												})
 											)
 											context.set(key, observable)
@@ -215,9 +214,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					const input = new Subject<VDFDocumentSymbols>()
 
 					const observable = input.pipe(
-						baseFiles(this.configuration.relativeFolderPath),
+						baseFiles(this.configuration.relativeFolderPath, false),
 						withContext(new Map<string, Observable<DefinitionReferences | null>>()),
-						finalizeWithValue(([_, context]) => context.clear()),
 						map(([uris, context]) => {
 
 							const observables = uris.map((uri) => {
@@ -232,8 +230,12 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									let observable = context.get(key)
 									if (!observable) {
 										observable = usingAsync(() => documents.get(uri, true)).pipe(
+											finalizeWithValue((document) => {
+												document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
+												context.delete(key)
+											}),
 											switchMap((document) => {
-												return check(document, [this.uri, uri]).pipe(
+												return check(document, [this.uri]).pipe(
 													switchMap((result) => {
 														return result
 															? document.definitionReferences$
@@ -259,6 +261,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							return definitionReferences.filter((definitionReferences) => definitionReferences != null)
 						})
 					)
+
 					const output = new ReplaySubject<DefinitionReferences[]>(1)
 
 					const subscription = observable.subscribe((value) => {
@@ -287,17 +290,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}),
 				map(({ dependencies, documentSymbols, base }) => {
 
-					const definitionReferences = new DefinitionReferences({
-						dependencies: [
-							...base,
-
-							// Add document references to workspace
-							...dependencies.global
-						],
-						globals: dependencies.global.map((definitionReferences) => definitionReferences.definitions)
-					})
-
-					const references = new References(this.uri)
+					const definitions = new Collection<Definition>()
+					const references = new Collection<VDFRange>()
 
 					documentSymbols.forAll((documentSymbol, path) => {
 						const referenceKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
@@ -306,7 +300,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							if (definition) {
 								const result = definition.match(documentSymbol, path)
 								if (result) {
-									definitionReferences.definitions.add(type, result.key, {
+									definitions.set(type, result.key, {
 										uri: this.uri,
 										key: result.key,
 										range: documentSymbol.range,
@@ -320,27 +314,29 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 
 							if (reference && documentSymbol.detail != undefined && reference.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
-								references.addReference(type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
+								references.set(type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
 							}
 						}
 					})
 
 					for (const baseDefinitionReferences of base) {
 						for (const { type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
-							// Add #base definitions to document, used for Goto Definition
-							definitionReferences.definitions.add(type, key, ...baseDefinitions)
+							// Copy #base definitions to document, used for Goto Definition
+							definitions.set(type, key, ...baseDefinitions)
 						}
 					}
 
-					// Add references to document, used for Find References and Code Lens
-					// Set notify to true even though the current document has no subscribers,
-					// because it might have #base files that need to notify
-					definitionReferences.setDocumentReferences([references], true)
+					for (const global of dependencies.globals) {
+						global.references.setDocumentReferences(this.uri, new References(this.uri, references, []), true)
+					}
 
 					return {
 						dependencies: dependencies,
 						documentSymbols: documentSymbols,
-						definitionReferences: definitionReferences
+						definitionReferences: new DefinitionReferences(
+							new Definitions({ collection: definitions, globals: dependencies.globals.map(({ definitions }) => definitions) }),
+							new References(this.uri, references, base.map(({ references }) => references), this.references, this.references$)
+						)
 					}
 				})
 			),
@@ -683,9 +679,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 				)
 			},
-			getCodeLens: (definitionReferences$: Observable<DefinitionReferences>) => {
-				return configuration.getCodeLens(definitionReferences$)
-			}
 		})
 
 		this.configuration = configuration

@@ -166,6 +166,7 @@ export abstract class VDFLanguageServer<
 					.filter((value) => text ? value[0].key.toLowerCase().startsWith(text.toLowerCase()) : true)
 					.map((value) => ({
 						label: value[0].key,
+						kind: CompletionItemKind.Variable,
 						...(definitionReferencesConfiguration.toCompletionItem && {
 							...definitionReferencesConfiguration.toCompletionItem(value[0])
 						})
@@ -339,11 +340,8 @@ export abstract class VDFLanguageServer<
 			? toReference(newName)
 			: newName
 
-		for (const [uri, references] of definitionReferences.references) {
-			const edits = changes[uri] ??= []
-			for (const range of references.get(type, key)) {
-				edits.push(TextEdit.replace(range, referenceText))
-			}
+		for (const { uri, range } of definitionReferences.references.collect(type, key)) {
+			(changes[uri.toString()] ??= []).push(TextEdit.replace(range, referenceText))
 		}
 
 		return changes

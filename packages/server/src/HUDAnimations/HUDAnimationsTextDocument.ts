@@ -2,10 +2,10 @@ import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import { posix } from "path"
-import { combineLatest, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import { CodeActionKind, DiagnosticSeverity, DiagnosticTag, type DocumentLink } from "vscode-languageserver"
-import { DefinitionReferences, References } from "../DefinitionReferences"
+import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
 import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
@@ -51,8 +51,8 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 				if (workspace != null) {
 					return workspace.manifest$.pipe(
 						switchMap((documents) => {
-							return documents.includes(this)
-								? workspace.definitionReferences$.pipe(
+							if (documents.includes(this)) {
+								return workspace.definitionReferences$.pipe(
 									map(({ documentSymbols, definitionReferences }) => {
 										return {
 											dependencies: {},
@@ -61,33 +61,46 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										}
 									})
 								)
-								: combineLatest([this.documentSymbols$, workspace.clientScheme$]).pipe(
+							}
+							else {
+								return this.documentSymbols$.pipe(
+									combineLatestWith(workspace.clientScheme$),
 									switchMap(([documentSymbols, clientScheme]) => {
 
 										const eventNames = new Set<string>()
-										const references = new References(this.uri)
+
+										const definitions = new Collection<Definition>()
+										const references = new Collection<VDFRange>()
 
 										for (const documentSymbol of documentSymbols) {
 											const key = documentSymbol.eventName.toLowerCase()
+
 											eventNames.add(key)
+											definitions.set(EventType, key, {
+												uri: this.uri,
+												key: key,
+												range: documentSymbol.range,
+												keyRange: documentSymbol.eventNameRange,
+												conditional: documentSymbol.conditional?.value
+											})
 
 											for (const statement of documentSymbol.children) {
 												if ("event" in statement) {
-													references.addReference(EventType, statement.event, statement.eventRange)
+													references.set(EventType, statement.event, statement.eventRange)
 												}
 
 												if ("element" in statement) {
-													references.addReference(Symbol.for(key), statement.element, statement.elementRange)
+													references.set(Symbol.for(key), statement.element, statement.elementRange)
 												}
 
 												if (statement.type == HUDAnimationStatementType.Animate) {
 													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														references.addReference(Symbol.for("color"), statement.value, statement.valueRange)
+														references.set(Symbol.for("color"), statement.value, statement.valueRange)
 													}
 												}
 
 												if ("font" in statement) {
-													references.addReference(Symbol.for("font"), statement.font, statement.fontRange)
+													references.set(Symbol.for("font"), statement.font, statement.fontRange)
 												}
 											}
 										}
@@ -98,46 +111,36 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 												: of([])
 										).pipe(
 											map((elements) => {
-												const definitionReferences = new DefinitionReferences({
-													globals: [
-														...elements.map(({ definitions }) => definitions),
-														clientScheme
-													]
-												})
-
-												for (const documentSymbol of documentSymbols) {
-													const key = documentSymbol.eventName.toLowerCase()
-													definitionReferences.definitions.add(EventType, key, {
-														uri: this.uri,
-														key: key,
-														range: documentSymbol.range,
-														keyRange: documentSymbol.eventNameRange,
-														conditional: documentSymbol.conditional?.value
-													})
-												}
-
-												definitionReferences.setDocumentReferences([references], false)
-
 												return {
 													dependencies: {},
 													documentSymbols: documentSymbols,
-													definitionReferences: definitionReferences
+													definitionReferences: new DefinitionReferences(
+														new Definitions({
+															collection: definitions,
+															globals: [
+																...elements.map(({ definitions }) => definitions),
+																clientScheme
+															]
+														}),
+														new References(this.uri, references, [], this.references, this.references$)
+													)
 												}
 											})
 										)
 									})
 								)
+							}
 						})
 					)
 				}
 				else {
 					return this.documentSymbols$.pipe(
 						map((documentSymbols) => {
-							const definitionReferences = new DefinitionReferences()
-							const references = new References(this.uri)
+							const definitions = new Collection<Definition>()
+							const references = new Collection<VDFRange>()
 
 							for (const documentSymbol of documentSymbols) {
-								definitionReferences.definitions.add(EventType, documentSymbol.eventName.toLowerCase(), {
+								definitions.set(EventType, documentSymbol.eventName.toLowerCase(), {
 									uri: this.uri,
 									key: documentSymbol.eventName,
 									range: documentSymbol.range,
@@ -147,17 +150,18 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 								for (const statement of documentSymbol.children) {
 									if ("event" in statement) {
-										references.addReference(EventType, statement.event, statement.eventRange)
+										references.set(EventType, statement.event, statement.eventRange)
 									}
 								}
 							}
 
-							definitionReferences.setDocumentReferences([references], false)
-
 							return {
 								dependencies: {},
 								documentSymbols: documentSymbols,
-								definitionReferences: definitionReferences
+								definitionReferences: new DefinitionReferences(
+									new Definitions({ collection: definitions }),
+									new References(this.uri, references, [], this.references, this.references$)
+								)
 							}
 						})
 					)
@@ -171,7 +175,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 						const events = definitionReferences.definitions.get(EventType, key)
 						const definition = events?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
 
-						if (!definition || !definition?.uri.equals(this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
+						if (!definition || !definition.uri.equals(this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
 							diagnostics.push({
 								range: documentSymbol.range,
 								severity: DiagnosticSeverity.Hint,
@@ -181,7 +185,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 								tags: [
 									DiagnosticTag.Unnecessary
 								],
-								relatedInformation: events!.map((event) => ({
+								relatedInformation: events?.map((event) => ({
 									location: {
 										uri: event.uri.toString(),
 										range: event.keyRange
@@ -391,9 +395,6 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 					<(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[]
 				)
 			},
-			getCodeLens: (definitionReferences$) => {
-				return definitionReferences$
-			}
 		})
 
 		this.workspace = workspace

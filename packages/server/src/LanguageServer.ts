@@ -231,7 +231,7 @@ export abstract class LanguageServer<
 
 				subscriptions.push(
 					event.document.definitionReferences$.pipe(
-						switchMap((definitionReferences) => definitionReferences.references$)
+						switchMap((definitionReferences) => definitionReferences.references.references$)
 					).subscribe(() => {
 						this.connection.sendRequest(CodeLensRefreshRequest.method)
 					})
@@ -639,7 +639,7 @@ export abstract class LanguageServer<
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
 		using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
-		for (const { type, key, value: ranges } of definitionReferences.references.get(params.textDocument.uri.toString()) ?? []) {
+		for (const { type, key, value: ranges } of (function*() { yield* definitionReferences.references.collection; yield* definitionReferences.references.rest.get(document.uri.toString())?.collection ?? [] })()) {
 			if (ranges.some((range) => range.contains(params.position))) {
 				return definitionReferences.definitions.get(type, key)?.map((definition) => ({
 					uri: definition.uri.toString(),
@@ -657,8 +657,8 @@ export abstract class LanguageServer<
 			if (definitions.some((definition) => definition.keyRange.contains(params.position))) {
 				return definitionReferences
 					.references
-					.values()
-					.flatMap((references) => references.get(type, key).map((range) => ({ uri: references.uri.toString(), range })))
+					.collect(type, key)
+					.map(({ uri, range }) => ({ uri: uri.toString(), range: range }))
 					.toArray()
 			}
 		}
@@ -763,7 +763,7 @@ export abstract class LanguageServer<
 			}
 		}
 
-		for (const { type, key, value: ranges } of definitionReferences.references.get(params.textDocument.uri.toString()) ?? []) {
+		for (const { type, key, value: ranges } of definitionReferences.references.collection) {
 			for (const range of ranges) {
 				if (range.contains(params.position)) {
 					this.oldName = [type, key]

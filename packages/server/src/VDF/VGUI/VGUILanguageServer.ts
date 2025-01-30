@@ -121,28 +121,12 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 								map((definitionReferences) => definitionReferences?.definitions ?? null)
 							)
 						}),
-					setClientSchemeReferences: t
-						.procedure
-						.input(
-							z.object({
-								key: Uri.schema,
-								references: z.instanceof(References).array()
-							})
-						)
-						.mutation(async ({ input }) => {
-							const workspace = this.workspaces.get(input.key.toString())
-							if (!workspace) {
-								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
-							}
-
-							workspace.setClientSchemeReferences(input.references)
-						}),
 					setFilesReferences: t
 						.procedure
 						.input(
 							z.object({
 								key: Uri.schema,
-								references: z.map(z.string(), z.instanceof(References).array())
+								references: z.map(z.string(), z.map(z.string(), z.instanceof(References).nullable()))
 							})
 						)
 						.mutation(async ({ input }) => {
