@@ -215,7 +215,7 @@ importers:
   packages/common:
     devDependencies:
       devalue:
-        specifier: ^5.0.0
+        specifier: ^5.1.1
         version: 5.1.1
       tsconfig:
         specifier: workspace:^
