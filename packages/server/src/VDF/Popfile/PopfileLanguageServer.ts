@@ -24,6 +24,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 					init,
 					documentConfiguration$,
 					this.fileSystems.get((teamFortress2Folder) => [
+						{ type: "folder", uri: init.uri.dirname() },
 						{ type: "tf2", uri: teamFortress2Folder }
 					]),
 					this.documents,
