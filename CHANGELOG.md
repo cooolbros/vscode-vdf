@@ -6,10 +6,12 @@
  - Enable VTF Editor in VSCode web
  - Add restart language server commands
  - Read `FileSystem`.`SearchPaths` from gameinfo.txt (Fixes all file not found false positives)
+ - Fix references from #base files not being correctly removed
  - Fix VPK file system case insensitivity
  - Fix extension not activating for VPK files
  - Add support for `gameinfo.txt`, `chapterbackgrounds.txt` and `game_sounds_*.txt`
  - Fix Uri parser ignoring files or folders that start with `#` (#26)
+ - Fix VDF keys autocompletion for lines that are not empty (#48)
  - Update minimum VSCode to `^1.95.0`
  - VGUI:
    - Add snippets
@@ -26,6 +28,7 @@
    - Add embedded squirrel syntax highlighting support
    - Add inlay hints for Paint colours for `"set item tint RGB"`
    - Add auto completion for Paint colours for `"set item tint RGB"`
+   - Allow multiple `Where` keys in autocompletion (#51)
    - Add Wave number decorations (#41)
    - Only allow multiline strings for the `Param` key (Fixes syntax error positions being not accurate)
    - Fix syntax highlighting for `#base` statement followed by a comment (#27)
