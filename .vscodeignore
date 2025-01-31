@@ -5,8 +5,9 @@
 **/.next
 **/.turbo
 **/build.js
+**/mdx-components.ts
 **/next-env.d.ts
-**/next.config.mjs
+**/next.config.js
 **/node_modules
 **/postcss.config.js
 **/svelte.config.js
