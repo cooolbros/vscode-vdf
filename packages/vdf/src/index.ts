@@ -1,4 +1,4 @@
-export { VDF } from "./VDF"
+export { VDF, type KeyValues } from "./VDF"
 export { UnclosedEscapeSequenceError, UnexpectedCharacterError, UnexpectedEndOfFileError, UnexpectedTokenError, VDFSyntaxError } from "./VDFErrors"
 export { VDFIndentation } from "./VDFIndentation"
 export { VDFNewLine } from "./VDFNewLine"
