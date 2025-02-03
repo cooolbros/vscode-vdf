@@ -425,7 +425,8 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 						<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>[]
 					)
 				})
-			})
+			}),
+			shareReplay(1)
 		)
 
 		this.decorations$ = this.documentSymbols$.pipe(
