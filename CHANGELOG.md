@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.2.0]
+ - Fix publish of 5.1.0
+
 ## [5.1.0]
  - Fix crashed caused by URIs not beginning with a slash character
  - [Popfile] Add ItemAttributes missing ItemName diagnostic
