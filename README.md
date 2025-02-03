@@ -70,6 +70,8 @@ VDF/Valve KeyValues language support for VSCode
 ### Credits
  - [Revan](https://github.com/cooolbros) - Code
  - [randomguy](https://steamcommunity.com/profiles/76561198056380662) - Popfile knowledge
+ - [Windolon](https://github.com/Windolon) - Testing
+ - [Sergeant Table](https://steamcommunity.com/profiles/76561199046757586) - Testing
 
 Github: https://github.com/cooolbros/vscode-vdf
 
