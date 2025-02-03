@@ -9,6 +9,6 @@ export abstract class WorkspaceBase {
 	}
 
 	public relative(uri: Uri) {
-		return this.uri.relative(uri).path.substring(1)
+		return this.uri.relative(uri)
 	}
 }

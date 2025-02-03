@@ -378,7 +378,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 								const relativePath = configuration.relativeFolderPath
 									? posix.resolve(`/${configuration.relativeFolderPath}/${detail}`).substring(1)
-									: dirname.relative(dirname.joinPath(detail)).path.substring(1)
+									: dirname.relative(dirname.joinPath(detail))
 
 								diagnostics.push(
 									fileSystem$.pipe(
@@ -421,7 +421,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								)
 
 								const baseUri = dirname.joinPath(detail)
-								const relative = dirname.relative(baseUri).path.substring(1)
+								const relative = dirname.relative(baseUri)
 
 								if (detail != relative) {
 									diagnostics.push({

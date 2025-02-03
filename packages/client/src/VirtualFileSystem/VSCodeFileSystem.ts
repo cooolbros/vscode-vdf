@@ -27,14 +27,14 @@ export async function VSCodeFileSystem(
 			const stat = await vscode.workspace.fs.stat(event)
 			if (stat.type == vscode.FileType.File) {
 				const uri = new Uri(event)
-				const path = root.relative(uri).path.substring(1)
+				const path = root.relative(uri)
 				subjects.get(path)?.next(uri)
 			}
 		})
 
 		watcher.onDidDelete((event) => {
 			const uri = new Uri(event)
-			const path = root.relative(uri).path.substring(1)
+			const path = root.relative(uri)
 			subjects.get(path)?.next(null)
 		})
 	}

@@ -55,8 +55,8 @@ export class Uri {
 		return this.with({ path: posix.join(this.path, ...paths.map((path) => path.split(/[/\\]/)).flat()) })
 	}
 
-	public relative(to: Uri) {
-		return this.with({ path: posix.relative(this.path, to.path) })
+	public relative(to: Uri): string {
+		return posix.relative(this.uri.path, to.path)
 	}
 
 	equals(other?: Uri | null): boolean {
