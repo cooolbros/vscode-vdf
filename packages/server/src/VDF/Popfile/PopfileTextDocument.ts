@@ -287,6 +287,18 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			return null
 		}
 
+		if (key == "ItemAttributes".toLowerCase() && documentSymbol.children) {
+			const itemName = documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ItemName".toLowerCase() && documentSymbol.detail != undefined)
+			if (!itemName) {
+				return {
+					range: documentSymbol.nameRange,
+					severity: DiagnosticSeverity.Warning,
+					code: "missing-itemname",
+					source: "popfile",
+					message: "ItemAttributes block must include Itemname (TFBotSpawner: need to specify ItemName in ItemAttributes.)",
+				}
+			}
+		}
 
 		// https://github.com/cooolbros/vscode-vdf/issues/29
 		if (key == "Param".toLowerCase() && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
