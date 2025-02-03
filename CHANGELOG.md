@@ -1,5 +1,10 @@
 # Change Log
 
+## [5.1.0]
+ - Fix crashed caused by URIs not beginning with a slash character
+ - [Popfile] Add ItemAttributes missing ItemName diagnostic
+ - [HUD Animations] Fix recomputing links for every request
+
 ## [5.0.0]
  - Add new reactive text documents system (Fixes some `#base` related diagnostics not updating)
  - Add new standalone VTF Editor
