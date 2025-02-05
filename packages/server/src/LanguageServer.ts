@@ -594,6 +594,8 @@ export abstract class LanguageServer<
 									startsWithFilter = () => true
 								}
 
+								path = posix.resolve(`/${path}`).substring(1)
+
 								const entries = await fileSystem.readDirectory(path, {
 									recursive: documentConfiguration.filesAutoCompletionKind == "all",
 									pattern: extensionsPattern != null
