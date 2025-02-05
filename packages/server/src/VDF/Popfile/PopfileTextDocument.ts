@@ -189,7 +189,13 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									values: values
 								},
 								itemattributes: {
-									values: values
+									values: [
+										{
+											label: "ItemName",
+											kind: CompletionItemKind.Field
+										},
+										...values
+									]
 								}
 							}
 						},
