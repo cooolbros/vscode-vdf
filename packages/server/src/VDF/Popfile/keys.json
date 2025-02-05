@@ -492,7 +492,8 @@
             },
             {
                 "label": "Where",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             }
         ]
     }
