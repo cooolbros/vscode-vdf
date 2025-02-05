@@ -8,7 +8,7 @@ import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import type { TextDocuments } from "../../TextDocuments"
-import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import { VDFTextDocument, VGUIAssetType, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import colours from "./colours.json"
 import keys from "./keys.json"
 import values from "./values.json"
@@ -82,6 +82,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						return null
 					}
 				},
+				asset: VGUIAssetType.Image
 			},
 			{
 				name: "sound",

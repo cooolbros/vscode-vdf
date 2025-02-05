@@ -2,6 +2,7 @@ import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { firstValueFrom } from "rxjs"
 import { commands, languages, window, workspace } from "vscode"
+import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
 import { searchForHUDRoot } from "./searchForHUDRoot"
@@ -130,6 +131,15 @@ export function TRPCClientRouter(
 						fileSystems.get(input.key)?.dispose()
 						fileSystems.delete(input.key)
 					})
+			}),
+		VTFToPNG: t
+			.procedure.input(
+				z.object({
+					uri: Uri.schema
+				})
+			).mutation(async ({ input }) => {
+				const vtf = new VTF(await workspace.fs.readFile(input.uri))
+				return VTFToPNG(vtf, 256)
 			}),
 		window: t.router({
 			createTextEditorDecorationType: t

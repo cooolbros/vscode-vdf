@@ -7,11 +7,11 @@ import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { Color, CompletionItem, CompletionItemKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
-import type { z } from "zod"
+import { Color, CompletionItem, CompletionItemKind, Hover, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import type { TextDocumentInit } from "../TextDocumentBase"
-import type { VDFTextDocument, VDFTextDocumentDependencies } from "./VDFTextDocument"
+import { resolveFileDetail, VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	name: "popfile" | "vdf" | "vmt"
@@ -31,9 +31,10 @@ export abstract class VDFLanguageServer<
 
 	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
 		super(languageId, name, connection, {
-			servers: VDFLanguageServerConfiguration.servers,
+			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,
+				hoverProvider: true,
 				colorProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$, refCountDispose) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$, refCountDispose)
@@ -42,6 +43,7 @@ export abstract class VDFLanguageServer<
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
 		this.documentsColours = new Map()
 
+		this.onTextDocumentRequest(this.connection.onHover, this.onHover)
 		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
 		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
 	}
@@ -185,7 +187,8 @@ export abstract class VDFLanguageServer<
 							const { dir, name: nameNoExt } = posix.parse(name)
 							return posix.join(dir, nameNoExt)
 						})
-						: undefined
+						: undefined,
+					image: fileConfiguration.asset == VGUIAssetType.Image
 				})
 			}
 
@@ -268,6 +271,35 @@ export abstract class VDFLanguageServer<
 			default:
 				return null
 		}
+	}
+
+	private async onHover(params: TextDocumentRequestParams<HoverParams>): Promise<Hover | null> {
+		using document = await this.documents.get(params.textDocument.uri)
+		const documentSymbols = await firstValueFrom(document.documentSymbols$)
+
+		const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(params.position)
+		if (!documentSymbol || !documentSymbol.detailRange || !documentSymbol.detailRange.contains(params.position)) {
+			return null
+		}
+
+		const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
+		const fileSchema = schema.files.find(({ keys }) => keys.has(documentSymbol.key.toLowerCase()))
+		if (!fileSchema) {
+			return null
+		}
+
+		if (fileSchema.asset == VGUIAssetType.Image) {
+			const path = resolveFileDetail(documentSymbol.detail!, fileSchema)
+			const uri = await this.VTFToPNG(document.uri, path)
+			if (uri) {
+				return {
+					contents: `![](${uri})`,
+					range: documentSymbol.detailRange
+				}
+			}
+		}
+
+		return null
 	}
 
 	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {

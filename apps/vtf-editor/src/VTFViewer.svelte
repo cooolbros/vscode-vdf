@@ -2,7 +2,7 @@
 	import type { VTFEditor } from "client/VTF/VTFEditor"
 	import { distinctUntilChanged, filter, fromEvent, map, merge, Observable, scan, startWith, switchMap } from "rxjs"
 	import { toStore } from "svelte/store"
-	import { VTF, VTFImageFormat } from "vtf"
+	import { VTF, VTFImageFormat, VTFPutImageData } from "vtf-canvas"
 	import { z } from "zod"
 
 	interface Props {
@@ -83,7 +83,7 @@
 	function extract(node: HTMLCanvasElement, vtf: VTF) {
 		requestAnimationFrame(() => {
 			try {
-				vtf.putImageData(node.getContext("2d")!, vtf.header.mipmap_count - 1, 0)
+				VTFPutImageData(vtf, node.getContext("2d")!, vtf.header.mipmap_count - 1, 0)
 			} catch (error) {
 				console.error(error)
 				if (error instanceof Error) {

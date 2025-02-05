@@ -1,0 +1,12 @@
+[package]
+name = "vtf-canvas"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+vtf = { version = "0.1.0", path = "../vtf" }
+wasm-bindgen = { workspace = true }
+web-sys = { version = "0.3.77", features = ["CanvasRenderingContext2d", "ImageData"] }

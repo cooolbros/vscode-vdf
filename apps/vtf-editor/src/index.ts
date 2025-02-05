@@ -1,6 +1,6 @@
 import { filter, firstValueFrom, fromEvent } from "rxjs"
 import { mount } from "svelte"
-import init from "vtf"
+import init from "vtf-canvas"
 import App from "./App.svelte"
 import "./app.css"
 

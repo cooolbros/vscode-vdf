@@ -1,5 +1,5 @@
 import { CompletionItemKind } from "vscode-languageserver"
-import type { VDFTextDocumentSchema } from "../../VDFTextDocument"
+import { VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import clientscheme from "../clientscheme.json"
 import keys from "../keys.json"
 import values from "../values.json"
@@ -105,6 +105,7 @@ export const VGUISchema: VDFTextDocumentSchema = {
 			extensionsPattern: ".vmt",
 			resolveBaseName: (value, withExtension) => withExtension(".vmt"),
 			toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
+			asset: VGUIAssetType.Image
 		},
 		{
 			name: "sound",

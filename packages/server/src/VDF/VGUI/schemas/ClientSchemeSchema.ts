@@ -1,6 +1,6 @@
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { CompletionItemKind } from "vscode-languageserver"
-import type { DefinitionMatcher, DefinitionResult, VDFTextDocumentSchema } from "../../VDFTextDocument"
+import { VGUIAssetType, type DefinitionMatcher, type DefinitionResult, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 
 class SchemeDefinitionMatcher implements DefinitionMatcher {
 
@@ -132,6 +132,7 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 			folder: "materials/vgui",
 			extensionsPattern: ".vmt",
 			resolveBaseName: (value, withExtension) => withExtension(".vmt"),
+			asset: VGUIAssetType.Image
 		},
 	],
 	colours: {

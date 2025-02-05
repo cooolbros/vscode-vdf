@@ -1,12 +1,3 @@
 {
-    "name": "vtf",
-    "main": "./pkg/vtf.js",
-    "types": "./pkg/vtf.d.ts",
-    "files": [
-        "pkg"
-    ],
-    "scripts": {
-        "dev": "cargo watch -- wasm-pack build --dev --target web",
-        "build": "wasm-pack build --release --target web"
-    }
+    "name": "vtf"
 }

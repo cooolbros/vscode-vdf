@@ -7,11 +7,12 @@ import { devalueTransformer } from "common/devalueTransformer"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
+import { posix } from "path"
 import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, firstValueFrom, from, map, Observable, shareReplay, Subject, Subscription, switchMap, tap, zip } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { FileType } from "vscode"
-import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, MarkupKind, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
@@ -30,7 +31,8 @@ const capabilities = {
 			"/",
 			"\"",
 			"#",
-		]
+		],
+		resolveProvider: true,
 	},
 	definitionProvider: true,
 	referencesProvider: true,
@@ -67,6 +69,7 @@ export interface CompletionFilesOptions {
 	value: string | null
 	extensionsPattern: `.${string}` | null
 	callbackfn?: (name: string, type: FileType) => Partial<Omit<CompletionItem, "label" | "kind" | "sortText">> | null
+	image?: boolean
 }
 
 export abstract class LanguageServer<
@@ -277,6 +280,7 @@ export abstract class LanguageServer<
 
 		this.onTextDocumentRequest(this.connection.onDidSaveTextDocument, this.onDidSaveTextDocument)
 		this.onTextDocumentRequest(this.connection.onCompletion, this.onCompletion)
+		this.connection.onCompletionResolve((item) => this.onCompletionResolve(item))
 		this.onTextDocumentRequest(this.connection.onDefinition, this.onDefinition)
 		this.onTextDocumentRequest(this.connection.onReferences, this.onReferences)
 		this.onTextDocumentRequest(this.connection.onDocumentSymbol, this.onDocumentSymbol)
@@ -471,6 +475,23 @@ export abstract class LanguageServer<
 		})
 	}
 
+	protected async VTFToPNG(uri: Uri, path: string) {
+		try {
+			using document = await this.documents.get(uri, true)
+			return await firstValueFrom(
+				document.fileSystem$.pipe(
+					switchMap((fileSystem) => fileSystem.resolveFile(path)),
+					concatMap(async (uri) => uri != null ? await this.trpc.servers.vmt.baseTexture.query({ uri }) : null),
+					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNG.mutate({ uri }) : null),
+				)
+			)
+		}
+		catch (error) {
+			console.error(error)
+			return null
+		}
+	}
+
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<{ onDidClose: () => void }> {
 		return {
 			onDidClose: () => {
@@ -555,7 +576,7 @@ export abstract class LanguageServer<
 			const items = await this.getCompletion(
 				document,
 				new VDFPosition(params.position.line, params.position.character),
-				async (path: string, { value, extensionsPattern, callbackfn }: CompletionFilesOptions) => {
+				async (path: string, { value, extensionsPattern, callbackfn, image }: CompletionFilesOptions) => {
 					return await firstValueFrom(
 						zip([document.fileSystem$, document.documentConfiguration$]).pipe(
 							concatMap(async ([fileSystem, documentConfiguration]) => {
@@ -606,6 +627,14 @@ export abstract class LanguageServer<
 													...(incremental && {
 														commitCharacters: ["/"],
 													}),
+													...(image && type == 1 && {
+														data: {
+															image: {
+																uri: document.uri,
+																path: posix.join(path, name)
+															}
+														},
+													}),
 													...rest
 												}
 											}
@@ -635,6 +664,23 @@ export abstract class LanguageServer<
 	}
 
 	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null>
+
+	protected async onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
+		const result = z.object({ image: z.object({ uri: Uri.schema, path: z.string() }) }).safeParse(item.data)
+
+		if (result.success) {
+			const { image } = result.data
+			const uri = await this.VTFToPNG(image.uri, image.path)
+			if (uri) {
+				item.documentation = {
+					kind: MarkupKind.Markdown,
+					value: `![](${uri})`
+				}
+			}
+		}
+
+		return item
+	}
 
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
 		using document = await this.documents.get(params.textDocument.uri)

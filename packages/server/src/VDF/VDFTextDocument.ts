@@ -37,7 +37,7 @@ function ArrayEndsWithArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b:
 	return arr2.every((value, index) => comparer(arr1[start + index], value))
 }
 
-function resolveFileDetail(detail: string, configuration: VDFTextDocumentSchema["files"][number]) {
+export function resolveFileDetail(detail: string, configuration: VDFTextDocumentSchema["files"][number]) {
 	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
 
 	return posix.resolve(
@@ -87,7 +87,7 @@ export interface VDFTextDocumentSchema {
 		extensionsPattern: `.${string}` | null
 		resolveBaseName: (value: string, withExtension: (extension: `.${string}`) => string) => string,
 		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
-
+		asset?: VGUIAssetType
 	}[]
 	colours: {
 		keys: {
@@ -118,6 +118,11 @@ export interface DefinitionResult {
 	key: string
 	keyRange: VDFRange
 	nameRange?: VDFRange
+}
+
+export const enum VGUIAssetType {
+	None = 0,
+	Image = 1
 }
 
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies> {

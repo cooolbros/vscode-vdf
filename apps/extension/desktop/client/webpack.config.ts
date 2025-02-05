@@ -7,6 +7,10 @@ export default {
 	entry: {
 		extension: join(import.meta.dirname, "src/extension.ts")
 	},
+	experiments: {
+		asyncWebAssembly: true,
+		syncWebAssembly: true,
+	},
 	output: {
 		path: join(import.meta.dirname, "dist"),
 		libraryTarget: "commonjs2"
