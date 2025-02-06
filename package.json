@@ -448,6 +448,9 @@
             "vscode-languageserver": "^9.0.1"
         }
     },
+    "vsce": {
+        "dependencies": false
+    },
     "__metadata": {
         "id": "93d4f61b-4a5a-436e-95d4-af591fe14d15",
         "publisherDisplayName": "pfwobcke",
