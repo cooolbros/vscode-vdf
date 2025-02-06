@@ -733,35 +733,33 @@ export abstract class LanguageServer<
 
 		const uri = params.textDocument.uri.toString()
 
-		return params
+		const utils = <const>[
+			// createDocumentWorkspaceEdit
+			(range: VDFRange, newText: string) => ({
+				changes: {
+					[uri]: [
+						TextEdit.replace(range, newText)
+					]
+				}
+			}),
+			// findBestMatch
+			(mainString: string, targetStrings: string[]) => {
+				return targetStrings.length != 0
+					? findBestMatch(mainString, targetStrings).bestMatch.target
+					: null
+			}
+		]
+
+		const codeActions = params
 			.context
 			.diagnostics
 			.values()
 			.map((diagnostic) => diagnostics.get(diagnostic.data.id))
 			.filter((diagnostic): diagnostic is NonNullable<typeof diagnostic> => diagnostic != undefined && diagnostic.data != undefined)
 			.filter(filter)
-			.map((diagnostic) => {
-				let isPreferred = true
+			.map((diagnostic, index) => {
 
-				const codeAction = diagnostic.data!.fix(
-					(range: VDFRange, newText: string) => {
-						return {
-							changes: {
-								[uri]: [
-									TextEdit.replace(range, newText)
-								]
-							}
-						}
-					},
-					(mainString: string, targetStrings: string[]) => {
-						if (!targetStrings.length) {
-							return null
-						}
-						const match = findBestMatch(mainString, targetStrings).bestMatch
-						// isPreferred = match.rating > 0.5
-						return match.target
-					}
-				)
+				const codeAction = diagnostic.data!.fix(...utils)
 
 				if (!codeAction) {
 					return null
@@ -771,11 +769,42 @@ export abstract class LanguageServer<
 					...codeAction,
 					kind: diagnostic.data!.kind,
 					diagnostics: [diagnostic],
-					isPreferred: isPreferred
+					isPreferred: index == 0
 				} satisfies CodeAction
 			})
 			.filter((codeAction) => codeAction != null)
 			.toArray()
+
+		const codes = new Set(
+			codeActions
+				.values()
+				.map((codeAction) => codeAction.diagnostics[0].code)
+		)
+
+		return [
+			...codeActions,
+			...codes
+				.values()
+				.map((code) => diagnostics.values().filter((diagnostic) => diagnostic.code == code).toArray())
+				.filter((diagnostics) => diagnostics.length > 1)
+				.map((diagnostics) => {
+					return {
+						title: `Fix all issues of kind '${diagnostics[0].message}'`,
+						kind: CodeActionKind.QuickFix,
+						diagnostics: diagnostics,
+						edit: {
+							changes: {
+								[uri]: diagnostics
+									.values()
+									.flatMap((diagnostic) => diagnostic.data!.fix(...utils)?.edit?.changes?.[uri] ?? [])
+									.filter(edit => edit != undefined)
+									.toArray()
+							}
+						}
+					} satisfies CodeAction
+				})
+				.toArray()
+		]
 	}
 
 	private async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
