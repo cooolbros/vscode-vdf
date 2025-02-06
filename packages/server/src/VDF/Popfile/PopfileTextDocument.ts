@@ -173,20 +173,35 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				switchMap((document) => document.documentSymbols$),
 				map((documentSymbols) => {
 					const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")
-					const attributes = items_game?.children?.find((documentSymbol) => documentSymbol.key == "attributes")
-					return attributes?.children?.values().map((documentSymbol) => {
-						return documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail
-					}).filter((value) => value != undefined) ?? Iterator.from([])
+
+					function names(key: string) {
+						return items_game
+							?.children
+							?.find((documentSymbol) => documentSymbol.key == key)
+							?.children
+							?.values()
+							.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
+							.filter((name) => name != undefined)
+					}
+
+					return {
+						items: names("items") ?? Iterator.from([]),
+						attributes: names("attributes") ?? Iterator.from([]),
+					}
 				}),
-				map((attributes) => {
-					const values = attributes.map((attribute) => ({ label: attribute, kind: 5 })).toArray()
+				map(({ items, attributes }) => {
+					const attributesItems = attributes.map((name) => ({ label: name, kind: CompletionItemKind.Field })).toArray()
+
+					// Drop "default"
+					const itemsItems = items.drop(1).toArray()
+
 					return {
 						schema: {
 							...PopfileTextDocument.Schema,
 							keys: {
 								...keys,
 								characterattributes: {
-									values: values
+									values: attributesItems
 								},
 								itemattributes: {
 									values: [
@@ -194,8 +209,19 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 											label: "ItemName",
 											kind: CompletionItemKind.Field
 										},
-										...values
+										...attributesItems
 									]
+								}
+							},
+							values: {
+								...values,
+								item: {
+									kind: CompletionItemKind.Constant,
+									values: itemsItems
+								},
+								itemname: {
+									kind: CompletionItemKind.Constant,
+									values: itemsItems
 								}
 							}
 						},
