@@ -298,12 +298,12 @@
             {
                 "language": "hudanimations",
                 "scopeName": "source.hudanimations",
-                "path": "./apps/syntaxes/dist/hudanimations.tmLanguage.json"
+                "path": "./packages/syntaxes/dist/hudanimations.tmLanguage.json"
             },
             {
                 "language": "popfile",
                 "scopeName": "source.popfile",
-                "path": "./apps/syntaxes/dist/popfile.tmLanguage.json",
+                "path": "./packages/syntaxes/dist/popfile.tmLanguage.json",
                 "embeddedLanguages": {
                     "meta.embedded.block.squirrel": "squirrel"
                 }
@@ -311,12 +311,12 @@
             {
                 "language": "vmt",
                 "scopeName": "source.vmt",
-                "path": "./apps/syntaxes/dist/vmt.tmLanguage.json"
+                "path": "./packages/syntaxes/dist/vmt.tmLanguage.json"
             },
             {
                 "language": "vdf",
                 "scopeName": "source.vdf",
-                "path": "./apps/syntaxes/dist/vdf.tmLanguage.json"
+                "path": "./packages/syntaxes/dist/vdf.tmLanguage.json"
             }
         ],
         "languages": [

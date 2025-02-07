@@ -90,6 +90,9 @@ importers:
       rehype-pretty-code:
         specifier: ^0.14.0
         version: 0.14.0(shiki@1.27.2)
+      syntaxes:
+        specifier: workspace:^
+        version: link:../../packages/syntaxes/dist
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@types/node@22.9.0)(typescript@5.6.3))
@@ -150,18 +153,6 @@ importers:
       vscode-languageserver:
         specifier: ^9.0.1
         version: 9.0.1
-
-  apps/syntaxes:
-    devDependencies:
-      js-yaml:
-        specifier: ^4.1.0
-        version: 4.1.0
-      server:
-        specifier: workspace:^
-        version: link:../../packages/server/src
-      tsconfig:
-        specifier: workspace:^
-        version: link:../../packages/tsconfig
 
   apps/vtf-editor:
     devDependencies:
@@ -300,6 +291,19 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
     publishDirectory: src
+
+  packages/syntaxes:
+    devDependencies:
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
+      server:
+        specifier: workspace:^
+        version: link:../server/src
+      tsconfig:
+        specifier: workspace:^
+        version: link:../tsconfig
+    publishDirectory: dist
 
   packages/tsconfig: {}
 

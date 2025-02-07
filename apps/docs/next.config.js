@@ -15,9 +15,9 @@ const withNextra = nextra({
 					themes: ["light-plus", "dark-plus"],
 					langs: [
 						// @ts-ignore
-						async () => await import("../syntaxes/dist/hudanimations.tmLanguage.json", { with: { type: "json" } }),
-						async () => await import("../syntaxes/dist/popfile.tmLanguage.json", { with: { type: "json" } }),
-						async () => await import("../syntaxes/dist/vdf.tmLanguage.json", { with: { type: "json" } }),
+						async () => await import("syntaxes/hudanimations.tmLanguage.json", { with: { type: "json" } }),
+						async () => await import("syntaxes/popfile.tmLanguage.json", { with: { type: "json" } }),
+						async () => await import("syntaxes/vdf.tmLanguage.json", { with: { type: "json" } }),
 					]
 				})
 			}

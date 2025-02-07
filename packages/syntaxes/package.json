@@ -1,5 +1,8 @@
 {
     "name": "syntaxes",
+    "publishConfig": {
+        "directory": "dist"
+    },
     "scripts": {
         "dev": "node --watch-path=./src build",
         "build": "node build"
