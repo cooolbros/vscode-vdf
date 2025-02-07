@@ -12,7 +12,8 @@ export default {
 	),
 	output: {
 		path: join(import.meta.dirname, "dist"),
-		libraryTarget: "commonjs2"
+		libraryTarget: "commonjs2",
+		clean: true,
 	},
 	resolve: {
 		extensions: [".js", ".ts"]

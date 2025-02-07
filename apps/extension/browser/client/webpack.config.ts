@@ -14,7 +14,8 @@ export default {
 	},
 	output: {
 		path: join(import.meta.dirname, "dist"),
-		libraryTarget: "commonjs"
+		libraryTarget: "commonjs",
+		clean: true,
 	},
 	externals: {
 		vscode: "commonjs vscode"

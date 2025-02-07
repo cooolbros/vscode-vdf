@@ -15,6 +15,7 @@ export default {
 		path: join(import.meta.dirname, "dist"),
 		libraryTarget: "var",
 		library: "serverExportVar",
+		clean: true,
 	},
 	resolve: {
 		extensions: [".js", ".ts"],
