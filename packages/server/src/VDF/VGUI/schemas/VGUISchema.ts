@@ -86,7 +86,7 @@ export const VGUISchema: VDFTextDocumentSchema = {
 				toDefinition: (string) => string.substring("#".length)
 			},
 			toReference: (value) => `#${value}`,
-			toCompletionItem: (definition) => ({ kind: CompletionItemKind.Text, insertText: `#${definition.key}` })
+			toCompletionItem: (definition) => ({ kind: CompletionItemKind.Text, labelDetails: { description: definition.detail }, insertText: `#${definition.key}` })
 		}
 	],
 	files: [
