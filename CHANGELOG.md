@@ -1,5 +1,22 @@
 # Change Log
 
+## [5.3.0]
+ - Update minimum VSCode version to 1.97.0
+ - Add image hovers
+ - Add image autocompletion previews
+ - Fix autocompletion returning incorrect files when searching parent directories (`..`)
+ - Fix formatter inserting newline at incorrect position when using `insertNewlineBeforeObjects`
+ - Add code action to fix all issues of same type
+ - VGUI
+   - Add inlay hints for enum numbers and language token references
+   - Add language token values to autocompletion documentation
+   - Add `activeimage` and `inactiveimage` image keys
+- Popfile:
+   - Add wave currency to wave number decorations
+   - Suggest `ItemName` inside ItemAttributes block
+   - Add autocompletion for `Item` and `ItemName` values
+   - Fix not suggesting `Where` in WaveSpawn blocks where Where is already present
+
 ## [5.2.0]
  - Fix publish of 5.1.0
 
