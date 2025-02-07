@@ -23,5 +23,6 @@ Cargo.lock
 Cargo.toml
 packages/**
 pnpm-*.yaml
+rustfmt.toml
 target
 turbo.json
