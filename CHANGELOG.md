@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.3.1]
+ - Remove unnecessary files from bundle
+
 ## [5.3.0]
  - Update minimum VSCode version to 1.97.0
  - Add image hovers
