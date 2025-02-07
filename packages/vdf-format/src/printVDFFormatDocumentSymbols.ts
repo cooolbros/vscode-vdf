@@ -69,20 +69,32 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 			}
 		}
 
-		const len = documentSymbols.length - 1
-		let i = 0
-
-		for (const documentSymbol of documentSymbols) {
+		for (const [i, documentSymbol] of documentSymbols.entries()) {
 			if (documentSymbol.blockComment != undefined) {
-				str += `${getIndentation(level)}//${documentSymbol.blockComment != "" && documentSymbol.blockComment[0] != "/" ? blockCommentAfterSlash : ""}${documentSymbol.blockComment}`
-				if (level != 0 || i < len || _options.insertFinalNewline) {
-					str += eol
+
+				// If:
+				// - _options.insertNewlineBeforeObjects == true
+				// - we are not the first node in the tree
+				// - and the previous node is not a block comment
+				// - The first node after us and skipping all block comments is an object
+				//
+				// Insert newline on behalf of object, so that comment is printed immediately above object without newline
+				// and newline is printed above block comment(s)
+				if (_options.insertNewlineBeforeObjects && i != 0) {
+					const prev = documentSymbols[i - 1]
+					const next = documentSymbols.slice(i + 1).values().find((documentSymbol) => documentSymbol.blockComment == undefined)
+					if (prev.blockComment == undefined && next && typeof next.value != "string") {
+						str += eol
+					}
 				}
+
+				str += `${getIndentation(level)}//${documentSymbol.blockComment != "" && documentSymbol.blockComment[0] != "/" ? blockCommentAfterSlash : ""}${documentSymbol.blockComment}`
 			}
 			else if (documentSymbol.key != undefined && documentSymbol.value != undefined) {
 				if (Array.isArray(documentSymbol.value)) {
 
-					if (i != 0 && _options.insertNewlineBeforeObjects) {
+					// Only insert newline before object if previous node is not a comment
+					if (i != 0 && _options.insertNewlineBeforeObjects && (documentSymbols[i - 1].blockComment == undefined)) {
 						str += eol
 					}
 
@@ -101,9 +113,6 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 					str += `${getIndentation(level)}{${eol}`
 					str += stringifyObject(documentSymbol.value, level + 1)
 					str += `${getIndentation(level)}}`
-					if (level != 0 || i < len || _options.insertFinalNewline) {
-						str += eol
-					}
 				}
 				else {
 					str += `${getIndentation(level)}${getToken(documentSymbol.key)}${getWhitespace(longestKeyLength, documentSymbol.key.length + (!_options.quotes && (!documentSymbol.key.length || /\s/.test(documentSymbol.key)) ? 2 : 0))}${getToken(documentSymbol.value)}`
@@ -113,14 +122,12 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 					if (documentSymbol.inLineComment != undefined) {
 						str += `${lineCommentBeforeSlash}//${documentSymbol.inLineComment != "" ? lineCommentAfterSlash : ""}${documentSymbol.inLineComment}`
 					}
-
-					if (level != 0 || i < len || _options.insertFinalNewline) {
-						str += eol
-					}
 				}
 			}
 
-			i++
+			if (level != 0 || i < documentSymbols.length - 1 || _options.insertFinalNewline) {
+				str += eol
+			}
 		}
 		return str
 	}
