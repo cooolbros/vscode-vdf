@@ -1,8 +1,8 @@
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { concatMap, map, switchMap, type Observable } from "rxjs"
+import { concatMap, map, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
+import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -154,6 +154,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		}
 	}
 
+	public readonly inlayHints$: Observable<InlayHint[]>
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
 
 	constructor(
@@ -230,6 +231,28 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				})
 			),
 		})
+
+		this.inlayHints$ = this.documentSymbols$.pipe(
+			map((documentSymbols) => {
+				return documentSymbols.reduceRecursive(
+					[] as InlayHint[],
+					(inlayHints, documentSymbol) => {
+						if (documentSymbol.key.toLowerCase() == "set item tint rgb".toLowerCase() && documentSymbol.detailRange) {
+							if (((detail): detail is keyof typeof colours => detail in colours)(documentSymbol.detail!)) {
+								inlayHints.push({
+									position: documentSymbol.detailRange.end,
+									label: colours[documentSymbol.detail!],
+									kind: InlayHintKind.Type,
+									paddingLeft: true
+								})
+							}
+						}
+						return inlayHints
+					}
+				)
+			}),
+			shareReplay(1)
+		)
 
 		this.decorations$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {

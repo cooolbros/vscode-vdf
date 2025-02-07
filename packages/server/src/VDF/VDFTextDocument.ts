@@ -7,7 +7,7 @@ import { posix } from "path"
 import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink } from "vscode-languageserver"
+import { CodeActionKind, Color, ColorInformation, CompletionItem, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
 import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
@@ -131,6 +131,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 	public readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri; resolve: () => Promise<Uri | null> } })[]>
 	public readonly colours$: Observable<(ColorInformation & { stringify(colour: Color): string })[]>
+	public abstract readonly inlayHints$: Observable<InlayHint[]>
 
 	constructor(
 		init: TextDocumentInit,

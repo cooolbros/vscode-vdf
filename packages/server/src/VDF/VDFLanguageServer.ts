@@ -1,5 +1,6 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
 import { generateTokens } from "common/generateTokens"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
@@ -7,7 +8,7 @@ import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { Color, CompletionItem, CompletionItemKind, Hover, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import type { TextDocumentInit } from "../TextDocumentBase"
@@ -36,6 +37,7 @@ export abstract class VDFLanguageServer<
 				...VDFLanguageServerConfiguration.capabilities,
 				hoverProvider: true,
 				colorProvider: true,
+				inlayHintProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$, refCountDispose) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$, refCountDispose)
 		})
@@ -46,6 +48,10 @@ export abstract class VDFLanguageServer<
 		this.onTextDocumentRequest(this.connection.onHover, this.onHover)
 		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
 		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
+		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
+			using document = await this.documents.get(new Uri(params.textDocument.uri))
+			return await firstValueFrom(document.inlayHints$)
+		})
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {

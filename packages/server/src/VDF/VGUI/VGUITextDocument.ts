@@ -1,8 +1,8 @@
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, map, of, switchMap, type Observable } from "rxjs"
+import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, DiagnosticSeverity } from "vscode-languageserver"
+import { CodeActionKind, DiagnosticSeverity, InlayHint } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -20,6 +20,8 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 
 	public static KeyTransform = (key: string) => key.replace(/_(minmode|override|(lo|hi)def)$/, "")
 	public readonly workspace: VGUIWorkspace | null
+
+	public readonly inlayHints$: Observable<InlayHint[]>
 
 	constructor(
 		init: TextDocumentInit,
@@ -139,7 +141,81 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 				)
 			})(),
 		})
+
 		this.workspace = workspace
+
+		this.inlayHints$ = this.configuration.dependencies$.pipe(
+			switchMap((dependencies) => {
+				if (dependencies.schema != VGUISchema) {
+					return of([])
+				}
+
+				return this.definitionReferences$.pipe(
+					switchMap((definitionReferences) => {
+						return this.documentSymbols$.pipe(
+							map((documentSymbols) => {
+								return {
+									documentSymbols,
+									definitionReferences
+								}
+							})
+						)
+					}),
+					map(({ documentSymbols, definitionReferences }) => {
+						const string = Symbol.for("string")
+						return documentSymbols.reduceRecursive(
+							[] as InlayHint[],
+							(inlayHints, documentSymbol) => {
+								if (documentSymbol.children) {
+									return inlayHints
+								}
+
+								const documentSymbolKey = VGUITextDocument.KeyTransform(documentSymbol.key.toLowerCase())
+								if (documentSymbolKey in dependencies.schema.values) {
+									const valueData = dependencies.schema.values[documentSymbolKey]
+									if (valueData.enumIndex) {
+										const index = parseInt(documentSymbol.detail!)
+										if (!isNaN(index) && index >= 0 && index < valueData.values.length) {
+											inlayHints.push({
+												position: documentSymbol.detailRange!.end,
+												label: valueData.values[index],
+												paddingLeft: true,
+											})
+										}
+									}
+								}
+
+								const definitionReferencesConfiguration = dependencies
+									.schema
+									.definitionReferences
+									.values()
+									.filter((definitionReference): definitionReference is typeof definitionReference & { reference: NonNullable<typeof definitionReference["reference"]> } => definitionReference.reference != undefined)
+									.find(({ reference: { keys } }) => keys.has(documentSymbolKey))
+
+
+								if (definitionReferencesConfiguration != undefined && definitionReferencesConfiguration.type == string) {
+									const detail = definitionReferencesConfiguration.reference.toDefinition
+										? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail!)
+										: documentSymbol.detail!
+
+									const definitions = definitionReferences.definitions.get(definitionReferencesConfiguration.type, detail)
+									if (definitions?.[0].detail) {
+										inlayHints.push({
+											position: documentSymbol.detailRange!.end,
+											label: definitions[0].detail,
+											paddingLeft: true,
+										})
+									}
+								}
+
+								return inlayHints
+							}
+						)
+					})
+				)
+			}),
+			shareReplay(1)
+		)
 	}
 
 	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {

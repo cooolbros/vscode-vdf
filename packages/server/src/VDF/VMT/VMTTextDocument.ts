@@ -2,7 +2,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { of, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver"
+import { CompletionItemKind, InlayHint, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -16,6 +16,8 @@ import values from "./values.json"
 export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 	public readonly workspace: WorkspaceBase | null
+
+	public readonly inlayHints$: Observable<InlayHint[]>
 
 	constructor(
 		init: TextDocumentInit,
@@ -111,7 +113,10 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 				globals: []
 			}),
 		})
+
 		this.workspace = workspace
+
+		this.inlayHints$ = of([])
 	}
 
 	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {

@@ -1,11 +1,9 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
-import { Uri } from "common/Uri"
 import { firstValueFrom, Subscription } from "rxjs"
-import { FoldingRange, FoldingRangeKind, InlayHint, InlayHintKind, InlayHintRequest, type Connection, type FoldingRangeParams, type InlayHintParams, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { PopfileTextDocument } from "./PopfileTextDocument"
-import colours from "./colours.json"
 
 export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileTextDocument> {
 
@@ -17,7 +15,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 			servers: new Set(),
 			capabilities: {
 				foldingRangeProvider: true,
-				inlayHintProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$, refCountDispose) => {
 				return new PopfileTextDocument(
@@ -34,26 +31,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		})
 
 		this.onTextDocumentRequest(this.connection.onFoldingRanges, this.onFoldingRanges)
-
-		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
-			using document = await this.documents.get(new Uri(params.textDocument.uri))
-			return (await firstValueFrom(document.documentSymbols$)).reduceRecursive(
-				[] as InlayHint[],
-				(inlayHints, documentSymbol) => {
-					if (documentSymbol.key.toLowerCase() == "set item tint rgb".toLowerCase() && documentSymbol.detailRange) {
-						if (((detail): detail is keyof typeof colours => detail in colours)(documentSymbol.detail!)) {
-							inlayHints.push({
-								position: documentSymbol.detailRange.end,
-								label: colours[documentSymbol.detail!],
-								kind: InlayHintKind.Type,
-								paddingLeft: true
-							})
-						}
-					}
-					return inlayHints
-				}
-			)
-		})
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
