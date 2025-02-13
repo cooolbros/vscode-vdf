@@ -13,7 +13,6 @@ jobs:
           node-version: latest
       - uses: pnpm/action-setup@v4
       - run: pnpm install
-      - run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - run: pnpm build:docs
       - uses: peaceiris/actions-gh-pages@v4
         with:
