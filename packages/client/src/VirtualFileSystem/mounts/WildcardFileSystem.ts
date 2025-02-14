@@ -109,8 +109,19 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 			return observable
 		},
 		readDirectory: async (path, options) => {
-			const all = (await Promise.all(fileSystems$.value.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))).flat()
-			return all.filter(([name], index) => all.findIndex(([n]) => n == name) == index)
+			const results = await Promise.allSettled(fileSystems$.value.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))
+
+			return results
+				.values()
+				.filter((result) => result.status == "fulfilled")
+				.map((result) => result.value)
+				.flatMap((value) => value)
+				.reduce((a, b) => {
+					if (!a.some(([n]) => n == b[0])) {
+						a.push(b)
+					}
+					return a
+				}, <[string, vscode.FileType][]>[])
 		},
 		dispose: () => {
 			watcher.dispose()
