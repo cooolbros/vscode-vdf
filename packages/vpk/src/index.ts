@@ -21,7 +21,35 @@ export class VPK {
 
 	constructor(data: DataView) {
 
-		let i = 28
+		let i = 0
+
+		const signature = data.getUint32(i, true)
+		if (signature != 1437209140) {
+			throw new Error(`Invalid VPK Signature: Expected ${1437209140}, got ${signature}`)
+		}
+		i += 4
+
+		const version = data.getUint32(i, true)
+		i += 4
+
+		const treeSize = data.getUint32(i, true)
+		i += 4
+
+		if (version == 2) {
+			const fileDataSectionSize = data.getUint32(i, true)
+			i += 4
+
+			const archiveMD5SectionSize = data.getUint32(i, true)
+			i += 4
+
+			const otherMD5SectionSize = data.getUint32(i, true)
+			i += 4
+
+			const signatureSectionSize = data.getUint32(i, true)
+			i += 4
+		}
+
+		const headerSize = i
 
 		const readString = (): string => {
 			const start = i
@@ -75,13 +103,13 @@ export class VPK {
 						break
 					}
 
-					// const crc = buffer.readUInt32LE(i).toString(16)
+					// const crc = data.getUint32(i, true)
 					i += 4
 
-					// Skip unsigned short PreloadBytes
+					// const preloadBytes = data.getUint16(i, true)
 					i += 2
 
-					const archiveIndex = data.getUint8(i)
+					const archiveIndex = data.getUint16(i, true)
 					i += 2
 
 					const entryOffset = data.getUint32(i, true)
@@ -99,7 +127,7 @@ export class VPK {
 
 					tree.value.set(
 						`${fileName}.${extension}`,
-						{ type: VPKFileType.File, value: { archiveIndex, entryOffset, entryLength } }
+						{ type: VPKFileType.File, value: { archiveIndex, entryOffset: archiveIndex == 32767 ? headerSize + treeSize + entryOffset : entryOffset, entryLength } }
 					)
 				}
 			}
