@@ -1,6 +1,7 @@
 {
     "recommendations": [
         "bierner.comment-tagged-templates",
+        "github.vscode-github-actions",
         "pedro-w.tmlanguage"
     ]
 }

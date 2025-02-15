@@ -1,4 +1,8 @@
 {
+    "[github-actions-workflow]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
+    },
     "[json][jsonc][snippets]": {
         "editor.insertSpaces": true,
         "editor.tabSize": 4
