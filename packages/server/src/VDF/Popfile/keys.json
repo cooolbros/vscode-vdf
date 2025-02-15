@@ -178,6 +178,10 @@
             {
                 "label": "Action",
                 "kind": 7
+            },
+            {
+                "label": "Param",
+                "kind": 7
             }
         ]
     },
