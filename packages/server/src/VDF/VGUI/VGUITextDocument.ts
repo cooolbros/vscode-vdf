@@ -2,7 +2,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, DiagnosticSeverity, InlayHint } from "vscode-languageserver"
+import { CodeActionKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -179,6 +179,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 											inlayHints.push({
 												position: documentSymbol.detailRange!.end,
 												label: valueData.values[index],
+												textEdits: [TextEdit.replace(documentSymbol.detailRange!, valueData.values[index])],
 												paddingLeft: true,
 											})
 										}
