@@ -5,6 +5,7 @@
     },
     "devDependencies": {
         "@trpc/server": "^10.45.2",
+        "bsp": "workspace:^",
         "common": "workspace:^",
         "minimatch": "^10.0.1",
         "tsconfig": "workspace:^",

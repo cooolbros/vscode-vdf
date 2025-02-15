@@ -1,5 +1,7 @@
+import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { concatMap, map, shareReplay, switchMap, type Observable } from "rxjs"
+import { posix } from "path"
+import { combineLatest, concatMap, from, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat } from "vscode-languageserver"
@@ -162,6 +164,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		documentConfiguration: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<PopfileTextDocument>,
+		getEntities: (uri: Uri) => Promise<Record<string, string>[] | null>,
 		refCountDispose: (dispose: () => void) => void,
 	) {
 		super(init, documentConfiguration, fileSystem$, documents, refCountDispose, {
@@ -169,28 +172,98 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase()]) },
 			keyTransform: (key) => key,
 			dependencies$: fileSystem$.pipe(
-				switchMap((fileSystem) => fileSystem.resolveFile("scripts/items/items_game.txt")),
-				concatMap(async (uri) => documents.get(uri!, true)),
-				switchMap((document) => document.documentSymbols$),
-				map((documentSymbols) => {
-					const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")
+				switchMap((fileSystem) => {
+					return combineLatest({
+						items: fileSystem.resolveFile("scripts/items/items_game.txt").pipe(
+							concatMap(async (uri) => documents.get(uri!, true)),
+							switchMap((document) => document.documentSymbols$),
+							map((documentSymbols) => {
+								const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")
 
-					function names(key: string) {
-						return items_game
-							?.children
-							?.find((documentSymbol) => documentSymbol.key == key)
-							?.children
-							?.values()
-							.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
-							.filter((name) => name != undefined)
-					}
+								function names(key: string) {
+									return items_game
+										?.children
+										?.find((documentSymbol) => documentSymbol.key == key)
+										?.children
+										?.values()
+										.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
+										.filter((name) => name != undefined)
+								}
 
-					return {
-						items: names("items") ?? Iterator.from([]),
-						attributes: names("attributes") ?? Iterator.from([]),
-					}
+								return {
+									items: names("items") ?? Iterator.from([]),
+									attributes: names("attributes") ?? Iterator.from([]),
+								}
+							}),
+						),
+						entities: from(fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })).pipe(
+							map((maps) => {
+								const basename = this.uri.basename()
+								return maps
+									.values()
+									.filter(([, type]) => type == 1)
+									.find(([name]) => basename.startsWith(posix.parse(name).name))?.[0]
+							}),
+							switchMap((bsp) => {
+								if (!bsp) {
+									return of(null)
+								}
+
+								return fileSystem.resolveFile(`maps/${bsp}`).pipe(
+									concatMap(async (uri) => {
+										if (!uri) {
+											return null
+										}
+
+										const entities = await getEntities(uri)
+										if (!entities) {
+											return null
+										}
+
+										return Map.groupBy(entities, (item) => item["classname"])
+									}),
+									map((entities) => {
+										if (!entities) {
+											return null
+										}
+
+										// Where
+										const blueTeamSpawns = new Set(
+											entities
+												?.get("info_player_teamspawn")
+												?.values()
+												?.filter((entity) => entity["TeamNum"] == "3")
+												.map((entity) => entity["targetname"])
+												.toArray()
+										)
+
+										// Target
+										const logicRelays = new Set(
+											entities
+												?.get("logic_relay")
+												?.values()
+												.map((entity) => entity["targetname"])
+												.toArray()
+										)
+
+										// StartingPathTrackNode
+										const pathTracks = new Set(
+											entities
+												?.get("path_track")
+												?.values()
+												.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity["targetname"]))
+												.map((entity) => entity["targetname"])
+												.toArray()
+										)
+
+										return { blueTeamSpawns, logicRelays, pathTracks }
+									})
+								)
+							})
+						)
+					})
 				}),
-				map(({ items, attributes }) => {
+				map(({ items: { items, attributes }, entities }) => {
 					const attributesItems = attributes.map((name) => ({ label: name, kind: CompletionItemKind.Field })).toArray()
 
 					// Drop "default"
@@ -223,7 +296,21 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 								itemname: {
 									kind: CompletionItemKind.Constant,
 									values: itemsItems
-								}
+								},
+								...(entities && {
+									where: {
+										kind: CompletionItemKind.Enum,
+										values: [...entities.blueTeamSpawns].toSorted()
+									},
+									target: {
+										kind: CompletionItemKind.Enum,
+										values: [...entities.logicRelays].toSorted()
+									},
+									startingpathtracknode: {
+										kind: CompletionItemKind.Enum,
+										values: [...entities.pathTracks].toSorted()
+									}
+								}),
 							}
 						},
 						globals: []

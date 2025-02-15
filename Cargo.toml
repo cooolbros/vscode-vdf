@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/vtf", "packages/vtf-canvas", "packages/vtf-png"]
+members = ["packages/bsp", "packages/vtf", "packages/vtf-canvas", "packages/vtf-png"]
 resolver = "2"
 
 [profile.release]

@@ -25,6 +25,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 						{ type: "tf2", uri: teamFortress2Folder }
 					]),
 					this.documents,
+					async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
 					refCountDispose
 				)
 			}

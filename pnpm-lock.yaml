@@ -178,11 +178,16 @@ importers:
         specifier: workspace:^
         version: link:../../packages/vtf-canvas
 
+  packages/bsp: {}
+
   packages/client:
     devDependencies:
       '@trpc/server':
         specifier: ^10.45.2
         version: 10.45.2
+      bsp:
+        specifier: workspace:^
+        version: link:../bsp
       common:
         specifier: workspace:^
         version: link:../common/src

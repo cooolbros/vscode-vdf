@@ -1,0 +1,12 @@
+{
+    "name": "bsp",
+    "main": "./pkg/bsp.js",
+    "types": "./pkg/bsp.d.ts",
+    "files": [
+        "pkg"
+    ],
+    "scripts": {
+        "dev": "cargo watch -- wasm-pack build --dev --target bundler",
+        "build": "wasm-pack build --release --target bundler"
+    }
+}

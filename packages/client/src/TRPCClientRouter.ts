@@ -1,4 +1,5 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import { BSP } from "bsp"
 import { Uri } from "common/Uri"
 import { firstValueFrom } from "rxjs"
 import { commands, languages, window, workspace } from "vscode"
@@ -203,6 +204,26 @@ export function TRPCClientRouter(
 				})
 		}),
 		popfile: t.router({
+			bsp: t.router({
+				entities: t
+					.procedure
+					.input(
+						z.object({
+							uri: Uri.schema
+						})
+					)
+					.query(async ({ input }) => {
+						try {
+							const buf = await workspace.fs.readFile(input.uri)
+							const bsp = new BSP(buf)
+							return bsp.entities()
+						}
+						catch (error) {
+							console.error(error)
+							return null
+						}
+					})
+			}),
 			vscript: t.router({
 				install: t
 					.procedure
