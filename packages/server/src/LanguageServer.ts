@@ -727,10 +727,6 @@ export abstract class LanguageServer<
 			return null
 		}
 
-		const filter = params.context.only
-			? (diagnostic: DiagnosticCodeAction) => params.context.only!.includes(diagnostic.data!.kind)
-			: () => true
-
 		const uri = params.textDocument.uri.toString()
 
 		const utils = <const>[
@@ -756,11 +752,14 @@ export abstract class LanguageServer<
 			.values()
 			.map((diagnostic) => diagnostics.get(diagnostic.data.id))
 			.filter((diagnostic): diagnostic is NonNullable<typeof diagnostic> => diagnostic != undefined && diagnostic.data != undefined)
-			.filter(filter)
+			.filter(
+				params.context.only
+					? (diagnostic: DiagnosticCodeAction) => params.context.only!.includes(diagnostic.data!.kind)
+					: () => true
+			)
 			.map((diagnostic, index) => {
 
 				const codeAction = diagnostic.data!.fix(...utils)
-
 				if (!codeAction) {
 					return null
 				}
