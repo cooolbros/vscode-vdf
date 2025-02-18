@@ -9,9 +9,9 @@ const DIST = "./dist"
 
 const preprocessors = {
 	popfile: {
-		entity_name_type_enum: [...Object.keys(values), "where"],
-		keyword: [...Object.entries(keys).flatMap(([k, v]) => [k, ...v.values.map((value) => value.label)]), "ItemName".toLowerCase()],
-		variable_other_enummember: [...Object.values(values).flatMap((value) => value.values), "spawnbot.*"]
+		entity_name_type_enum: [...Object.keys(values).map((value) => value.toLowerCase()), "where"],
+		keyword: [...Object.entries(keys).flatMap(([k, v]) => [k, ...v.values.map((value) => value.label)]).map((value) => value.toLowerCase()), "ItemName".toLowerCase()],
+		variable_other_enummember: [...Object.values(values).flatMap((value) => value.values).map((value) => value.toLowerCase()), "spawnbot\\S*"]
 	}
 }
 
@@ -23,7 +23,7 @@ for (const name of readdirSync(SRC)) {
 	const preprocessor = preprocessors[name.split(".")[0]]
 	if (preprocessor) {
 		for (const key in preprocessor) {
-			text = text.replace(`{${key}}`, [...new Set(preprocessor[key].map((value) => value.toLowerCase()))].toSorted().join("|"))
+			text = text.replace(`{${key}}`, new Set(preprocessor[key]).toSorted().join("|"))
 		}
 	}
 
