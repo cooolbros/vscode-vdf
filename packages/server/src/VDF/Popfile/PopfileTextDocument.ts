@@ -93,6 +93,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					"DoneWarningSound".toLowerCase(),
 					"FirstSpawnWarningSound".toLowerCase(),
 					"LastSpawnWarningSound".toLowerCase(),
+					"Sound".toLowerCase(),
 					"StartWaveWarningSound".toLowerCase(),
 				]),
 				folder: "sound",
