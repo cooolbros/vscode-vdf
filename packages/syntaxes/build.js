@@ -23,7 +23,7 @@ for (const name of readdirSync(SRC)) {
 	const preprocessor = preprocessors[name.split(".")[0]]
 	if (preprocessor) {
 		for (const key in preprocessor) {
-			text = text.replace(`{${key}}`, new Set(preprocessor[key]).toSorted().join("|"))
+			text = text.replace(`{${key}}`, [...new Set(preprocessor[key])].toSorted().join("|"))
 		}
 	}
 
