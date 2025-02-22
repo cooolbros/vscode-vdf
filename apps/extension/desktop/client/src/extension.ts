@@ -5,6 +5,7 @@ import { VDFToJSON } from "client/commands/VDFToJSON"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
+import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Folder"
 import { showReferences } from "client/commands/showReferences"
 import { onDidChangeActiveTextEditor } from "client/decorations"
 import { join } from "path"
@@ -20,7 +21,7 @@ export function activate(context: ExtensionContext): void {
 	// https://code.visualstudio.com/api/references/vscode-api
 
 	// Commands
-
+	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
@@ -53,6 +54,13 @@ export function activate(context: ExtensionContext): void {
 		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
+		const options = {
+			execArgv: [
+				"--nolazy",
+				`--inspect=${6000 + Object.keys(VSCodeVDFLanguageNameSchema.shape).indexOf(languageId)}`
+			]
+		}
+
 		const client = languageClients[languageId] = new Client<LanguageClient>(
 			languageClients,
 			startServer,
@@ -65,23 +73,13 @@ export function activate(context: ExtensionContext): void {
 						module: serverModule,
 						transport: TransportKind.ipc,
 						...(process.env.NODE_ENV != "production" && {
-							options: {
-								execArgv: [
-									"--nolazy",
-									`--inspect=${6000 + Object.keys(VSCodeVDFLanguageNameSchema.shape).indexOf(languageId)}`
-								]
-							}
+							options: options
 						})
 					},
 					debug: {
 						module: serverModule,
 						transport: TransportKind.ipc,
-						options: {
-							execArgv: [
-								"--nolazy",
-								"--inspect=6009"
-							]
-						}
+						options: options
 					}
 				} satisfies ServerOptions,
 				{

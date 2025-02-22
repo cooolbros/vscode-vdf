@@ -84,6 +84,11 @@
             },
             {
                 "category": "VDF",
+                "command": "vscode-vdf.selectTeamFortress2Folder",
+                "title": "Select Team Fortress 2 folder"
+            },
+            {
+                "category": "VDF",
                 "title": "Show References",
                 "command": "vscode-vdf.showReferences"
             },
@@ -112,8 +117,11 @@
                     },
                     "vscode-vdf.teamFortress2Folder": {
                         "type": "string",
-                        "markdownDescription": "Path to `Team Fortress 2` folder",
-                        "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2"
+                        "markdownDescription": "Path to `Team Fortress 2` folder.\n\n[Select Folder](command:vscode-vdf.selectTeamFortress2Folder)",
+                        "default": "C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2",
+                        "examples": [
+                            "~/.local/share/Steam/steamapps/common/Team Fortress 2"
+                        ]
                     },
                     "vscode-vdf.updateDiagnosticsEvent": {
                         "type": "string",
