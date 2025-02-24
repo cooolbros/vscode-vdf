@@ -14,7 +14,7 @@ patterns:
     name: comment
   - match: '\[.*\]'
     name: constant.character
-  - match: '("[^(?<!\\)"]*"|\b\S+\b)\s+("[^(?<!\\)"]*"|\b\S+\b)'
+  - match: '("[^"]*"|\b\S+\b)\s*(".*?(?<!\\)"|\b\S+\b)'
     name: variable
     captures:
       '1':
@@ -24,7 +24,7 @@ patterns:
         patterns:
           - match: '\\["\\/bfnrt]'
             name: constant.character.escape
-  - match: '("[^(?<!\\)"]*"|\b\S+\b)'
+  - match: '("[^"]*"|\b\S+\b)'
     name: variable
 repository: {}
 scopeName: source.vdf

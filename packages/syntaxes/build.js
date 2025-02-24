@@ -17,7 +17,7 @@ const preprocessors = {
 
 const map = new Map()
 
-for (const name of readdirSync(SRC)) {
+for (const name of readdirSync(SRC).filter((value) => posix.extname(value) == ".yaml")) {
 	let text = readFileSync(`${SRC}/${name}`, "utf-8")
 
 	const preprocessor = preprocessors[name.split(".")[0]]
