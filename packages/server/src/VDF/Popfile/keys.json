@@ -182,6 +182,10 @@
             {
                 "label": "Param",
                 "kind": 7
+            },
+            {
+                "label": "Delay",
+                "kind": 7
             }
         ]
     },
