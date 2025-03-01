@@ -10,6 +10,16 @@ use bincode::{
 use wasm_bindgen::{prelude::wasm_bindgen, JsError, JsValue};
 
 #[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+#[wasm_bindgen]
 #[derive(Debug)]
 pub struct VTF {
     #[wasm_bindgen(skip)]
@@ -261,6 +271,7 @@ impl VTF {
         let config = bincode::config::standard().with_fixed_int_encoding();
 
         let header: VTFHeader = bincode::decode_from_reader(&mut reader, config)?;
+        console_log!("{:#?}", header);
 
         if header.version_major >= 7 && header.version_minor >= 2 {
             let _depth: u16 = bincode::decode_from_reader(&mut reader, config)?;
