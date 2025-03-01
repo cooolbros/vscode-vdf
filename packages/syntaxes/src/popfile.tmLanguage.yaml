@@ -24,7 +24,7 @@ patterns:
   - name: string
     match: '".*"'
   - name: keyword.control
-    match: (?i)\b(Action|Target)\b
+    match: (?i)\b(Action|Delay|Param|Target)\b
   - name: entity.name.type.enum
     match: '(?i)\b({entity_name_type_enum})\b'
   - name: keyword
