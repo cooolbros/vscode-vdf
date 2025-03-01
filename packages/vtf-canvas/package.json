@@ -8,5 +8,8 @@
     "scripts": {
         "dev": "cargo watch -- wasm-pack build --dev --target web",
         "build": "wasm-pack build --release --target web"
+    },
+    "devDependencies": {
+        "vtf": "workspace:^"
     }
 }

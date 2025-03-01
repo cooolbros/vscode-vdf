@@ -347,9 +347,17 @@ importers:
 
   packages/vtf: {}
 
-  packages/vtf-canvas: {}
+  packages/vtf-canvas:
+    devDependencies:
+      vtf:
+        specifier: workspace:^
+        version: link:../vtf
 
-  packages/vtf-png: {}
+  packages/vtf-png:
+    devDependencies:
+      vtf:
+        specifier: workspace:^
+        version: link:../vtf
 
 packages:
 
