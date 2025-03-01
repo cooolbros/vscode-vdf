@@ -19,6 +19,11 @@
 	const { width, height } = vtf.header
 
 	let flags = $state(initial?.flags ?? vtf.header.flags)
+	let frame = $state(initial?.frame ?? vtf.header.first_frame)
+
+	function setFrame(value: number) {
+		frame = value > 0 && value < vtf.header.frames ? value : value == vtf.header.frames ? 0 : vtf.header.frames - 1
+	}
 
 	function onmessage(event: MessageEvent) {
 		const flagsCommandSchema = z.object({ type: z.literal("flags"), flags: z.number() })
@@ -29,7 +34,7 @@
 	}
 
 	$effect(() => {
-		setState({ flags: flags, scale: $scale$ })
+		setState({ flags: flags, frame: frame, scale: $scale$ })
 	})
 
 	let canvas = $state<HTMLCanvasElement>()
@@ -80,10 +85,16 @@
 		postMessage({ type: "scale", scale: $scale$ })
 	})
 
-	function extract(node: HTMLCanvasElement, vtf: VTF) {
-		requestAnimationFrame(() => {
+	function extract(node: HTMLCanvasElement, { vtf, frame }: { vtf: VTF; frame: number }) {
+		function paint(frame: number) {
+			const context = node.getContext("2d")!
+			context.reset()
+			VTFPutImageData(vtf, context, vtf.header.mipmap_count - 1, frame)
+		}
+
+		setTimeout(() => {
 			try {
-				VTFPutImageData(vtf, node.getContext("2d")!, vtf.header.mipmap_count - 1, 0)
+				paint(frame)
 			} catch (error) {
 				console.error(error)
 				if (error instanceof Error) {
@@ -102,7 +113,13 @@
 				}
 			}
 			node.style.display = "block"
-		})
+		}, 0)
+
+		return {
+			update({ frame }: { vtf: VTF; frame: number }) {
+				paint(frame)
+			},
+		}
 	}
 </script>
 
@@ -125,6 +142,15 @@
 					{@render row("Width", vtf.header.width)}
 					{@render row("Height", vtf.header.height)}
 					{@render row("Flags", flags)}
+					{#if vtf.header.frames > 1}
+						{@render row("Frames", vtf.header.frames)}
+						<tr>
+							<td>Frame:</td>
+							<td>
+								<input type="number" bind:value={() => frame, setFrame} />
+							</td>
+						</tr>
+					{/if}
 				</tbody>
 			</table>
 		</fieldset>
@@ -135,7 +161,7 @@
 			{width}
 			{height}
 			bind:this={canvas}
-			use:extract={vtf}
+			use:extract={{ vtf, frame }}
 			class="zoom-{$ctrl$ ? 'out' : 'in'}"
 			style:transform="scale({$scale$}%)"
 		></canvas>
@@ -203,7 +229,7 @@
 <style>
 	div#container {
 		display: grid;
-		grid-template-columns: auto 1fr;
+		grid-template-columns: min-content 1fr;
 		grid-template-rows: auto minmax(0, 1fr);
 		gap: 0.5rem;
 		margin: 0.25rem 0.5rem 0.5rem 0.5rem;
@@ -226,10 +252,26 @@
 
 			table {
 				width: 100%;
+				table-layout: fixed;
 				margin: 0;
 
 				td {
 					width: 50%;
+
+					input[type="number"] {
+						color: var(--vscode-editor-foreground);
+						width: 100%;
+						background: none;
+						border: none;
+						border-radius: 2px;
+
+						&::-webkit-inner-spin-button,
+						&::-webkit-outer-spin-button {
+							opacity: 1;
+						}
+					}
+
+					/* app.css */
 				}
 			}
 

@@ -1,5 +1,4 @@
 use std::{
-    error::Error,
     fmt::Display,
     io::{BufReader, Cursor, Seek, SeekFrom},
 };
@@ -49,7 +48,7 @@ pub struct VTFHeader {
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy)]
-pub struct VTFSignature();
+pub struct VTFSignature;
 
 impl Display for VTFSignature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,7 +59,7 @@ impl Display for VTFSignature {
 impl Decode for VTFSignature {
     fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
         match <[u8; 4] as bincode::Decode>::decode(decoder)? {
-            [b'V', b'T', b'F', b'\0'] => Ok(VTFSignature()),
+            [b'V', b'T', b'F', b'\0'] => Ok(VTFSignature),
             _ => Err(DecodeError::Other("VTF\0")),
         }
     }
@@ -143,6 +142,8 @@ impl Decode for VTFImageFormat {
     }
 }
 
+impl_borrow_decode!(VTFImageFormat);
+
 impl VTFImageFormat {
     pub fn bytes(&self, width: usize, height: usize) -> Result<usize, VTFImageFormat> {
         match self {
@@ -178,8 +179,6 @@ impl VTFImageFormat {
     }
 }
 
-impl_borrow_decode!(VTFImageFormat);
-
 #[derive(Debug, Decode)]
 pub struct VTFResourceEntryInfo {
     _tag: [u8; 3],
@@ -201,35 +200,50 @@ pub struct VTFFrame {
 }
 
 #[derive(Debug)]
+pub struct VTFDecodeError(DecodeError);
+
+impl Display for VTFDecodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#?}", self)
+    }
+}
+
+impl From<DecodeError> for VTFDecodeError {
+    fn from(value: DecodeError) -> Self {
+        VTFDecodeError(value)
+    }
+}
+
+impl Into<JsValue> for VTFDecodeError {
+    fn into(self) -> JsValue {
+        JsValue::from(JsError::new(&format!("{:?}", self.0)))
+    }
+}
+
+#[derive(Debug)]
 pub struct VTFData {
     pub width: u16,
     pub height: u16,
     pub rgba: Vec<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VTFError {
-    DecodeError(DecodeError),
     FormatError(VTFImageFormat),
-}
-
-impl Error for VTFError {}
-
-impl Display for VTFError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", self)
-    }
-}
-
-impl From<DecodeError> for VTFError {
-    fn from(value: DecodeError) -> Self {
-        VTFError::DecodeError(value)
-    }
+    UnexpectedEnd { additional: usize },
+    UnexpectedMipMap { mipmap_count: u8, found: usize },
+    UnexpectedFrame { frame_count: u16, found: usize },
 }
 
 impl From<VTFImageFormat> for VTFError {
     fn from(value: VTFImageFormat) -> Self {
         VTFError::FormatError(value)
+    }
+}
+
+impl From<usize> for VTFError {
+    fn from(value: usize) -> Self {
+        VTFError::UnexpectedEnd { additional: value }
     }
 }
 
@@ -242,7 +256,7 @@ impl Into<JsValue> for VTFError {
 #[wasm_bindgen]
 impl VTF {
     #[wasm_bindgen(constructor)]
-    pub fn new(buf: Vec<u8>) -> Result<VTF, VTFError> {
+    pub fn new(buf: Vec<u8>) -> Result<VTF, VTFDecodeError> {
         let mut reader = BufReader::new(Cursor::new(&buf));
         let config = bincode::config::standard().with_fixed_int_encoding();
 
@@ -285,15 +299,15 @@ impl VTF {
         let mipmaps = (0..header.mipmap_count)
             .rev()
             .map(|i| -> Result<VTFMipMap, VTFError> {
-                let width = (header.width >> i) as usize;
-                let height = (header.height >> i) as usize;
+                let width = (header.width as usize >> i).max(1);
+                let height = (header.height as usize >> i).max(1);
 
                 let bytes = header.high_res_image_format.bytes(width, height)?;
 
                 let frames = (0..header.frames)
                     .map(|_| {
                         let offset = reader.stream_position().unwrap() as usize;
-                        reader.seek_relative(bytes as i64).or_else(|_| Err(DecodeError::UnexpectedEnd { additional: bytes }))?;
+                        reader.seek_relative(bytes as i64).or_else(|_| Err(bytes))?;
                         Ok(VTFFrame { offset, bytes })
                     })
                     .collect::<Result<Vec<VTFFrame>, VTFError>>()?;
@@ -311,17 +325,22 @@ impl VTF {
 }
 
 impl VTF {
-    pub fn extract(self, mipmap_index: usize, frame_index: usize) -> Result<VTFData, VTFError> {
-        let mipmaps = self.mipmaps?;
-        let mipmap = mipmaps.get(mipmap_index).ok_or_else(|| VTFError::FormatError(self.header.high_res_image_format))?;
-        let frame = mipmap.frames.get(frame_index).ok_or_else(|| VTFError::FormatError(self.header.high_res_image_format))?;
+    pub fn extract(&self, mipmap_index: usize, frame_index: usize) -> Result<VTFData, VTFError> {
+        let mipmaps = self.mipmaps.as_ref().map_err(|err| err.clone())?;
 
-        let buf = self
-            .buf
-            .get(frame.offset..(frame.offset + frame.bytes))
-            .ok_or_else(|| DecodeError::UnexpectedEnd { additional: frame.bytes })?;
+        let mipmap = mipmaps.get(mipmap_index).ok_or_else(|| VTFError::UnexpectedMipMap {
+            mipmap_count: self.header.mipmap_count,
+            found: mipmap_index,
+        })?;
 
-        let mut rgba = vec![255; mipmap.width as usize * mipmap.height as usize * 4];
+        let frame = mipmap.frames.get(frame_index).ok_or_else(|| VTFError::UnexpectedFrame {
+            frame_count: self.header.frames,
+            found: frame_index,
+        })?;
+
+        let buf = self.buf.get(frame.offset..(frame.offset + frame.bytes)).ok_or_else(|| frame.bytes)?;
+
+        let mut rgba = vec![0; mipmap.width as usize * mipmap.height as usize * 4];
 
         match self.header.high_res_image_format {
             VTFImageFormat::RGBA8888 => {
