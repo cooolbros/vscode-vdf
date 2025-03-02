@@ -14,7 +14,7 @@
    - Add inlay hints for enum numbers and language token references
    - Add language token values to autocompletion documentation
    - Add `activeimage` and `inactiveimage` image keys
-- Popfile:
+ - Popfile:
    - Add wave currency to wave number decorations
    - Suggest `ItemName` inside ItemAttributes block
    - Add autocompletion for `Item` and `ItemName` values
