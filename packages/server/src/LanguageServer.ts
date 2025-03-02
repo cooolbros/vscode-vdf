@@ -158,6 +158,7 @@ export abstract class LanguageServer<
 											fileSystem!.references--
 											if (fileSystem!.references == 0) {
 												this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
+												fileSystems.delete(key)
 											}
 										}
 									}
