@@ -289,7 +289,9 @@ export abstract class VDFLanguageServer<
 		}
 
 		const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
-		const fileSchema = schema.files.find(({ keys }) => keys.has(documentSymbol.key.toLowerCase()))
+		const key = document.configuration.keyTransform(documentSymbol.key.toLowerCase())
+
+		const fileSchema = schema.files.find(({ keys }) => keys.has(key))
 		if (!fileSchema) {
 			return null
 		}
