@@ -466,5 +466,5 @@
         "isPreReleaseVersion": false,
         "size": 2578099110
     },
-    "packageManager": "pnpm@9.12.3"
+    "packageManager": "pnpm@10.5.2"
 }
