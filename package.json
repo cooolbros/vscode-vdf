@@ -290,11 +290,6 @@
                 }
             }
         ],
-        "configurationDefaults": {
-            "[popfile]": {
-                "editor.foldingStrategy": "indentation"
-            }
-        },
         "customEditors": [
             {
                 "viewType": "vscode-vdf.VTFEditor",
