@@ -1,5 +1,21 @@
 # Change Log
 
+## [5.4.0]
+ - Add command to select `Team Fortress 2` folder using folder browser (`vscode-vdf.selectTeamFortress2Folder`)
+ - Add support for animated VTFs in VTF Editor
+ - Fix not reading files correctly from single archive VPKs
+ - Fix not reading directories correctly inside custom folder
+ - VGUI:
+   - Add text edit option for enum inlay hints
+   - Fix syntax highlighting for values that contain backslashes or escaped double quotes
+   - Fix image hover not showing for suffixed keys
+ - Popfile:
+   - Add support for BSP values: `Where`, `Target`, `StartingPathTrackNode`
+   - Add support for `Sound` key
+   - Add autocompletion for `Param` key
+   - Add autocompletion for `Delay` key ([#58](https://github.com/cooolbros/vscode-vdf/pull/58), Thanks [Windolon](https://github.com/Windolon))
+   - Fix syntax highlighting for `Where` values with comments
+
 ## [5.3.1]
  - Remove unnecessary files from bundle
 
