@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.4.2]
+ - [Popfile] Fix false positive `Where` diagnostic for some `info_player_teamspawn` entities
+ - [Popfile] Fix crash when `info_player_teamspawn` does not have `targetname`
+
 ## [5.4.1]
  - [Popfile] Remove invalid-value diagnostic for `Target` values
  - [Popfile] Update `Target` values autocompletion to suggest all entity types
