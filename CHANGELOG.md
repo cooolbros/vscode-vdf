@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.4.1]
+ - [Popfile] Remove invalid-value diagnostic for `Target` values
+ - [Popfile] Update `Target` values autocompletion to suggest all entity types
+
 ## [5.4.0]
  - Add command to select `Team Fortress 2` folder using folder browser (`vscode-vdf.selectTeamFortress2Folder`)
  - Add support for animated VTFs in VTF Editor
