@@ -233,8 +233,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 											entities
 												?.get("info_player_teamspawn")
 												?.values()
-												?.filter((entity) => entity["TeamNum"] == "3")
 												.map((entity) => entity["targetname"])
+												.filter((targetname) => targetname != undefined)
 												.toArray()
 										)
 
