@@ -143,8 +143,8 @@ export abstract class VDFLanguageServer<
 			const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
 
 			// Static
-			if (key in schema.values) {
-				const valueData = schema.values[key]
+			const valueData = schema.values[key] ?? schema.completion.values?.[key]
+			if (valueData != undefined) {
 				return valueData
 					.values
 					.values()

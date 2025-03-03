@@ -11,7 +11,7 @@ const preprocessors = {
 	popfile: {
 		entity_name_type_enum: [...Object.keys(values).map((value) => value.toLowerCase()), "where"],
 		keyword: [...Object.entries(keys).flatMap(([k, v]) => [k, ...v.values.map((value) => value.label)]).map((value) => value.toLowerCase()), "ItemName".toLowerCase()],
-		variable_other_enummember: [...Object.values(values).flatMap((value) => value.values).map((value) => value.toLowerCase()), "spawnbot\\S*"]
+		variable_other_enummember: Object.values(values).flatMap((value) => value.values).map((value) => value.toLowerCase())
 	}
 }
 

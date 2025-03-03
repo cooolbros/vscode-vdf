@@ -239,11 +239,12 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 										)
 
 										// Target
-										const logicRelays = new Set(
+										const targets = new Set(
 											entities
-												?.get("logic_relay")
 												?.values()
+												?.flatMap((value) => value)
 												.map((entity) => entity["targetname"])
+												.filter((targetname) => targetname != undefined && !targetname.startsWith("//"))
 												.toArray()
 										)
 
@@ -257,7 +258,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 												.toArray()
 										)
 
-										return { blueTeamSpawns, logicRelays, pathTracks }
+										return { blueTeamSpawns, targets, pathTracks }
 									})
 								)
 							})
@@ -303,15 +304,22 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 										kind: CompletionItemKind.Enum,
 										values: [...entities.blueTeamSpawns].toSorted()
 									},
-									target: {
-										kind: CompletionItemKind.Enum,
-										values: [...entities.logicRelays].toSorted()
-									},
 									startingpathtracknode: {
 										kind: CompletionItemKind.Enum,
 										values: [...entities.pathTracks].toSorted()
-									}
-								}),
+									},
+								})
+							},
+							completion: {
+								...PopfileTextDocument.Schema.completion,
+								values: {
+									...(entities && {
+										target: {
+											kind: CompletionItemKind.Enum,
+											values: [...entities.targets, "BigNet"].toSorted()
+										},
+									}),
+								}
 							}
 						},
 						globals: []
