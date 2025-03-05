@@ -229,36 +229,46 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 										}
 
 										// Where
-										const blueTeamSpawns = new Set(
-											entities
-												?.get("info_player_teamspawn")
-												?.values()
-												.map((entity) => entity["targetname"])
-												.filter((targetname) => targetname != undefined)
-												.toArray()
-										)
-
-										// Target
-										const targets = new Set(
-											entities
-												?.values()
-												?.flatMap((value) => value)
-												.map((entity) => entity["targetname"])
-												.filter((targetname) => targetname != undefined && !targetname.startsWith("//"))
-												.toArray()
-										)
+										const teamSpawns = [
+											...new Set(
+												entities
+													?.get("info_player_teamspawn")
+													?.toSorted((a, b) => b["TeamNum"].localeCompare(a["TeamNum"]) || a["targetname"]?.localeCompare(b["targetname"]))
+													.values()
+													.map((entity) => entity["targetname"])
+													.filter((targetname) => targetname != undefined)
+											),
+											"Ahead",
+											"Behind",
+											"Anywhere",
+											""
+										]
 
 										// StartingPathTrackNode
-										const pathTracks = new Set(
-											entities
-												?.get("path_track")
-												?.values()
-												.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity["targetname"]))
-												.map((entity) => entity["targetname"])
-												.toArray()
-										)
+										const pathTracks = [
+											...new Set(
+												entities
+													?.get("path_track")
+													?.values()
+													.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity["targetname"]))
+													.map((entity) => entity["targetname"])
+													.filter((targetname) => targetname != undefined)
+											)
+										].toSorted()
 
-										return { blueTeamSpawns, targets, pathTracks }
+										// Target
+										const targets = [
+											...new Set(
+												entities
+													?.values()
+													?.flatMap((value) => value)
+													.map((entity) => entity["targetname"])
+													.filter((targetname) => targetname != undefined && !targetname.startsWith("//"))
+											),
+											"BigNet"
+										].toSorted()
+
+										return { teamSpawns, pathTracks, targets }
 									})
 								)
 							})
@@ -300,23 +310,27 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									values: itemsItems
 								},
 								...(entities && {
-									where: {
+									[`${"ClosestPoint".toLowerCase()}`]: {
 										kind: CompletionItemKind.Enum,
-										values: [...entities.blueTeamSpawns].toSorted()
+										values: entities.teamSpawns
 									},
-									startingpathtracknode: {
+									[`${"Where".toLowerCase()}`]: {
 										kind: CompletionItemKind.Enum,
-										values: [...entities.pathTracks].toSorted()
-									},
+										values: entities.teamSpawns
+									}
 								})
 							},
 							completion: {
 								...PopfileTextDocument.Schema.completion,
 								values: {
 									...(entities && {
+										startingpathtracknode: {
+											kind: CompletionItemKind.Enum,
+											values: entities.pathTracks
+										},
 										target: {
 											kind: CompletionItemKind.Enum,
-											values: [...entities.targets, "BigNet"].toSorted()
+											values: entities.targets
 										},
 									}),
 								}

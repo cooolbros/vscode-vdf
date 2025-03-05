@@ -1,5 +1,10 @@
 # Change Log
 
+## [5.4.3]
+ - [Popfile] Add support `Where` enum values (`Ahead`, `Behind`, `Anywhere`, `""`)
+ - [Popfile] Remove invalid-value diagnostic for `StartingPathTrackNode` values
+ - [Popfile] Add support for `ClosestPoint`
+
 ## [5.4.2]
  - [Popfile] Fix false positive `Where` diagnostic for some `info_player_teamspawn` entities
  - [Popfile] Fix crash when `info_player_teamspawn` does not have `targetname`
