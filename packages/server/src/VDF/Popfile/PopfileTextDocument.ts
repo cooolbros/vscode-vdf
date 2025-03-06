@@ -285,7 +285,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						schema: {
 							...PopfileTextDocument.Schema,
 							keys: {
-								...keys,
+								...PopfileTextDocument.Schema.keys,
 								characterattributes: {
 									values: attributesItems
 								},
@@ -300,7 +300,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 								}
 							},
 							values: {
-								...values,
+								...PopfileTextDocument.Schema.values,
 								item: {
 									kind: CompletionItemKind.Constant,
 									values: itemsItems
