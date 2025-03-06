@@ -233,7 +233,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 											...new Set(
 												entities
 													?.get("info_player_teamspawn")
-													?.toSorted((a, b) => b["TeamNum"].localeCompare(a["TeamNum"]) || a["targetname"]?.localeCompare(b["targetname"]))
+													?.toSorted((a, b) => b["TeamNum"]?.localeCompare(a["TeamNum"]) || a["targetname"]?.localeCompare(b["targetname"]))
 													.values()
 													.map((entity) => entity["targetname"])
 													.filter((targetname) => targetname != undefined)
