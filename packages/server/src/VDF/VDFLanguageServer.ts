@@ -5,13 +5,13 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
 import { firstValueFrom, type Observable } from "rxjs"
-import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
+import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
-import type { TextDocumentInit } from "../TextDocumentBase"
+import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
 import { resolveFileDetail, VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
@@ -218,21 +218,26 @@ export abstract class VDFLanguageServer<
 		}
 
 		const conditionals = (text?: string) => {
-			return [
-				"[$LINUX]",
-				"[$OSX]",
-				"[$POSIX]",
-				"[$WIN32]",
-				"[$WINDOWS]",
-				"[$X360]",
-			]
+			const [before, after] = document.getText(new VDFRange(
+				position.with({ character: position.character - 1 }),
+				position.with({ character: position.character + 1 }),
+			))
+
+			const start = before == "[" ? 1 : 0
+			const end = after == "]" ? -1 : undefined
+
+			return TextDocumentBase
+				.conditionals
+				.values()
 				.filter((conditional) => text ? conditional.toLowerCase().startsWith(text.toLowerCase()) : true)
 				.map((conditional) => {
 					return {
 						label: conditional,
 						kind: CompletionItemKind.Variable,
-					}
+						insertText: conditional.slice(start, end)
+					} as CompletionItem
 				})
+				.toArray()
 		}
 
 		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })

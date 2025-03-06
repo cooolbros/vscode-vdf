@@ -27,6 +27,16 @@ export abstract class TextDocumentBase<
 	TDependencies,
 > implements Disposable {
 
+	public static readonly conditionals = new Set([
+		"[$DECK]",
+		"[$LINUX]",
+		"[$OSX]",
+		"[$POSIX]",
+		"[$WIN32]",
+		"[$WINDOWS]",
+		"[$X360]",
+	])
+
 	public readonly uri: Uri
 	protected readonly document: TextDocument
 	protected readonly references: Map<string, References>
