@@ -351,6 +351,13 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return documentSymbols.reduceRecursive(
 					<(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[],
 					(diagnostics, documentSymbol, path) => {
+						if (documentSymbol.conditional != null && documentSymbol.conditional != "[]") {
+							const conditional = documentSymbol.conditional.toLowerCase()
+							if (TextDocumentBase.conditionals.values().map((c) => c.toLowerCase()).find((c) => c == conditional) == undefined) {
+								return diagnostics
+							}
+						}
+
 						if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
 							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
 							diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
