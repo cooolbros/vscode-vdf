@@ -33,7 +33,7 @@ export class Uri {
 	public readonly fragment: string
 	public readonly fsPath: string
 
-	public constructor(uri: string | { scheme: string, authority: string, path: string, query: string, fragment: string }) {
+	public constructor(uri: string | { scheme: string, authority?: string, path?: string, query?: string, fragment?: string }) {
 		this.uri = typeof uri == "string" ? URI.parse(uri) : URI.isUri(uri) ? uri : URI.from(uri)
 		this.scheme = this.uri.scheme
 		this.authority = this.uri.authority
