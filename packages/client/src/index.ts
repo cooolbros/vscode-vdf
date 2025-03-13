@@ -2,6 +2,7 @@ import { initTRPC, type AnyRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
+import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
@@ -34,9 +35,9 @@ export class Client<T extends BaseLanguageClient> {
 	private readonly subscriptions: { dispose(): any }[]
 
 	constructor(
+		context: ExtensionContext,
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
-		subscriptions: { dispose(): any }[],
 		client: T,
 	) {
 		this.client = client
@@ -54,7 +55,7 @@ export class Client<T extends BaseLanguageClient> {
 								reducers: {},
 								revivers: {},
 								name: null,
-								subscriptions: subscriptions,
+								subscriptions: context.subscriptions,
 								onRequest: (method, handler) => client.onRequest(method, handler),
 								onNotification: (method, handler) => client.onNotification(method, handler),
 								sendRequest: (server, method, param) => {
@@ -65,6 +66,7 @@ export class Client<T extends BaseLanguageClient> {
 								},
 							})
 						}),
+						context,
 						fileSystemMountPointFactory
 					)
 

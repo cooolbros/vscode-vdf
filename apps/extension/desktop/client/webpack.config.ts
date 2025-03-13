@@ -34,8 +34,8 @@ export default {
 				}
 			},
 			{
-				resourceQuery: /raw/,
-				type: "asset/source",
+				resourceQuery: /url/,
+				type: "asset/resource",
 			}
 		]
 	}

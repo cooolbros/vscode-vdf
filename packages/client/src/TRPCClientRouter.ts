@@ -1,9 +1,9 @@
 import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
-import { BSP } from "bsp"
+import initBSP, { BSP } from "bsp"
 import { Uri } from "common/Uri"
 import { firstValueFrom } from "rxjs"
-import { commands, languages, window, workspace } from "vscode"
-import { VTF, VTFToPNG } from "vtf-png"
+import { commands, env, languages, UIKind, window, workspace, type ExtensionContext } from "vscode"
+import initVTFPNG, { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
 import { searchForHUDRoot } from "./searchForHUDRoot"
@@ -12,6 +12,12 @@ import type { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystem
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
 
+// @ts-ignore
+import bsp_bg_url from "bsp/pkg/bsp_bg.wasm?url"
+
+// @ts-ignore
+import vtf_png_bg_url from "vtf-png/pkg/vtf_png_bg.wasm?url"
+
 const URISchema = z.object({
 	uri: Uri.schema
 })
@@ -19,10 +25,20 @@ const URISchema = z.object({
 const UTF8Decoder = new TextDecoder("utf-8")
 const UTF16LEDecoder = new TextDecoder("utf-16le")
 
+let BSPWASM: import("bsp").InitOutput
+let VTFPNGWASM: import("vtf-png").InitOutput
+
 export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>,
+	context: ExtensionContext,
 	fileSystemMountPointFactory: FileSystemMountPointFactory
 ) {
+	async function initWASM<T>(url: string, init: (module: Uint8Array) => Promise<T>): Promise<T> {
+		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url}`).with({ query: null })
+		const buf = await workspace.fs.readFile(uri)
+		return await init(buf)
+	}
+
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
 		searchForHUDRoot: t
@@ -139,6 +155,7 @@ export function TRPCClientRouter(
 					uri: Uri.schema
 				})
 			).mutation(async ({ input }) => {
+				VTFPNGWASM ??= await initWASM(vtf_png_bg_url, initVTFPNG)
 				const vtf = new VTF(await workspace.fs.readFile(input.uri))
 				return VTFToPNG(vtf, 256)
 			}),
@@ -214,6 +231,7 @@ export function TRPCClientRouter(
 					)
 					.query(async ({ input }) => {
 						try {
+							BSPWASM ??= await initWASM(bsp_bg_url, initBSP)
 							const buf = await workspace.fs.readFile(input.uri)
 							const bsp = new BSP(buf)
 							return bsp.entities()

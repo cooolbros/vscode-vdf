@@ -36,6 +36,10 @@ export default {
 						onlyCompileBundledFiles: true
 					}
 				}
+			},
+			{
+				resourceQuery: /url/,
+				type: "asset/resource",
 			}
 		]
 	},

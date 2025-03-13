@@ -48,9 +48,9 @@ export function activate(context: ExtensionContext): void {
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
 		const client = languageClients[languageId] = new Client(
+			context,
 			languageClients,
 			startServer,
-			context.subscriptions,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,
