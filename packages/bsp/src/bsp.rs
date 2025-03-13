@@ -67,7 +67,7 @@ pub struct Lump {
 
 #[derive(Debug, Decode)]
 struct BSPLZMAHeader {
-    pub signature: LZMASignature,
+    _signature: LZMASignature,
     pub actual_size: u32,
     pub lzma_size: u32,
     pub properties: [u8; 5],
