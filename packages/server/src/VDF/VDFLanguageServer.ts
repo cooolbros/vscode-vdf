@@ -6,7 +6,7 @@ import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VS
 import { posix } from "path"
 import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
-import { VDFDocumentSymbols } from "vdf-documentsymbols"
+import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
@@ -93,18 +93,28 @@ export abstract class VDFLanguageServer<
 				]
 			}
 			else {
-				const type = ((): string | null => {
-
-					const documentSymbolKey = schema.completion.typeKey
-						? documentSymbol.children?.find((d) => d.key.toLowerCase() == schema.completion.typeKey)?.detail?.toLowerCase()
-						: documentSymbol.key.toLowerCase()
-
-					if (documentSymbolKey && documentSymbolKey in schema.keys) {
-						return documentSymbolKey
+				function add(documentSymbols: VDFDocumentSymbols) {
+					const path: VDFDocumentSymbol[] = []
+					const documentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.range.contains(position))
+					if (documentSymbol != undefined) {
+						path.push(documentSymbol)
+						if (documentSymbol.children != undefined) {
+							path.push(...add(documentSymbol.children))
+						}
 					}
+					return path
+				}
 
-					return schema.completion.defaultType
-				})()
+				const type = add(documentSymbols)
+					.reverse()
+					.values()
+					.map(
+						schema.completion.typeKey
+							? (documentSymbol) => documentSymbol.children?.find((d) => d.key.toLowerCase() == schema.completion.typeKey)?.detail?.toLowerCase()
+							: (documentSymbol) => documentSymbol.key.toLowerCase()
+					)
+					.find((type) => type != undefined && type in schema.keys)
+					?? schema.completion.defaultType
 
 				if (!type) {
 					return null

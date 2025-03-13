@@ -221,6 +221,11 @@
             }
         ]
     },
+    "templates": {
+        "reference": [
+            "tfbot"
+        ]
+    },
     "tfbot": {
         "values": [
             {
