@@ -5,7 +5,7 @@
 	import VTFViewer from "./VTFViewer.svelte"
 
 	interface Props {
-		vscode: WebviewApi<{ flags: number; scale: number }>
+		vscode: WebviewApi<State>
 		readonly: boolean
 		buf: Uint8Array
 	}
