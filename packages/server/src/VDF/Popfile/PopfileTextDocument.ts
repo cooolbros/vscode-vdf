@@ -417,7 +417,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				message: "Squad with 1 TFBot is useless.",
 				data: {
 					kind: CodeActionKind.QuickFix,
-					fix: (createDocumentWorkspaceEdit) => {
+					fix: ({ createDocumentWorkspaceEdit }) => {
 						return {
 							title: `Replace Squad with TFBot`,
 							edit: createDocumentWorkspaceEdit(documentSymbol.range, this.document.getText(documentSymbol.children![0]!.range))

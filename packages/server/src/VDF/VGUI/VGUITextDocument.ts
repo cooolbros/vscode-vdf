@@ -237,7 +237,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 					message: `fieldName '${documentSymbol.detail}' does not match element name. Expected '${parent}'.`,
 					data: {
 						kind: CodeActionKind.QuickFix,
-						fix: (createDocumentWorkspaceEdit) => {
+						fix: ({ createDocumentWorkspaceEdit }) => {
 							return {
 								title: `Change fieldName to '${parent}'`,
 								edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, parent),

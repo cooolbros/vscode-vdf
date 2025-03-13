@@ -377,7 +377,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									],
 									data: {
 										kind: CodeActionKind.QuickFix,
-										fix: (createDocumentWorkspaceEdit) => {
+										fix: ({ createDocumentWorkspaceEdit }) => {
 											return {
 												title: "Remove empty #base",
 												edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
@@ -418,7 +418,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 													message: "#base file references itself.",
 													data: {
 														kind: CodeActionKind.QuickFix,
-														fix(createDocumentWorkspaceEdit, findBestMatch) {
+														fix({ createDocumentWorkspaceEdit }) {
 															return {
 																title: "Remove #base",
 																edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
@@ -446,7 +446,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										message: `Unnecessary relative file path. (Expected "${relative}")`,
 										data: {
 											kind: CodeActionKind.QuickFix,
-											fix: (createDocumentWorkspaceEdit) => {
+											fix: ({ createDocumentWorkspaceEdit }) => {
 												return {
 													title: "Normalize file path",
 													edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, relative)
@@ -484,7 +484,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										],
 										data: {
 											kind: CodeActionKind.QuickFix,
-											fix: (createDocumentWorkspaceEdit) => {
+											fix: ({ createDocumentWorkspaceEdit }) => {
 												return {
 													title: `Remove duplicate ${documentSymbol.key}`,
 													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
@@ -517,7 +517,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${values.join("' | '")}'.`,
 								data: {
 									kind: CodeActionKind.QuickFix,
-									fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+									fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
 										let newText: string | null = null
 
 										const value = documentSymbol.detail!.toLowerCase()
@@ -569,7 +569,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										message: `Cannot find ${Symbol.keyFor(definitionReferencesConfiguration.type)} '${detail}'.`,
 										data: {
 											kind: CodeActionKind.QuickFix,
-											fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
 
 												let newText = findBestMatch(
 													detail,
@@ -676,7 +676,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									message: `Unnecessary relative file path. Expected '${newPath}'`,
 									data: {
 										kind: CodeActionKind.QuickFix,
-										fix: (createDocumentWorkspaceEdit) => {
+										fix: ({ createDocumentWorkspaceEdit }) => {
 											return {
 												title: "Normalize file path",
 												edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, newPath)

@@ -61,7 +61,7 @@ export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<
 
 export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
 
-export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { kind: (typeof CodeActionKind)[keyof (typeof CodeActionKind)], fix: (createDocumentWorkspaceEdit: (range: VDFRange, newText: string) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
+export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { kind: (typeof CodeActionKind)[keyof (typeof CodeActionKind)], fix: ({ createDocumentWorkspaceEdit, findBestMatch }: { createDocumentWorkspaceEdit: (range: VDFRange, newText: string) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
 
 export type CompletionFiles = (path: string, options: CompletionFilesOptions) => Promise<CompletionItem[]>
 
@@ -730,37 +730,35 @@ export abstract class LanguageServer<
 
 		const uri = params.textDocument.uri.toString()
 
-		const utils = <const>[
-			// createDocumentWorkspaceEdit
-			(range: VDFRange, newText: string) => ({
+		const utils = {
+			createDocumentWorkspaceEdit: (range: VDFRange, newText: string) => ({
 				changes: {
 					[uri]: [
 						TextEdit.replace(range, newText)
 					]
 				}
 			}),
-			// findBestMatch
-			(mainString: string, targetStrings: string[]) => {
+			findBestMatch: (mainString: string, targetStrings: string[]) => {
 				return targetStrings.length != 0
 					? findBestMatch(mainString, targetStrings).bestMatch.target
 					: null
 			}
-		]
+		}
 
 		const codeActions = params
 			.context
 			.diagnostics
 			.values()
-			.map((diagnostic) => diagnostics.get(diagnostic.data.id))
-			.filter((diagnostic): diagnostic is NonNullable<typeof diagnostic> => diagnostic != undefined && diagnostic.data != undefined)
+			.map((diagnostic) => diagnostics.get(diagnostic.data.id)!)
+			.filter((diagnostic) => diagnostic.data != undefined)
 			.filter(
 				params.context.only
-					? (diagnostic: DiagnosticCodeAction) => params.context.only!.includes(diagnostic.data!.kind)
+					? (diagnostic) => params.context.only!.includes(diagnostic.data!.kind)
 					: () => true
 			)
 			.map((diagnostic, index) => {
 
-				const codeAction = diagnostic.data!.fix(...utils)
+				const codeAction = diagnostic.data!.fix(utils)
 				if (!codeAction) {
 					return null
 				}
@@ -796,7 +794,7 @@ export abstract class LanguageServer<
 							changes: {
 								[uri]: diagnostics
 									.values()
-									.flatMap((diagnostic) => diagnostic.data!.fix(...utils)?.edit?.changes?.[uri] ?? [])
+									.flatMap((diagnostic) => diagnostic.data!.fix(utils)?.edit?.changes?.[uri] ?? [])
 									.filter(edit => edit != undefined)
 									.toArray()
 							}

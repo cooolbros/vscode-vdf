@@ -194,7 +194,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 								})),
 								data: {
 									kind: CodeActionKind.QuickFix,
-									fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+									fix: ({ createDocumentWorkspaceEdit }) => {
 										return {
 											title: "Remove duplicate event",
 											isPreferred: true,
@@ -217,7 +217,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										message: `Cannot find event '${statement.event}'.`,
 										data: {
 											kind: CodeActionKind.QuickFix,
-											fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
 
 												const newText = findBestMatch(
 													statement.event,
@@ -263,7 +263,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 														})),
 														data: {
 															kind: CodeActionKind.QuickFix,
-															fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+															fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
 
 																const newText = findBestMatch(
 																	statement.element,
@@ -306,7 +306,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										message: `Cannot find font '${statement.font}'.`,
 										data: {
 											kind: CodeActionKind.QuickFix,
-											fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
 												const newText = findBestMatch(
 													statement.font,
 													definitionReferences
@@ -344,7 +344,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										message: `Cannot find colour '${statement.value}'.`,
 										data: {
 											kind: CodeActionKind.QuickFix,
-											fix: (createDocumentWorkspaceEdit, findBestMatch) => {
+											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
 												const newText = findBestMatch(
 													statement.value,
 													definitionReferences
