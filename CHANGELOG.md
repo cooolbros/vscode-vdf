@@ -1,5 +1,12 @@
 # Change Log
 
+## [5.4.4]
+ - Fix extension activation failing in VSCode Web
+ - Fix always starting VMT Language Server
+ - Fix false positive diagnostics when value has unknown conditional
+ - Fix conditionals autocompletion sometimes inserting incorrect `[` and `]`
+ - [Popfile] Fix crash when BSP entity does not have `TeamNum`
+
 ## [5.4.3]
  - [Popfile] Add support `Where` enum values (`Ahead`, `Behind`, `Anywhere`, `""`)
  - [Popfile] Remove invalid-value diagnostic for `StartingPathTrackNode` values
