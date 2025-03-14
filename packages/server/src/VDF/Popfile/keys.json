@@ -224,7 +224,8 @@
     "templates": {
         "reference": [
             "tfbot"
-        ]
+        ],
+        "values": []
     },
     "tfbot": {
         "values": [
