@@ -23,7 +23,7 @@ export function* generateTokens(line: string) {
 		}
 		else {
 			const start = i
-			while (i < line.length && line[i] != " " && line[i] != "\t") {
+			while (i < line.length && line[i] != " " && line[i] != "\t" && line[i] != "\"") {
 				i++
 			}
 			const end = i
