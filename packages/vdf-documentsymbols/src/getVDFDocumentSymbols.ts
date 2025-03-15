@@ -61,7 +61,7 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 							if (valueToken.value == "{") {
 								value = parseObject(true)
 								valueRange = null
-								conditional = null
+								conditional ??= null
 								break
 							}
 							else {
