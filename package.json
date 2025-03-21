@@ -98,6 +98,11 @@
                 "command": "vscode-vdf.VDFToJSON"
             }
         ],
+        "configurationDefaults": {
+            "[popfile]": {
+                "editor.foldingStrategy": "indentation"
+            }
+        },
         "configuration": [
             {
                 "title": "VSCode VDF",
