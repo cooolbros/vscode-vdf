@@ -6,6 +6,7 @@ import { Steps } from "nextra/components"
 
  - [Node.js](https://nodejs.org)
  - [pnpm](https://pnpm.io)
+ - [Rust](https://www.rust-lang.org)
  - [wasm-pack](https://rustwasm.github.io/wasm-pack)
 
 <Steps>
@@ -22,6 +23,13 @@ cd vscode-vdf
 
 ```sh
 pnpm install
+```
+
+### Use Rust nightly
+
+```sh
+rustup toolchain install nightly
+rustup default nightly
 ```
 
 ### Build
