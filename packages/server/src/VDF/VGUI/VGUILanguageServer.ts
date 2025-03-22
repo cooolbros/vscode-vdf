@@ -1,4 +1,4 @@
-import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { map } from "rxjs"
 import { type Connection, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -59,11 +59,11 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 		this.workspaces = new Map()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({
-				workspace: t.router({
+				workspace: {
 					open: t
 						.procedure
 						.input(
@@ -139,7 +139,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 								workspace.setFileReferences(path, documentReferences)
 							}
 						})
-				})
+				}
 			})
 		)
 	}

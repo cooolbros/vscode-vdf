@@ -1,4 +1,4 @@
-import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { firstValueFrom, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
@@ -34,7 +34,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		this.onTextDocumentRequest(this.connection.onFoldingRanges, this.onFoldingRanges)
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
 		return super.router(t)
 	}
 

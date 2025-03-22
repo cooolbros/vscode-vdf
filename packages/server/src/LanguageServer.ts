@@ -1,5 +1,5 @@
-import { createTRPCProxyClient, httpBatchLink, type CreateTRPCClientOptions, type CreateTRPCProxyClient } from "@trpc/client"
-import { initTRPC, type AnyRouter, type CombinedDataTransformer } from "@trpc/server"
+import { createTRPCClient, httpBatchLink, type CreateTRPCClientOptions, type TRPCClient } from "@trpc/client"
+import { initTRPC, type AnyTRPCRouter, type TRPCCombinedDataTransformer } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { Client } from "client"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
@@ -93,12 +93,12 @@ export abstract class LanguageServer<
 	private oldName: [symbol, string] | null = null
 
 	protected readonly trpc: {
-		client: CreateTRPCProxyClient<ReturnType<typeof TRPCClientRouter>>
+		client: TRPCClient<ReturnType<typeof TRPCClientRouter>>
 		servers: {
-			hudanimations: CreateTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>
-			popfile: CreateTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>
-			vgui: CreateTRPCProxyClient<ReturnType<VGUILanguageServer["router"]>>
-			vmt: CreateTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>
+			hudanimations: TRPCClient<ReturnType<HUDAnimationsLanguageServer["router"]>>
+			popfile: TRPCClient<ReturnType<PopfileLanguageServer["router"]>>
+			vgui: TRPCClient<ReturnType<VGUILanguageServer["router"]>>
+			vmt: TRPCClient<ReturnType<VMTLanguageServer["router"]>>
 		}
 	}
 
@@ -305,7 +305,7 @@ export abstract class LanguageServer<
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 
-		let _router: AnyRouter
+		let _router: AnyTRPCRouter
 
 		const transformer = devalueTransformer({
 			reducers: {
@@ -331,7 +331,7 @@ export abstract class LanguageServer<
 			sendNotification: async (server, method, param) => {
 				await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param } satisfies z.infer<typeof Client["sendSchema"]>)
 			},
-		}) satisfies CombinedDataTransformer
+		}) satisfies TRPCCombinedDataTransformer
 
 		const resolveTRPC = async (input: string, init?: RequestInit) => {
 			_router ??= this.router(initTRPC.create({ transformer: transformer, isDev: true }))
@@ -357,10 +357,10 @@ export abstract class LanguageServer<
 		})
 
 		const VSCodeRPCOptions = (server: VSCodeVDFLanguageID | null) => ({
-			transformer: transformer,
 			links: [
 				httpBatchLink({
 					url: "",
+					transformer: transformer,
 					fetch: async (input, init) => {
 						let body: string
 
@@ -391,15 +391,15 @@ export abstract class LanguageServer<
 					}
 				})
 			]
-		} satisfies CreateTRPCClientOptions<AnyRouter>)
+		} satisfies CreateTRPCClientOptions<AnyTRPCRouter>)
 
 		this.trpc = {
-			client: createTRPCProxyClient<ReturnType<typeof TRPCClientRouter>>(VSCodeRPCOptions(null)),
+			client: createTRPCClient<ReturnType<typeof TRPCClientRouter>>(VSCodeRPCOptions(null)),
 			servers: {
-				hudanimations: createTRPCProxyClient<ReturnType<HUDAnimationsLanguageServer["router"]>>(VSCodeRPCOptions("hudanimations")),
-				popfile: createTRPCProxyClient<ReturnType<PopfileLanguageServer["router"]>>(VSCodeRPCOptions("popfile")),
-				vgui: createTRPCProxyClient<ReturnType<VGUILanguageServer["router"]>>(VSCodeRPCOptions("vdf")),
-				vmt: createTRPCProxyClient<ReturnType<VMTLanguageServer["router"]>>(VSCodeRPCOptions("vmt")),
+				hudanimations: createTRPCClient<ReturnType<HUDAnimationsLanguageServer["router"]>>(VSCodeRPCOptions("hudanimations")),
+				popfile: createTRPCClient<ReturnType<PopfileLanguageServer["router"]>>(VSCodeRPCOptions("popfile")),
+				vgui: createTRPCClient<ReturnType<VGUILanguageServer["router"]>>(VSCodeRPCOptions("vdf")),
+				vmt: createTRPCClient<ReturnType<VMTLanguageServer["router"]>>(VSCodeRPCOptions("vmt")),
 			}
 		}
 
@@ -407,9 +407,9 @@ export abstract class LanguageServer<
 		this.connection.listen()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
 		return t.router({
-			textDocument: t.router({
+			textDocument: {
 				documentSymbol: t
 					.procedure
 					.input(
@@ -452,7 +452,7 @@ export abstract class LanguageServer<
 						using document = await this.documents.get(input.textDocument.uri, true)
 						return await this.rename(document, input.oldName.type, input.oldName.key, input.newName)
 					})
-			}),
+			},
 		})
 	}
 

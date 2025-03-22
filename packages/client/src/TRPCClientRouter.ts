@@ -1,4 +1,4 @@
-import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import initBSP, { BSP } from "bsp"
 import { Uri } from "common/Uri"
 import { firstValueFrom } from "rxjs"
@@ -29,7 +29,7 @@ let BSPWASM: import("bsp").InitOutput
 let VTFPNGWASM: import("vtf-png").InitOutput
 
 export function TRPCClientRouter(
-	t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>,
+	t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>,
 	context: ExtensionContext,
 	fileSystemMountPointFactory: FileSystemMountPointFactory
 ) {

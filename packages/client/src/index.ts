@@ -1,4 +1,4 @@
-import { initTRPC, type AnyRouter } from "@trpc/server"
+import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
@@ -64,13 +64,14 @@ export class Client<T extends BaseLanguageClient> {
 								sendNotification: async (server, method, param) => {
 									await languageClients[server]!.client.sendNotification(method, param)
 								},
-							})
+							}),
+							isDev: true,
 						}),
 						context,
 						fileSystemMountPointFactory
 					)
 
-					const response = await fetchRequestHandler<AnyRouter>({
+					const response = await fetchRequestHandler<AnyTRPCRouter>({
 						endpoint: "",
 						req: new Request(new URL(url, "https://vscode.vdf"), init),
 						router: this.router

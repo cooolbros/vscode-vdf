@@ -1,4 +1,4 @@
-import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { generateTokens } from "common/generateTokens"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
@@ -111,11 +111,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		this.workspaces = new Map()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({
-				workspace: t.router({
+				workspace: {
 					open: t
 						.procedure
 						.input(
@@ -142,7 +142,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 								)
 							}
 						})
-				})
+				}
 			})
 		)
 	}

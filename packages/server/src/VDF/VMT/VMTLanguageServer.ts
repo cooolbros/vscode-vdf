@@ -1,4 +1,4 @@
-import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { TRPCCombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { firstValueFrom, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
@@ -54,7 +54,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 		this.workspaces = new Map()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

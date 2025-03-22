@@ -1,4 +1,4 @@
-import type { CombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { generateTokens } from "common/generateTokens"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
@@ -54,12 +54,8 @@ export abstract class VDFLanguageServer<
 		})
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: CombinedDataTransformer }>>) {
-		return t.mergeRouters(
-			super.router(t),
-			t.router({
-			})
-		)
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
+		return super.router(t)
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<{ onDidClose: () => void }> {
