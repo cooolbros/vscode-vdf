@@ -8,8 +8,8 @@
         "editor.tabSize": 4
     },
     "files.associations": {
-        "*.mdx": "markdown",
-        "**/snippets/*.json": "snippets"
+        "**/snippets/*.json": "snippets",
+        "*.mdx": "markdown"
     },
     "files.exclude": {
         "**/.DS_Store": true,
