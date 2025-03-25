@@ -1,18 +1,14 @@
-import { existsSync, readdirSync } from "fs"
-import { join } from "path"
+import { readdirSync } from "fs"
+import { posix } from "path"
 import { fileURLToPath } from "url"
 import type { Configuration } from "webpack"
 
 export default {
 	mode: "production",
 	target: "webworker",
-	entry: Object.fromEntries(
-		readdirSync(import.meta.dirname, { withFileTypes: true })
-			.filter(i => i.isDirectory() && existsSync(`${i.name}/src/server.ts`))
-			.map((server) => [`${server.name.toLowerCase()}`, join(import.meta.dirname, `${server.name}/src/server.ts`)])
-	),
+	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, posix.join(import.meta.dirname, `src/${name}`)])),
 	output: {
-		path: join(import.meta.dirname, "dist"),
+		path: posix.join(import.meta.dirname, "dist"),
 		libraryTarget: "var",
 		library: "serverExportVar",
 		clean: true,

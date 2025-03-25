@@ -1,4 +1,4 @@
-import { join } from "path"
+import { posix } from "path"
 import { fileURLToPath } from "url"
 import type { Configuration } from "webpack"
 
@@ -6,14 +6,14 @@ export default {
 	mode: "production",
 	target: "webworker",
 	entry: {
-		extension: join(import.meta.dirname, "src/extension.ts")
+		extension: posix.join(import.meta.dirname, "src/extension.ts")
 	},
 	experiments: {
 		asyncWebAssembly: true,
 		syncWebAssembly: true,
 	},
 	output: {
-		path: join(import.meta.dirname, "dist"),
+		path: posix.join(import.meta.dirname, "dist"),
 		libraryTarget: "commonjs",
 		clean: true,
 	},
