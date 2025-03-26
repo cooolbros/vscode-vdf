@@ -32,7 +32,7 @@ export abstract class VDFLanguageServer<
 
 	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
 		super(languageId, name, connection, {
-			servers: VDFLanguageServerConfiguration.servers,
+			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,
 				hoverProvider: true,
