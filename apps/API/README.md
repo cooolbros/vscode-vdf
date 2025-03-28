@@ -1,0 +1,6 @@
+# API
+
+```properties filename=".env"
+STEAM_USERNAME="XXXXXXXXXX"
+STEAM_PASSWORD="XXXXXXXXXX"
+```

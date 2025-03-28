@@ -1,0 +1,9 @@
+{
+    "name": "api",
+    "devDependencies": {
+        "@types/bun": "^1.2.6",
+        "drizzle-orm": "^0.41.0",
+        "vdf": "workspace:^",
+        "vpk": "workspace:^"
+    }
+}
