@@ -1,4 +1,3 @@
-import { $ } from "bun"
 import { Database } from "bun:sqlite"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { sqliteTable } from "drizzle-orm/sqlite-core"
@@ -9,19 +8,7 @@ import { VDF } from "vdf"
 import { VPK, VPKFileType } from "vpk"
 import { z } from "zod"
 
-const { STEAM_USERNAME, STEAM_PASSWORD } = z.object({
-	STEAM_USERNAME: z.string(),
-	STEAM_PASSWORD: z.string(),
-}).parse(process.env)
-
-const code = prompt("Steam Guard Code:")
-if (!code) {
-	process.exit(1)
-}
-
-const teamFortress2Folder = `./dist/Team Fortress 2`
-
-await $`steamcmd +force_install_dir ${posix.join(process.cwd(), teamFortress2Folder)} +login ${STEAM_USERNAME} ${STEAM_PASSWORD} ${code} +app_update 440 validate +quit`
+const teamFortress2Folder = `./dist`
 
 // Delete custom and download folders
 await rm(posix.join(teamFortress2Folder, "tf/custom"), { recursive: true, force: true })

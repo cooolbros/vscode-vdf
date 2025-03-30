@@ -1,7 +1,14 @@
 {
     "name": "api",
+    "scripts": {
+        "download": "dotenv -- pnpm steamcmd",
+        "steamcmd": "steamcmd +force_install_dir $(pwd)/dist +login $STEAM_USERNAME $STEAM_PASSWORD +app_update 440 validate +quit",
+        "seed": "bun run seed.ts",
+        "build": "dotnet publish -c Release"
+    },
     "devDependencies": {
         "@types/bun": "^1.2.6",
+        "dotenv-cli": "^8.0.0",
         "drizzle-orm": "^0.41.0",
         "vdf": "workspace:^",
         "vpk": "workspace:^"

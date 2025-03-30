@@ -5,6 +5,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <SelfContained>True</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
     <PublishAot>true</PublishAot>
   </PropertyGroup>
 
