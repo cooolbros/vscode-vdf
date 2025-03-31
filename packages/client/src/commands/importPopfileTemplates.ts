@@ -9,7 +9,7 @@ import { fileSystemMountPointFactory } from "../VirtualFileSystem/FileSystemMoun
 const TFBotSquadRandomChoice = ["TFBot", "Squad", "RandomChoice"].map(i => i.toLowerCase())
 
 export async function importPopfileTemplates(editor: TextEditor): Promise<void> {
-	const options = { multilineStrings: new Set(["Param".toLowerCase()]) }
+	const options = { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) }
 
 	const documentSymbols = getVDFDocumentSymbols(editor.document.getText(), options)
 

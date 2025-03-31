@@ -109,6 +109,7 @@ export interface VDFTextDocumentSchema {
 		defaultType: string | null
 		values?: Record<string, { kind: CompletionItemKind, values: string[] }>
 	}
+	valueLengthValidation?: Record<string, number>
 }
 
 export interface DefinitionMatcher {
