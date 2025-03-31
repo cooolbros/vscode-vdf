@@ -4,7 +4,9 @@
         "download": "dotenv -- pnpm steamcmd",
         "steamcmd": "steamcmd +force_install_dir $(pwd)/dist +login $STEAM_USERNAME $STEAM_PASSWORD +app_update 440 validate +quit",
         "seed": "bun run seed.ts",
-        "build": "dotnet publish -c Release"
+        "build": "dotnet publish -c Release",
+        "start:win-x64": "./bin/Release/net9.0/win-x64/publish/API.exe",
+        "start:linux-x64": "./bin/Release/net9.0/linux-x64/publish/API"
     },
     "devDependencies": {
         "@types/bun": "^1.2.6",
