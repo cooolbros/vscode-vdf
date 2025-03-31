@@ -485,7 +485,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		// https://github.com/cooolbros/vscode-vdf/issues/29
 		// Tags are limited to 256 characters due to CFmtStr
 		const valueLengthValidation = PopfileTextDocument.Schema.valueLengthValidation
-		if (valueLengthValidation && valueLengthValidation[key] && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= valueLengthValidation[key])) {
+		if (valueLengthValidation?.[key] && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= valueLengthValidation[key])) {
 			return {
 				range: documentSymbol.detailRange!,
 				severity: DiagnosticSeverity.Warning,
