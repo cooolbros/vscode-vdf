@@ -491,7 +491,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				severity: DiagnosticSeverity.Warning,
 				code: "invalid-length",
 				source: "popfile",
-				message: `Value exceeds maximum buffer size (${valueLengthValidation[key]}).`,
+				message: `Value exceeds maximum buffer size (${valueLengthValidation[key]}, got ${documentSymbol.detail.length + "\0".length}).`,
 			}
 		}
 
