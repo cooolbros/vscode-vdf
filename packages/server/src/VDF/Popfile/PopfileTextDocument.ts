@@ -157,6 +157,11 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		}
 	}
 
+	private static readonly lengths = {
+		["Param".toLowerCase()]: 4096,
+		["Tag".toLowerCase()]: 256,
+	}
+
 	public readonly inlayHints$: Observable<InlayHint[]>
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
 
@@ -170,7 +175,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	) {
 		super(init, documentConfiguration, fileSystem$, documents, refCountDispose, {
 			relativeFolderPath: "scripts/population",
-			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase()]) },
+			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,
 			dependencies$: fileSystem$.pipe(
 				switchMap((fileSystem) => {
@@ -480,13 +485,18 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		}
 
 		// https://github.com/cooolbros/vscode-vdf/issues/29
-		if (key == "Param".toLowerCase() && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
-			return {
-				range: documentSymbol.detailRange!,
-				severity: DiagnosticSeverity.Warning,
-				code: "invalid-length",
-				source: "popfile",
-				message: "Value exceeds maximum buffer size.",
+		// https://github.com/cooolbros/vscode-vdf/pull/72
+		const lengths = PopfileTextDocument.lengths
+		if (key in lengths && documentSymbol.detail != undefined) {
+			const length = documentSymbol.detail.length + "\0".length
+			if (length >= lengths[key]) {
+				return {
+					range: documentSymbol.detailRange!,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-length",
+					source: "popfile",
+					message: `Value exceeds maximum buffer size (Max: ${lengths[key]}, Size: ${length}).`,
+				}
 			}
 		}
 

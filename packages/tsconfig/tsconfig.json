@@ -108,9 +108,9 @@
   },
   "ts-node": {
     "compilerOptions": {
-        "module": "CommonJS",
-        "types": ["node"],
-        "verbatimModuleSyntax": false
+      "module": "CommonJS",
+      "types": ["node"],
+      "verbatimModuleSyntax": false
     }
   }
 }
