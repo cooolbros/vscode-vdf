@@ -154,6 +154,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			],
 			typeKey: null,
 			defaultType: null,
+		},
+		valueLengthValidation: {
+			"param": 2 ** 12,
+			"tag": 2 ** 8,
 		}
 	}
 
@@ -170,7 +174,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	) {
 		super(init, documentConfiguration, fileSystem$, documents, refCountDispose, {
 			relativeFolderPath: "scripts/population",
-			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase()]) },
+			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,
 			dependencies$: fileSystem$.pipe(
 				switchMap((fileSystem) => {
@@ -478,15 +482,16 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				}
 			}
 		}
-
 		// https://github.com/cooolbros/vscode-vdf/issues/29
-		if (key == "Param".toLowerCase() && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= 2 ** 12)) {
+		// Tags are limited to 256 characters due to CFmtStr
+		const valueLengthValidation = PopfileTextDocument.Schema.valueLengthValidation
+		if (valueLengthValidation?.[key] && documentSymbol.detail && ((documentSymbol.detail.length + "\0".length) >= valueLengthValidation[key])) {
 			return {
 				range: documentSymbol.detailRange!,
 				severity: DiagnosticSeverity.Warning,
 				code: "invalid-length",
 				source: "popfile",
-				message: "Value exceeds maximum buffer size.",
+				message: `Value exceeds maximum buffer size (${valueLengthValidation[key]}, got ${documentSymbol.detail.length + "\0".length}).`,
 			}
 		}
 
