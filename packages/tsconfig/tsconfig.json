@@ -108,11 +108,9 @@
   },
   "ts-node": {
     "compilerOptions": {
-        "module": "ESNext",
-        "moduleResolution": "node",
-        "types": ["node"],
-        "verbatimModuleSyntax": false
-    },
-    "esm": true
+      "module": "CommonJS",
+      "types": ["node"],
+      "verbatimModuleSyntax": false
+    }
   }
 }
