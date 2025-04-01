@@ -11,7 +11,9 @@
             "outputs": [
                 "!.next/cache/**",
                 ".next/**",
+                "bin/**",
                 "dist/**",
+                "obj/**",
                 "pkg/**",
                 "target/**"
             ]
