@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -15,13 +16,8 @@ using Microsoft.Extensions.DependencyInjection;
 WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(args);
 builder.Services.AddScoped((sp) =>
 {
-	SqliteConnection connection = new("Data Source=tf.db;Mode=ReadOnly");
+	SqliteConnection connection = new("Data Source=tf.db; Mode=ReadOnly");
 	connection.Open();
-
-	using SqliteCommand command = connection.CreateCommand();
-	command.CommandText = "PRAGMA journal_mode=DELETE;";
-	command.ExecuteNonQuery();
-
 	return connection;
 });
 
@@ -44,12 +40,14 @@ app.Use((context, next) =>
 	return next();
 });
 
+app.MapGet("/favicon.ico", () => Results.Redirect("https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png"));
+
 app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
 {
 	path = Path.TrimEndingDirectorySeparator(path);
 
 	using SqliteCommand command = connection.CreateCommand();
-	command.CommandText = $"""
+	command.CommandText = """
 		SELECT
 			CASE WHEN "name" = $path THEN "bytes" ELSE 0 END AS "bytes"
 		FROM "tf"
@@ -59,19 +57,19 @@ app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response
 	command.Parameters.AddWithValue("$path", path);
 
 	using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
-	if (!reader.Read())
+	if (reader.Read())
+	{
+		response.Headers.ContentLength = reader.GetInt32("bytes");
+		response.Headers.ContentType = reader.GetInt32("bytes") == 0
+			? "application/json"
+			: "application/octet-stream";
+
+		return Results.Empty;
+	}
+	else
 	{
 		return Results.NotFound();
 	}
-
-	response.Headers.ContentLength = reader.GetInt32("bytes");
-	response.Headers.ContentType = reader.GetInt32("bytes") switch
-	{
-		0 => "application/json",
-		_ => "application/octet-stream"
-	};
-
-	return Results.Empty;
 });
 
 app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
@@ -81,25 +79,34 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 	{
 		case "application/octet-stream":
 			{
-				using SqliteCommand command = connection.CreateCommand();
-				command.CommandText = $"""
-					SELECT
-						"bytes",
-						"data"
-					FROM "tf"
-					WHERE "name" = $path
-					LIMIT 1;
-				""";
-				command.Parameters.AddWithValue("$path", path);
-
-				SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess);
-				if (!reader.Read())
+				if (TryGetFile(connection, path, out int? bytes, out Stream? data))
 				{
-					return Results.NotFound();
+					response.Headers.ContentLength = bytes;
+					response.Headers.ContentType = "application/octet-stream";
+					return Results.Stream(new BrotliStream(data, CompressionMode.Decompress));
 				}
+				else
+				{
+					using SqliteCommand command = connection.CreateCommand();
+					command.CommandText = """
+						SELECT
+							NULL
+						FROM "tf"
+						WHERE "name" LIKE $path || '/%'
+						LIMIT 1;
+					""";
+					command.Parameters.AddWithValue("$path", path);
 
-				response.Headers.ContentLength = reader.GetInt32("bytes");
-				return Results.Stream(new BrotliStream(reader.GetStream("data"), CompressionMode.Decompress));
+					using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
+					if (reader.HasRows)
+					{
+						return Results.StatusCode((int)HttpStatusCode.UnsupportedMediaType);
+					}
+					else
+					{
+						return Results.NotFound();
+					}
+				}
 			}
 		case "application/json":
 			{
@@ -117,14 +124,27 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 				command.Parameters.AddWithValue("$length", path.Length);
 
 				using SqliteDataReader reader = command.ExecuteReader();
-
-				List<(string, byte)> folder = [];
-				while (reader.Read())
+				if (reader.HasRows)
 				{
-					folder.Add((reader.GetString("name"), reader.GetByte("type")));
-				}
+					List<(string, byte)> folder = [];
+					while (reader.Read())
+					{
+						folder.Add((reader.GetString("name"), reader.GetByte("type")));
+					}
 
-				return Results.Json(folder.ToArray(), options);
+					return Results.Json(folder.ToArray(), options);
+				}
+				else
+				{
+					if (TryGetFile(connection, path, out int? bytes, out Stream? data))
+					{
+						return Results.StatusCode((int)HttpStatusCode.UnsupportedMediaType);
+					}
+					else
+					{
+						return Results.NotFound();
+					}
+				}
 			}
 		default:
 			{
@@ -134,13 +154,41 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 				}
 				else
 				{
-					return Results.StatusCode((int)HttpStatusCode.NotAcceptable);
+					return Results.StatusCode(418);
 				}
 			}
 	}
 });
 
 app.Run();
+
+static bool TryGetFile(SqliteConnection connection, string path, [NotNullWhen(true)] out int? bytes, [NotNullWhen(true)] out Stream? data)
+{
+	using SqliteCommand command = connection.CreateCommand();
+	command.CommandText = """
+		SELECT
+			"bytes",
+			"data"
+		FROM "tf"
+		WHERE "name" = $path
+		LIMIT 1;
+	""";
+	command.Parameters.AddWithValue("$path", path);
+
+	using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess);
+	if (reader.Read())
+	{
+		bytes = reader.GetInt32("bytes");
+		data = reader.GetStream("data");
+		return true;
+	}
+	else
+	{
+		bytes = null;
+		data = null;
+		return false;
+	}
+}
 
 [JsonSerializable(typeof((string, byte)[]))]
 partial class AppJsonSerializerContext : JsonSerializerContext
