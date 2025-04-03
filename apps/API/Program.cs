@@ -14,6 +14,12 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 
 WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(args);
+
+builder.Services.AddCors((options) =>
+{
+	options.AddDefaultPolicy((policy) => policy.AllowAnyOrigin());
+});
+
 builder.Services.AddScoped((sp) =>
 {
 	SqliteConnection connection = new("Data Source=tf.db; Mode=ReadOnly");
@@ -22,6 +28,8 @@ builder.Services.AddScoped((sp) =>
 });
 
 WebApplication app = builder.Build();
+
+app.UseCors();
 
 JsonSerializerOptions options = new()
 {
@@ -39,8 +47,6 @@ app.Use((context, next) =>
 
 	return next();
 });
-
-app.MapGet("/favicon.ico", () => Results.Redirect("https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png"));
 
 app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
 {
@@ -114,8 +120,8 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 				command.CommandText = """
 					SELECT
 					DISTINCT
-						SUBSTRING("name", 0, CASE WHEN INSTR("name", '/') > 0 THEN INSTR("name", '/') ELSE LENGTH("name") END) AS "name",
-						SIGN(INSTR("name", '/')) AS "type"
+						SUBSTRING("name", 0, CASE WHEN INSTR("name", '/') > 0 THEN INSTR("name", '/') ELSE LENGTH("name") + 1 END) AS "name",
+						CASE WHEN INSTR("name", '/') > 0 THEN 0 ELSE 1 END AS "type"
 					FROM (SELECT SUBSTRING("name", $length + 2) AS "name" FROM "tf" WHERE "tf"."name" LIKE $path || '/%')
 					ORDER BY "type" DESC, "name" ASC;
 				""";
@@ -148,14 +154,12 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 			}
 		default:
 			{
-				if (path == "")
+				return path switch
 				{
-					return Results.Text(File.ReadAllText("README.md"), contentType: "text/markdown");
-				}
-				else
-				{
-					return Results.StatusCode(418);
-				}
+					"" => Results.Text(File.ReadAllText("README.md"), contentType: "text/markdown"),
+					"favicon.ico" => Results.Redirect("https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png"),
+					_ => Results.StatusCode(418)
+				};
 			}
 	}
 });
