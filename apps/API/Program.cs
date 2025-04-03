@@ -121,7 +121,7 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 					SELECT
 					DISTINCT
 						SUBSTRING("name", 0, CASE WHEN INSTR("name", '/') > 0 THEN INSTR("name", '/') ELSE LENGTH("name") + 1 END) AS "name",
-						CASE WHEN INSTR("name", '/') > 0 THEN 0 ELSE 1 END AS "type"
+						CASE WHEN INSTR("name", '/') > 0 THEN 1 ELSE 2 END AS "type"
 					FROM (SELECT SUBSTRING("name", $length + 2) AS "name" FROM "tf" WHERE "tf"."name" LIKE $path || '/%')
 					ORDER BY "type" DESC, "name" ASC;
 				""";
