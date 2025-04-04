@@ -8,7 +8,7 @@ import { VSCodeFileSystem } from "../VSCodeFileSystem"
  */
 export async function VPKFileSystem(root: Uri): Promise<FileSystemMountPoint> {
 	const authority = JSON.stringify(root)
-	return VSCodeFileSystem(
+	return await VSCodeFileSystem(
 		root,
 		vscode.FileType.File,
 		false,
