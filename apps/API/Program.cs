@@ -50,7 +50,7 @@ app.Use((context, next) =>
 
 app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
 {
-	path = Path.TrimEndingDirectorySeparator(path);
+	path = Path.TrimEndingDirectorySeparator(path).ToLower();
 
 	using SqliteCommand command = connection.CreateCommand();
 	command.CommandText = """
@@ -80,7 +80,7 @@ app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response
 
 app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
 {
-	path = Path.TrimEndingDirectorySeparator(path);
+	path = Path.TrimEndingDirectorySeparator(path).ToLower();
 	switch (request.Headers.Accept.ToString())
 	{
 		case "application/octet-stream":
@@ -117,12 +117,12 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 		case "application/json":
 			{
 				using SqliteCommand command = connection.CreateCommand();
-				command.CommandText = """
+				command.CommandText = $"""
 					SELECT
 					DISTINCT
 						SUBSTRING("name", 0, CASE WHEN INSTR("name", '/') > 0 THEN INSTR("name", '/') ELSE LENGTH("name") + 1 END) AS "name",
-						CASE WHEN INSTR("name", '/') > 0 THEN 1 ELSE 2 END AS "type"
-					FROM (SELECT SUBSTRING("name", $length + 2) AS "name" FROM "tf" WHERE "tf"."name" LIKE $path || '/%')
+						CASE WHEN INSTR("name", '/') > 0 THEN 2 ELSE 1 END AS "type"
+					FROM {(path.Length > 0 ? """(SELECT SUBSTRING("name", $length + 2) AS "name" FROM "tf" WHERE "name" LIKE $path || '/%')""" : "\"tf\"")}
 					ORDER BY "type" DESC, "name" ASC;
 				""";
 
