@@ -35,6 +35,7 @@ JsonSerializerOptions options = new()
 {
 	Converters = { new Converter() },
 	TypeInfoResolver = AppJsonSerializerContext.Default,
+	PropertyNamingPolicy = new LowerCaseNamingPolicy(),
 };
 
 app.Use((context, next) =>
@@ -51,120 +52,121 @@ app.Use((context, next) =>
 app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
 {
 	path = Path.TrimEndingDirectorySeparator(path).ToLower();
-	switch (request.Headers.Accept.ToString())
+
+	if (request.Query.ContainsKey("stat"))
 	{
-		case "application/octet-stream, application/json":
+		if (path == "")
+		{
+			return Results.Json(new FileStat
 			{
-				if (path == "")
-				{
-					response.Headers.ContentLength = 0;
-					response.Headers.ContentType = "application/json";
-					return Results.Empty;
-				}
+				Type = FileType.Directory,
+				CTime = 0,
+				MTime = 0,
+				Size = 0,
+				Permissions = FilePermission.Readonly
+			}, options);
+		}
 
-				using SqliteCommand command = connection.CreateCommand();
-				command.CommandText = """
-					SELECT
-						CASE WHEN "name" = $path THEN "bytes" ELSE 0 END AS "bytes"
-					FROM "tf"
-					WHERE "tf"."name" = $path OR "tf"."name" LIKE $path || '/%'
-					LIMIT 1;
-				""";
-				command.Parameters.AddWithValue("$path", path);
+		using SqliteCommand command = connection.CreateCommand();
+		command.CommandText = """
+			SELECT
+				CASE WHEN "name" = $path THEN "bytes" ELSE 0 END AS "size"
+			FROM "tf"
+			WHERE "tf"."name" = $path OR "tf"."name" LIKE $path || '/%'
+			LIMIT 1;
+		""";
+		command.Parameters.AddWithValue("$path", path);
 
-				using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
-				if (reader.Read())
-				{
-					response.Headers.ContentLength = reader.GetInt32("bytes");
-					response.Headers.ContentType = reader.GetInt32("bytes") == 0
-						? "application/json"
-						: "application/octet-stream";
-
-					return Results.Empty;
-				}
-				else
-				{
-					return Results.NotFound();
-				}
-			}
-		case "application/octet-stream":
+		using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
+		if (reader.Read())
+		{
+			return Results.Json(new FileStat
 			{
-				if (TryGetFile(connection, path, out int? bytes, out Stream? data))
-				{
-					response.Headers.ContentLength = bytes;
-					response.Headers.ContentType = "application/octet-stream";
-					return Results.Stream(new BrotliStream(data, CompressionMode.Decompress));
-				}
-				else
-				{
-					using SqliteCommand command = connection.CreateCommand();
-					command.CommandText = """
-						SELECT
-							NULL
-						FROM "tf"
-						WHERE "name" LIKE $path || '/%'
-						LIMIT 1;
-					""";
-					command.Parameters.AddWithValue("$path", path);
+				Type = FileType.File,
+				CTime = 0,
+				MTime = 0,
+				Size = reader.GetInt32("size"),
+				Permissions = FilePermission.Readonly
+			}, options);
+		}
+		else
+		{
+			return Results.NotFound();
+		}
+	}
+	else if (request.Query.ContainsKey("readdir"))
+	{
+		using SqliteCommand command = connection.CreateCommand();
+		command.CommandText = $"""
+			SELECT
+			DISTINCT
+				SUBSTRING("name", 0, CASE WHEN INSTR("name", '/') > 0 THEN INSTR("name", '/') ELSE LENGTH("name") + 1 END) AS "name",
+				CASE WHEN INSTR("name", '/') > 0 THEN 2 ELSE 1 END AS "type"
+			FROM {(path.Length > 0 ? """(SELECT SUBSTRING("name", $length + 2) AS "name" FROM "tf" WHERE "name" LIKE $path || '/%')""" : "\"tf\"")}
+			ORDER BY "type" DESC, "name" ASC;
+		""";
 
-					using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
-					if (reader.HasRows)
-					{
-						return Results.StatusCode((int)HttpStatusCode.UnsupportedMediaType);
-					}
-					else
-					{
-						return Results.NotFound();
-					}
-				}
-			}
-		case "application/json":
+		command.Parameters.AddWithValue("$path", path);
+		command.Parameters.AddWithValue("$length", path.Length);
+
+		using SqliteDataReader reader = command.ExecuteReader();
+		if (reader.HasRows)
+		{
+			List<(string, byte)> folder = [];
+			while (reader.Read())
 			{
-				using SqliteCommand command = connection.CreateCommand();
-				command.CommandText = $"""
-					SELECT
-					DISTINCT
-						SUBSTRING("name", 0, CASE WHEN INSTR("name", '/') > 0 THEN INSTR("name", '/') ELSE LENGTH("name") + 1 END) AS "name",
-						CASE WHEN INSTR("name", '/') > 0 THEN 2 ELSE 1 END AS "type"
-					FROM {(path.Length > 0 ? """(SELECT SUBSTRING("name", $length + 2) AS "name" FROM "tf" WHERE "name" LIKE $path || '/%')""" : "\"tf\"")}
-					ORDER BY "type" DESC, "name" ASC;
-				""";
-
-				command.Parameters.AddWithValue("$path", path);
-				command.Parameters.AddWithValue("$length", path.Length);
-
-				using SqliteDataReader reader = command.ExecuteReader();
-				if (reader.HasRows)
-				{
-					List<(string, byte)> folder = [];
-					while (reader.Read())
-					{
-						folder.Add((reader.GetString("name"), reader.GetByte("type")));
-					}
-
-					return Results.Json(folder.ToArray(), options);
-				}
-				else
-				{
-					if (TryGetFile(connection, path, out int? bytes, out Stream? data))
-					{
-						return Results.StatusCode((int)HttpStatusCode.UnsupportedMediaType);
-					}
-					else
-					{
-						return Results.NotFound();
-					}
-				}
+				folder.Add((reader.GetString("name"), reader.GetByte("type")));
 			}
-		default:
+
+			return Results.Json(folder.ToArray(), options);
+		}
+		else
+		{
+			if (TryGetFile(connection, path, out int? bytes, out Stream? data))
+			{
+				return Results.StatusCode((int)HttpStatusCode.UnsupportedMediaType);
+			}
+			else
+			{
+				return Results.NotFound();
+			}
+		}
+	}
+	else
+	{
+		if (TryGetFile(connection, path, out int? bytes, out Stream? data))
+		{
+			response.Headers.ContentLength = bytes;
+			response.Headers.ContentType = "application/octet-stream";
+			return Results.Stream(new BrotliStream(data, CompressionMode.Decompress));
+		}
+		else
+		{
+			using SqliteCommand command = connection.CreateCommand();
+			command.CommandText = """
+				SELECT
+					NULL
+				FROM "tf"
+				WHERE "name" LIKE $path || '/%'
+				LIMIT 1;
+			""";
+			command.Parameters.AddWithValue("$path", path);
+
+			using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
+			if (reader.HasRows)
+			{
+				return Results.StatusCode((int)HttpStatusCode.UnsupportedMediaType);
+			}
+			else
 			{
 				return path switch
 				{
 					"" => Results.Text(File.ReadAllText("README.md"), contentType: "text/markdown"),
 					"favicon.ico" => Results.Redirect("https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png"),
-					_ => Results.StatusCode(418)
+					_ => Results.NotFound()
 				};
 			}
+		}
 	}
 });
 
@@ -198,6 +200,29 @@ static bool TryGetFile(SqliteConnection connection, string path, [NotNullWhen(tr
 	}
 }
 
+record class FileStat
+{
+	public required FileType Type { get; init; }
+	public required int CTime { get; init; }
+	public required int MTime { get; init; }
+	public required int Size { get; init; }
+	public required FilePermission Permissions { get; init; }
+}
+
+enum FileType : byte
+{
+	Unknown = 0,
+	File = 1,
+	Directory = 2,
+	SymbolicLink = 64,
+}
+
+enum FilePermission : byte
+{
+	Readonly = 1,
+}
+
+[JsonSerializable(typeof(FileStat))]
 [JsonSerializable(typeof((string, byte)[]))]
 partial class AppJsonSerializerContext : JsonSerializerContext
 {
@@ -217,4 +242,9 @@ class Converter : JsonConverter<(string, byte)>
 		writer.WriteNumberValue(value.Item2);
 		writer.WriteEndArray();
 	}
+}
+
+class LowerCaseNamingPolicy : JsonNamingPolicy
+{
+	public override string ConvertName(string name) => name.ToLower();
 }
