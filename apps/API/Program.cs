@@ -57,11 +57,12 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 	{
 		if (path == "")
 		{
+			long time = UserVersion(connection);
 			return Results.Json(new FileStat
 			{
 				Type = FileType.Directory,
-				CTime = 0,
-				MTime = 0,
+				CTime = time,
+				MTime = time,
 				Size = 0,
 				Permissions = FilePermission.Readonly
 			}, options);
@@ -80,11 +81,12 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 		using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
 		if (reader.Read())
 		{
+			long time = UserVersion(connection);
 			return Results.Json(new FileStat
 			{
 				Type = FileType.File,
-				CTime = 0,
-				MTime = 0,
+				CTime = time,
+				MTime = time,
 				Size = reader.GetInt32("size"),
 				Permissions = FilePermission.Readonly
 			}, options);
@@ -200,11 +202,18 @@ static bool TryGetFile(SqliteConnection connection, string path, [NotNullWhen(tr
 	}
 }
 
+static long UserVersion(SqliteConnection connection)
+{
+	using SqliteCommand command = connection.CreateCommand();
+	command.CommandText = "PRAGMA user_version;";
+	return DateTimeOffset.FromUnixTimeSeconds((long)command.ExecuteScalar()!).ToUnixTimeMilliseconds();
+}
+
 record class FileStat
 {
 	public required FileType Type { get; init; }
-	public required int CTime { get; init; }
-	public required int MTime { get; init; }
+	public required long CTime { get; init; }
+	public required long MTime { get; init; }
 	public required int Size { get; init; }
 	public required FilePermission Permissions { get; init; }
 }
