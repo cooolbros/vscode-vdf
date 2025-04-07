@@ -114,11 +114,9 @@ export abstract class LanguageServer<
 
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
-		const teamFortress2Folder$ = onDidChangeConfiguration$.pipe(
-			concatMap(async () => {
-				return VSCodeVDFConfigurationSchema.shape.teamFortress2Folder.parse(await this.connection.workspace.getConfiguration({ section: "vscode-vdf.teamFortress2Folder" }))
-			}),
-			distinctUntilChanged(),
+		const teamFortress2Folder$ = defer(() => this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(
+			switchMap((observable) => observable),
+			distinctUntilChanged((a, b) => Uri.equals(a, b)),
 			shareReplay(1)
 		)
 

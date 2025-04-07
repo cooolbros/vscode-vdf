@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { Uri } from "./Uri"
 
 const VDFLanguageConfigurationSchema = z.object({
 	format: z.object({
@@ -14,17 +13,6 @@ const VDFLanguageConfigurationSchema = z.object({
 
 export const VSCodeVDFConfigurationSchema = z.object({
 	filesAutoCompletionKind: z.enum(["incremental", "all"]),
-	teamFortress2Folder: z.string().transform((arg) => {
-		// Convert Windows drive letter to lower case to be consistent with VSCode Uris
-		const path = arg.trim().replace(/[a-z]{1}:/i, (substring) => substring.toLowerCase()).replaceAll('\\', '/')
-		return new Uri({
-			scheme: "file",
-			authority: "",
-			path: path,
-			query: "",
-			fragment: ""
-		})
-	}),
 	updateDiagnosticsEvent: z.enum(["type", "save"]),
 	hudanimations: z.object({
 		format: z.object({

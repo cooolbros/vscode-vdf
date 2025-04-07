@@ -6,8 +6,13 @@ import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Fo
 import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { onDidChangeActiveTextEditor } from "client/decorations"
+import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
+import type { FileSystemMountPointFactory } from "client/VirtualFileSystem/FileSystemMountPointFactory"
+import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import { VTFEditor } from "client/VTF/VTFEditor"
-import { commands, Uri, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { Uri } from "common/Uri"
+import { of } from "rxjs"
+import { commands, FileType, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
@@ -44,13 +49,34 @@ export function activate(context: ExtensionContext): void {
 			return
 		}
 
-		const serverModule = Uri.joinPath(context.extensionUri, "apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
+		const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
 		const client = languageClients[languageId] = new Client(
 			context,
 			languageClients,
 			startServer,
+			of(new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })),
+			{
+				[RemoteResourceFileSystemProvider.scheme]: async (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => {
+					const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
+
+					try {
+						console.log(await workspace.fs.stat(root))
+					}
+					catch (error) {
+						console.warn(error)
+						context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
+					}
+
+					return await VSCodeFileSystem(
+						root,
+						FileType.Directory,
+						false,
+						(path) => root.joinPath(path)
+					)
+				}
+			},
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,

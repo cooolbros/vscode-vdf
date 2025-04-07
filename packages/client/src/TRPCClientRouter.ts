@@ -1,7 +1,7 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import initBSP, { BSP } from "bsp"
 import { Uri } from "common/Uri"
-import { firstValueFrom } from "rxjs"
+import { firstValueFrom, Observable } from "rxjs"
 import { commands, env, languages, UIKind, window, workspace, type ExtensionContext } from "vscode"
 import initVTFPNG, { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
@@ -31,6 +31,7 @@ let VTFPNGWASM: import("vtf-png").InitOutput
 export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>,
 	context: ExtensionContext,
+	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: FileSystemMountPointFactory
 ) {
 	async function initWASM<T>(url: string, init: (module: Uint8Array) => Promise<T>): Promise<T> {
@@ -66,6 +67,9 @@ export function TRPCClientRouter(
 		}),
 		teamFortress2FileSystem: t
 			.router({
+				teamFortress2Folder: t
+					.procedure
+					.query(async () => teamFortress2Folder$),
 				open: t
 					.procedure
 					.input(

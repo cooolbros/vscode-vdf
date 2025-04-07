@@ -1,12 +1,15 @@
 import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
+import type { Observable } from "rxjs"
 import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
-import { fileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
+import type { FileSystemMountPoint } from "./VirtualFileSystem/FileSystemMountPoint"
+import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 export * from "common/VSCodeVDFLanguageID"
 
@@ -29,15 +32,20 @@ export class Client<T extends BaseLanguageClient> {
 		method: z.string(),
 		param: z.any()
 	})
+
+	private static fileSystemMountPointFactory?: FileSystemMountPointFactory
+
 	public readonly client: T
-	private router?: ReturnType<typeof TRPCClientRouter>
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
+	private router?: ReturnType<typeof TRPCClientRouter>
 
 	constructor(
 		context: ExtensionContext,
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
+		teamFortress2Folder$: Observable<Uri>,
+		teamFortress2FileSystemFactory: Record<string, (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => Promise<FileSystemMountPoint>>,
 		client: T,
 	) {
 		this.client = client
@@ -49,13 +57,14 @@ export class Client<T extends BaseLanguageClient> {
 				const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
 
 				if (languageId == null) {
+					Client.fileSystemMountPointFactory ??= new FileSystemMountPointFactory(teamFortress2FileSystemFactory)
 					this.router ??= TRPCClientRouter(
 						initTRPC.create({
 							transformer: devalueTransformer({
 								reducers: {},
 								revivers: {},
 								name: null,
-								subscriptions: context.subscriptions,
+								subscriptions: this.subscriptions,
 								onRequest: (method, handler) => client.onRequest(method, handler),
 								onNotification: (method, handler) => client.onNotification(method, handler),
 								sendRequest: (server, method, param) => {
@@ -68,7 +77,8 @@ export class Client<T extends BaseLanguageClient> {
 							isDev: true,
 						}),
 						context,
-						fileSystemMountPointFactory
+						teamFortress2Folder$,
+						Client.fileSystemMountPointFactory
 					)
 
 					const response = await fetchRequestHandler<AnyTRPCRouter>({
