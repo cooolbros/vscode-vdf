@@ -48,48 +48,45 @@ app.Use((context, next) =>
 	return next();
 });
 
-app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
-{
-	path = Path.TrimEndingDirectorySeparator(path).ToLower();
-
-	if (path == "")
-	{
-		response.Headers.ContentLength = 0;
-		response.Headers.ContentType = "application/json";
-		return Results.Empty;
-	}
-
-	using SqliteCommand command = connection.CreateCommand();
-	command.CommandText = """
-		SELECT
-			CASE WHEN "name" = $path THEN "bytes" ELSE 0 END AS "bytes"
-		FROM "tf"
-		WHERE "tf"."name" = $path OR "tf"."name" LIKE $path || '/%'
-		LIMIT 1;
-	""";
-	command.Parameters.AddWithValue("$path", path);
-
-	using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
-	if (reader.Read())
-	{
-		response.Headers.ContentLength = reader.GetInt32("bytes");
-		response.Headers.ContentType = reader.GetInt32("bytes") == 0
-			? "application/json"
-			: "application/octet-stream";
-
-		return Results.Empty;
-	}
-	else
-	{
-		return Results.NotFound();
-	}
-});
-
 app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnection connection, string path = "") =>
 {
 	path = Path.TrimEndingDirectorySeparator(path).ToLower();
 	switch (request.Headers.Accept.ToString())
 	{
+		case "application/octet-stream, application/json":
+			{
+				if (path == "")
+				{
+					response.Headers.ContentLength = 0;
+					response.Headers.ContentType = "application/json";
+					return Results.Empty;
+				}
+
+				using SqliteCommand command = connection.CreateCommand();
+				command.CommandText = """
+					SELECT
+						CASE WHEN "name" = $path THEN "bytes" ELSE 0 END AS "bytes"
+					FROM "tf"
+					WHERE "tf"."name" = $path OR "tf"."name" LIKE $path || '/%'
+					LIMIT 1;
+				""";
+				command.Parameters.AddWithValue("$path", path);
+
+				using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
+				if (reader.Read())
+				{
+					response.Headers.ContentLength = reader.GetInt32("bytes");
+					response.Headers.ContentType = reader.GetInt32("bytes") == 0
+						? "application/json"
+						: "application/octet-stream";
+
+					return Results.Empty;
+				}
+				else
+				{
+					return Results.NotFound();
+				}
+			}
 		case "application/octet-stream":
 			{
 				if (TryGetFile(connection, path, out int? bytes, out Stream? data))
