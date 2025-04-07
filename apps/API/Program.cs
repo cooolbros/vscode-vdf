@@ -52,6 +52,13 @@ app.MapMethods("{**path}", ["HEAD"], (HttpRequest request, HttpResponse response
 {
 	path = Path.TrimEndingDirectorySeparator(path).ToLower();
 
+	if (path == "")
+	{
+		response.Headers.ContentLength = 0;
+		response.Headers.ContentType = "application/json";
+		return Results.Empty;
+	}
+
 	using SqliteCommand command = connection.CreateCommand();
 	command.CommandText = """
 		SELECT

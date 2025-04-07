@@ -1,6 +1,7 @@
 .env
 .next
 .turbo
+.vs
 .vscode-test
 .vscode-test-web
 *.db
