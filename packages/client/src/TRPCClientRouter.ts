@@ -35,7 +35,7 @@ export function TRPCClientRouter(
 	fileSystemMountPointFactory: FileSystemMountPointFactory
 ) {
 	async function initWASM<T>(url: string, init: (module: Uint8Array) => Promise<T>): Promise<T> {
-		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${new URL(url).pathname.split("/").pop()!}`).with({ query: null })
+		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url.split("/").pop()!}`).with({ query: null })
 		const buf = await workspace.fs.readFile(uri)
 		return await init(buf)
 	}
