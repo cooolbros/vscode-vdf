@@ -8,8 +8,7 @@ import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
-import type { FileSystemMountPoint } from "./VirtualFileSystem/FileSystemMountPoint"
-import { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
+import type { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 export * from "common/VSCodeVDFLanguageID"
 
@@ -33,8 +32,6 @@ export class Client<T extends BaseLanguageClient> {
 		param: z.any()
 	})
 
-	private static fileSystemMountPointFactory?: FileSystemMountPointFactory
-
 	public readonly client: T
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
@@ -45,7 +42,7 @@ export class Client<T extends BaseLanguageClient> {
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		teamFortress2Folder$: Observable<Uri>,
-		teamFortress2FileSystemFactory: Record<string, (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => Promise<FileSystemMountPoint>>,
+		fileSystemMountPointFactory: FileSystemMountPointFactory,
 		client: T,
 	) {
 		this.client = client
@@ -57,7 +54,6 @@ export class Client<T extends BaseLanguageClient> {
 				const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
 
 				if (languageId == null) {
-					Client.fileSystemMountPointFactory ??= new FileSystemMountPointFactory(teamFortress2FileSystemFactory)
 					this.router ??= TRPCClientRouter(
 						initTRPC.create({
 							transformer: devalueTransformer({
@@ -78,7 +74,7 @@ export class Client<T extends BaseLanguageClient> {
 						}),
 						context,
 						teamFortress2Folder$,
-						Client.fileSystemMountPointFactory
+						fileSystemMountPointFactory
 					)
 
 					const response = await fetchRequestHandler<AnyTRPCRouter>({

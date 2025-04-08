@@ -7,7 +7,7 @@ import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { onDidChangeActiveTextEditor } from "client/decorations"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
-import type { FileSystemMountPointFactory } from "client/VirtualFileSystem/FileSystemMountPointFactory"
+import { FileSystemMountPointFactory } from "client/VirtualFileSystem/FileSystemMountPointFactory"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import { VTFEditor } from "client/VTF/VTFEditor"
 import { Uri } from "common/Uri"
@@ -19,13 +19,36 @@ const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageC
 
 export function activate(context: ExtensionContext): void {
 
+	const teamFortress2Folder$ = of(new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" }))
+
+	const fileSystemMountPointFactory = new FileSystemMountPointFactory({
+		[RemoteResourceFileSystemProvider.scheme]: async (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => {
+			const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
+
+			try {
+				console.log(await workspace.fs.stat(root))
+			}
+			catch (error) {
+				console.warn(error)
+				context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
+			}
+
+			return await VSCodeFileSystem(
+				root,
+				FileType.Directory,
+				false,
+				(path) => root.joinPath(path)
+			)
+		}
+	})
+
 	// https://code.visualstudio.com/api/references/contribution-points#contributes
 	// https://code.visualstudio.com/api/references/vscode-api
 
 	// Commands
 	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
@@ -35,7 +58,6 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, context.subscriptions)))
 
 	// Language Server
-
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
 		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
 		if (result.success) {
@@ -56,27 +78,8 @@ export function activate(context: ExtensionContext): void {
 			context,
 			languageClients,
 			startServer,
-			of(new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })),
-			{
-				[RemoteResourceFileSystemProvider.scheme]: async (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => {
-					const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
-
-					try {
-						console.log(await workspace.fs.stat(root))
-					}
-					catch (error) {
-						console.warn(error)
-						context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
-					}
-
-					return await VSCodeFileSystem(
-						root,
-						FileType.Directory,
-						false,
-						(path) => root.joinPath(path)
-					)
-				}
-			},
+			teamFortress2Folder$,
+			fileSystemMountPointFactory,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,
