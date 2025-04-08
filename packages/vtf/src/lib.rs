@@ -163,10 +163,10 @@ impl VTFImageFormat {
             VTFImageFormat::RGB888 => Ok(width * height * 3),
             VTFImageFormat::BGR888 => Ok(width * height * 3),
             VTFImageFormat::RGB565 => Err(VTFImageFormat::RGB565),
-            VTFImageFormat::I8 => Ok(width * height * 1),
+            VTFImageFormat::I8 => Ok(width * height),
             VTFImageFormat::IA88 => Err(VTFImageFormat::IA88),
             VTFImageFormat::P8 => Err(VTFImageFormat::P8),
-            VTFImageFormat::A8 => Ok(width * height * 1),
+            VTFImageFormat::A8 => Ok(width * height),
             VTFImageFormat::RGB888BlueScreen => Err(VTFImageFormat::RGB888BlueScreen),
             VTFImageFormat::BGR888BlueScreen => Err(VTFImageFormat::BGR888BlueScreen),
             VTFImageFormat::ARGB8888 => Ok(width * height * 4),
@@ -224,9 +224,9 @@ impl From<DecodeError> for VTFDecodeError {
     }
 }
 
-impl Into<JsValue> for VTFDecodeError {
-    fn into(self) -> JsValue {
-        JsValue::from(JsError::new(&format!("{:?}", self.0)))
+impl From<VTFDecodeError> for JsValue {
+    fn from(val: VTFDecodeError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", val.0)))
     }
 }
 
@@ -257,9 +257,9 @@ impl From<usize> for VTFError {
     }
 }
 
-impl Into<JsValue> for VTFError {
-    fn into(self) -> JsValue {
-        JsValue::from(JsError::new(&format!("{:?}", self)))
+impl From<VTFError> for JsValue {
+    fn from(val: VTFError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", val)))
     }
 }
 
@@ -296,16 +296,13 @@ impl VTF {
             None => None,
         };
 
-        reader.seek(SeekFrom::Start(header.header_size as u64)).or_else(|_| {
-            Err(DecodeError::UnexpectedEnd {
+        reader.seek(SeekFrom::Start(header.header_size as u64)).map_err(|_| DecodeError::UnexpectedEnd {
                 additional: header.header_size as usize,
-            })
-        })?;
+            })?;
 
         let thumbnail_bytes = texpresso::Format::Bc1.compressed_size(header.low_res_image_width as usize, header.low_res_image_height as usize);
         reader
-            .seek_relative(thumbnail_bytes as i64)
-            .or_else(|_| Err(DecodeError::UnexpectedEnd { additional: thumbnail_bytes }))?;
+            .seek_relative(thumbnail_bytes as i64).map_err(|_| DecodeError::UnexpectedEnd { additional: thumbnail_bytes })?;
 
         let mipmaps = (0..header.mipmap_count)
             .rev()
@@ -318,7 +315,7 @@ impl VTF {
                 let frames = (0..header.frames)
                     .map(|_| {
                         let offset = reader.stream_position().unwrap() as usize;
-                        reader.seek_relative(bytes as i64).or_else(|_| Err(bytes))?;
+                        reader.seek_relative(bytes as i64).map_err(|_| bytes)?;
                         Ok(VTFFrame { offset, bytes })
                     })
                     .collect::<Result<Vec<VTFFrame>, VTFError>>()?;
@@ -339,17 +336,17 @@ impl VTF {
     pub fn extract(&self, mipmap_index: usize, frame_index: usize) -> Result<VTFData, VTFError> {
         let mipmaps = self.mipmaps.as_ref().map_err(|err| err.clone())?;
 
-        let mipmap = mipmaps.get(mipmap_index).ok_or_else(|| VTFError::UnexpectedMipMap {
+        let mipmap = mipmaps.get(mipmap_index).ok_or(VTFError::UnexpectedMipMap {
             mipmap_count: self.header.mipmap_count,
             found: mipmap_index,
         })?;
 
-        let frame = mipmap.frames.get(frame_index).ok_or_else(|| VTFError::UnexpectedFrame {
+        let frame = mipmap.frames.get(frame_index).ok_or(VTFError::UnexpectedFrame {
             frame_count: self.header.frames,
             found: frame_index,
         })?;
 
-        let buf = self.buf.get(frame.offset..(frame.offset + frame.bytes)).ok_or_else(|| frame.bytes)?;
+        let buf = self.buf.get(frame.offset..(frame.offset + frame.bytes)).ok_or(frame.bytes)?;
 
         let mut rgba = vec![0; mipmap.width as usize * mipmap.height as usize * 4];
 
@@ -428,13 +425,13 @@ impl VTF {
                 }
             }
             VTFImageFormat::DXT1 => {
-                texpresso::Format::Bc1.decompress(&buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
+                texpresso::Format::Bc1.decompress(buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
             }
             VTFImageFormat::DXT3 => {
-                texpresso::Format::Bc2.decompress(&buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
+                texpresso::Format::Bc2.decompress(buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
             }
             VTFImageFormat::DXT5 => {
-                texpresso::Format::Bc3.decompress(&buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
+                texpresso::Format::Bc3.decompress(buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
             }
             _variant => unreachable!(),
         };
