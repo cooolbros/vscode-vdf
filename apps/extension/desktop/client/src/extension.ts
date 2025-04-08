@@ -145,6 +145,7 @@ export function activate(context: ExtensionContext): void {
 					const home = homedir()
 					const paths = [
 						/* Steam */ posix.join(home, ".local/share/Steam"),
+						/* Steam */ posix.join(home, ".steam/steam"),
 						/* Flatpak */ posix.join(home, ".var/app/com.valvesoftware.Steam/.local/share/Steam"),
 					]
 
