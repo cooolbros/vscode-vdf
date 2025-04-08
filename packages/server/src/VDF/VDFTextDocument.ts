@@ -659,12 +659,12 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							let newPath: string
 							if (fileConfiguration.folder) {
 								newPath = posix.relative(
-									fileConfiguration.folder,
-									posix.resolve(`/${fileConfiguration.folder}`, detail).substring(1)
+									`/${fileConfiguration.folder}`,
+									posix.resolve(`/${fileConfiguration.folder}`, detail)
 								)
 							}
 							else {
-								newPath = posix.resolve("/", ...documentSymbol.detail.split(/[/\\]+/)).substring(1)
+								newPath = posix.resolve(`/${detail}`)
 							}
 
 							if (detail != newPath) {
