@@ -1,7 +1,7 @@
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, Subscription, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, defer, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, Subscription, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../../DefinitionReferences"
 import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
@@ -18,6 +18,52 @@ export const enum VGUIFileType {
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
+
+	private static readonly files = {
+		clientSchemeFiles: new Set(["resource/clientscheme.res"]),
+		sourceSchemeFiles: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
+		languageTokensFiles: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
+	}
+
+	public static fileType(uri: Uri, teamFortress2Folder$: Observable<Uri>) {
+		return defer(() => {
+			switch (uri.scheme) {
+				case "file":
+					return teamFortress2Folder$.pipe(
+						map((teamFortress2Folder) => posix.relative(teamFortress2Folder.joinPath("tf").path, uri.path))
+					)
+				case "vpk":
+				case "vscode-vdf-tf-remote-resource":
+					return of(uri.path.substring(1))
+				default:
+					// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
+					console.warn(`Unknown Uri.scheme: ${uri}`)
+					return of(null)
+			}
+		}).pipe(
+			map((path) => {
+				const { clientSchemeFiles, sourceSchemeFiles, languageTokensFiles } = VGUIWorkspace.files
+				if (path != null) {
+					if (clientSchemeFiles.has(path)) {
+						return VGUIFileType.ClientScheme
+					}
+					else if (sourceSchemeFiles.has(path)) {
+						return VGUIFileType.SourceScheme
+					}
+					else if (languageTokensFiles.has(path)) {
+						return VGUIFileType.LanguageTokens
+					}
+					else {
+						return VGUIFileType.None
+					}
+				}
+				else {
+					return VGUIFileType.None
+				}
+			}),
+			distinctUntilChanged()
+		)
+	}
 
 	private readonly subscriptions: Subscription[]
 	private readonly fileSystem$: Observable<TeamFortress2FileSystem>

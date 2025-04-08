@@ -82,6 +82,7 @@ export abstract class LanguageServer<
 	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
+	protected readonly teamFortress2Folder$: Observable<Uri>
 	protected readonly fileSystems: {
 		get: (paths: (teamFortress2Folder: Uri) => ({ type: "folder" | "tf2" | "vpk" | "wildcard", uri: Uri } | null)[]) => Observable<TeamFortress2FileSystem>
 	}
@@ -114,7 +115,7 @@ export abstract class LanguageServer<
 
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
-		const teamFortress2Folder$ = defer(() => this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(
+		this.teamFortress2Folder$ = defer(() => this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(
 			switchMap((observable) => observable),
 			distinctUntilChanged((a, b) => Uri.equals(a, b)),
 			shareReplay(1)
@@ -124,7 +125,7 @@ export abstract class LanguageServer<
 
 		this.fileSystems = {
 			get: (paths): Observable<TeamFortress2FileSystem> => {
-				return teamFortress2Folder$.pipe(
+				return this.teamFortress2Folder$.pipe(
 					map((teamFortress2Folder) => {
 						return paths(teamFortress2Folder)
 							.filter((path, index, arr): path is NonNullable<typeof path> => {

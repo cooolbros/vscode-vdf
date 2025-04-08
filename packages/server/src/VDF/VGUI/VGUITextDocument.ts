@@ -1,6 +1,7 @@
+import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { combineLatest, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
@@ -26,6 +27,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
+		teamFortress2Folder$: Observable<Uri>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<VGUITextDocument>,
 		workspace: VGUIWorkspace | null,
@@ -61,49 +63,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 			dependencies$: ((): Observable<VDFTextDocumentDependencies> => {
 				const type$ = workspace != null
 					? workspace.fileType(init.uri)
-					: combineLatest({
-						files: of({
-							clientSchemeFiles: new Set(["resource/clientscheme.res"]),
-							sourceSchemeFiles: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
-							languageTokensFiles: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
-						}),
-						path: (() => {
-							switch (init.uri.scheme) {
-								case "file":
-									return documentConfiguration$.pipe(
-										map((documentConfiguration) => documentConfiguration.teamFortress2Folder),
-										map((teamFortress2Folder) => posix.relative(teamFortress2Folder.joinPath("tf").path, init.uri.path))
-									)
-								case "vpk":
-									return of(init.uri.path.substring(1))
-								default:
-									// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
-									console.warn(`Unknown Uri.scheme: ${init.uri}`)
-									return of(null)
-							}
-						})()
-					}).pipe(
-						map(({ files: { clientSchemeFiles, sourceSchemeFiles, languageTokensFiles }, path }) => {
-							if (path != null) {
-								if (clientSchemeFiles.has(path)) {
-									return VGUIFileType.ClientScheme
-								}
-								else if (sourceSchemeFiles.has(path)) {
-									return VGUIFileType.SourceScheme
-								}
-								else if (languageTokensFiles.has(path)) {
-									return VGUIFileType.LanguageTokens
-								}
-								else {
-									return VGUIFileType.None
-								}
-							}
-							else {
-								return VGUIFileType.None
-							}
-						}),
-						distinctUntilChanged()
-					)
+					: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
 
 				return type$.pipe(
 					switchMap((type) => {

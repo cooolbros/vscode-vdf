@@ -48,6 +48,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
+					this.teamFortress2Folder$,
 					fileSystem$,
 					this.documents,
 					workspace,
