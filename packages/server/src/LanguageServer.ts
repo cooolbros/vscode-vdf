@@ -17,7 +17,7 @@ import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
 import { TeamFortress2FileSystem } from "./TeamFortress2FileSystem"
-import type { TextDocumentBase, TextDocumentInit } from "./TextDocumentBase"
+import { TextDocumentBase, type TextDocumentInit } from "./TextDocumentBase"
 import { TextDocuments } from "./TextDocuments"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
@@ -573,9 +573,11 @@ export abstract class LanguageServer<
 				return null
 			}
 
+			const position = new VDFPosition(params.position.line, params.position.character)
+
 			const items = await this.getCompletion(
 				document,
-				new VDFPosition(params.position.line, params.position.character),
+				position,
 				async (path: string, { value, extensionsPattern, callbackfn, image }: CompletionFilesOptions) => {
 					return await firstValueFrom(
 						zip([document.fileSystem$, document.documentConfiguration$]).pipe(
@@ -646,6 +648,28 @@ export abstract class LanguageServer<
 							})
 						)
 					)
+				},
+				(text?: string) => {
+					const [before, after] = document.getText(new VDFRange(
+						position.with({ character: position.character - 1 }),
+						position.with({ character: position.character + 1 }),
+					))
+
+					const start = before == "[" ? 1 : 0
+					const end = after == "]" ? -1 : undefined
+
+					return TextDocumentBase
+						.conditionals
+						.values()
+						.filter((conditional) => text ? conditional.toLowerCase().startsWith(text.toLowerCase()) : true)
+						.map((conditional) => {
+							return {
+								label: conditional,
+								kind: CompletionItemKind.Variable,
+								insertText: conditional.slice(start, end)
+							} as CompletionItem
+						})
+						.toArray()
 				}
 			)
 
@@ -665,7 +689,7 @@ export abstract class LanguageServer<
 		}
 	}
 
-	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null>
+	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null>
 
 	protected async onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
 		const result = z.object({ image: z.object({ uri: Uri.schema, path: z.string() }) }).safeParse(item.data)

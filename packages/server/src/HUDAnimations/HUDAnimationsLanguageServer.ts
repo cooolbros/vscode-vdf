@@ -195,7 +195,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		}
 	}
 
-	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null> {
+	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
 
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
@@ -244,6 +244,21 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 5: {
 						return line.endsWith(tokens[4])
 							? interpolators(tokens[4])
+							: null /* delay */
+					}
+					case 6: {
+						return line.endsWith(tokens[5])
+							? null /* delay */
+							: null /* duration */
+					}
+					case 7: {
+						return line.endsWith(tokens[6])
+							? null /* duration */
+							: conditionals()
+					}
+					case 8: {
+						return line.endsWith(tokens[7])
+							? conditionals(tokens[7])
 							: null
 					}
 					default:
