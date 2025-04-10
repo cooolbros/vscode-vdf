@@ -26,4 +26,5 @@ jobs:
       - run: rustup default nightly
       - run: rustup target add wasm32-unknown-unknown
       - run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - run: cargo clean
       - run: pnpm build
