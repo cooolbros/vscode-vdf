@@ -11,6 +11,7 @@
             "outputs": [
                 "!.next/cache/**",
                 ".next/**",
+                "$TURBO_ROOT$/target/**",
                 "dist/**",
                 "pkg/**",
                 "target/**"
