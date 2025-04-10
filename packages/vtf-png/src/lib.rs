@@ -16,7 +16,7 @@ pub fn vtf_to_png(vtf: VTF, size: u16) -> Result<String, VTFError> {
                     .iter()
                     .enumerate()
                     .rev()
-                    .find_map(|(index, mipmap)| (cmp::max(mipmap.width, mipmap.height) <= size).then(|| index))
+                    .find_map(|(index, mipmap)| (cmp::max(mipmap.width, mipmap.height) <= size).then_some(index))
                     .unwrap_or(0)
             };
 

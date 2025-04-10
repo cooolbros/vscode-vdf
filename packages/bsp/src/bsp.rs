@@ -133,9 +133,9 @@ impl From<lzma_rs::error::Error> for BSPError {
     }
 }
 
-impl Into<JsValue> for BSPError {
-    fn into(self) -> JsValue {
-        JsValue::from(JsError::new(&format!("{:?}", self)))
+impl From<BSPError> for JsValue {
+    fn from(value: BSPError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", value)))
     }
 }
 
@@ -162,7 +162,7 @@ impl BSP {
             [b'L', b'Z', b'M', b'A'] => {
                 let config = bincode::config::standard().with_fixed_int_encoding();
 
-                let (bsp_header, bytes_read): (BSPLZMAHeader, usize) = bincode::decode_from_slice(&buf, config)?;
+                let (bsp_header, bytes_read): (BSPLZMAHeader, usize) = bincode::decode_from_slice(buf, config)?;
 
                 let header = LZMAHeader {
                     properties: bsp_header.properties,
