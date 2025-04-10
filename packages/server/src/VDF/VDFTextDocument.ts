@@ -27,16 +27,6 @@ function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b:
 	return arr1.some((_, index) => arr2.every((v, i) => index + i < arr1.length && comparer(arr1[index + i], v)))
 }
 
-function ArrayEndsWithArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
-
-	if (arr1.length < arr2.length) {
-		return false
-	}
-
-	const start = arr1.length - arr2.length
-	return arr2.every((value, index) => comparer(arr1[start + index], value))
-}
-
 export function resolveFileDetail(detail: string, configuration: VDFTextDocumentSchema["files"][number]) {
 	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
 
