@@ -727,6 +727,8 @@ export abstract class LanguageServer<
 			return null
 		}
 
+		const diagnosticDataSchema = z.object({ id: z.string().uuid() })
+
 		const uri = params.textDocument.uri.toString()
 
 		const utils = {
@@ -748,23 +750,41 @@ export abstract class LanguageServer<
 			.context
 			.diagnostics
 			.values()
-			.map((diagnostic) => diagnostics.get(diagnostic.data.id)!)
-			.filter((diagnostic) => diagnostic.data != undefined)
+			.map((diagnostic) => {
+				const result = diagnosticDataSchema.safeParse(diagnostic.data)
+				if (!result.success) {
+					return null
+				}
+
+				const diagnosticCodeAction = diagnostics.get(result.data.id)
+				if (!diagnosticCodeAction) {
+					return null
+				}
+
+				if (!diagnosticCodeAction.data) {
+					return null
+				}
+
+				return {
+					diagnostic: diagnostic,
+					data: diagnosticCodeAction.data
+				}
+			})
 			.filter(
 				params.context.only
-					? (diagnostic) => params.context.only!.includes(diagnostic.data!.kind)
-					: () => true
+					? (value): value is NonNullable<typeof value> => value != null && params.context.only!.includes(value.data.kind)
+					: (value): value is NonNullable<typeof value> => value != null
 			)
-			.map((diagnostic, index) => {
+			.map(({ diagnostic, data }, index) => {
 
-				const codeAction = diagnostic.data!.fix(utils)
+				const codeAction = data.fix(utils)
 				if (!codeAction) {
 					return null
 				}
 
 				return {
 					...codeAction,
-					kind: diagnostic.data!.kind,
+					kind: data.kind,
 					diagnostics: [diagnostic],
 					isPreferred: index == 0
 				} satisfies CodeAction
