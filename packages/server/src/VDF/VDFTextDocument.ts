@@ -651,7 +651,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								newPath = posix.relative(
 									`/${fileConfiguration.folder}`,
 									posix.resolve(`/${fileConfiguration.folder}`, detail)
-								).substring(1)
+								)
 							}
 							else {
 								newPath = posix.resolve(`/${detail}`).substring(1)
