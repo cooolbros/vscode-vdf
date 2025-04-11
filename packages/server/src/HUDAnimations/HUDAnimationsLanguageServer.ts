@@ -241,26 +241,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						return line.endsWith(tokens[3])
 							? colours(tokens[3])
 							: interpolators()
-					case 5: {
+					case 5:
 						return line.endsWith(tokens[4])
 							? interpolators(tokens[4])
 							: null /* delay */
-					}
-					case 6: {
+					case 6:
 						return line.endsWith(tokens[5])
 							? null /* delay */
 							: null /* duration */
-					}
-					case 7: {
+					case 7:
 						return line.endsWith(tokens[6])
 							? null /* duration */
 							: conditionals()
-					}
-					case 8: {
+					case 8:
 						return line.endsWith(tokens[7])
 							? conditionals(tokens[7])
 							: null
-					}
 					default:
 						return null
 				}
@@ -273,6 +269,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? events(tokens[1])
+							: null /* delay */
+					case 3:
+						return line.endsWith(tokens[2])
+							? null /* delay */
+							: conditionals()
+					case 4:
+						return line.endsWith(tokens[3])
+							? conditionals(tokens[3])
 							: null
 					default:
 						return null
@@ -285,6 +289,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
+							: [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* visible */
+					case 3:
+						return line.endsWith(tokens[2])
+							? [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* visible */
+							: null /* delay */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* delay */
+							: conditionals()
+					case 5:
+						return line.endsWith(tokens[4])
+							? conditionals(tokens[4])
 							: null
 					default:
 						return null
@@ -300,6 +316,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 3:
 						return line.endsWith(tokens[2])
 							? events(tokens[2])
+							: null /* delay */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* delay */
+							: conditionals()
+					case 5:
+						return line.endsWith(tokens[4])
+							? conditionals(tokens[4])
 							: null
 					default:
 						return null
@@ -310,22 +334,38 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						return elements()
 					case 2:
 						return line.endsWith(tokens[1])
-							? null
-							: elements(tokens[1])
+							? elements(tokens[1])
+							: [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* enabled */
+					case 3:
+						return line.endsWith(tokens[2])
+							? [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* enabled */
+							: null /* delay */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* delay */
+							: conditionals()
+					case 5:
+						return line.endsWith(tokens[4])
+							? conditionals(tokens[4])
+							: null
 					default:
 						return null
 				}
 			case "playsound":
 				switch (tokens.length) {
 					case 1:
-						return null
+						return null /* delay */
 					case 2:
 						return line.endsWith(tokens[1])
-							? null
+							? null /* delay */
 							: sounds()
 					case 3:
 						return line.endsWith(tokens[2])
 							? sounds(tokens[2])
+							: conditionals()
+					case 4:
+						return line.endsWith(tokens[3])
+							? conditionals(tokens[3])
 							: null
 					default:
 						return null
@@ -337,6 +377,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
+							: null /* delay */
+					case 3:
+						return line.endsWith(tokens[2])
+							? null /* delay */
+							: conditionals()
+					case 4:
+						return line.endsWith(tokens[3])
+							? conditionals(tokens[3])
 							: null
 					default:
 						return null
@@ -349,16 +397,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
 							: fontProperties()
-					case 3: {
+					case 3:
 						return line.endsWith(tokens[2])
 							? fontProperties(tokens[2])
 							: fonts()
-					}
-					case 4: {
+					case 4:
 						return line.endsWith(tokens[3])
 							? fonts(tokens[3])
+							: null /* delay */
+					case 5:
+						return line.endsWith(tokens[4])
+							? null /* delay */
+							: conditionals()
+					case 6:
+						return line.endsWith(tokens[5])
+							? conditionals(tokens[5])
 							: null
-					}
 					default:
 						return null
 				}
@@ -370,6 +424,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
+							: null /* property */
+					case 3:
+						return line.endsWith(tokens[2])
+							? null /* property */
+							: null /* value */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* value */
+							: null /* delay */
+					case 5:
+						return line.endsWith(tokens[4])
+							? null /* delay */
+							: conditionals()
+					case 6:
+						return line.endsWith(tokens[5])
+							? conditionals(tokens[5])
 							: null
 					default:
 						return null
@@ -388,7 +458,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 				.keywords
 				.values()
 				.filter(filter(text))
-				.map((str) => ({ label: str, kind: CompletionItemKind.Variable }))
+				.map((str) => ({ label: str, kind: CompletionItemKind.Keyword }))
 				.toArray()
 		}
 
@@ -400,15 +470,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
 			const definitions = definitionReferences.definitions.ofType(Symbol.for(eventDocumentSymbol.eventName.toLowerCase()))
 
-			return definitions
-				.values()
-				.flatMap((definitions) => definitions)
-				.map((definition) => definition.key)
-				.filter(filter(text))
-				.map((key) => ({
-					label: key,
-					kind: CompletionItemKind.Variable
-				})).toArray()
+			return [
+				...new Set(
+					definitions
+						.values()
+						.flatMap((definitions) => definitions)
+						.map((definition) => definition.key)
+						.filter(filter(text))
+				)
+			].map((key) => ({
+				label: key,
+				kind: CompletionItemKind.Variable
+			}))
 		}
 
 		function properties(text?: string) {
@@ -493,15 +566,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
 			const definitions = definitionReferences.definitions.ofType(EventType)
 
-			return definitions
-				.values()
-				.flatMap((definitions) => definitions)
-				.map((definition) => definition.key)
-				.filter(filter(text))
-				.map((key) => ({
-					label: key,
-					kind: CompletionItemKind.Event
-				})).toArray()
+			return [
+				...new Set(
+					definitions
+						.values()
+						.flatMap((definitions) => definitions)
+						.map((definition) => definition.key)
+						.filter(filter(text))
+				)
+			].map((key) => ({
+				label: key,
+				kind: CompletionItemKind.Event
+			}))
 		}
 
 		function sounds(text?: string) {
