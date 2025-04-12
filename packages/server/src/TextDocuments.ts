@@ -4,7 +4,7 @@ import type { TextDocumentBase, TextDocumentInit } from "./TextDocumentBase"
 
 export interface TextDocumentsConfiguration<TDocument extends TextDocumentBase<any, any>> {
 	open(uri: Uri): Promise<TextDocumentInit>
-	create(init: TextDocumentInit, refCountDispose: (dispose: () => void) => void): Promise<TDocument>
+	create(init: TextDocumentInit): Promise<TDocument>
 	onDidOpen: (event: TextDocumentChangeEvent<TDocument>) => Promise<() => void>
 }
 
@@ -27,17 +27,9 @@ export class TextDocuments<
 		if (!document) {
 			const references = { value: 0 }
 
-			const refCountDispose = (dispose: () => void) => {
-				references.value--
-				if (references.value == 0) {
-					dispose()
-					this.documents.delete(key)
-				}
-			}
-
 			// Don't await in this method or document will be opened twice
 			document = {
-				value: callbackFunction().then((init) => this.configuration.create(init, refCountDispose)),
+				value: callbackFunction().then((init) => this.configuration.create(init)),
 				references: references
 			}
 

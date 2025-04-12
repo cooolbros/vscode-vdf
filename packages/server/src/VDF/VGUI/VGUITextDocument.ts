@@ -31,9 +31,8 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<VGUITextDocument>,
 		workspace: VGUIWorkspace | null,
-		refCountDispose: (dispose: () => void) => void,
 	) {
-		super(init, documentConfiguration$, fileSystem$, documents, refCountDispose, {
+		super(init, documentConfiguration$, fileSystem$, documents, {
 			relativeFolderPath: (() => {
 				if (workspace) {
 					return posix.dirname(workspace.relative(init.uri))

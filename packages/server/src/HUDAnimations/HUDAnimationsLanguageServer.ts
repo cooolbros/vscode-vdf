@@ -67,7 +67,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		super(languageId, name, connection, {
 			servers: new Set(["vdf"]),
 			capabilities: {},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => {
+			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
 				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
@@ -103,7 +103,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					documentConfiguration$,
 					fileSystem$,
 					workspace,
-					refCountDispose
 				)
 			}
 		})

@@ -129,10 +129,9 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem$: Observable<TeamFortress2FileSystem>,
 		documents: TextDocuments<TDocument>,
-		refCountDispose: (dispose: () => void) => void,
 		configuration: VDFTextDocumentConfiguration<TDocument>,
 	) {
-		super(init, documentConfiguration$, fileSystem$, refCountDispose, {
+		super(init, documentConfiguration$, fileSystem$, {
 			getDocumentSymbols: (text) => {
 				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
 			},

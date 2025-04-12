@@ -17,7 +17,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 			name: "vdf",
 			servers: new Set(["hudanimations"]),
 			capabilities: {},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => {
+			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
 				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
@@ -52,7 +52,6 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 					fileSystem$,
 					this.documents,
 					workspace,
-					refCountDispose,
 				)
 			}
 		})

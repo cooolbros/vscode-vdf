@@ -16,7 +16,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 			capabilities: {
 				foldingRangeProvider: true,
 			},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => {
+			createDocument: async (init, documentConfiguration$) => {
 				return new PopfileTextDocument(
 					init,
 					documentConfiguration$,
@@ -26,7 +26,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 					]),
 					this.documents,
 					async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
-					refCountDispose
 				)
 			}
 		})

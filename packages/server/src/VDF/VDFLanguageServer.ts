@@ -18,7 +18,7 @@ export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocumen
 	name: "popfile" | "vdf" | "vmt"
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
-	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>, refCountDispose: (dispose: () => void) => void): Promise<TDocument>
+	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
 }
 
 export abstract class VDFLanguageServer<
@@ -39,7 +39,7 @@ export abstract class VDFLanguageServer<
 				colorProvider: true,
 				inlayHintProvider: true,
 			},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$, refCountDispose)
+			createDocument: async (init, documentConfiguration$) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$)
 		})
 
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
