@@ -253,7 +253,8 @@ export function TRPCClientRouter(
 						z.object({
 							name: z.string()
 						})
-					).query(async ({ input }) => {
+					)
+					.query(async ({ input }) => {
 						const configuration = workspace.getConfiguration("vscode-vdf")
 						if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
 							const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install a VScript extension?`, "Yes", "No", "Don't ask again")
