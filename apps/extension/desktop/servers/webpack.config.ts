@@ -5,7 +5,7 @@ import type { Configuration } from "webpack"
 export default {
 	mode: "production",
 	target: "node",
-	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, posix.join(import.meta.dirname, `src/${name}`)])),
+	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, [import.meta.resolve("disposablestack/auto"), posix.join(import.meta.dirname, `src/${name}`)]])),
 	output: {
 		path: posix.join(import.meta.dirname, "dist"),
 		libraryTarget: "commonjs2",

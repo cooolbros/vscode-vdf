@@ -1,3 +1,5 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
@@ -7,9 +9,7 @@ import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsym
 import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
-import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
-import type { TextDocuments } from "../../TextDocuments"
 import { VDFTextDocument, VGUIAssetType, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import colours from "./colours.json"
 import keys from "./keys.json"
@@ -168,117 +168,115 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<PopfileTextDocument>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 		getEntities: (uri: Uri) => Promise<Record<string, string>[] | null>,
 	) {
-		super(init, documentConfiguration, fileSystem$, documents, {
+		super(init, documentConfiguration, fileSystem, documents, {
 			relativeFolderPath: "scripts/population",
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,
-			dependencies$: fileSystem$.pipe(
-				switchMap((fileSystem) => {
-					return combineLatest({
-						items: fileSystem.resolveFile("scripts/items/items_game.txt").pipe(
-							concatMap(async (uri) => documents.get(uri!, true)),
-							switchMap((document) => document.documentSymbols$),
-							map((documentSymbols) => {
-								const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")
+			writeRoot: null,
+			dependencies$: combineLatest({
+				items: fileSystem.resolveFile("scripts/items/items_game.txt").pipe(
+					concatMap(async (uri) => documents.get(uri!)),
+					switchMap((document) => document.documentSymbols$),
+					map((documentSymbols) => {
+						const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")
 
-								function names(key: string) {
-									return items_game
-										?.children
-										?.find((documentSymbol) => documentSymbol.key == key)
-										?.children
-										?.values()
-										.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
-										.filter((name) => name != undefined)
+						function names(key: string) {
+							return items_game
+								?.children
+								?.find((documentSymbol) => documentSymbol.key == key)
+								?.children
+								?.values()
+								.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
+								.filter((name) => name != undefined)
+						}
+
+						return {
+							items: names("items") ?? Iterator.from([]),
+							attributes: names("attributes") ?? Iterator.from([]),
+						}
+					}),
+				),
+				entities: from(fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })).pipe(
+					map((maps) => {
+						const basename = this.uri.basename()
+						return maps
+							.values()
+							.filter(([, type]) => type == 1)
+							.find(([name]) => basename.startsWith(posix.parse(name).name))?.[0]
+					}),
+					switchMap((bsp) => {
+						if (!bsp) {
+							return of(null)
+						}
+
+						return fileSystem.resolveFile(`maps/${bsp}`).pipe(
+							concatMap(async (uri) => {
+								if (!uri) {
+									return null
 								}
 
-								return {
-									items: names("items") ?? Iterator.from([]),
-									attributes: names("attributes") ?? Iterator.from([]),
+								const entities = await getEntities(uri)
+								if (!entities) {
+									return null
 								}
+
+								return Map.groupBy(entities, (item) => item["classname"])
 							}),
-						),
-						entities: from(fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })).pipe(
-							map((maps) => {
-								const basename = this.uri.basename()
-								return maps
-									.values()
-									.filter(([, type]) => type == 1)
-									.find(([name]) => basename.startsWith(posix.parse(name).name))?.[0]
-							}),
-							switchMap((bsp) => {
-								if (!bsp) {
-									return of(null)
+							map((entities) => {
+								if (!entities) {
+									return null
 								}
 
-								return fileSystem.resolveFile(`maps/${bsp}`).pipe(
-									concatMap(async (uri) => {
-										if (!uri) {
-											return null
-										}
+								// Where
+								const teamSpawns = [
+									...new Set(
+										entities
+											?.get("info_player_teamspawn")
+											?.toSorted((a, b) => b["TeamNum"]?.localeCompare(a["TeamNum"]) || a["targetname"]?.localeCompare(b["targetname"]))
+											.values()
+											.map((entity) => entity["targetname"])
+											.filter((targetname) => targetname != undefined)
+									),
+									"Ahead",
+									"Behind",
+									"Anywhere",
+									""
+								]
 
-										const entities = await getEntities(uri)
-										if (!entities) {
-											return null
-										}
+								// StartingPathTrackNode
+								const pathTracks = [
+									...new Set(
+										entities
+											?.get("path_track")
+											?.values()
+											.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity["targetname"]))
+											.map((entity) => entity["targetname"])
+											.filter((targetname) => targetname != undefined)
+									)
+								].toSorted()
 
-										return Map.groupBy(entities, (item) => item["classname"])
-									}),
-									map((entities) => {
-										if (!entities) {
-											return null
-										}
+								// Target
+								const targets = [
+									...new Set(
+										entities
+											?.values()
+											?.flatMap((value) => value)
+											.map((entity) => entity["targetname"])
+											.filter((targetname) => targetname != undefined && !targetname.startsWith("//"))
+									),
+									"BigNet"
+								].toSorted()
 
-										// Where
-										const teamSpawns = [
-											...new Set(
-												entities
-													?.get("info_player_teamspawn")
-													?.toSorted((a, b) => b["TeamNum"]?.localeCompare(a["TeamNum"]) || a["targetname"]?.localeCompare(b["targetname"]))
-													.values()
-													.map((entity) => entity["targetname"])
-													.filter((targetname) => targetname != undefined)
-											),
-											"Ahead",
-											"Behind",
-											"Anywhere",
-											""
-										]
-
-										// StartingPathTrackNode
-										const pathTracks = [
-											...new Set(
-												entities
-													?.get("path_track")
-													?.values()
-													.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity["targetname"]))
-													.map((entity) => entity["targetname"])
-													.filter((targetname) => targetname != undefined)
-											)
-										].toSorted()
-
-										// Target
-										const targets = [
-											...new Set(
-												entities
-													?.values()
-													?.flatMap((value) => value)
-													.map((entity) => entity["targetname"])
-													.filter((targetname) => targetname != undefined && !targetname.startsWith("//"))
-											),
-											"BigNet"
-										].toSorted()
-
-										return { teamSpawns, pathTracks, targets }
-									})
-								)
+								return { teamSpawns, pathTracks, targets }
 							})
 						)
 					})
-				}),
+				)
+			}).pipe(
 				map(({ items: { items, attributes }, entities }) => {
 					const attributesItems = attributes.map((name) => ({ label: name, kind: CompletionItemKind.Field })).toArray()
 
@@ -365,7 +363,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					}
 				)
 			}),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.decorations$ = this.documentSymbols$.pipe(

@@ -61,7 +61,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		"Bias",
 	]
 
-	private readonly workspaces: Map<string, HUDAnimationsWorkspace>
+	private readonly workspaces: Map<string, Promise<HUDAnimationsWorkspace>>
 
 	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection) {
 		super(languageId, name, connection, {
@@ -70,26 +70,26 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
-				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
-					hudRoot ? { type: "folder", uri: hudRoot } : null,
-					{ type: "tf2", uri: teamFortress2Folder }
+				const fileSystem = await this.fileSystems.get([
+					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
+					{ type: "tf2" },
 				])
 
-				let workspace: HUDAnimationsWorkspace | null
+				let workspace: Promise<HUDAnimationsWorkspace> | null
 
 				if (hudRoot != null) {
 					const key = hudRoot.toString()
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new HUDAnimationsWorkspace({
+						w = Promise.resolve(new HUDAnimationsWorkspace({
 							uri: hudRoot,
-							fileSystem$: fileSystem$,
+							fileSystem: fileSystem,
 							documents: this.documents,
 							request: this.trpc.servers.vgui.workspace.open.mutate({ uri: hudRoot }),
 							getVDFDocumentSymbols: async (path) => await this.trpc.servers.vgui.workspace.documentSymbol.query({ key: hudRoot, path }),
 							getDefinitions: async (path) => await this.trpc.servers.vgui.workspace.definitions.query({ key: hudRoot, path: path }),
 							setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: hudRoot, references: references })
-						})
+						}))
 						this.workspaces.set(key, w)
 					}
 					workspace = w
@@ -101,8 +101,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 				return new HUDAnimationsTextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem$,
-					workspace,
+					fileSystem,
+					await workspace,
 				)
 			}
 		})
@@ -122,22 +122,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 								uri: Uri.schema,
 							})
 						)
-						.mutation(({ input }) => {
+						.mutation(async ({ input }) => {
 							if (!this.workspaces.has(input.uri.toString())) {
 								this.workspaces.set(
 									input.uri.toString(),
-									new HUDAnimationsWorkspace({
+									Promise.try(async () => new HUDAnimationsWorkspace({
 										uri: input.uri,
-										fileSystem$: this.fileSystems.get((teamFortress2Folder) => [
+										fileSystem: await this.fileSystems.get([
 											{ type: "folder", uri: input.uri },
-											{ type: "tf2", uri: teamFortress2Folder }
+											{ type: "tf2" }
 										]),
 										documents: this.documents,
 										request: Promise.resolve(),
 										getVDFDocumentSymbols: async (path) => await this.trpc.servers.vgui.workspace.documentSymbol.query({ key: input.uri, path: path }),
 										getDefinitions: async (path) => await this.trpc.servers.vgui.workspace.definitions.query({ key: input.uri, path: path }),
 										setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: input.uri, references: references })
-									})
+									}))
 								)
 							}
 						})
@@ -146,9 +146,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		)
 	}
 
-	protected async onDidOpen(event: TextDocumentChangeEvent<HUDAnimationsTextDocument>): Promise<{ onDidClose: () => void }> {
+	protected async onDidOpen(event: TextDocumentChangeEvent<HUDAnimationsTextDocument>): Promise<AsyncDisposable> {
 
-		const { onDidClose } = await super.onDidOpen(event)
+		const stack = new AsyncDisposableStack()
+		stack.use(await super.onDidOpen(event))
 
 		const key = await this.trpc.client.window.createTextEditorDecorationType.mutate({
 			options: {
@@ -160,6 +161,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		})
 
 		const subscriptions: Subscription[] = []
+		stack.defer(() => {
+			for (const subscription of subscriptions) {
+				subscription.unsubscribe()
+			}
+		})
 
 		const workspace = event.document.workspace
 
@@ -184,14 +190,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			})
 		)
 
-		return {
-			onDidClose: () => {
-				onDidClose()
-				for (const subscription of subscriptions) {
-					subscription.unsubscribe()
-				}
-			}
-		}
+		return stack.move()
 	}
 
 	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {

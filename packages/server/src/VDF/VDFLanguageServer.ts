@@ -49,7 +49,7 @@ export abstract class VDFLanguageServer<
 		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
 		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
 		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
-			using document = await this.documents.get(new Uri(params.textDocument.uri))
+			await using document = await this.documents.get(new Uri(params.textDocument.uri))
 			return await firstValueFrom(document.inlayHints$)
 		})
 	}
@@ -58,16 +58,13 @@ export abstract class VDFLanguageServer<
 		return super.router(t)
 	}
 
-	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<{ onDidClose: () => void }> {
-		const { onDidClose } = await super.onDidOpen(event)
-		return {
-			onDidClose: () => {
-				onDidClose()
-
-				const key = event.document.uri.toString()
-				this.documentsColours.delete(key)
-			}
-		}
+	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
+		const stack = new AsyncDisposableStack()
+		stack.use(await super.onDidOpen(event))
+		stack.defer(() => {
+			this.documentsColours.delete(event.document.uri.toString())
+		})
+		return stack.move()
 	}
 
 	protected async getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
@@ -268,7 +265,7 @@ export abstract class VDFLanguageServer<
 	}
 
 	private async onHover(params: TextDocumentRequestParams<HoverParams>): Promise<Hover | null> {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
 		const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(params.position)
@@ -300,11 +297,11 @@ export abstract class VDFLanguageServer<
 
 	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {
 
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const colours = await firstValueFrom(document.colours$)
 
 		this.documentsColours.set(
-			params.textDocument.uri.toString(),
+			document.uri.toString(),
 			new Map(colours.map(({ range, stringify }) => [`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`, stringify]))
 		)
 

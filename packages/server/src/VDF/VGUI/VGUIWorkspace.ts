@@ -1,11 +1,11 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, defer, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, Subscription, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, defer, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../../DefinitionReferences"
-import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
-import type { TextDocuments } from "../../TextDocuments"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import { VGUITextDocument } from "./VGUITextDocument"
 
@@ -33,12 +33,11 @@ export class VGUIWorkspace extends WorkspaceBase {
 						map((teamFortress2Folder) => posix.relative(teamFortress2Folder.joinPath("tf").path, uri.path))
 					)
 				case "vpk":
-				case "vscode-vdf-tf-remote-resource":
 					return of(uri.path.substring(1))
 				default:
 					// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
 					console.warn(`Unknown Uri.scheme: ${uri}`)
-					return of(null)
+					return of(uri.path.substring(1))
 			}
 		}).pipe(
 			map((path) => {
@@ -65,9 +64,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 		)
 	}
 
-	private readonly subscriptions: Subscription[]
-	private readonly fileSystem$: Observable<TeamFortress2FileSystem>
-	private readonly documents: TextDocuments<VGUITextDocument>
+	private readonly fileSystem: FileSystemMountPoint
+	private readonly documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>
 
 	public readonly clientSchemeFiles$: Observable<Set<string>>
 	public readonly clientScheme$: Observable<DefinitionReferences>
@@ -77,33 +75,29 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public readonly languageTokensFiles$: Observable<Set<string>>
 	public readonly languageTokens$: Observable<DefinitionReferences>
 
-	public readonly workspaceReferencesReady: Promise<void>
-
 	private readonly documentSymbols: Map<string, Observable<VDFDocumentSymbols | null>>
 	public readonly fileReferences: Map<string, { references$: BehaviorSubject<Map<string, References | null>>, document$: Observable<VGUITextDocument | null> }>
 
 	constructor({
 		uri,
-		fileSystem$,
+		fileSystem,
 		documents,
 		request
 	}: {
 		uri: Uri,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<VGUITextDocument>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
 		request: Promise<void>,
 	}) {
 		super(uri)
-		this.subscriptions = []
-		this.fileSystem$ = fileSystem$
+		this.fileSystem = fileSystem
 		this.documents = documents
 
 		const files = (path: string): Observable<string[]> => {
-			return fileSystem$.pipe(
-				switchMap((fileSystem) => fileSystem.resolveFile(path)),
+			return fileSystem.resolveFile(path).pipe(
 				switchMap((uri) => {
 					return uri != null
-						? usingAsync(() => documents.get(uri, true))
+						? usingAsync(() => documents.get(uri))
 						: of(null)
 				}),
 				switchMap((document) => {
@@ -132,14 +126,13 @@ export class VGUIWorkspace extends WorkspaceBase {
 		}
 
 		const definitions = (path: string): Observable<DefinitionReferences> => {
-			return fileSystem$.pipe(
-				switchMap((fileSystem) => fileSystem.resolveFile(path)),
+			return fileSystem.resolveFile(path).pipe(
 				concatMap(async (uri) => {
 					if (!uri) {
 						throw new Error(path)
 					}
 
-					return await documents.get(uri, true)
+					return await documents.get(uri)
 				}),
 				switchMap((document) => {
 					return document.definitionReferences$
@@ -156,15 +149,11 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 		// Preload hudanimations_manifest
 		firstValueFrom(
-			fileSystem$.pipe(
-				switchMap((fileSystem) => {
-					return fileSystem.resolveFile("scripts/hudanimations_manifest.txt").pipe(
-						map((uri) => {
-							if (uri) {
-								documents.get(uri, true)
-							}
-						})
-					)
+			fileSystem.resolveFile("scripts/hudanimations_manifest.txt").pipe(
+				map((uri) => {
+					if (uri) {
+						documents.get(uri)
+					}
 				})
 			)
 		)
@@ -203,10 +192,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 		this.documentSymbols = new Map()
 		this.fileReferences = new Map()
 
-		const { promise, resolve } = Promise.withResolvers<void>()
-		this.workspaceReferencesReady = promise
-
-		firstValueFrom(fileSystem$).then(async (fileSystem) => {
+		Promise.try(async () => {
 			const [clientSchemeFiles, sourceSchemeFiles, languageTokenFiles] = await Promise.all([
 				firstValueFrom(this.clientSchemeFiles$),
 				firstValueFrom(this.sourceSchemeFiles$),
@@ -214,30 +200,18 @@ export class VGUIWorkspace extends WorkspaceBase {
 			])
 
 			const entries = await fileSystem.readDirectory("resource/ui", { recursive: true, pattern: "**/*.res" })
-
-			const promises: Promise<void>[] = []
-
 			for (const [name, type] of entries) {
 				if (type == 2 || clientSchemeFiles.has(name) || sourceSchemeFiles.has(name) || languageTokenFiles.has(name)) {
 					continue
 				}
 
-				const { promise, resolve } = Promise.withResolvers<void>()
-				promises.push(promise)
-
-				setTimeout(async () => {
-					const path = posix.join("resource/ui", name)
-					const uri = await firstValueFrom(fileSystem.resolveFile(path))
-					if (uri) {
-						using document = await documents.get(uri, true)
-						await firstValueFrom(document.definitionReferences$)
-					}
-					resolve()
-				}, 0)
+				const path = posix.join("resource/ui", name)
+				const uri = await firstValueFrom(fileSystem.resolveFile(path))
+				if (uri) {
+					await using document = await documents.get(uri)
+					await firstValueFrom(document.definitionReferences$)
+				}
 			}
-
-			await Promise.allSettled(promises)
-			resolve()
 		})
 	}
 
@@ -271,11 +245,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public getVDFDocumentSymbols(path: string): Observable<VDFDocumentSymbols | null> {
 		let documentSymbols$ = this.documentSymbols.get(path)
 		if (!documentSymbols$) {
-			documentSymbols$ = this.fileSystem$.pipe(
-				switchMap((fileSystem) => fileSystem.resolveFile(path)),
+			documentSymbols$ = this.fileSystem.resolveFile(path).pipe(
 				concatMap(async (uri) => {
 					return uri
-						? this.documents.get(uri, true)
+						? this.documents.get(uri)
 						: null
 				}),
 				switchMap((document) => {
@@ -291,9 +264,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 	}
 
 	public getDefinitionReferences(path: string) {
-		return this.fileSystem$.pipe(
-			switchMap((fileSystem) => fileSystem.resolveFile(path)),
-			switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri, true)) : of(null)),
+		return this.fileSystem.resolveFile(path).pipe(
+			switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri)) : of(null)),
 			switchMap((document) => document != null ? document.definitionReferences$ : of(null)),
 			shareReplay(1)
 		)
@@ -304,9 +276,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 		if (!fileReferences) {
 			fileReferences = {
 				references$: new BehaviorSubject(new Map()),
-				document$: this.fileSystem$.pipe(
-					switchMap((fileSystem) => fileSystem.resolveFile(path)),
-					switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri, true)) : of(null)),
+				document$: this.fileSystem.resolveFile(path).pipe(
+					switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri)) : of(null)),
 					startWith(null),
 					pairwise(),
 					map(([previous, current]) => {
@@ -339,11 +310,5 @@ export class VGUIWorkspace extends WorkspaceBase {
 		}
 
 		fileReferences.references$.next(fileReferences.references$.value)
-	}
-
-	public dispose() {
-		for (const subscription of this.subscriptions) {
-			subscription.unsubscribe()
-		}
 	}
 }

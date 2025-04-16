@@ -1,3 +1,4 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
@@ -7,7 +8,6 @@ import { VDFPosition, VDFRange } from "vdf"
 import { CodeActionKind, DiagnosticSeverity, DiagnosticTag, type DocumentLink } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
-import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
 import { Fonts } from "../VDF/VGUI/clientscheme.json"
 import eventFiles from "./eventFiles.json"
@@ -40,10 +40,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
+		fileSystem: FileSystemMountPoint,
 		workspace: HUDAnimationsWorkspace | null,
 	) {
-		super(init, documentConfiguration$, fileSystem$, {
+		super(init, documentConfiguration$, fileSystem, {
 			getDocumentSymbols: (text: string) => getHUDAnimationsDocumentSymbols(text),
 			defaultDocumentSymbols: new HUDAnimationsDocumentSymbols(),
 			definitionReferences$: defer(() => {
@@ -372,8 +372,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 							if ("sound" in statement) {
 								const path = posix.resolve(`/sound`, statement.sound.replaceAll(/[/\\]+/g, "/")).substring(1)
 								diagnostics.push(
-									fileSystem$.pipe(
-										switchMap((fileSystem) => fileSystem.resolveFile(path)),
+									fileSystem.resolveFile(path).pipe(
 										map((uri) => {
 											return uri != null
 												? null
@@ -410,11 +409,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										uri: this.uri,
 										resolve: async () => {
 											const path = `sound/${statement.sound.replaceAll(/[/\\]+/g, "/")}`
-											return await firstValueFrom(
-												fileSystem$.pipe(
-													switchMap((fileSystem) => fileSystem.resolveFile(path)),
-												)
-											)
+											return await firstValueFrom(fileSystem.resolveFile(path))
 										}
 									}
 								})

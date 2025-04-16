@@ -1,3 +1,6 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { of, type Observable } from "rxjs"
@@ -5,9 +8,7 @@ import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItemKind, InlayHint, InsertTextFormat } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
-import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
-import type { TextDocuments } from "../../TextDocuments"
 import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
@@ -22,14 +23,15 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<VMTTextDocument>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>,
 		workspace: WorkspaceBase | null,
 	) {
-		super(init, documentConfiguration$, fileSystem$, documents, {
+		super(init, documentConfiguration$, fileSystem, documents, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,
+			writeRoot: workspace?.uri ?? null,
 			dependencies$: of<VDFTextDocumentDependencies>({
 				schema: <VDFTextDocumentSchema>{
 					keys: keys,

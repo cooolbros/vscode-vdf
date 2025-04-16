@@ -1,18 +1,18 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { finalizeWithValue } from "common/operators/finalizeWithValue"
 import { usingAsync } from "common/operators/usingAsync"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
+import { combineLatestWith, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
-import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
-import type { TextDocuments } from "../TextDocuments"
 
 function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
 
@@ -45,6 +45,7 @@ export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
+	writeRoot: Uri | null
 	dependencies$: Observable<VDFTextDocumentDependencies>
 }
 
@@ -127,11 +128,11 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<TDocument>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, TDocument>,
 		configuration: VDFTextDocumentConfiguration<TDocument>,
 	) {
-		super(init, documentConfiguration$, fileSystem$, {
+		super(init, documentConfiguration$, fileSystem, {
 			getDocumentSymbols: (text) => {
 				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
 			},
@@ -155,13 +156,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
 								}),
 								distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])),
-								map((values) => values.map((value) => {
-									return fileSystem$.pipe(
-										switchMap((fileSystem) => {
-											return fileSystem.resolveFile(posix.resolve("/", relativeFolderPath ?? "", value).substring(1))
-										})
-									)
-								})),
+								map((values) => values.map((value) => fileSystem.resolveFile(posix.resolve("/", relativeFolderPath ?? "", value).substring(1)))),
 								combineLatestPersistent(),
 								map((uris) => uris.filter((uri) => uri != null)),
 							)
@@ -185,7 +180,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										const key = baseUri.toString()
 										let observable = context.get(key)
 										if (!observable) {
-											observable = usingAsync(() => documents.get(baseUri, true)).pipe(
+											observable = usingAsync(() => documents.get(baseUri)).pipe(
 												switchMap((baseDocument) => {
 													return check(baseDocument, [...stack, document.uri])
 												})
@@ -225,7 +220,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									const key = uri.toString()
 									let observable = context.get(key)
 									if (!observable) {
-										observable = usingAsync(() => documents.get(uri, true)).pipe(
+										observable = usingAsync(() => documents.get(uri)).pipe(
 											finalizeWithValue((document) => {
 												document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
 												context.delete(key)
@@ -384,8 +379,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									: dirname.relative(dirname.joinPath(detail))
 
 								diagnostics.push(
-									fileSystem$.pipe(
-										switchMap((fileSystem) => fileSystem.resolveFile(relativePath)),
+									fileSystem.resolveFile(relativePath).pipe(
 										map((uri): DiagnosticCodeAction | null => {
 											if (uri == null) {
 												return {
@@ -627,8 +621,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						if (fileConfiguration && documentSymbol.detail.trim() != "") {
 							const path = resolveFileDetail(documentSymbol.detail, fileConfiguration)
 							diagnostics.push(
-								fileSystem$.pipe(
-									switchMap((fileSystem) => fileSystem.resolveFile(path)),
+								fileSystem.resolveFile(path).pipe(
 									map((uri) => {
 										return uri != null
 											? null
@@ -708,11 +701,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										if (configuration.relativeFolderPath) {
 											const relativePath = posix.resolve(`/${configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
 
-											const target = await firstValueFrom(
-												fileSystem$.pipe(
-													switchMap((fileSystem) => fileSystem.resolveFile(relativePath))
-												)
-											)
+											const target = await firstValueFrom(fileSystem.resolveFile(relativePath))
 
 											if (target) {
 												return target
@@ -728,29 +717,16 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 						key = configuration.keyTransform(key)
 
-						for (const configuration of dependencies.schema.files) {
-							const { parentKeys, keys } = configuration
+						for (const fileConfiguration of dependencies.schema.files) {
+							const { parentKeys, keys } = fileConfiguration
 							if (keys.has(key) && ArrayContainsArray(path, parentKeys, (a, b) => a.key.toLowerCase() == b.toLowerCase()) && documentSymbol.detail != "") {
 								links.push({
 									range: documentSymbol.detailRange!,
 									data: {
 										uri: this.uri,
 										resolve: async () => {
-											const path = resolveFileDetail(documentSymbol.detail!, configuration)
-											return await firstValueFrom(
-												fileSystem$.pipe(
-													switchMap((fileSystem) => {
-														return fileSystem.resolveFile(path).pipe(
-															concatMap(async (uri) => {
-																if (uri) {
-																	return uri
-																}
-																return fileSystem.paths[0].joinPath(path)
-															})
-														)
-													})
-												)
-											)
+											const path = resolveFileDetail(documentSymbol.detail!, fileConfiguration)
+											return await firstValueFrom(fileSystem.resolveFile(path)) ?? configuration.writeRoot?.joinPath(path) ?? null
 										}
 									}
 								})
@@ -761,7 +737,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 				)
 			}),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.colours$ = this.documentSymbols$.pipe(
@@ -805,7 +781,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 				)
 			}),
-			shareReplay(1),
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 	}
 

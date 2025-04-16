@@ -1,6 +1,8 @@
 import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { Observable } from "rxjs"
@@ -8,7 +10,6 @@ import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import { TRPCClientRouter } from "./TRPCClientRouter"
-import type { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 export * from "common/VSCodeVDFLanguageID"
 
@@ -42,7 +43,7 @@ export class Client<T extends BaseLanguageClient> {
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		teamFortress2Folder$: Observable<Uri>,
-		fileSystemMountPointFactory: FileSystemMountPointFactory,
+		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
 		client: T,
 	) {
 		this.client = client

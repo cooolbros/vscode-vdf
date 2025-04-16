@@ -7,9 +7,11 @@ import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { onDidChangeActiveTextEditor } from "client/decorations"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
-import { FileSystemMountPointFactory } from "client/VirtualFileSystem/FileSystemMountPointFactory"
+import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import { VTFEditor } from "client/VTF/VTFEditor"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { of } from "rxjs"
 import { commands, FileType, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
@@ -21,26 +23,34 @@ export function activate(context: ExtensionContext): void {
 
 	const teamFortress2Folder$ = of(new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" }))
 
-	const fileSystemMountPointFactory = new FileSystemMountPointFactory({
-		[RemoteResourceFileSystemProvider.scheme]: async (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => {
-			const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
+	const fileSystemMountPointFactory = new RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>(
+		(paths) => JSON.stringify(paths),
+		async (path, factory) => {
+			switch (path.type) {
+				case "folder": {
+					return await FolderFileSystem(path.uri)
+				}
+				case "tf2": {
+					const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
 
-			try {
-				console.log(await workspace.fs.stat(root))
-			}
-			catch (error) {
-				console.warn(error)
-				context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
-			}
+					try {
+						console.log(await workspace.fs.stat(root))
+					}
+					catch (error) {
+						console.warn(error)
+						context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
+					}
 
-			return await VSCodeFileSystem(
-				root,
-				FileType.Directory,
-				false,
-				(path) => root.joinPath(path)
-			)
+					return await VSCodeFileSystem(
+						root,
+						FileType.Directory,
+						false,
+						(path) => root.joinPath(path)
+					)
+				}
+			}
 		}
-	})
+	)
 
 	// https://code.visualstudio.com/api/references/contribution-points#contributes
 	// https://code.visualstudio.com/api/references/vscode-api
@@ -48,7 +58,7 @@ export function activate(context: ExtensionContext): void {
 	// Commands
 	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory)))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))

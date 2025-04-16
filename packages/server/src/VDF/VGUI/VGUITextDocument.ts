@@ -1,14 +1,14 @@
-import type { Uri } from "common/Uri"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { combineLatest, defer, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
-import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
-import type { TextDocuments } from "../../TextDocuments"
 import { VDFTextDocument, type VDFTextDocumentDependencies } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
 import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
@@ -28,11 +28,11 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		teamFortress2Folder$: Observable<Uri>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<VGUITextDocument>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
 		workspace: VGUIWorkspace | null,
 	) {
-		super(init, documentConfiguration$, fileSystem$, documents, {
+		super(init, documentConfiguration$, fileSystem, documents, {
 			relativeFolderPath: (() => {
 				if (workspace) {
 					return posix.dirname(workspace.relative(init.uri))
@@ -59,12 +59,13 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 				})()
 			},
 			keyTransform: VGUITextDocument.KeyTransform,
-			dependencies$: ((): Observable<VDFTextDocumentDependencies> => {
-				const type$ = workspace != null
-					? workspace.fileType(init.uri)
-					: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
-
-				return type$.pipe(
+			writeRoot: workspace?.uri ?? null,
+			dependencies$: defer(() => {
+				return (
+					workspace != null
+						? workspace.fileType(init.uri)
+						: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
+				).pipe(
 					switchMap((type) => {
 						if (type != VGUIFileType.None || workspace == null) {
 							const schemas = {
@@ -98,7 +99,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						}
 					})
 				)
-			})(),
+			}),
 		})
 
 		this.workspace = workspace
@@ -174,7 +175,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 					})
 				)
 			}),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 	}
 

@@ -2,9 +2,6 @@ import { execSync } from "child_process"
 import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
 import { VTFEditor } from "client/VTF/VTFEditor"
-import { FileSystemMountPointFactory } from "client/VirtualFileSystem/FileSystemMountPointFactory"
-import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
-import { VirtualFileSystem } from "client/VirtualFileSystem/VirtualFileSystem"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
@@ -18,9 +15,10 @@ import { homedir } from "os"
 import { join, posix, win32 } from "path"
 import { concat, defer, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
-import { commands, ConfigurationTarget, FileSystemError, FileType, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, ConfigurationTarget, FileType, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { z } from "zod"
+import { FileSystemMountPointFactory } from "./FileSystemMountPointFactory"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
@@ -211,90 +209,7 @@ export function activate(context: ExtensionContext): void {
 		shareReplay(1)
 	)
 
-	const fileSystemMountPointFactory = new FileSystemMountPointFactory({
-		"file": async (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => {
-			const gameInfo = VDF.parse(new TextDecoder("utf-8").decode(await workspace.fs.readFile(teamFortress2Folder.joinPath("tf/gameinfo.txt"))))
-
-			const result = z.object({
-				GameInfo: z.object({
-					FileSystem: z.object({
-						SearchPaths: z.record(z.union([z.string(), z.array(z.string())]))
-					})
-				})
-			}).safeParse(gameInfo)
-
-			if (!result.success) {
-				console.error(result.error)
-				throw new Error("Invalid gameinfo.txt", { cause: result.error })
-			}
-
-			const { GameInfo: { FileSystem: { SearchPaths: searchPaths } } } = result.data
-
-			const uris = Object
-				.values(searchPaths)
-				.flatMap((i) => Array.isArray(i) ? i : [i])
-				.map((value) => {
-					const relativePath = value
-						.replace("|all_source_engine_paths|", "")
-						.replace("|gameinfo_path|", "tf/")
-
-					return teamFortress2Folder.joinPath(relativePath)
-				})
-
-			const fileSystems = (
-				await Promise.allSettled(
-					uris
-						.filter((uri, index) => uris.findIndex((u) => u.equals(uri)) == index)
-						.map(async (uri) => {
-							try {
-								const basename = uri.basename()
-
-								if (basename == "*") {
-									return await factory.wildcard(uri)
-								}
-
-								if (basename.endsWith(".vpk")) {
-									const vpk = uri.dirname().joinPath(basename.replace(".vpk", "_dir.vpk"))
-
-									return await factory.vpk(vpk)
-								}
-
-								return await factory.folder(uri)
-							}
-							catch (error) {
-								if (!(error instanceof FileSystemError) || error.code != "FileNotFound") {
-									console.error(error)
-								}
-
-								throw error
-							}
-						})
-				)
-			)
-				.filter((result) => result.status == "fulfilled")
-				.map((result) => result.value)
-
-			return VirtualFileSystem(fileSystems)
-		},
-		[RemoteResourceFileSystemProvider.scheme]: async (teamFortress2Folder: Uri, factory: FileSystemMountPointFactory) => {
-			const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
-
-			try {
-				console.log(await workspace.fs.stat(root))
-			}
-			catch (error) {
-				console.warn(error)
-				context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
-			}
-
-			return await VSCodeFileSystem(
-				root,
-				FileType.Directory,
-				false,
-				(path) => root.joinPath(path)
-			)
-		}
-	})
+	const fileSystemMountPointFactory = new FileSystemMountPointFactory(context, teamFortress2Folder$)
 
 	// https://code.visualstudio.com/api/references/contribution-points#contributes
 	// https://code.visualstudio.com/api/references/vscode-api
@@ -303,7 +218,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory)))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))

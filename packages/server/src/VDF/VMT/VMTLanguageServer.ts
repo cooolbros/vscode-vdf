@@ -1,6 +1,6 @@
 import type { TRPCCombinedDataTransformer, initTRPC } from "@trpc/server"
 import { Uri } from "common/Uri"
-import { firstValueFrom, switchMap } from "rxjs"
+import { firstValueFrom } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import type { WorkspaceBase } from "../../WorkspaceBase"
@@ -21,9 +21,9 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
-				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
-					hudRoot ? { type: "folder", uri: hudRoot } : null,
-					{ type: "tf2", uri: teamFortress2Folder }
+				const fileSystem = await this.fileSystems.get([
+					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
+					{ type: "tf2" }
 				])
 
 				let workspace: WorkspaceBase | null
@@ -44,7 +44,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 				return new VMTTextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem$,
+					fileSystem,
 					this.documents,
 					workspace,
 				)
@@ -66,7 +66,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 					)
 					.query(async ({ input }) => {
 
-						using document = await this.documents.get(input.uri, true)
+						await using document = await this.documents.get(input.uri)
 						const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
 						const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
@@ -82,11 +82,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 						const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
 						const path = resolveFileDetail(baseTexture.detail!, schema.files.find(({ keys }) => keys.has("$baseTexture".toLowerCase()))!)
 
-						return await firstValueFrom(
-							document.fileSystem$.pipe(
-								switchMap((fileSystem) => fileSystem.resolveFile(path)),
-							)
-						)
+						return await firstValueFrom(document.fileSystem.resolveFile(path))
 					})
 			})
 		)

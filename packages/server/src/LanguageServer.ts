@@ -4,11 +4,13 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import type { Client } from "client"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, firstValueFrom, from, map, Observable, shareReplay, Subject, Subscription, switchMap, tap, zip } from "rxjs"
+import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, shareReplay, Subject, Subscription, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { FileType } from "vscode"
@@ -16,9 +18,7 @@ import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, Com
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
-import { TeamFortress2FileSystem } from "./TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "./TextDocumentBase"
-import { TextDocuments } from "./TextDocuments"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
@@ -82,11 +82,8 @@ export abstract class LanguageServer<
 	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
-	protected readonly teamFortress2Folder$: Observable<Uri>
-	protected readonly fileSystems: {
-		get: (paths: (teamFortress2Folder: Uri) => ({ type: "folder" | "tf2" | "vpk" | "wildcard", uri: Uri } | null)[]) => Observable<TeamFortress2FileSystem>
-	}
-	protected readonly documents: TextDocuments<TDocument>
+	protected readonly fileSystems: RefCountAsyncDisposableFactory<({ type: "tf2" } | { type: "folder", uri: Uri })[], FileSystemMountPoint>
+	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
 	private readonly documentDiagnostics: WeakMap<TDocument, Map<string, DiagnosticCodeAction>>
 	private readonly documentsLinks: WeakMap<TDocument, Map<string, (documentLink: DocumentLink) => Promise<Uri | null>>>
@@ -115,143 +112,129 @@ export abstract class LanguageServer<
 
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
-		this.teamFortress2Folder$ = defer(() => this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(
-			switchMap((observable) => observable),
-			distinctUntilChanged((a, b) => Uri.equals(a, b)),
-			shareReplay(1)
+		this.fileSystems = new RefCountAsyncDisposableFactory(
+			(paths) => JSON.stringify(paths),
+			async (paths, factory) => {
+				const { key } = await this.trpc.client.teamFortress2FileSystem.open.mutate({ paths })
+				const files = new Map<string, Observable<Uri | null>>()
+				return {
+					paths: paths.values().filter((path) => path.type == "folder").map((path) => path.uri).toArray(),
+					resolveFile: (path) => {
+						let file$ = files.get(path)
+						if (!file$) {
+							file$ = from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
+								switchMap((observable) => observable),
+								distinctUntilChanged((a, b) => Uri.equals(a, b)),
+								finalize(() => {
+									files.delete(key)
+								}),
+								shareReplay({ bufferSize: 1, refCount: true })
+							)
+							files.set(path, file$)
+						}
+						return file$
+					},
+					readDirectory: async (path, options) => {
+						return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
+					},
+					[Symbol.asyncDispose]: async () => {
+						await this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
+					}
+				}
+			}
 		)
 
-		const fileSystems = new Map<string, { value: TeamFortress2FileSystem, references: 0 }>()
-
-		this.fileSystems = {
-			get: (paths): Observable<TeamFortress2FileSystem> => {
-				return this.teamFortress2Folder$.pipe(
-					map((teamFortress2Folder) => {
-						return paths(teamFortress2Folder)
-							.filter((path, index, arr): path is NonNullable<typeof path> => {
-								return path != null && arr.indexOf(path) == index
-							})
-					}),
-					distinctUntilChanged((a, b) => {
-						return a.length == b.length && a.every((value, i) => value.type == b[i].type && value.uri.equals(b[i].uri))
-					}),
-					concatMap(async (paths) => {
-						return await this.trpc.client.teamFortress2FileSystem.open.mutate({ paths })
-					}),
-					map(({ key, paths }) => {
-						let fileSystem = fileSystems.get(key)
-						if (!fileSystem) {
-							fileSystem = {
-								value: new TeamFortress2FileSystem(
-									paths.map(({ uri }) => uri),
-									{
-										resolveFile: (path) => {
-											return from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
-												switchMap((observable) => observable)
-											)
-										},
-										readDirectory: async (path, options) => {
-											return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
-										},
-										dispose: () => {
-											fileSystem!.references--
-											if (fileSystem!.references == 0) {
-												this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })
-												fileSystems.delete(key)
-											}
-										}
-									}
-								),
-								references: 0
-							}
-
-							fileSystems.set(key, fileSystem)
-						}
-
-						fileSystem.references++
-						return fileSystem.value
-					}),
-					(source) => defer(() => {
-						let previous: { dispose(): void } | undefined = undefined
-						return source.pipe(
-							tap({
-								next: (value) => {
-									previous?.dispose()
-									previous = value
-								},
-								finalize: () => {
-									previous?.dispose()
-								}
-							})
-						)
-					}),
-					shareReplay({
-						bufferSize: 1,
-						refCount: true
-					})
+		this.documents = new RefCountAsyncDisposableFactory(
+			(uri) => uri.toString(),
+			async (uri) => await languageServerConfiguration.createDocument(
+				await this.trpc.client.workspace.openTextDocument.query({ uri, languageId: languageId }),
+				onDidChangeConfiguration$.pipe(
+					concatMap(async () => VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: uri.toString(), section: "vscode-vdf" }))),
+					shareReplay({ bufferSize: 1, refCount: true })
 				)
-			}
-		}
+			)
+		)
 
 		this.connection.onDidChangeConfiguration((params) => {
 			onDidChangeConfiguration$.next()
 		})
 
-		this.documents = new TextDocuments({
-			open: async (uri) => {
-				return await this.trpc.client.workspace.openTextDocument.query({ uri, languageId: languageId })
-			},
-			create: async (init) => {
-				return await languageServerConfiguration.createDocument(
-					init,
-					onDidChangeConfiguration$.pipe(
-						concatMap(async () => {
-							return VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: init.uri.toString(), section: "vscode-vdf" }))
-						}),
-						shareReplay({
-							bufferSize: 1,
-							refCount: true
-						})
-					)
+		const onDidClose = new Map<string, Promise<AsyncDisposable>>()
+
+		this.connection.onDidOpenTextDocument(async (params) => {
+
+			const uri = new Uri(params.textDocument.uri)
+			const key = uri.toString()
+
+			const { promise, resolve } = Promise.withResolvers<AsyncDisposable>()
+			onDidClose.set(key, promise)
+
+			const stack = new AsyncDisposableStack()
+
+			const document = await this.documents.get(uri, async (uri) => languageServerConfiguration.createDocument(
+				{
+					uri: uri,
+					languageId: this.languageId,
+					version: params.textDocument.version,
+					content: params.textDocument.text,
+				},
+				onDidChangeConfiguration$.pipe(
+					concatMap(async () => VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: uri.toString(), section: "vscode-vdf" }))),
+					shareReplay({ bufferSize: 1, refCount: true })
 				)
-			},
-			onDidOpen: async (event) => {
-				const subscriptions: Subscription[] = []
+			))
 
-				subscriptions.push(
-					event.document.documentConfiguration$.pipe(
-						distinctUntilKeyChanged("updateDiagnosticsEvent"),
-						switchMap(({ updateDiagnosticsEvent }) => {
-							return updateDiagnosticsEvent == "type"
-								? event.document.diagnostics$
-								: new Subject<DiagnosticCodeAction[]>()
-						})
-					).subscribe((diagnostics) => {
-						this.sendDiagnostics(event.document, diagnostics)
-					})
-				)
+			stack.use(document)
+			stack.use(await this.onDidOpen({ document }))
 
-				subscriptions.push(
-					event.document.definitionReferences$.pipe(
-						switchMap((definitionReferences) => definitionReferences.references.references$)
-					).subscribe(() => {
-						this.connection.sendRequest(CodeLensRefreshRequest.method)
-					})
-				)
-
-				const { onDidClose } = await this.onDidOpen(event)
-
-				return () => {
-					this.sendDiagnostics(event.document, [])
-
-					onDidClose()
-
-					for (const subscription of subscriptions) {
-						subscription.unsubscribe()
-					}
-
-					event.document.dispose()
+			const subscriptions: Subscription[] = []
+			stack.defer(() => {
+				for (const subscription of subscriptions) {
+					subscription.unsubscribe()
 				}
+			})
+
+			stack.defer(() => this.sendDiagnostics(document, []))
+
+			subscriptions.push(
+				document.documentConfiguration$.pipe(
+					distinctUntilKeyChanged("updateDiagnosticsEvent"),
+					switchMap(({ updateDiagnosticsEvent }) => {
+						return updateDiagnosticsEvent == "type"
+							? document.diagnostics$
+							: new Subject<DiagnosticCodeAction[]>()
+					})
+				).subscribe((diagnostics) => {
+					this.sendDiagnostics(document, diagnostics)
+				})
+			)
+
+			subscriptions.push(
+				document.definitionReferences$.pipe(
+					switchMap((definitionReferences) => definitionReferences.references.references$)
+				).subscribe(() => {
+					this.connection.sendRequest(CodeLensRefreshRequest.method)
+				})
+			)
+
+			resolve(stack.move())
+		})
+
+		this.connection.onDidChangeTextDocument(async (params) => {
+			if (params.contentChanges.length != 0) {
+				await using document = await this.documents.get(new Uri(params.textDocument.uri))
+				if (document) {
+					document.update(params.contentChanges, params.textDocument.version)
+				}
+			}
+		})
+
+		this.connection.onDidCloseTextDocument(async (params) => {
+			const key = new Uri(params.textDocument.uri).toString()
+			const disposable = onDidClose.get(key)
+			onDidClose.delete(key)
+			if (disposable) {
+				(await disposable)?.[Symbol.asyncDispose]()
 			}
 		})
 
@@ -289,7 +272,7 @@ export abstract class LanguageServer<
 			this.connection.onDocumentFormatting,
 			async (params: TextDocumentRequestParams<DocumentFormattingParams>) => {
 				try {
-					using document = await this.documents.get(params.textDocument.uri)
+					await using document = await this.documents.get(params.textDocument.uri)
 					return await this.onDocumentFormatting(document, params)
 				}
 				catch (error) {
@@ -401,7 +384,6 @@ export abstract class LanguageServer<
 			}
 		}
 
-		this.documents.listen(this.connection)
 		this.connection.listen()
 	}
 
@@ -447,7 +429,7 @@ export abstract class LanguageServer<
 						})
 					)
 					.query(async ({ input }) => {
-						using document = await this.documents.get(input.textDocument.uri, true)
+						await using document = await this.documents.get(input.textDocument.uri)
 						return await this.rename(document, input.oldName.type, input.oldName.key, input.newName)
 					})
 			},
@@ -476,10 +458,9 @@ export abstract class LanguageServer<
 
 	protected async VTFToPNG(uri: Uri, path: string) {
 		try {
-			using document = await this.documents.get(uri, true)
+			await using document = await this.documents.get(uri)
 			return await firstValueFrom(
-				document.fileSystem$.pipe(
-					switchMap((fileSystem) => fileSystem.resolveFile(path)),
+				document.fileSystem.resolveFile(path).pipe(
 					concatMap(async (uri) => uri != null ? await this.trpc.servers.vmt.baseTexture.query({ uri }) : null),
 					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNG.mutate({ uri }) : null),
 				)
@@ -491,9 +472,9 @@ export abstract class LanguageServer<
 		}
 	}
 
-	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<{ onDidClose: () => void }> {
+	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
 		return {
-			onDidClose: () => {
+			[Symbol.asyncDispose]: async () => {
 				this.documentDiagnostics.delete(event.document)
 				this.documentsLinks.delete(event.document)
 			}
@@ -501,7 +482,7 @@ export abstract class LanguageServer<
 	}
 
 	protected async onDidSaveTextDocument(params: TextDocumentRequestParams<DidSaveTextDocumentParams>) {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const documentConfiguration = await firstValueFrom(document.documentConfiguration$)
 
 		if (documentConfiguration.updateDiagnosticsEvent == "save") {
@@ -532,7 +513,7 @@ export abstract class LanguageServer<
 
 	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
 
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const links = await firstValueFrom(document.links$)
 
 		this.documentsLinks.set(
@@ -548,7 +529,7 @@ export abstract class LanguageServer<
 		const { range, data } = documentLink
 
 		const { uri } = z.object({ uri: Uri.schema }).parse(data)
-		using document = await this.documents.get(uri)
+		await using document = await this.documents.get(uri)
 
 		const resolve = this.documentsLinks
 			?.get(document)
@@ -566,7 +547,7 @@ export abstract class LanguageServer<
 
 	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {
 		try {
-			using document = await this.documents.get(params.textDocument.uri)
+			await using document = await this.documents.get(params.textDocument.uri)
 			const configuration = await firstValueFrom(document.documentConfiguration$)
 			if (!configuration[this.languageId].suggest.enable) {
 				return null
@@ -578,75 +559,70 @@ export abstract class LanguageServer<
 				document,
 				position,
 				async (path: string, { value, extensionsPattern, callbackfn, image }: CompletionFilesOptions) => {
-					return await firstValueFrom(
-						zip([document.fileSystem$, document.documentConfiguration$]).pipe(
-							concatMap(async ([fileSystem, documentConfiguration]) => {
 
-								let startsWithFilter: ([name, type]: [string, FileType]) => boolean
+					const documentConfiguration = await firstValueFrom(document.documentConfiguration$)
+					let startsWithFilter: ([name, type]: [string, FileType]) => boolean
 
-								if (value) {
-									const [last, ...rest] = value.split("/").reverse()
-									if (rest.length) {
-										path += `/${rest.reverse().join("/")}`
-									}
-									startsWithFilter = ([name]) => name.toLowerCase().startsWith(last)
-								}
-								else {
-									startsWithFilter = () => true
-								}
+					if (value) {
+						const [last, ...rest] = value.split("/").reverse()
+						if (rest.length) {
+							path += `/${rest.reverse().join("/")}`
+						}
+						startsWithFilter = ([name]) => name.toLowerCase().startsWith(last)
+					}
+					else {
+						startsWithFilter = () => true
+					}
 
-								path = posix.resolve(`/${path}`).substring(1)
+					path = posix.resolve(`/${path}`).substring(1)
 
-								const entries = await fileSystem.readDirectory(path, {
-									recursive: documentConfiguration.filesAutoCompletionKind == "all",
-									pattern: extensionsPattern != null
-										? `**/*${extensionsPattern}`
-										: undefined
+					const entries = await document.fileSystem.readDirectory(path, {
+						recursive: documentConfiguration.filesAutoCompletionKind == "all",
+						pattern: extensionsPattern != null
+							? `**/*${extensionsPattern}`
+							: undefined
+					})
+
+					const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
+
+					return entries
+						.values()
+						.filter(startsWithFilter)
+						.map(
+							callbackfn == undefined
+								? ([name, type]: [string, FileType]): CompletionItem | null => ({
+									label: name,
+									kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+									...(incremental && {
+										commitCharacters: ["/"],
+									}),
 								})
+								: ([name, type]: [string, FileType], index: number): CompletionItem | null => {
+									const rest = callbackfn(name, type)
+									if (!rest) {
+										return null
+									}
 
-								const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
-
-								return entries
-									.values()
-									.filter(startsWithFilter)
-									.map(
-										callbackfn == undefined
-											? ([name, type]: [string, FileType]): CompletionItem | null => ({
-												label: name,
-												kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-												...(incremental && {
-													commitCharacters: ["/"],
-												}),
-											})
-											: ([name, type]: [string, FileType], index: number): CompletionItem | null => {
-												const rest = callbackfn(name, type)
-												if (!rest) {
-													return null
+									return {
+										label: name,
+										kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+										...(incremental && {
+											commitCharacters: ["/"],
+										}),
+										...(image && type == 1 && {
+											data: {
+												image: {
+													uri: document.uri,
+													path: posix.join(path, name)
 												}
-
-												return {
-													label: name,
-													kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-													...(incremental && {
-														commitCharacters: ["/"],
-													}),
-													...(image && type == 1 && {
-														data: {
-															image: {
-																uri: document.uri,
-																path: posix.join(path, name)
-															}
-														},
-													}),
-													...rest
-												}
-											}
-									)
-									.filter((item) => item != null)
-									.toArray()
-							})
+											},
+										}),
+										...rest
+									}
+								}
 						)
-					)
+						.filter((item) => item != null)
+						.toArray()
 				},
 				(text?: string) => {
 					const [before, after] = document.getText(new VDFRange(
@@ -708,7 +684,7 @@ export abstract class LanguageServer<
 	}
 
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		for (const { type, key, value: ranges } of (function*() { yield* definitionReferences.references.collection; yield* definitionReferences.references.rest.get(document.uri.toString())?.collection ?? [] })()) {
 			if (ranges.some((range) => range.contains(params.position))) {
@@ -722,7 +698,7 @@ export abstract class LanguageServer<
 	}
 
 	private async onReferences(params: TextDocumentRequestParams<ReferenceParams>) {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		for (const { type, key, value: definitions } of definitionReferences.definitions) {
 			if (definitions.some((definition) => definition.keyRange.contains(params.position))) {
@@ -737,13 +713,13 @@ export abstract class LanguageServer<
 	}
 
 	private async onDocumentSymbol(params: TextDocumentRequestParams<DocumentSymbolParams>) {
-		using document = await this.documents.get(params.textDocument.uri, true)
+		await using document = await this.documents.get(params.textDocument.uri)
 		return await firstValueFrom(document.documentSymbols$)
 	}
 
 	private async onCodeAction(params: TextDocumentRequestParams<CodeActionParams>): Promise<CodeAction[] | null> {
 
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 
 		const diagnostics = this.documentDiagnostics.get(document)
 		if (!diagnostics) {
@@ -848,7 +824,7 @@ export abstract class LanguageServer<
 	}
 
 	private async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		return await firstValueFrom(document.codeLens$)
 	}
 
@@ -856,7 +832,7 @@ export abstract class LanguageServer<
 
 	private async onPrepareRename(params: TextDocumentRequestParams<PrepareRenameParams>) {
 
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 
 		for (const { type, key, value: definitions } of definitionReferences.definitions) {
@@ -901,7 +877,7 @@ export abstract class LanguageServer<
 			throw new Error(`this.oldName == null`)
 		}
 
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const [type, key] = this.oldName
 		this.oldName = null
 		return { changes: await this.rename(document, type, key, params.newName) }

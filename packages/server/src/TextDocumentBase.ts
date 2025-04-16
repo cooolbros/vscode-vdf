@@ -1,3 +1,4 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
@@ -6,7 +7,6 @@ import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type Docum
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { DefinitionReferences, References } from "./DefinitionReferences"
 import type { DiagnosticCodeAction } from "./LanguageServer"
-import { TeamFortress2FileSystem } from "./TeamFortress2FileSystem"
 
 export interface TextDocumentInit {
 	uri: Uri
@@ -25,7 +25,7 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
-> implements Disposable {
+> implements AsyncDisposable {
 
 	public static readonly conditionals = new Set([
 		"[$DECK]",
@@ -43,7 +43,7 @@ export abstract class TextDocumentBase<
 	protected readonly references$: BehaviorSubject<void>
 
 	public readonly documentConfiguration$: Observable<VSCodeVDFConfiguration>
-	public readonly fileSystem$: Observable<TeamFortress2FileSystem>
+	public readonly fileSystem: FileSystemMountPoint
 
 	private readonly text$: BehaviorSubject<string>
 
@@ -56,7 +56,7 @@ export abstract class TextDocumentBase<
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
+		fileSystem: FileSystemMountPoint,
 		configuration: TextDocumentBaseConfiguration<TDocumentSymbols, TDependencies>,
 	) {
 		this.uri = init.uri
@@ -65,7 +65,7 @@ export abstract class TextDocumentBase<
 		this.references$ = new BehaviorSubject<void>(undefined)
 
 		this.documentConfiguration$ = documentConfiguration$
-		this.fileSystem$ = fileSystem$
+		this.fileSystem = fileSystem
 
 		this.text$ = new BehaviorSubject(this.document.getText())
 
@@ -235,11 +235,8 @@ export abstract class TextDocumentBase<
 		this.references$.next()
 	}
 
-	public dispose() {
+	public async [Symbol.asyncDispose](): Promise<void> {
 		this.text$.complete()
-	}
-
-	[Symbol.dispose](): void {
-		this.dispose()
+		await this.fileSystem[Symbol.asyncDispose]()
 	}
 }

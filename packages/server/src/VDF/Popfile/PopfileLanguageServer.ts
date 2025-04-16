@@ -20,9 +20,9 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 				return new PopfileTextDocument(
 					init,
 					documentConfiguration$,
-					this.fileSystems.get((teamFortress2Folder) => [
+					await this.fileSystems.get([
 						{ type: "folder", uri: init.uri.dirname() },
-						{ type: "tf2", uri: teamFortress2Folder }
+						{ type: "tf2" }
 					]),
 					this.documents,
 					async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
@@ -37,9 +37,10 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		return super.router(t)
 	}
 
-	protected async onDidOpen(event: TextDocumentChangeEvent<PopfileTextDocument>): Promise<{ onDidClose: () => void }> {
+	protected async onDidOpen(event: TextDocumentChangeEvent<PopfileTextDocument>): Promise<AsyncDisposable> {
 
-		const { onDidClose } = await super.onDidOpen(event)
+		const stack = new AsyncDisposableStack()
+		stack.use(await super.onDidOpen(event))
 
 		const key = await this.trpc.client.window.createTextEditorDecorationType.mutate({
 			options: {
@@ -51,6 +52,11 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		})
 
 		const subscriptions: Subscription[] = []
+		stack.defer(() => {
+			for (const subscription of subscriptions) {
+				subscription.unsubscribe()
+			}
+		})
 
 		subscriptions.push(
 			event.document.decorations$.subscribe((decorations) => {
@@ -80,18 +86,11 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 			})
 		}
 
-		return {
-			onDidClose: () => {
-				onDidClose()
-				for (const subscription of subscriptions) {
-					subscription.unsubscribe()
-				}
-			}
-		}
+		return stack.move()
 	}
 
 	private async onFoldingRanges(params: TextDocumentRequestParams<FoldingRangeParams>) {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		return (await firstValueFrom(document.documentSymbols$)).reduceRecursive(
 			[] as FoldingRange[],
 			(foldingRanges, documentSymbol) => {

@@ -1,14 +1,15 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { firstValueFrom, type Observable } from "rxjs"
+import { firstValueFrom } from "rxjs"
 import { VDFPosition } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { EndOfLine, Position, Range, workspace, WorkspaceEdit, type TextEditor } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
-import type { FileSystemMountPointFactory } from "../VirtualFileSystem/FileSystemMountPointFactory"
 
 const TFBotSquadRandomChoice = ["TFBot", "Squad", "RandomChoice"].map(i => i.toLowerCase())
 
-export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fileSystemMountPointFactory: FileSystemMountPointFactory) {
+export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>) {
 	return async (editor: TextEditor) => {
 		const options = { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) }
 		const documentSymbols = getVDFDocumentSymbols(editor.document.getText(), options)
@@ -48,8 +49,7 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 
 		const externalTemplates: [VDFDocumentSymbol, string][] = []
 
-		const teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
-		const fileSystem = await fileSystemMountPointFactory.tf2(teamFortress2Folder)
+		await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
 
 		const decoder = new TextDecoder("utf-8")
 
@@ -119,8 +119,8 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 			)
 			edit.delete(editor.document.uri, range)
 		}
+
 		edit.insert(editor.document.uri, new Position(insertPosition.line, insertPosition.character - 1), text)
 		workspace.applyEdit(edit)
-		fileSystem.dispose()
 	}
 }
