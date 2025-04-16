@@ -89,21 +89,21 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 								label: "LightmappedGeneric",
 								kind: CompletionItemKind.Class,
 								preselect: true,
-								insertText: "WaveSchedule\n{\n\t$0\n}",
+								insertText: "LightmappedGeneric\n{\n\t$0\n}",
 								insertTextFormat: InsertTextFormat.Snippet
 							},
 							{
 								label: "UnlitGeneric",
 								kind: CompletionItemKind.Class,
 								preselect: true,
-								insertText: "WaveSchedule\n{\n\t$0\n}",
+								insertText: "UnlitGeneric\n{\n\t$0\n}",
 								insertTextFormat: InsertTextFormat.Snippet
 							},
 							{
 								label: "VertexlitGeneric",
 								kind: CompletionItemKind.Class,
 								preselect: true,
-								insertText: "WaveSchedule\n{\n\t$0\n}",
+								insertText: "VertexlitGeneric\n{\n\t$0\n}",
 								insertTextFormat: InsertTextFormat.Snippet
 							}
 						],
