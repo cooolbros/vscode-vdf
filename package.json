@@ -370,12 +370,14 @@
                     "gameinfo.txt",
                     "hudanimations_manifest.txt",
                     "items_game.txt",
-                    "mod_textures.txt"
+                    "mod_textures.txt",
+                    "surfaceproperties.txt"
                 ],
                 "filenamePatterns": [
                     "appmanifest_*.acf",
                     "chat_*.txt",
                     "game_sounds_*.txt",
+                    "surfaceproperties_*.txt",
                     "tf_*.txt"
                 ],
                 "configuration": "./language-configuration/vdf-language-configuration.json"

@@ -3,7 +3,6 @@ import { Uri } from "common/Uri"
 import { firstValueFrom } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
-import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { resolveFileDetail } from "../VDFTextDocument"
 import { VMTTextDocument } from "./VMTTextDocument"
@@ -26,19 +25,25 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 					{ type: "tf2" }
 				])
 
-				let workspace: WorkspaceBase | null
+				let workspace: VMTWorkspace | null
 
 				if (hudRoot != null) {
 					const key = hudRoot.toString()
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new VMTWorkspace(hudRoot)
+						w = new VMTWorkspace(hudRoot, fileSystem, this.documents)
 						this.workspaces.set(key, w)
 					}
 					workspace = w
 				}
 				else {
-					workspace = null
+					const key = "tf2"
+					let w = this.workspaces.get(key)
+					if (!w) {
+						w = new VMTWorkspace(new Uri({ scheme: "file", path: "/" }), fileSystem, this.documents)
+						this.workspaces.set(key, w)
+					}
+					workspace = w
 				}
 
 				return new VMTTextDocument(

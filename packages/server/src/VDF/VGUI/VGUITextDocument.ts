@@ -15,6 +15,7 @@ import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
 import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
 import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
 import { SourceSchemeSchema } from "./schemas/SourceSchemeSchema"
+import { SurfacePropertiesManifestSchema } from "./schemas/SurfacePropertiesManifestSchema"
 import { VGUISchema } from "./schemas/VGUISchema"
 
 export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
@@ -73,7 +74,8 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 								[VGUIFileType.ClientScheme]: ClientSchemeSchema,
 								[VGUIFileType.SourceScheme]: SourceSchemeSchema,
 								[VGUIFileType.LanguageTokens]: LanguageTokensSchema,
-								[VGUIFileType.HUDAnimationsManifest]: HUDAnimationsManifestSchema
+								[VGUIFileType.HUDAnimationsManifest]: HUDAnimationsManifestSchema,
+								[VGUIFileType.SurfacePropertiesManifest]: SurfacePropertiesManifestSchema,
 							}
 
 							return of({

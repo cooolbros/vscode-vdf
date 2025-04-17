@@ -15,6 +15,7 @@ export const enum VGUIFileType {
 	SourceScheme = 2,
 	LanguageTokens = 3,
 	HUDAnimationsManifest = 4,
+	SurfacePropertiesManifest = 5,
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
@@ -234,6 +235,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 				}
 				else if (path == "scripts/hudanimations_manifest.txt") {
 					return VGUIFileType.HUDAnimationsManifest
+				}
+				else if (path == "scripts/surfaceproperties_manifest.txt") {
+					return VGUIFileType.SurfacePropertiesManifest
 				}
 				return VGUIFileType.None
 			}),
