@@ -56,6 +56,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 									"$baseTexture".toLowerCase(),
 									"$baseTexture2".toLowerCase(),
 									"$blendmodulatetexture",
+									"$bottommaterial",
 									"$bumpmap",
 									"$bumpmap2",
 									"$detail",
