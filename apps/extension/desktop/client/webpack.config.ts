@@ -5,7 +5,10 @@ export default {
 	mode: "production",
 	target: "node",
 	entry: {
-		extension: posix.join(import.meta.dirname, "src/extension.ts")
+		extension: [
+			import.meta.resolve("disposablestack/auto"),
+			posix.join(import.meta.dirname, "src/extension.ts")
+		]
 	},
 	experiments: {
 		asyncWebAssembly: true,

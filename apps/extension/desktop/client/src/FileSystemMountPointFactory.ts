@@ -261,7 +261,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 										throw new Error(teamFortress2Folder.scheme)
 								}
 							})),
-							shareReplay({ bufferSize: 1, refCount: true })
+							shareReplay(1)
 						)
 
 						return {
