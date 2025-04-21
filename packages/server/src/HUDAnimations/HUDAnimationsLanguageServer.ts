@@ -221,6 +221,20 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		}
 
 		switch (tokens[0].toLowerCase()) {
+			case "event": {
+				switch (tokens.length) {
+					case 2:
+						return line.endsWith(tokens[1])
+							? null
+							: conditionals()
+					case 3:
+						return line.endsWith(tokens[2])
+							? conditionals(tokens[2])
+							: null
+					default:
+						return null
+				}
+			}
 			case "animate": {
 				switch (tokens.length) {
 					case 1:
