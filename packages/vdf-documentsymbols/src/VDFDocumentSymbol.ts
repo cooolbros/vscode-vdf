@@ -19,14 +19,17 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 		selectionRange: VDFRange.schema,
 		detail: z.string().optional(),
 		detailRange: VDFRange.schema.optional(),
-		children: z.lazy(() => VDFDocumentSymbols.schema.optional())
+		children: z.lazy(() => VDFDocumentSymbols.schema.optional()),
+		childrenRange: VDFRange.schema.optional(),
 	}).transform((arg) => new VDFDocumentSymbol(
 		arg.key,
 		arg.nameRange,
 		arg.kind,
 		<`[${string}]` | null>arg.conditional,
 		arg.range,
-		arg.children != undefined ? arg.children : { detail: arg.detail!, range: arg.detailRange! }
+		arg.detail != undefined
+			? { detail: arg.detail!, range: arg.detailRange! }
+			: { children: arg.children!, range: arg.childrenRange! }
 	))
 
 	/**
@@ -85,7 +88,12 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly children?: VDFDocumentSymbols
 
-	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: { detail: string, range: VDFRange } | VDFDocumentSymbols) {
+	/**
+	 * VDF Document Symbol children Range
+	 */
+	public readonly childrenRange?: VDFRange
+
+	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: { detail: string, range: VDFRange } | { children: VDFDocumentSymbols, range: VDFRange }) {
 		this.name = `${key}${conditional ? " " + conditional : ""}`
 		this.key = key
 		this.nameRange = nameRange
@@ -98,11 +106,13 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 			this.detail = value.detail
 			this.detailRange = value.range
 			this.children = undefined
+			this.childrenRange = undefined
 		}
 		else {
 			this.detail = undefined
 			this.detailRange = undefined
-			this.children = value
+			this.children = value.children
+			this.childrenRange = value.range
 		}
 	}
 
@@ -118,6 +128,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 			detail: this.detail,
 			detailRange: this.detailRange?.toJSON(),
 			children: this.children?.toJSON(),
+			childrenRange: this.childrenRange?.toJSON(),
 		}
 	}
 }
