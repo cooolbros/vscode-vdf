@@ -379,7 +379,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							const currency = documentSymbol.children.reduce(
 								(currency, documentSymbol) => {
 									if (documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children != undefined) {
-										const totalCurrency = parseInt(documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCurrency".toLowerCase())?.detail ?? "")
+										const totalCurrency = parseInt(documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCurrency".toLowerCase())?.detail ?? "")
 										if (!isNaN(totalCurrency)) {
 											currency += totalCurrency
 										}
