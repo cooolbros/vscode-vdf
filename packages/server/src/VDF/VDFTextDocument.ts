@@ -55,7 +55,7 @@ export interface VDFTextDocumentDependencies {
 }
 
 export interface VDFTextDocumentSchema {
-	keys: Record<string, { distinct?: boolean, reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
+	keys: Record<string, { distinct?: KeyDistinct, reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	definitionReferences: {
 		type: symbol
@@ -100,6 +100,12 @@ export interface VDFTextDocumentSchema {
 		defaultType: string | null
 		values?: Record<string, { kind: CompletionItemKind, values: string[] }>
 	}
+}
+
+export const enum KeyDistinct {
+	None,
+	First,
+	Last,
 }
 
 export interface DefinitionMatcher {
@@ -342,11 +348,55 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 						}
 
+						const documentSymbolKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
+
+						// Distinct Keys
+						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct) {
+							const distinct = dependencies.schema.keys[documentSymbolKey].distinct
+							const parent = path.at(-1)
+							if (parent?.children != undefined) {
+								const find = distinct == KeyDistinct.First
+									? Array.prototype.find
+									: Array.prototype.findLast
+
+								const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+								if (first != documentSymbol) {
+									diagnostics.push({
+										range: documentSymbol.nameRange,
+										severity: DiagnosticSeverity.Warning,
+										code: "duplicate-key",
+										source: init.languageId,
+										message: `Duplicate ${first.key}`,
+										relatedInformation: [
+											{
+												location: {
+													uri: this.uri.toString(),
+													range: first.nameRange
+												},
+												message: `${first.key} is declared here.`
+											}
+										],
+										data: {
+											kind: CodeActionKind.QuickFix,
+											fix: ({ createDocumentWorkspaceEdit }) => {
+												return {
+													title: `Remove duplicate ${documentSymbol.key}`,
+													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+												}
+											}
+										}
+									})
+								}
+							}
+						}
+
 						if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
 							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
 							diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 							return diagnostics
 						}
+
+						const documentSymbolValue = documentSymbol.detail.toLowerCase()
 
 						// #base
 						if (path.length == 0 && documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined) {
@@ -435,44 +485,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 													edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, relative)
 												}
 											},
-										}
-									})
-								}
-							}
-						}
-
-						const documentSymbolKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
-						const documentSymbolValue = documentSymbol.detail.toLowerCase()
-
-						// Distinct Keys
-						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct == true) {
-							const parent = path.at(-1)
-							if (parent?.children != undefined) {
-								const first = parent.children.find((i) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
-								if (first != documentSymbol) {
-									diagnostics.push({
-										range: documentSymbol.nameRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "duplicate-key",
-										source: init.languageId,
-										message: `Duplicate ${first.key}`,
-										relatedInformation: [
-											{
-												location: {
-													uri: this.uri.toString(),
-													range: first.nameRange
-												},
-												message: `${first.key} is declared here.`
-											}
-										],
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit }) => {
-												return {
-													title: `Remove duplicate ${documentSymbol.key}`,
-													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
-												}
-											}
 										}
 									})
 								}

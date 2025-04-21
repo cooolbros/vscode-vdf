@@ -1,4 +1,10 @@
 {
+    "class": {
+        "distinct": 2
+    },
+    "classicon": {
+        "distinct": 2
+    },
     "default": {
         "values": [
             {
@@ -62,6 +68,9 @@
         ],
         "values": []
     },
+    "health": {
+        "distinct": 2
+    },
     "initwaveoutput": {
         "reference": [
             "startwaveoutput"
@@ -73,6 +82,9 @@
             "startwaveoutput"
         ],
         "values": []
+    },
+    "maxvisionrange": {
+        "distinct": 2
     },
     "mission": {
         "values": [
@@ -107,6 +119,9 @@
             }
         ]
     },
+    "name": {
+        "distinct": 2
+    },
     "population": {
         "reference": [
             "waveschedule"
@@ -119,6 +134,9 @@
         ],
         "values": []
     },
+    "scale": {
+        "distinct": 2
+    },
     "sentrygun": {
         "values": [
             {
@@ -126,6 +144,9 @@
                 "kind": 5
             }
         ]
+    },
+    "skill": {
+        "distinct": 2
     },
     "squad": {
         "values": [
@@ -510,5 +531,8 @@
                 "multiple": true
             }
         ]
+    },
+    "weaponrestrictions": {
+        "distinct": 2
     }
 }

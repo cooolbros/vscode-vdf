@@ -1,6 +1,6 @@
 {
     "autoresize": {
-        "distinct": true
+        "distinct": 1
     },
     "button": {
         "reference": [
@@ -52,7 +52,7 @@
         ]
     },
     "controlname": {
-        "distinct": true
+        "distinct": 1
     },
     "ctfimagepanel": {
         "reference": [
@@ -89,10 +89,10 @@
         ]
     },
     "enabled": {
-        "distinct": true
+        "distinct": 1
     },
     "fieldname": {
-        "distinct": true
+        "distinct": 1
     },
     "imagepanel": {
         "reference": [
@@ -277,24 +277,24 @@
         ]
     },
     "pincorner": {
-        "distinct": true
+        "distinct": 1
     },
     "tall": {
-        "distinct": true
+        "distinct": 1
     },
     "visible": {
-        "distinct": true
+        "distinct": 1
     },
     "wide": {
-        "distinct": true
+        "distinct": 1
     },
     "xpos": {
-        "distinct": true
+        "distinct": 1
     },
     "ypos": {
-        "distinct": true
+        "distinct": 1
     },
     "zpos": {
-        "distinct": true
+        "distinct": 1
     }
 }

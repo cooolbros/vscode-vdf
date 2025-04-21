@@ -1,10 +1,10 @@
 import { CompletionItemKind } from "vscode-languageserver"
-import type { VDFTextDocumentSchema } from "../../VDFTextDocument"
+import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 
 export const SurfacePropertiesManifestSchema: VDFTextDocumentSchema = {
 	keys: {
 		surfaceproperties_manifest: {
-			distinct: true,
+			distinct: KeyDistinct.First,
 			values: [
 				{
 					label: "file",
