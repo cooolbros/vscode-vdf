@@ -45,8 +45,7 @@ export abstract class TextDocumentBase<
 	public readonly documentConfiguration$: Observable<VSCodeVDFConfiguration>
 	public readonly fileSystem: FileSystemMountPoint
 
-	private readonly text$: BehaviorSubject<string>
-
+	public readonly text$: BehaviorSubject<string>
 	public readonly documentSymbols$: Observable<TDocumentSymbols>
 	public readonly definitionReferences$: Observable<DefinitionReferences>
 	public readonly diagnostics$: Observable<DiagnosticCodeAction[]>

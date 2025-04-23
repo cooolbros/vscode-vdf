@@ -1,11 +1,17 @@
-import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { firstValueFrom, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { PopfileTextDocument } from "./PopfileTextDocument"
+import { PopfileWorkspace } from "./PopfileWorkspace"
 
 export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileTextDocument> {
+
+	private readonly workspace = Promise.try(async () => new PopfileWorkspace(
+		await this.fileSystems.get([{ type: "tf2" }]),
+		async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
+		this.documents,
+	))
 
 	private vscript = false
 
@@ -25,16 +31,12 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 						{ type: "tf2" }
 					]),
 					this.documents,
-					async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
+					await this.workspace
 				)
 			}
 		})
 
 		this.onTextDocumentRequest(this.connection.onFoldingRanges, this.onFoldingRanges)
-	}
-
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
-		return super.router(t)
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<PopfileTextDocument>): Promise<AsyncDisposable> {
