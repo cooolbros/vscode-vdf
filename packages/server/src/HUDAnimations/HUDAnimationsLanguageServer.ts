@@ -480,7 +480,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(Symbol.for(eventDocumentSymbol.eventName.toLowerCase()))
+			const definitions = definitionReferences.definitions.ofType(null, Symbol.for(eventDocumentSymbol.eventName.toLowerCase()))
 
 			return [
 				...new Set(
@@ -526,7 +526,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(Symbol.for("color"))
+			const definitions = definitionReferences.definitions.ofType(null, Symbol.for("color"))
 
 			const f = filter(text)
 
@@ -549,7 +549,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(Symbol.for("font"))
+			const definitions = definitionReferences.definitions.ofType(null, Symbol.for("font"))
 
 			return definitions
 				.values()
@@ -576,7 +576,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 
 		async function events(text?: string) {
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(EventType)
+			const definitions = definitionReferences.definitions.ofType(null, EventType)
 
 			return [
 				...new Set(
@@ -620,7 +620,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		]
 	}
 
-	protected async rename(document: HUDAnimationsTextDocument, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
+	protected async rename(document: HUDAnimationsTextDocument, scope: number | null, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
 
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		const changes: Record<string, TextEdit[]> = {}
@@ -630,11 +630,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		await document.workspace?.ready
 
 		if (type == EventType) {
-			for (const definition of definitionReferences.definitions.get(type, key) ?? []) {
+			for (const definition of definitionReferences.definitions.get(scope, type, key) ?? []) {
 				(changes[definition.uri.toString()] ??= []).push(TextEdit.replace(definition.keyRange, newName))
 			}
 
-			for (const { uri, range } of definitionReferences.references.collect(type, key)) {
+			for (const { uri, range } of definitionReferences.references.collect(scope, type, key)) {
 				(changes[uri.toString()] ??= []).push(TextEdit.replace(range, newName))
 			}
 		}
@@ -642,7 +642,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			const eventName = Symbol.keyFor(type)
 			if (eventName != undefined && eventName in eventFiles) {
 				const uris: Uri[] = []
-				for (const uri of definitionReferences.definitions.get(type, key)?.flatMap(({ uri }) => uri) ?? []) {
+				for (const uri of definitionReferences.definitions.get(scope, type, key)?.flatMap(({ uri }) => uri) ?? []) {
 					if (!uris.some((u) => u.equals(uri))) {
 						uris.push(uri)
 					}
@@ -652,7 +652,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					uris.map((uri) =>
 						this.trpc.servers.vgui.textDocument.rename.query({
 							textDocument: { uri: uri },
-							oldName: { type: Symbol.for("element"), key: key },
+							oldName: { scope: scope, type: Symbol.for("element"), key: key },
 							newName: newName
 						}).then((result) => {
 							for (const uri in result) {
@@ -667,7 +667,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		if ((type == Symbol.for("color") || type == Symbol.for("font")) && document.workspace != null) {
 			return await this.trpc.servers.vgui.textDocument.rename.query({
 				textDocument: { uri: document.workspace.uri.joinPath("resource/clientscheme.res") },
-				oldName: { type: type, key: key },
+				oldName: { scope: scope, type: type, key: key },
 				newName: newName
 			})
 		}

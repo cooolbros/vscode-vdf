@@ -175,11 +175,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 				for (const definitionReferences of dependencies) {
 					for (const definition of definitionReferences.definitions) {
-						definitions.set(definition.type, definition.key, ...definition.value)
+						definitions.set(null, definition.type, definition.key, ...definition.value)
 					}
 				}
 
 				return new DefinitionReferences(
+					new Map(),
 					new Definitions({
 						collection: definitions,
 						globals: [],

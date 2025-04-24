@@ -59,6 +59,7 @@ export interface VDFTextDocumentSchema {
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	definitionReferences: {
 		type: symbol
+		scope?: string
 		definition: DefinitionMatcher | null
 		reference?: {
 			keys: Set<string>
@@ -290,14 +291,29 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					const definitions = new Collection<Definition>()
 					const references = new Collection<VDFRange>()
 
+					const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
+
+					const scopes: Map<symbol, Map<number, VDFRange>> = new Map(
+						dependencies.schema.definitionReferences
+							.filter(({ scope }) => scope != undefined)
+							.map(({ type, scope }) => [type, new Map(
+								header
+									?.values()
+									.filter((documentSymbol) => documentSymbol.key.toLowerCase() == scope)
+									.map((documentSymbol, index) => [index, documentSymbol.range])
+							)])
+					)
+
 					documentSymbols.forAll((documentSymbol, path) => {
 						const referenceKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
 						for (const { type, definition, reference } of dependencies.schema.definitionReferences) {
 
+							const scope = scopes.get(type)?.entries().find(([scope, range]) => range.contains(documentSymbol.range))?.[0] ?? null
+
 							if (definition) {
-								const result = definition.match(documentSymbol, path)
+								const result = definition.match(documentSymbol, path,)
 								if (result) {
-									definitions.set(type, result.key, {
+									definitions.set(scope, type, result.key, {
 										uri: this.uri,
 										key: result.key,
 										range: documentSymbol.range,
@@ -311,15 +327,15 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 
 							if (reference && documentSymbol.detail != undefined && reference.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
-								references.set(type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
+								references.set(scope, type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
 							}
 						}
 					})
 
 					for (const baseDefinitionReferences of base) {
-						for (const { type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
+						for (const { scope, type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
 							// Copy #base definitions to document, used for Goto Definition
-							definitions.set(type, key, ...baseDefinitions)
+							definitions.set(null, type, key, ...baseDefinitions)
 						}
 					}
 
@@ -331,6 +347,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						dependencies: dependencies,
 						documentSymbols: documentSymbols,
 						definitionReferences: new DefinitionReferences(
+							scopes,
 							new Definitions({ collection: definitions, globals: dependencies.globals.map(({ definitions }) => definitions) }),
 							new References(this.uri, references, base.map(({ references }) => references), this.references, this.references$)
 						)
@@ -391,7 +408,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						}
 
 						if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
-							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
+							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions, definitionReferences.scopes)
 							diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 							return diagnostics
 						}
@@ -549,11 +566,13 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								.find(({ reference: { keys, match: test } }) => keys.has(documentSymbolKey) && (test != null ? test(documentSymbolValue) : true))
 
 							if (definitionReferencesConfiguration != undefined) {
+								const scope = definitionReferences.scopes.get(definitionReferencesConfiguration.type)?.entries().find(([scope, range]) => range.contains(documentSymbol.range))?.[0] ?? null
+
 								const detail = definitionReferencesConfiguration.reference.toDefinition
 									? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail)
 									: documentSymbol.detail
 
-								const definitions = definitionReferences.definitions.get(definitionReferencesConfiguration.type, detail)
+								const definitions = definitionReferences.definitions.get(scope, definitionReferencesConfiguration.type, detail)
 
 								if (!definitions || !definitions.length) {
 									diagnostics.push({
@@ -570,7 +589,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 													detail,
 													definitionReferences
 														.definitions
-														.ofType(definitionReferencesConfiguration.type)
+														.ofType(scope, definitionReferencesConfiguration.type)
 														.values()
 														.filter((definitions) => definitions.length)
 														.map((definitions) => definitions[0].key)
@@ -681,7 +700,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 						}
 
-						const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
+						const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions, definitionReferences.scopes)
 						diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 						return diagnostics
 					}
@@ -797,5 +816,5 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		)
 	}
 
-	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null>
+	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions, scopes: Map<symbol, Map<number | null, VDFRange>>): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null>
 }

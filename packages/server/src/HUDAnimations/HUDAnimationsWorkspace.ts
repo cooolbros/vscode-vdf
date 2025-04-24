@@ -125,7 +125,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 								map((documentSymbols) => {
 									return documentSymbols.reduce(
 										(result, documentSymbol) => {
-											result.definitions.set(EventType, documentSymbol.eventName, {
+											result.definitions.set(null, EventType, documentSymbol.eventName, {
 												uri: document.uri,
 												key: documentSymbol.eventName,
 												range: documentSymbol.range,
@@ -140,22 +140,22 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 											for (const statement of documentSymbol.children) {
 												if ("event" in statement) {
-													result.references.set(EventType, statement.event, statement.eventRange)
+													result.references.set(null, EventType, statement.event, statement.eventRange)
 												}
 
 												if ("element" in statement) {
-													result.references.set(type, statement.element, statement.elementRange)
+													result.references.set(null, type, statement.element, statement.elementRange)
 												}
 
 												if (statement.type == HUDAnimationStatementType.Animate) {
 													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														result.references.set(Symbol.for("color"), statement.value, statement.valueRange)
+														result.references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
 													}
 												}
 
 												// HUDAnimationStatementType.SetFont
 												if ("font" in statement) {
-													result.references.set(Symbol.for("font"), statement.font, statement.fontRange)
+													result.references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
 												}
 											}
 
@@ -198,11 +198,12 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 				for (const file of files) {
 					for (const { type, key, value } of file.definitions) {
-						definitions.set(type, key, ...value)
+						definitions.set(null, type, key, ...value)
 					}
 				}
 
 				const definitionReferences = new DefinitionReferences(
+					new Map(),
 					new Definitions({
 						collection: definitions,
 						globals: [
@@ -295,7 +296,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 								collection: files.reduce(
 									(collection, file) => {
 										for (const { key, value } of file.definitions) {
-											collection.set(Symbol.for(event), key, ...value)
+											collection.set(null, Symbol.for(event), key, ...value)
 										}
 										return collection
 									},
@@ -370,7 +371,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 					pathReferences.set(uri.toString(), uriReferences)
 				}
 
-				uriReferences.set(target.type, key, ...ranges)
+				uriReferences.set(null, target.type, key, ...ranges)
 			}
 		}
 

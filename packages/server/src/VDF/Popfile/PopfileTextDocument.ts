@@ -39,6 +39,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			},
 			{
 				type: Symbol.for("wavespawn"),
+				scope: "Wave".toLowerCase(),
 				definition: {
 					match: (documentSymbol, path) => {
 						if (documentSymbol.children != undefined && path.length == 2 && documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && path.at(-1)!.key.toLowerCase() == "Wave".toLowerCase()) {
@@ -277,7 +278,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		)
 	}
 
-	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
+	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions, scopes: Map<symbol, Map<number | null, VDFRange>>): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
 		const key = documentSymbol.key.toLowerCase()
 
 		// https://github.com/cooolbros/vscode-vdf/issues/33
@@ -322,7 +323,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		// https://github.com/cooolbros/vscode-vdf/issues/35
 		const waveSpawnType = Symbol.for("wavespawn")
 		if (PopfileTextDocument.Schema.definitionReferences.find(({ type }) => type == waveSpawnType)!.reference!.keys.has(key) && documentSymbol?.detail != undefined) {
-			for (const waveSpawnDefinition of definitions.get(Symbol.for("wavespawn"), documentSymbol.detail) ?? []) {
+			const scope = scopes.get(waveSpawnType)?.entries().find(([scope, range]) => range.contains(documentSymbol.range))?.[0] ?? null
+			for (const waveSpawnDefinition of definitions.get(scope, waveSpawnType, documentSymbol.detail) ?? []) {
 				const waveSpawnDocumentSymbol = documentSymbols.getDocumentSymbolAtPosition(waveSpawnDefinition.range.start)!
 				const support = waveSpawnDocumentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail
 				if (support != undefined && !["0", "Limited".toLowerCase()].includes(support.toLowerCase())) {

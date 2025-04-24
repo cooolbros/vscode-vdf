@@ -75,7 +75,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 											const key = documentSymbol.eventName.toLowerCase()
 
 											eventNames.add(key)
-											definitions.set(EventType, key, {
+											definitions.set(null, EventType, key, {
 												uri: this.uri,
 												key: key,
 												range: documentSymbol.range,
@@ -85,21 +85,21 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 											for (const statement of documentSymbol.children) {
 												if ("event" in statement) {
-													references.set(EventType, statement.event, statement.eventRange)
+													references.set(null, EventType, statement.event, statement.eventRange)
 												}
 
 												if ("element" in statement) {
-													references.set(Symbol.for(key), statement.element, statement.elementRange)
+													references.set(null, Symbol.for(key), statement.element, statement.elementRange)
 												}
 
 												if (statement.type == HUDAnimationStatementType.Animate) {
 													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														references.set(Symbol.for("color"), statement.value, statement.valueRange)
+														references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
 													}
 												}
 
 												if ("font" in statement) {
-													references.set(Symbol.for("font"), statement.font, statement.fontRange)
+													references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
 												}
 											}
 										}
@@ -114,6 +114,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 													dependencies: {},
 													documentSymbols: documentSymbols,
 													definitionReferences: new DefinitionReferences(
+														new Map(),
 														new Definitions({
 															collection: definitions,
 															globals: [
@@ -139,7 +140,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 							const references = new Collection<VDFRange>()
 
 							for (const documentSymbol of documentSymbols) {
-								definitions.set(EventType, documentSymbol.eventName.toLowerCase(), {
+								definitions.set(null, EventType, documentSymbol.eventName.toLowerCase(), {
 									uri: this.uri,
 									key: documentSymbol.eventName,
 									range: documentSymbol.range,
@@ -149,7 +150,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 								for (const statement of documentSymbol.children) {
 									if ("event" in statement) {
-										references.set(EventType, statement.event, statement.eventRange)
+										references.set(null, EventType, statement.event, statement.eventRange)
 									}
 								}
 							}
@@ -158,6 +159,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 								dependencies: {},
 								documentSymbols: documentSymbols,
 								definitionReferences: new DefinitionReferences(
+									new Map(),
 									new Definitions({ collection: definitions }),
 									new References(this.uri, references, [], this.references, this.references$)
 								)
@@ -171,7 +173,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 					(diagnostics, documentSymbol) => {
 						const key = documentSymbol.eventName.toLowerCase()
 
-						const events = definitionReferences.definitions.get(EventType, key)
+						const events = definitionReferences.definitions.get(null, EventType, key)
 						const definition = events?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
 
 						if (!definition || !definition.uri.equals(this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
@@ -206,7 +208,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 						for (const statement of documentSymbol.children) {
 							if ("event" in statement) {
-								const event = definitionReferences.definitions.get(EventType, statement.event.toLowerCase())
+								const event = definitionReferences.definitions.get(null, EventType, statement.event.toLowerCase())
 								if (!event || !event.length) {
 									diagnostics.push({
 										range: statement.eventRange,
@@ -220,7 +222,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 												const newText = findBestMatch(
 													statement.event,
-													[...definitionReferences.definitions.ofType(EventType).values()].flatMap((definitions) => definitions.map((definition) => definition.key))
+													[...definitionReferences.definitions.ofType(null, EventType).values()].flatMap((definitions) => definitions.map((definition) => definition.key))
 												)
 
 												if (!newText) {
@@ -239,7 +241,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 							if ("element" in statement && workspace != null && documentSymbol.eventName.toLowerCase() in eventFiles) {
 								const type = Symbol.for(documentSymbol.eventName.toLowerCase())
-								const definitions = definitionReferences.definitions.get(type, statement.element)
+								const definitions = definitionReferences.definitions.get(null, type, statement.element)
 
 								if (!definitions || !definitions.length) {
 									const files = workspace.files.get(documentSymbol.eventName.toLowerCase())
@@ -268,7 +270,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 																	statement.element,
 																	definitionReferences
 																		.definitions
-																		.ofType(type)
+																		.ofType(null, type)
 																		.values()
 																		.filter((definitions) => definitions.length)
 																		.map((definitions) => definitions[0].key)
@@ -295,7 +297,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 							}
 
 							if ("font" in statement && workspace != null) {
-								const definitions = definitionReferences.definitions.get(Symbol.for("font"), statement.font)
+								const definitions = definitionReferences.definitions.get(null, Symbol.for("font"), statement.font)
 								if (!definitions || !definitions.length) {
 									diagnostics.push({
 										range: statement.fontRange,
@@ -310,7 +312,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 													statement.font,
 													definitionReferences
 														.definitions
-														.ofType(Symbol.for("font"))
+														.ofType(null, Symbol.for("font"))
 														.values()
 														.filter((definitions) => definitions.length)
 														.map((definitions) => definitions[0].key)
@@ -333,7 +335,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 							if (statement.type == HUDAnimationStatementType.Animate && workspace != null && HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase()) && !/^\s*\d+\s+\d+\s+\d+\s+\d+\s*$/.test(statement.value)) {
 								const type = Symbol.for("color")
-								const definitions = definitionReferences.definitions.get(type, statement.value)
+								const definitions = definitionReferences.definitions.get(null, type, statement.value)
 								if (!definitions || !definitions.length) {
 									diagnostics.push({
 										range: statement.valueRange,
@@ -348,7 +350,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 													statement.value,
 													definitionReferences
 														.definitions
-														.ofType(type)
+														.ofType(null, type)
 														.values()
 														.filter((definitions) => definitions.length)
 														.map((definitions) => definitions[0].key)

@@ -183,10 +183,10 @@ export abstract class TextDocumentBase<
 				return Iterator
 					.from(definitionReferences.definitions)
 					.reduce(
-						(codeLens, { type, key, value: definitions }) => {
+						(codeLens, { scope, type, key, value: definitions }) => {
 							const definition = definitions[0]
 							if (definition != undefined && definition.uri.equals(this.uri)) {
-								const references = definitionReferences.references.collect(type, key).toArray()
+								const references = definitionReferences.references.collect(scope, type, key).toArray()
 
 								if (references.length > 0) {
 									codeLens.push({

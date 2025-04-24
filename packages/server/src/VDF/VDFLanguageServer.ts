@@ -171,7 +171,7 @@ export abstract class VDFLanguageServer<
 
 			if (definitionReferencesConfiguration != undefined) {
 				const definitionReferences = await firstValueFrom(document.definitionReferences$)
-				return definitionReferences.definitions.ofType(definitionReferencesConfiguration.type)
+				return definitionReferences.definitions.ofType(definitionReferences.scopes.get(definitionReferencesConfiguration.type)?.entries().find(([scope, range]) => range.contains(position))?.[0] ?? null, definitionReferencesConfiguration.type)
 					.values()
 					.filter((value) => value.length)
 					.filter((value) => text ? value[0].key.toLowerCase().startsWith(text.toLowerCase()) : true)
@@ -346,12 +346,12 @@ export abstract class VDFLanguageServer<
 		]
 	}
 
-	protected async rename(document: TDocument, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
+	protected async rename(document: TDocument, scope: number | null, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
 
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		const changes: Record<string, TextEdit[]> = {}
 
-		for (const definition of definitionReferences.definitions.get(type, key) ?? []) {
+		for (const definition of definitionReferences.definitions.get(scope, type, key) ?? []) {
 			const edits = changes[definition.uri.toString()] ??= []
 			edits.push(TextEdit.replace(definition.keyRange, newName))
 			if (definition.nameRange) {
@@ -365,7 +365,7 @@ export abstract class VDFLanguageServer<
 			? toReference(newName)
 			: newName
 
-		for (const { uri, range } of definitionReferences.references.collect(type, key)) {
+		for (const { uri, range } of definitionReferences.references.collect(scope, type, key)) {
 			(changes[uri.toString()] ??= []).push(TextEdit.replace(range, referenceText))
 		}
 

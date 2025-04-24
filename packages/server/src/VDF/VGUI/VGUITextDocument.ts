@@ -155,13 +155,12 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 									.filter((definitionReference): definitionReference is typeof definitionReference & { reference: NonNullable<typeof definitionReference["reference"]> } => definitionReference.reference != undefined)
 									.find(({ reference: { keys } }) => keys.has(documentSymbolKey))
 
-
 								if (definitionReferencesConfiguration != undefined && definitionReferencesConfiguration.type == string) {
 									const detail = definitionReferencesConfiguration.reference.toDefinition
 										? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail!)
 										: documentSymbol.detail!
 
-									const definitions = definitionReferences.definitions.get(definitionReferencesConfiguration.type, detail)
+									const definitions = definitionReferences.definitions.get(null, definitionReferencesConfiguration.type, detail)
 									if (definitions?.[0].detail) {
 										inlayHints.push({
 											position: documentSymbol.detailRange!.end,

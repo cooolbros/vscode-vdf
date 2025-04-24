@@ -88,7 +88,7 @@ export abstract class LanguageServer<
 	private readonly documentDiagnostics: WeakMap<TDocument, Map<string, DiagnosticCodeAction>>
 	private readonly documentsLinks: WeakMap<TDocument, Map<string, (documentLink: DocumentLink) => Promise<Uri | null>>>
 
-	private oldName: [symbol, string] | null = null
+	private oldName: [number | null, symbol, string] | null = null
 
 	protected readonly trpc: {
 		client: TRPCClient<ReturnType<typeof TRPCClientRouter>>
@@ -422,6 +422,7 @@ export abstract class LanguageServer<
 								uri: Uri.schema
 							}),
 							oldName: z.object({
+								scope: z.number().nullable(),
 								type: z.symbol(),
 								key: z.string(),
 							}),
@@ -430,7 +431,7 @@ export abstract class LanguageServer<
 					)
 					.query(async ({ input }) => {
 						await using document = await this.documents.get(input.textDocument.uri)
-						return await this.rename(document, input.oldName.type, input.oldName.key, input.newName)
+						return await this.rename(document, input.oldName.scope, input.oldName.type, input.oldName.key, input.newName)
 					})
 			},
 		})
@@ -686,9 +687,9 @@ export abstract class LanguageServer<
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
 		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
-		for (const { type, key, value: ranges } of (function*() { yield* definitionReferences.references.collection; yield* definitionReferences.references.rest.get(document.uri.toString())?.collection ?? [] })()) {
+		for (const { scope, type, key, value: ranges } of (function*() { yield* definitionReferences.references.collection; yield* definitionReferences.references.rest.get(document.uri.toString())?.collection ?? [] })()) {
 			if (ranges.some((range) => range.contains(params.position))) {
-				return definitionReferences.definitions.get(type, key)?.map((definition) => ({
+				return definitionReferences.definitions.get(scope, type, key)?.map((definition) => ({
 					uri: definition.uri.toString(),
 					range: definition.range
 				})) ?? null
@@ -700,11 +701,11 @@ export abstract class LanguageServer<
 	private async onReferences(params: TextDocumentRequestParams<ReferenceParams>) {
 		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
-		for (const { type, key, value: definitions } of definitionReferences.definitions) {
+		for (const { scope, type, key, value: definitions } of definitionReferences.definitions) {
 			if (definitions.some((definition) => definition.keyRange.contains(params.position))) {
 				return definitionReferences
 					.references
-					.collect(type, key)
+					.collect(scope, type, key)
 					.map(({ uri, range }) => ({ uri: uri.toString(), range: range }))
 					.toArray()
 			}
@@ -835,18 +836,18 @@ export abstract class LanguageServer<
 		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 
-		for (const { type, key, value: definitions } of definitionReferences.definitions) {
+		for (const { scope, type, key, value: definitions } of definitionReferences.definitions) {
 			for (const definition of definitions) {
 				if (definition.uri.equals(params.textDocument.uri)) {
 					if (definition.keyRange.contains(params.position)) {
-						this.oldName = [type, key]
+						this.oldName = [scope, type, key]
 						return {
 							range: definition.keyRange,
 							placeholder: definition.key
 						}
 					}
 					else if (definition.nameRange?.contains(params.position)) {
-						this.oldName = [type, key]
+						this.oldName = [scope, type, key]
 						return {
 							range: definition.nameRange,
 							placeholder: definition.key
@@ -856,13 +857,13 @@ export abstract class LanguageServer<
 			}
 		}
 
-		for (const { type, key, value: ranges } of definitionReferences.references.collection) {
+		for (const { scope, type, key, value: ranges } of definitionReferences.references.collection) {
 			for (const range of ranges) {
 				if (range.contains(params.position)) {
-					this.oldName = [type, key]
+					this.oldName = [scope, type, key]
 					return {
 						range: range,
-						placeholder: definitionReferences.definitions.get(type, key)?.[0]?.key ?? key
+						placeholder: definitionReferences.definitions.get(scope, type, key)?.[0]?.key ?? key
 					}
 				}
 			}
@@ -878,10 +879,10 @@ export abstract class LanguageServer<
 		}
 
 		await using document = await this.documents.get(params.textDocument.uri)
-		const [type, key] = this.oldName
+		const [scope, type, key] = this.oldName
 		this.oldName = null
-		return { changes: await this.rename(document, type, key, params.newName) }
+		return { changes: await this.rename(document, scope, type, key, params.newName) }
 	}
 
-	protected abstract rename(document: TDocument, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>>
+	protected abstract rename(document: TDocument, scope: number | null, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>>
 }
