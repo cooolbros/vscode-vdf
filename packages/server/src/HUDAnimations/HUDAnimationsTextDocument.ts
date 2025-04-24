@@ -75,9 +75,9 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 											const key = documentSymbol.eventName.toLowerCase()
 
 											eventNames.add(key)
-											definitions.set(null, EventType, key, {
+											definitions.set(null, EventType, documentSymbol.eventName, {
 												uri: this.uri,
-												key: key,
+												key: documentSymbol.eventName,
 												range: documentSymbol.range,
 												keyRange: documentSymbol.eventNameRange,
 												conditional: documentSymbol.conditional?.value
