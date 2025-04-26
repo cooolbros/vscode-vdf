@@ -44,6 +44,8 @@ export class VTFDocument implements CustomDocument {
 	private readonly dimensionsStatusBarItem: StatusBarItem
 	private readonly binarySizeStatusBarItem: StatusBarItem
 
+	public dispose: () => void
+
 	public constructor(uri: Uri, readonly: boolean, buf: Uint8Array, backup: number | null) {
 		this.uri = uri
 		this.readonly = readonly
@@ -51,13 +53,24 @@ export class VTFDocument implements CustomDocument {
 
 		const dataView = new DataView(this.buf.buffer)
 
+		const stack = new DisposableStack()
+
 		this.flags$ = new DistinctBehaviorSubject(backup ?? dataView.getUint32(VTF_FLAGS_OFFSET, true))
+		stack.defer(() => this.flags$.complete())
+
 		this.scale$ = new DistinctBehaviorSubject(100)
+		stack.defer(() => this.scale$.complete())
 
 		let priority = 100
 
 		this.zoomLevelStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
-		this.scale$.subscribe((scale) => this.zoomLevelStatusBarItem.text = `${scale}%`)
+		stack.defer(() => this.zoomLevelStatusBarItem.dispose())
+
+		stack.adopt(
+			this.scale$.subscribe((scale) => this.zoomLevelStatusBarItem.text = `${scale}%`),
+			(subscription) => subscription.unsubscribe()
+		)
+
 		this.zoomLevelStatusBarItem.command = {
 			title: "Select VTF Zoom Level",
 			command: "vscode-vdf.selectVTFZoomLevel",
@@ -65,11 +78,17 @@ export class VTFDocument implements CustomDocument {
 		}
 
 		this.dimensionsStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
+		stack.defer(() => this.dimensionsStatusBarItem.dispose())
+
 		this.dimensionsStatusBarItem.text = `${dataView.getUint16(VTF_WIDTH_OFFSET, true)}x${dataView.getUint16(VTF_HEIGHT_OFFSET, true)}`
 
 		this.binarySizeStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
+		stack.defer(() => this.binarySizeStatusBarItem.dispose())
+
 		this.binarySizeStatusBarItem.text = size(buf.length)
 		this.binarySizeStatusBarItem.tooltip = `${buf.length}`
+
+		this.dispose = () => stack.dispose()
 	}
 
 	public show() {
@@ -103,13 +122,5 @@ export class VTFDocument implements CustomDocument {
 		const buf = new Uint8Array(4)
 		new DataView(buf.buffer).setUint32(0, this.flags$.value, true)
 		return buf
-	}
-
-	public dispose() {
-		this.flags$.complete()
-		this.scale$.complete()
-		this.zoomLevelStatusBarItem.dispose()
-		this.dimensionsStatusBarItem.dispose()
-		this.binarySizeStatusBarItem.dispose()
 	}
 }

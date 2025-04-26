@@ -79,71 +79,86 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 		document.show()
 
-		webviewPanel.onDidChangeViewState(() => {
-			if (webviewPanel.visible) {
-				webviewPanel.webview.postMessage(document.buf)
-				document.show()
-			}
-			else {
-				document.hide()
-			}
-		})
+		const stack = new DisposableStack()
+		webviewPanel.onDidDispose(() => stack.dispose())
 
-		document.flags$.subscribe((flags) => {
-			webviewPanel.webview.postMessage({ type: "flags", flags })
-		})
-
-		document.scale$.subscribe((scale) => {
-			webviewPanel.webview.postMessage({ type: "scale", value: scale })
-		})
-
-		webviewPanel.webview.onDidReceiveMessage(async (message) => {
-			const command = VTFEditor.commandSchema.parse(message)
-			switch (command.type) {
-				case "buf": {
+		stack.adopt(
+			webviewPanel.onDidChangeViewState(() => {
+				if (webviewPanel.visible) {
 					webviewPanel.webview.postMessage(document.buf)
-					break
+					document.show()
 				}
-				case "flags": {
-					const prev = document.flags$.value
-					document.flags$.next(prev ^ command.value)
-					const next = document.flags$.value
-					this.onDidChangeCustomDocumentEventEmitter.fire({
-						document: document,
-						undo: () => document.flags$.next(prev),
-						redo: () => document.flags$.next(next),
-						label: command.label
-					})
-					break
+				else {
+					document.hide()
 				}
-				case "scale": {
-					document.scale$.next(command.scale)
-					break
-				}
-				case "showErrorMessage": {
-					window.showErrorMessage(command.message, ...command.items)
-					break
-				}
-				case "unsupportedVTFFormat": {
-					const configuration = workspace.getConfiguration("vscode-vdf.vtf.formats")
-					const exclude = configuration.get<string[]>("exclude") ?? []
-					if (!exclude.includes(command.format)) {
+			}),
+			(disposable) => disposable.dispose()
+		)
 
-						const requestSupportMessage = `(Github) Request support for "${command.format}"`
-						const dontAskAgain = "Don't ask again"
-
-						const result = await window.showErrorMessage(`Unsupported VTF format: "${command.format}"`, requestSupportMessage, dontAskAgain)
-						if (result == requestSupportMessage) {
-							const title = `Add support for ${command.format}`
-							await commands.executeCommand("vscode.open", `https://github.com/cooolbros/vscode-vdf/issues/new?title=${title}`)
-						}
-						else if (result == dontAskAgain) {
-							configuration.update("exclude", [...exclude, command.format], true)
-						}
+		stack.adopt(
+			webviewPanel.webview.onDidReceiveMessage(async (message) => {
+				const command = VTFEditor.commandSchema.parse(message)
+				switch (command.type) {
+					case "buf": {
+						webviewPanel.webview.postMessage(document.buf)
 						break
 					}
+					case "flags": {
+						const prev = document.flags$.value
+						document.flags$.next(prev ^ command.value)
+						const next = document.flags$.value
+						this.onDidChangeCustomDocumentEventEmitter.fire({
+							document: document,
+							undo: () => document.flags$.next(prev),
+							redo: () => document.flags$.next(next),
+							label: command.label
+						})
+						break
+					}
+					case "scale": {
+						document.scale$.next(command.scale)
+						break
+					}
+					case "showErrorMessage": {
+						window.showErrorMessage(command.message, ...command.items)
+						break
+					}
+					case "unsupportedVTFFormat": {
+						const configuration = workspace.getConfiguration("vscode-vdf.vtf.formats")
+						const exclude = configuration.get<string[]>("exclude") ?? []
+						if (!exclude.includes(command.format)) {
+
+							const requestSupportMessage = `(Github) Request support for "${command.format}"`
+							const dontAskAgain = "Don't ask again"
+
+							const result = await window.showErrorMessage(`Unsupported VTF format: "${command.format}"`, requestSupportMessage, dontAskAgain)
+							if (result == requestSupportMessage) {
+								const title = `Add support for ${command.format}`
+								await commands.executeCommand("vscode.open", `https://github.com/cooolbros/vscode-vdf/issues/new?title=${title}`)
+							}
+							else if (result == dontAskAgain) {
+								configuration.update("exclude", [...exclude, command.format], true)
+							}
+							break
+						}
+					}
 				}
-			}
-		})
+			}),
+			(disposable) => disposable.dispose()
+		)
+
+		stack.adopt(
+			document.flags$.subscribe((flags) => {
+				webviewPanel.webview.postMessage({ type: "flags", flags })
+			}),
+			(subscription) => subscription.unsubscribe()
+		)
+
+		stack.adopt(
+			document.scale$.subscribe((scale) => {
+				webviewPanel.webview.postMessage({ type: "scale", value: scale })
+			}),
+			(subscription) => subscription.unsubscribe()
+		)
 	}
 }
