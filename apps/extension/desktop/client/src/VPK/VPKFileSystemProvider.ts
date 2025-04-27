@@ -1,7 +1,7 @@
 import { open } from "fs/promises"
 import { posix } from "path"
 import { VPK, VPKFileType, type VPKEntry } from "vpk"
-import { Disposable, EventEmitter, FilePermission, FileSystemError, FileType, Uri, workspace, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider } from "vscode"
+import vscode, { Disposable, EventEmitter, FilePermission, FileSystemError, FileType, workspace, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider } from "vscode"
 
 export class VPKFileSystemProvider implements FileSystemProvider {
 
@@ -14,9 +14,9 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		this.onDidChangeFile = new EventEmitter<FileChangeEvent[]>().event
 	}
 
-	private async resolve(uri: Uri) {
+	private async resolve(uri: vscode.Uri) {
 
-		const vpkUri = Uri.from(JSON.parse(uri.authority))
+		const vpkUri = vscode.Uri.from(JSON.parse(uri.authority))
 
 		let vpk = this.vpks.get(vpkUri.toString())
 		if (!vpk) {
@@ -38,7 +38,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		return await vpk
 	}
 
-	private async entry(uri: Uri): Promise<VPKEntry | null> {
+	private async entry(uri: vscode.Uri): Promise<VPKEntry | null> {
 		const { vpk } = await this.resolve(uri)
 		const path = uri.path.substring(1)
 
@@ -49,7 +49,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		return Disposable.from()
 	}
 
-	public async stat(uri: Uri): Promise<FileStat> {
+	public async stat(uri: vscode.Uri): Promise<FileStat> {
 
 		const entry = await this.entry(uri)
 		if (!entry) {
@@ -81,7 +81,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		}
 	}
 
-	public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
+	public async readDirectory(uri: vscode.Uri): Promise<[string, FileType][]> {
 
 		const entry = await this.entry(uri)
 		if (!entry) {
@@ -103,7 +103,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		throw FileSystemError.Unavailable()
 	}
 
-	public async readFile(uri: Uri): Promise<Uint8Array> {
+	public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
 
 		const entry = await this.entry(uri)
 		if (!entry) {
@@ -114,7 +114,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 			throw FileSystemError.FileIsADirectory()
 		}
 
-		const vpkUri = Uri.from(JSON.parse(uri.authority))
+		const vpkUri = vscode.Uri.from(JSON.parse(uri.authority))
 
 		const archiveUri = vpkUri.with({
 			path: posix.join(posix.dirname(vpkUri.path), posix.basename(vpkUri.path).replace("_dir.vpk", `_${entry.value.archiveIndex == 255 ? "_dir" : entry.value.archiveIndex.toString().padStart(3, "0")}.vpk`))

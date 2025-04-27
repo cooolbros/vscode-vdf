@@ -1,4 +1,4 @@
-import { Location, Position, Range, Uri } from "vscode"
+import vscode, { Location, Position, Range } from "vscode"
 import { z } from "zod"
 
 export const VSCodeUriSchema = z.object({
@@ -7,7 +7,7 @@ export const VSCodeUriSchema = z.object({
 	path: z.string(),
 	query: z.string(),
 	fragment: z.string(),
-}).transform((arg) => Uri.from(arg))
+}).transform((arg) => vscode.Uri.from(arg))
 
 export const VSCodePositionSchema = z.object({ line: z.number(), character: z.number() }).transform(({ line, character }) => new Position(line, character))
 

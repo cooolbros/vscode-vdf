@@ -1,6 +1,6 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
-import * as vscode from "vscode"
+import vscode from "vscode"
 import { VSCodeFileSystem } from "./VSCodeFileSystem"
 
 /**

@@ -9,7 +9,7 @@ import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFa
 import { Uri } from "common/Uri"
 import { BehaviorSubject, distinctUntilChanged, finalize, firstValueFrom, map, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDF } from "vdf"
-import * as vscode from "vscode"
+import vscode from "vscode"
 import { z } from "zod"
 
 /**

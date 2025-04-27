@@ -1,5 +1,5 @@
 import { BehaviorSubject } from "rxjs"
-import { type CustomDocument, StatusBarAlignment, type StatusBarItem, type Uri, window } from "vscode"
+import vscode, { type CustomDocument, StatusBarAlignment, type StatusBarItem, window } from "vscode"
 
 const VTF_WIDTH_OFFSET = 16
 const VTF_HEIGHT_OFFSET = 18
@@ -34,7 +34,7 @@ class DistinctBehaviorSubject<T> extends BehaviorSubject<T> {
 
 export class VTFDocument implements CustomDocument {
 
-	public readonly uri: Uri
+	public readonly uri: vscode.Uri
 	public readonly readonly: boolean
 	public readonly buf: Uint8Array
 	public readonly flags$: DistinctBehaviorSubject<number>
@@ -46,7 +46,7 @@ export class VTFDocument implements CustomDocument {
 
 	public dispose: () => void
 
-	public constructor(uri: Uri, readonly: boolean, buf: Uint8Array, backup: number | null) {
+	public constructor(uri: vscode.Uri, readonly: boolean, buf: Uint8Array, backup: number | null) {
 		this.uri = uri
 		this.readonly = readonly
 		this.buf = buf

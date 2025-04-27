@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import { Minimatch } from "minimatch"
 import { posix } from "path"
 import { catchError, concat, from, map, of, Subject } from "rxjs"
-import * as vscode from "vscode"
+import vscode from "vscode"
 
 export async function VSCodeFileSystem(
 	root: Uri,

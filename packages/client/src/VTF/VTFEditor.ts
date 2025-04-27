@@ -1,4 +1,4 @@
-import { commands, EventEmitter, FilePermission, Uri, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
+import vscode, { commands, EventEmitter, FilePermission, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
 import { z } from "zod"
 import { VTFDocument } from "./VTFDocument"
 
@@ -13,11 +13,11 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		z.object({ type: z.literal("unsupportedVTFFormat"), format: z.string() })
 	])
 
-	public readonly extensionUri: Uri
+	public readonly extensionUri: vscode.Uri
 	private readonly onDidChangeCustomDocumentEventEmitter: EventEmitter<CustomDocumentEditEvent<VTFDocument>>
 	public readonly onDidChangeCustomDocument: Event<CustomDocumentEditEvent<VTFDocument>>
 
-	public constructor(extensionUri: Uri, subscriptions: { dispose(): any }[]) {
+	public constructor(extensionUri: vscode.Uri, subscriptions: { dispose(): any }[]) {
 		this.extensionUri = extensionUri
 		this.onDidChangeCustomDocumentEventEmitter = new EventEmitter()
 		this.onDidChangeCustomDocument = this.onDidChangeCustomDocumentEventEmitter.event
@@ -39,7 +39,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		return await workspace.fs.writeFile(document.uri, document.save())
 	}
 
-	public async saveCustomDocumentAs(document: VTFDocument, destination: Uri, cancellation: CancellationToken): Promise<void> {
+	public async saveCustomDocumentAs(document: VTFDocument, destination: vscode.Uri, cancellation: CancellationToken): Promise<void> {
 		return await workspace.fs.writeFile(destination, document.saveAs())
 	}
 
@@ -55,22 +55,22 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		}
 	}
 
-	public async openCustomDocument(uri: Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): Promise<VTFDocument> {
+	public async openCustomDocument(uri: vscode.Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): Promise<VTFDocument> {
 		const stat = await workspace.fs.stat(uri)
 		const readonly = stat.permissions
 			? (stat.permissions & FilePermission.Readonly) == FilePermission.Readonly
 			: false
 
 		const flags = openContext.backupId != undefined
-			? new DataView((await workspace.fs.readFile(Uri.parse(openContext.backupId))).buffer).getUint32(0, true)
+			? new DataView((await workspace.fs.readFile(vscode.Uri.parse(openContext.backupId))).buffer).getUint32(0, true)
 			: null
 		return new VTFDocument(uri, readonly, new Uint8Array(await workspace.fs.readFile(uri)), flags)
 	}
 
 	public async resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): Promise<void> {
 
-		const dist = Uri.joinPath(this.extensionUri, "apps/vtf-editor/dist")
-		const html = VTFEditor.decoder.decode(await workspace.fs.readFile(Uri.joinPath(dist, "index.html")))
+		const dist = vscode.Uri.joinPath(this.extensionUri, "apps/vtf-editor/dist")
+		const html = VTFEditor.decoder.decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
 
 		webviewPanel.webview.options = { enableScripts: true }
 		webviewPanel.webview.html = html

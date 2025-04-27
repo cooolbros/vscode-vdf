@@ -1,4 +1,4 @@
-import { Disposable, EventEmitter, FileSystemError, FileType, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider, type Uri } from "vscode"
+import vscode, { Disposable, EventEmitter, FileSystemError, FileType, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider, } from "vscode"
 import { z } from "zod"
 
 export class RemoteResourceFileSystemProvider implements FileSystemProvider {
@@ -16,7 +16,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 		return Disposable.from()
 	}
 
-	public async stat(uri: Uri): Promise<FileStat> {
+	public async stat(uri: vscode.Uri): Promise<FileStat> {
 
 		const url = new URL(uri.path, this.base)
 		url.searchParams.set("stat", "")
@@ -38,7 +38,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 		}
 	}
 
-	public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
+	public async readDirectory(uri: vscode.Uri): Promise<[string, FileType][]> {
 
 		const url = new URL(uri.path, this.base)
 		url.searchParams.set("readdir", "")
@@ -61,7 +61,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 		throw FileSystemError.NoPermissions()
 	}
 
-	public async readFile(uri: Uri): Promise<Uint8Array> {
+	public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
 
 		const url = new URL(uri.path, this.base)
 		const response = await fetch(url)

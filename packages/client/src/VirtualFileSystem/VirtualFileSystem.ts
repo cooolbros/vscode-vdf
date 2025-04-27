@@ -1,7 +1,7 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import { combineLatest, defer, distinctUntilChanged, finalize, map, Observable, of, shareReplay } from "rxjs"
-import * as vscode from "vscode"
+import vscode from "vscode"
 
 /**
  * @class
