@@ -1,5 +1,6 @@
 import { execSync } from "child_process"
 import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
+import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
 import { VTFEditor } from "client/VTF/VTFEditor"
 import { JSONToVDF } from "client/commands/JSONToVDF"
@@ -210,6 +211,7 @@ export function activate(context: ExtensionContext): void {
 	)
 
 	const fileSystemMountPointFactory = new FileSystemMountPointFactory(context, teamFortress2Folder$)
+	const fileSystemWatcherFactory = new FileSystemWatcherFactory()
 
 	// https://code.visualstudio.com/api/references/contribution-points#contributes
 	// https://code.visualstudio.com/api/references/vscode-api
@@ -225,7 +227,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Window
 	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
-	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, context.subscriptions)))
+	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, context.subscriptions)))
 
 	// Workspace
 	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))

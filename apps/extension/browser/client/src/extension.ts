@@ -6,6 +6,7 @@ import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Fo
 import { showReferences } from "client/commands/showReferences"
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { onDidChangeActiveTextEditor } from "client/decorations"
+import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
 import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
@@ -52,6 +53,8 @@ export function activate(context: ExtensionContext): void {
 		}
 	)
 
+	const fileSystemWatcherFactory = new FileSystemWatcherFactory()
+
 	// https://code.visualstudio.com/api/references/contribution-points#contributes
 	// https://code.visualstudio.com/api/references/vscode-api
 
@@ -65,7 +68,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Window
 	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
-	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, context.subscriptions)))
+	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, context.subscriptions)))
 
 	// Language Server
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {

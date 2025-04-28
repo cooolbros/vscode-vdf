@@ -1,5 +1,5 @@
-import { BehaviorSubject } from "rxjs"
-import vscode, { type CustomDocument, StatusBarAlignment, type StatusBarItem, window } from "vscode"
+import { BehaviorSubject, distinctUntilChanged, map, Observable, share, skip, Subscription } from "rxjs"
+import vscode, { commands, type CustomDocument, StatusBarAlignment, type StatusBarItem, window, workspace } from "vscode"
 
 const VTF_WIDTH_OFFSET = 16
 const VTF_HEIGHT_OFFSET = 18
@@ -24,6 +24,10 @@ function size(bytes: number) {
 	}
 }
 
+function unsubscribe(subscription: Subscription) {
+	subscription.unsubscribe()
+}
+
 class DistinctBehaviorSubject<T> extends BehaviorSubject<T> {
 	public next(value: T): void {
 		if (value != this.value) {
@@ -34,11 +38,14 @@ class DistinctBehaviorSubject<T> extends BehaviorSubject<T> {
 
 export class VTFDocument implements CustomDocument {
 
+	public static readonly flags = (buf: Uint8Array) => new DataView(buf.buffer).getUint32(VTF_FLAGS_OFFSET, true)
+
 	public readonly uri: vscode.Uri
 	public readonly readonly: boolean
-	public readonly buf: Uint8Array
+	public readonly buf$: BehaviorSubject<Uint8Array>
 	public readonly flags$: DistinctBehaviorSubject<number>
 	public readonly scale$: DistinctBehaviorSubject<number>
+	public changes = 0
 
 	private readonly zoomLevelStatusBarItem: StatusBarItem
 	private readonly dimensionsStatusBarItem: StatusBarItem
@@ -46,17 +53,47 @@ export class VTFDocument implements CustomDocument {
 
 	public dispose: () => void
 
-	public constructor(uri: vscode.Uri, readonly: boolean, buf: Uint8Array, backup: number | null) {
+	public constructor(uri: vscode.Uri, readonly: boolean, buf: Uint8Array, watcher: Observable<Uint8Array> & { [Symbol.asyncDispose](): Promise<void> }, backup: number | null) {
 		this.uri = uri
 		this.readonly = readonly
-		this.buf = buf
 
-		const dataView = new DataView(this.buf.buffer)
+		const stack = new AsyncDisposableStack()
+		stack.use(watcher)
 
-		const stack = new DisposableStack()
+		this.buf$ = new BehaviorSubject(buf)
+		stack.defer(() => this.buf$.complete())
 
-		this.flags$ = new DistinctBehaviorSubject(backup ?? dataView.getUint32(VTF_FLAGS_OFFSET, true))
+		const dataView$ = this.buf$.pipe(
+			map((buf) => new DataView(buf.buffer)),
+			share()
+		)
+
+		this.flags$ = new DistinctBehaviorSubject(backup ?? new DataView(this.buf$.value.buffer).getUint16(VTF_WIDTH_OFFSET, true))
 		stack.defer(() => this.flags$.complete())
+		stack.adopt(
+			dataView$.pipe(skip(1)).subscribe((dataView) => this.flags$.next(dataView.getUint32(VTF_FLAGS_OFFSET, true))),
+			unsubscribe
+		)
+
+		stack.adopt(
+			watcher.subscribe(async (buf) => {
+				if (this.changes == 0) {
+					this.buf$.next(buf)
+				}
+				else {
+					const result = await window.showWarningMessage("This file has changed on disk, but you have unsaved changes. Saving now will overwrite the file on disk with your changes.", "Overwrite", "Revert")
+					switch (result) {
+						case "Overwrite":
+							commands.executeCommand("workbench.action.files.save")
+							break
+						case "Revert":
+							commands.executeCommand("workbench.action.files.revert")
+							break
+					}
+				}
+			}),
+			unsubscribe
+		)
 
 		this.scale$ = new DistinctBehaviorSubject(100)
 		stack.defer(() => this.scale$.complete())
@@ -67,8 +104,11 @@ export class VTFDocument implements CustomDocument {
 		stack.defer(() => this.zoomLevelStatusBarItem.dispose())
 
 		stack.adopt(
-			this.scale$.subscribe((scale) => this.zoomLevelStatusBarItem.text = `${scale}%`),
-			(subscription) => subscription.unsubscribe()
+			this.scale$.pipe(
+				map((scale) => `${scale}%`),
+				distinctUntilChanged(),
+			).subscribe((text) => this.zoomLevelStatusBarItem.text = text),
+			unsubscribe
 		)
 
 		this.zoomLevelStatusBarItem.command = {
@@ -79,16 +119,28 @@ export class VTFDocument implements CustomDocument {
 
 		this.dimensionsStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
 		stack.defer(() => this.dimensionsStatusBarItem.dispose())
-
-		this.dimensionsStatusBarItem.text = `${dataView.getUint16(VTF_WIDTH_OFFSET, true)}x${dataView.getUint16(VTF_HEIGHT_OFFSET, true)}`
+		stack.adopt(
+			dataView$.pipe(
+				map((dataView) => `${dataView.getUint16(VTF_WIDTH_OFFSET, true)}x${dataView.getUint16(VTF_HEIGHT_OFFSET, true)}`),
+				distinctUntilChanged(),
+			).subscribe((text) => this.dimensionsStatusBarItem.text = text),
+			unsubscribe
+		)
 
 		this.binarySizeStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
 		stack.defer(() => this.binarySizeStatusBarItem.dispose())
+		stack.adopt(
+			dataView$.pipe(
+				map((dataView) => dataView.byteLength),
+				distinctUntilChanged(),
+			).subscribe((bytes) => {
+				this.binarySizeStatusBarItem.text = size(bytes)
+				this.binarySizeStatusBarItem.tooltip = `${bytes}`
+			}),
+			unsubscribe
+		)
 
-		this.binarySizeStatusBarItem.text = size(buf.length)
-		this.binarySizeStatusBarItem.tooltip = `${buf.length}`
-
-		this.dispose = () => stack.dispose()
+		this.dispose = () => stack.disposeAsync()
 	}
 
 	public show() {
@@ -104,18 +156,20 @@ export class VTFDocument implements CustomDocument {
 	}
 
 	public save() {
-		new DataView(this.buf.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value, true)
-		return this.buf
+		this.changes = 0
+		new DataView(this.buf$.value.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value, true)
+		return this.buf$.value
 	}
 
 	public saveAs() {
-		const buf = new Uint8Array(this.buf)
+		const buf = new Uint8Array(this.buf$.value.buffer)
 		new DataView(buf.buffer).setUint32(VTF_FLAGS_OFFSET, this.flags$.value, true)
 		return buf
 	}
 
-	public revert() {
-		this.flags$.next(new DataView(this.buf.buffer).getUint32(VTF_FLAGS_OFFSET, true))
+	public async revert() {
+		this.changes = 0
+		this.buf$.next(await workspace.fs.readFile(this.uri))
 	}
 
 	public backup() {

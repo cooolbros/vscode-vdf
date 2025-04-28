@@ -1,5 +1,7 @@
-import vscode, { commands, EventEmitter, FilePermission, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
+import { Uri } from "common/Uri"
+import vscode, { commands, Disposable, EventEmitter, FilePermission, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
 import { z } from "zod"
+import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
 import { VTFDocument } from "./VTFDocument"
 
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
@@ -13,12 +15,14 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		z.object({ type: z.literal("unsupportedVTFFormat"), format: z.string() })
 	])
 
-	public readonly extensionUri: vscode.Uri
+	private readonly extensionUri: vscode.Uri
+	private readonly fileSystemWatcherFactory: FileSystemWatcherFactory
 	private readonly onDidChangeCustomDocumentEventEmitter: EventEmitter<CustomDocumentEditEvent<VTFDocument>>
 	public readonly onDidChangeCustomDocument: Event<CustomDocumentEditEvent<VTFDocument>>
 
-	public constructor(extensionUri: vscode.Uri, subscriptions: { dispose(): any }[]) {
+	public constructor(extensionUri: vscode.Uri, fileSystemWatcherFactory: FileSystemWatcherFactory, subscriptions: Disposable[]) {
 		this.extensionUri = extensionUri
+		this.fileSystemWatcherFactory = fileSystemWatcherFactory
 		this.onDidChangeCustomDocumentEventEmitter = new EventEmitter()
 		this.onDidChangeCustomDocument = this.onDidChangeCustomDocumentEventEmitter.event
 
@@ -44,7 +48,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 	}
 
 	public async revertCustomDocument(document: VTFDocument, cancellation: CancellationToken): Promise<void> {
-		document.revert()
+		await document.revert()
 	}
 
 	public async backupCustomDocument(document: VTFDocument, context: CustomDocumentBackupContext, cancellation: CancellationToken): Promise<CustomDocumentBackup> {
@@ -56,15 +60,22 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 	}
 
 	public async openCustomDocument(uri: vscode.Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): Promise<VTFDocument> {
-		const stat = await workspace.fs.stat(uri)
-		const readonly = stat.permissions
-			? (stat.permissions & FilePermission.Readonly) == FilePermission.Readonly
-			: false
+		const [readonly, buf, watcher, flags] = await Promise.all([
+			Promise.try(async () => {
+				const stat = await workspace.fs.stat(uri)
+				return stat.permissions
+					? (stat.permissions & FilePermission.Readonly) == FilePermission.Readonly
+					: false
+			}),
+			Promise.try(async () => new Uint8Array(await workspace.fs.readFile(uri))),
+			this.fileSystemWatcherFactory.get(new Uri(uri)),
+			openContext.backupId != undefined
+				? Promise.try(async () => new DataView((await workspace.fs.readFile(new Uri(openContext.backupId!))).buffer).getUint32(0, true))
+				: Promise.resolve(null),
 
-		const flags = openContext.backupId != undefined
-			? new DataView((await workspace.fs.readFile(vscode.Uri.parse(openContext.backupId))).buffer).getUint32(0, true)
-			: null
-		return new VTFDocument(uri, readonly, new Uint8Array(await workspace.fs.readFile(uri)), flags)
+		])
+
+		return new VTFDocument(uri, readonly, buf, watcher, flags)
 	}
 
 	public async resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): Promise<void> {
@@ -85,7 +96,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		stack.adopt(
 			webviewPanel.onDidChangeViewState(() => {
 				if (webviewPanel.visible) {
-					webviewPanel.webview.postMessage(document.buf)
+					webviewPanel.webview.postMessage(document.buf$.value)
 					document.show()
 				}
 				else {
@@ -100,17 +111,24 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 				const command = VTFEditor.commandSchema.parse(message)
 				switch (command.type) {
 					case "buf": {
-						webviewPanel.webview.postMessage(document.buf)
+						webviewPanel.webview.postMessage(document.buf$.value)
 						break
 					}
 					case "flags": {
 						const prev = document.flags$.value
 						document.flags$.next(prev ^ command.value)
+						document.changes++
 						const next = document.flags$.value
 						this.onDidChangeCustomDocumentEventEmitter.fire({
 							document: document,
-							undo: () => document.flags$.next(prev),
-							redo: () => document.flags$.next(next),
+							undo: () => {
+								document.flags$.next(prev)
+								document.changes--
+							},
+							redo: () => {
+								document.flags$.next(next)
+								document.changes++
+							},
 							label: command.label
 						})
 						break
