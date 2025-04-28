@@ -1,4 +1,4 @@
-import { BehaviorSubject, distinctUntilChanged, map, Observable, share, skip, Subscription } from "rxjs"
+import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, skip, Subscription } from "rxjs"
 import vscode, { commands, type CustomDocument, StatusBarAlignment, type StatusBarItem, window, workspace } from "vscode"
 
 const VTF_WIDTH_OFFSET = 16
@@ -65,7 +65,7 @@ export class VTFDocument implements CustomDocument {
 
 		const dataView$ = this.buf$.pipe(
 			map((buf) => new DataView(buf.buffer)),
-			share()
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.flags$ = new DistinctBehaviorSubject(backup ?? new DataView(this.buf$.value.buffer).getUint16(VTF_WIDTH_OFFSET, true))
