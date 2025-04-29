@@ -9,6 +9,7 @@ import type { Observable } from "rxjs"
 import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
+import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { TRPCClientRouter } from "./TRPCClientRouter"
 
 export * from "common/VSCodeVDFLanguageID"
@@ -44,6 +45,7 @@ export class Client<T extends BaseLanguageClient> {
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		teamFortress2Folder$: Observable<Uri>,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
+		fileSystemWatcherFactory: FileSystemWatcherFactory,
 		client: T,
 	) {
 		this.client = client
@@ -75,7 +77,8 @@ export class Client<T extends BaseLanguageClient> {
 						}),
 						context,
 						teamFortress2Folder$,
-						fileSystemMountPointFactory
+						fileSystemMountPointFactory,
+						fileSystemWatcherFactory
 					)
 
 					const response = await fetchRequestHandler<AnyTRPCRouter>({

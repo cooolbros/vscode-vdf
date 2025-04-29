@@ -1,4 +1,4 @@
-import { firstValueFrom, Subscription } from "rxjs"
+import { firstValueFrom, from, map, of, Subscription, switchMap } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -10,6 +10,19 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 	private readonly workspace = Promise.try(async () => new PopfileWorkspace(
 		await this.fileSystems.get([{ type: "tf2" }]),
 		async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
+		(uri) => from(this.trpc.servers.vmt.baseTexture.query({ uri })).pipe(
+			switchMap((observable) => observable),
+			switchMap((uri) => {
+				if (uri != null) {
+					return from(this.trpc.client.popfile.classIcon.flags.query({ uri })).pipe(
+						switchMap((observable) => observable),
+						map((flags) => ({ uri, flags }))
+					)
+				}
+
+				return of(null)
+			})
+		),
 		this.documents,
 	))
 

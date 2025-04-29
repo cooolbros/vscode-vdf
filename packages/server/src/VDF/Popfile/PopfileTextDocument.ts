@@ -144,6 +144,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		["Tag".toLowerCase()]: 256,
 	}
 
+	private readonly workspace: PopfileWorkspace
 	public readonly inlayHints$: Observable<InlayHint[]>
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
 
@@ -214,6 +215,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				})
 			)
 		})
+
+		this.workspace = workspace
 
 		this.inlayHints$ = this.documentSymbols$.pipe(
 			combineLatestWith(workspace.paints$),
@@ -368,6 +371,47 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					message: `Value exceeds maximum buffer size (Max: ${lengths[key]}, Size: ${length}).`,
 				}
 			}
+		}
+
+		// https://github.com/cooolbros/vscode-vdf/issues/62
+		if (key == "ClassIcon".toLowerCase() && documentSymbol.detail) {
+			return this.workspace.classIconFlags(documentSymbol.detail).pipe(
+				map((vtf) => {
+					if (!vtf) {
+						return null
+					}
+
+					const noMip = (vtf.flags & 256) == 256
+					const noLod = (vtf.flags & 512) == 512
+
+					if (noMip && noLod) {
+						return null
+					}
+
+					return {
+						range: documentSymbol.detailRange!,
+						severity: DiagnosticSeverity.Warning,
+						code: "missing-vtf-flags",
+						source: "popfile",
+						message: `ClassIcon '${documentSymbol.detail}' does not set VTF flag${!noMip && !noLod ? "s" : ""} ${!noMip ? `"No Mipmap"` : ""}${!noMip && !noLod ? " and " : ""}${!noLod ? `"No Level Of Detail"` : ""}.`,
+						data: {
+							kind: CodeActionKind.QuickFix,
+							fix: () => {
+								return {
+									title: `Set VTF flags: "No Mipmap" and "No Level Of Detail".`,
+									command: {
+										title: "",
+										command: "vscode-vdf.setVTFFlags",
+										arguments: [vtf.uri, 256 | 512]
+									}
+								}
+							},
+						}
+					} satisfies DiagnosticCodeAction
+
+				})
+			)
+
 		}
 
 		return null

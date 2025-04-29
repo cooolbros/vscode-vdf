@@ -1,6 +1,7 @@
 import type { TRPCCombinedDataTransformer, initTRPC } from "@trpc/server"
+import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
-import { firstValueFrom } from "rxjs"
+import { combineLatest, of, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -70,24 +71,29 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 						})
 					)
 					.query(async ({ input }) => {
+						return usingAsync(async () => await this.documents.get(input.uri)).pipe(
+							switchMap((document) => {
+								return combineLatest({
+									documentSymbols: document.documentSymbols$,
+									dependencies: document.configuration.dependencies$
+								}).pipe(
+									switchMap(({ documentSymbols, dependencies }) => {
+										const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
+										if (!header) {
+											return of(null)
+										}
 
-						await using document = await this.documents.get(input.uri)
-						const documentSymbols = await firstValueFrom(document.documentSymbols$)
+										const baseTexture = header.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase())?.detail
+										if (!baseTexture) {
+											return of(null)
+										}
 
-						const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
-						if (!header || !header.children) {
-							return null
-						}
-
-						const baseTexture = header.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase() && documentSymbol.detail != undefined)
-						if (!baseTexture) {
-							return null
-						}
-
-						const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
-						const path = resolveFileDetail(baseTexture.detail!, schema.files.find(({ keys }) => keys.has("$baseTexture".toLowerCase()))!)
-
-						return await firstValueFrom(document.fileSystem.resolveFile(path))
+										const path = resolveFileDetail(baseTexture, dependencies.schema.files.find(({ keys }) => keys.has("$baseTexture".toLowerCase()))!)
+										return document.fileSystem.resolveFile(path)
+									})
+								)
+							}),
+						)
 					})
 			})
 		)

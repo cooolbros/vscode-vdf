@@ -3,14 +3,16 @@ import initBSP, { BSP } from "bsp"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { firstValueFrom, Observable } from "rxjs"
+import { concat, distinctUntilChanged, firstValueFrom, from, map, Observable, switchMap } from "rxjs"
 import { commands, env, languages, UIKind, window, workspace, type ExtensionContext } from "vscode"
 import initVTFPNG, { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
+import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { searchForHUDRoot } from "./searchForHUDRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
+import { VTFDocument } from "./VTF/VTFDocument"
 
 // @ts-ignore
 import bsp_bg_url from "bsp/pkg/bsp_bg.wasm?url"
@@ -32,7 +34,8 @@ export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>,
 	context: ExtensionContext,
 	teamFortress2Folder$: Observable<Uri>,
-	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>
+	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
+	fileSystemWatcherFactory: FileSystemWatcherFactory,
 ) {
 	async function initWASM<T>(url: string, init: (module: Uint8Array) => Promise<T>): Promise<T> {
 		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url.split("/").pop()!}`).with({ query: null })
@@ -231,6 +234,22 @@ export function TRPCClientRouter(
 							console.error(error)
 							return null
 						}
+					})
+			}),
+			classIcon: t.router({
+				flags: t
+					.procedure
+					.input(URISchema)
+					.query(async ({ input }) => {
+						return concat(
+							from(Promise.try(async () => VTFDocument.flags(await workspace.fs.readFile(input.uri)))),
+							from(fileSystemWatcherFactory.get(input.uri)).pipe(
+								switchMap((observable) => observable),
+								map((buf) => VTFDocument.flags(buf))
+							),
+						).pipe(
+							distinctUntilChanged(),
+						)
 					})
 			}),
 			vscript: t.router({

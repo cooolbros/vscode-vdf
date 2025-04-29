@@ -3,7 +3,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { combineLatestWith, firstValueFrom, map, Observable, shareReplay, switchMap } from "rxjs"
+import { combineLatestWith, firstValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { getVDFDocumentSymbols, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItemKind } from "vscode-languageserver"
 import { WorkspaceBase } from "../../WorkspaceBase"
@@ -17,10 +17,12 @@ export class PopfileWorkspace extends WorkspaceBase {
 	public readonly paints$: Observable<Map<string, string>>
 
 	private readonly maps: Map<string, Promise<{ values: VDFTextDocumentSchema["values"], completion: { values: VDFTextDocumentSchema["completion"]["values"] } } | null>>
+	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
 
 	constructor(
 		private readonly fileSystem: FileSystemMountPoint,
 		private readonly getEntities: (uri: Uri) => Promise<Record<string, string>[] | null>,
+		private readonly getClassIconFlags: (uri: Uri) => Observable<{ uri: Uri, flags: number } | null>,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 	) {
 		super(new Uri({ scheme: "file", path: "/" }))
@@ -178,6 +180,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 		)
 
 		this.maps = new Map()
+		this.classIcons = new Map()
 	}
 
 	public async entities(basename: string) {
@@ -272,5 +275,22 @@ export class PopfileWorkspace extends WorkspaceBase {
 		}
 
 		return await this.maps.get(bsp)!
+	}
+
+	public classIconFlags(icon: string) {
+		let flags$ = this.classIcons.get(icon)
+		if (!flags$) {
+			flags$ = this.fileSystem.resolveFile(`materials/hud/leaderboard_class_${icon}.vmt`).pipe(
+				switchMap((uri) => {
+					return uri != null
+						? this.getClassIconFlags(uri)
+						: of(null)
+				})
+			)
+
+			this.classIcons.set(icon, flags$)
+		}
+
+		return flags$
 	}
 }

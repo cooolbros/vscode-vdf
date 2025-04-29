@@ -10,7 +10,7 @@ import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, shareReplay, Subject, Subscription, switchMap } from "rxjs"
+import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { FileType } from "vscode"
@@ -462,7 +462,7 @@ export abstract class LanguageServer<
 			await using document = await this.documents.get(uri)
 			return await firstValueFrom(
 				document.fileSystem.resolveFile(path).pipe(
-					concatMap(async (uri) => uri != null ? await this.trpc.servers.vmt.baseTexture.query({ uri }) : null),
+					switchMap((uri) => uri != null ? defer(() => this.trpc.servers.vmt.baseTexture.query({ uri })).pipe(switchMap((observable) => observable)) : of(null)),
 					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNG.mutate({ uri }) : null),
 				)
 			)

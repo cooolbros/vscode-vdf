@@ -9,6 +9,7 @@ import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
 import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Folder"
+import { setVTFFlags } from "client/commands/setVTFFlags"
 import { showReferences } from "client/commands/showReferences"
 import { onDidChangeActiveTextEditor } from "client/decorations"
 import { Uri } from "common/Uri"
@@ -218,6 +219,7 @@ export function activate(context: ExtensionContext): void {
 
 	// Commands
 	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
+	context.subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory)))
@@ -262,6 +264,7 @@ export function activate(context: ExtensionContext): void {
 			startServer,
 			teamFortress2Folder$,
 			fileSystemMountPointFactory,
+			fileSystemWatcherFactory,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,
