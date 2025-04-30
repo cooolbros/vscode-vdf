@@ -89,11 +89,6 @@
             },
             {
                 "category": "VDF",
-                "title": "Show References",
-                "command": "vscode-vdf.showReferences"
-            },
-            {
-                "category": "VDF",
                 "title": "Convert VDF to JSON",
                 "command": "vscode-vdf.VDFToJSON"
             }
