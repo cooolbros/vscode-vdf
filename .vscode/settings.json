@@ -7,9 +7,11 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 4
     },
+    "dotnet.defaultSolution": "vscode-vdf.slnx",
     "files.associations": {
         "**/snippets/*.json": "snippets",
-        "*.mdx": "markdown"
+        "*.mdx": "markdown",
+        "*.slnx": "xml",
     },
     "files.exclude": {
         "**/.DS_Store": true,
