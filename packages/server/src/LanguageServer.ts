@@ -51,6 +51,7 @@ const capabilities = {
 } satisfies ServerCapabilities
 
 export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies> {
+	platform: string,
 	servers: Set<VSCodeVDFLanguageID>
 	/**
 	 * https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
@@ -243,6 +244,7 @@ export abstract class LanguageServer<
 
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server`)
+			this.connection.console.log(languageServerConfiguration.platform)
 			return {
 				serverInfo: {
 					name: `${name} Language Server`

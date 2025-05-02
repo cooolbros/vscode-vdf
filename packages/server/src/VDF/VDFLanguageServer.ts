@@ -16,6 +16,7 @@ import { resolveFileDetail, VGUIAssetType, type VDFTextDocument, type VDFTextDoc
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	name: "popfile" | "vdf" | "vmt"
+	platform: string
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
@@ -32,6 +33,7 @@ export abstract class VDFLanguageServer<
 
 	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
 		super(languageId, name, connection, {
+			platform: VDFLanguageServerConfiguration.platform,
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,

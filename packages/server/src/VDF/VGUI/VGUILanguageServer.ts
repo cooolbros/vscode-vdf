@@ -12,9 +12,10 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 
 	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
 
-	constructor(languageId: "vdf", name: "VDF", connection: Connection) {
+	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			name: "vdf",
+			platform: platform,
 			servers: new Set(["hudanimations"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {

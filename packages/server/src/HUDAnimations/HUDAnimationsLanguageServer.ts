@@ -63,8 +63,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 
 	private readonly workspaces: Map<string, Promise<HUDAnimationsWorkspace>>
 
-	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection) {
+	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
+			platform: platform,
 			servers: new Set(["vdf"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {

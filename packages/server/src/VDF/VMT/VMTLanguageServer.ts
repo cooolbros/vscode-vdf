@@ -13,9 +13,10 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 
 	private readonly workspaces: Map<string, VMTWorkspace>
 
-	constructor(languageId: "vmt", name: "VMT", connection: Connection) {
+	constructor(languageId: "vmt", name: "VMT", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			name: "vmt",
+			platform: platform,
 			servers: new Set(),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {

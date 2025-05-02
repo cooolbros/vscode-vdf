@@ -28,9 +28,10 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 
 	private vscript = false
 
-	constructor(languageId: "popfile", name: "Popfile", connection: Connection) {
+	constructor(languageId: "popfile", name: "Popfile", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			name: "popfile",
+			platform: platform,
 			servers: new Set(),
 			capabilities: {
 				foldingRangeProvider: true,
