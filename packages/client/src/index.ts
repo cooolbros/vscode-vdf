@@ -1,12 +1,16 @@
 import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import type { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
+import type { Observable } from "rxjs"
 import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
+import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { TRPCClientRouter } from "./TRPCClientRouter"
-import { fileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 
 export * from "common/VSCodeVDFLanguageID"
 
@@ -29,15 +33,19 @@ export class Client<T extends BaseLanguageClient> {
 		method: z.string(),
 		param: z.any()
 	})
+
 	public readonly client: T
-	private router?: ReturnType<typeof TRPCClientRouter>
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
+	private router?: ReturnType<typeof TRPCClientRouter>
 
 	constructor(
 		context: ExtensionContext,
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
+		teamFortress2Folder$: Observable<Uri>,
+		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
+		fileSystemWatcherFactory: FileSystemWatcherFactory,
 		client: T,
 	) {
 		this.client = client
@@ -55,7 +63,7 @@ export class Client<T extends BaseLanguageClient> {
 								reducers: {},
 								revivers: {},
 								name: null,
-								subscriptions: context.subscriptions,
+								subscriptions: this.subscriptions,
 								onRequest: (method, handler) => client.onRequest(method, handler),
 								onNotification: (method, handler) => client.onNotification(method, handler),
 								sendRequest: (server, method, param) => {
@@ -68,7 +76,9 @@ export class Client<T extends BaseLanguageClient> {
 							isDev: true,
 						}),
 						context,
-						fileSystemMountPointFactory
+						teamFortress2Folder$,
+						fileSystemMountPointFactory,
+						fileSystemWatcherFactory
 					)
 
 					const response = await fetchRequestHandler<AnyTRPCRouter>({

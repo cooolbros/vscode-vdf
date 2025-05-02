@@ -1,4 +1,11 @@
 {
+    "$additive": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
     "$ignorez": {
         "kind": 12,
         "values": [
@@ -6,7 +13,42 @@
             "1"
         ]
     },
+    "$model": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$nocull": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$no_fullbright": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
     "$nolod": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$phong": {
+        "kind": 12,
+        "values": [
+            "0",
+            "1"
+        ]
+    },
+    "$ssbump": {
         "kind": 12,
         "values": [
             "0",

@@ -95,12 +95,14 @@ export const VGUISchema: VDFTextDocumentSchema = {
 			parentKeys: [],
 			keys: new Set([
 				"activeimage",
+				"blueimage",
 				"image_armed",
 				"image_default",
 				"image_name",
 				"image_selected",
 				"image",
 				"inactiveimage",
+				"redimage",
 				...Array.from({ length: 3 }, (_, index) => `teambg_${index + 1}`)
 			]),
 			folder: "materials/vgui",

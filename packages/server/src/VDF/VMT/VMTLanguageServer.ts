@@ -1,9 +1,9 @@
 import type { TRPCCombinedDataTransformer, initTRPC } from "@trpc/server"
+import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
-import { firstValueFrom, switchMap } from "rxjs"
+import { combineLatest, of, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
-import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { resolveFileDetail } from "../VDFTextDocument"
 import { VMTTextDocument } from "./VMTTextDocument"
@@ -13,41 +13,47 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 
 	private readonly workspaces: Map<string, VMTWorkspace>
 
-	constructor(languageId: "vmt", name: "VMT", connection: Connection) {
+	constructor(languageId: "vmt", name: "VMT", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			name: "vmt",
+			platform: platform,
 			servers: new Set(),
 			capabilities: {},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => {
+			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
-				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
-					hudRoot ? { type: "folder", uri: hudRoot } : null,
-					{ type: "tf2", uri: teamFortress2Folder }
+				const fileSystem = await this.fileSystems.get([
+					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
+					{ type: "tf2" }
 				])
 
-				let workspace: WorkspaceBase | null
+				let workspace: VMTWorkspace | null
 
 				if (hudRoot != null) {
 					const key = hudRoot.toString()
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new VMTWorkspace(hudRoot)
+						w = new VMTWorkspace(hudRoot, fileSystem, this.documents)
 						this.workspaces.set(key, w)
 					}
 					workspace = w
 				}
 				else {
-					workspace = null
+					const key = "tf2"
+					let w = this.workspaces.get(key)
+					if (!w) {
+						w = new VMTWorkspace(new Uri({ scheme: "file", path: "/" }), fileSystem, this.documents)
+						this.workspaces.set(key, w)
+					}
+					workspace = w
 				}
 
 				return new VMTTextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem$,
+					fileSystem,
 					this.documents,
 					workspace,
-					refCountDispose
 				)
 			}
 		})
@@ -66,27 +72,28 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 						})
 					)
 					.query(async ({ input }) => {
+						return usingAsync(async () => await this.documents.get(input.uri)).pipe(
+							switchMap((document) => {
+								return combineLatest({
+									documentSymbols: document.documentSymbols$,
+									dependencies: document.configuration.dependencies$
+								}).pipe(
+									switchMap(({ documentSymbols, dependencies }) => {
+										const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
+										if (!header) {
+											return of(null)
+										}
 
-						using document = await this.documents.get(input.uri, true)
-						const documentSymbols = await firstValueFrom(document.documentSymbols$)
+										const baseTexture = header.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase())?.detail
+										if (!baseTexture) {
+											return of(null)
+										}
 
-						const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
-						if (!header || !header.children) {
-							return null
-						}
-
-						const baseTexture = header.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase() && documentSymbol.detail != undefined)
-						if (!baseTexture) {
-							return null
-						}
-
-						const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
-						const path = resolveFileDetail(baseTexture.detail!, schema.files.find(({ keys }) => keys.has("$baseTexture".toLowerCase()))!)
-
-						return await firstValueFrom(
-							document.fileSystem$.pipe(
-								switchMap((fileSystem) => fileSystem.resolveFile(path)),
-							)
+										const path = resolveFileDetail(baseTexture, dependencies.schema.files.find(({ keys }) => keys.has("$baseTexture".toLowerCase()))!)
+										return document.fileSystem.resolveFile(path)
+									})
+								)
+							}),
 						)
 					})
 			})

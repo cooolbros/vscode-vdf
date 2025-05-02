@@ -1,19 +1,21 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { combineLatest, defer, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
-import type { TeamFortress2FileSystem } from "../../TeamFortress2FileSystem"
 import type { TextDocumentInit } from "../../TextDocumentBase"
-import type { TextDocuments } from "../../TextDocuments"
 import { VDFTextDocument, type VDFTextDocumentDependencies } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
 import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
 import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
 import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
 import { SourceSchemeSchema } from "./schemas/SourceSchemeSchema"
+import { SurfacePropertiesManifestSchema } from "./schemas/SurfacePropertiesManifestSchema"
 import { VGUISchema } from "./schemas/VGUISchema"
 
 export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
@@ -26,12 +28,12 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<VGUITextDocument>,
+		teamFortress2Folder$: Observable<Uri>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
 		workspace: VGUIWorkspace | null,
-		refCountDispose: (dispose: () => void) => void,
 	) {
-		super(init, documentConfiguration$, fileSystem$, documents, refCountDispose, {
+		super(init, documentConfiguration$, fileSystem, documents, {
 			relativeFolderPath: (() => {
 				if (workspace) {
 					return posix.dirname(workspace.relative(init.uri))
@@ -58,54 +60,13 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 				})()
 			},
 			keyTransform: VGUITextDocument.KeyTransform,
-			dependencies$: ((): Observable<VDFTextDocumentDependencies> => {
-				const type$ = workspace != null
-					? workspace.fileType(init.uri)
-					: combineLatest({
-						files: of({
-							clientSchemeFiles: new Set(["resource/clientscheme.res"]),
-							sourceSchemeFiles: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
-							languageTokensFiles: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
-						}),
-						path: (() => {
-							switch (init.uri.scheme) {
-								case "file":
-									return documentConfiguration$.pipe(
-										map((documentConfiguration) => documentConfiguration.teamFortress2Folder),
-										map((teamFortress2Folder) => posix.relative(teamFortress2Folder.joinPath("tf").path, init.uri.path))
-									)
-								case "vpk":
-									return of(init.uri.path.substring(1))
-								default:
-									// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
-									console.warn(`Unknown Uri.scheme: ${init.uri}`)
-									return of(null)
-							}
-						})()
-					}).pipe(
-						map(({ files: { clientSchemeFiles, sourceSchemeFiles, languageTokensFiles }, path }) => {
-							if (path != null) {
-								if (clientSchemeFiles.has(path)) {
-									return VGUIFileType.ClientScheme
-								}
-								else if (sourceSchemeFiles.has(path)) {
-									return VGUIFileType.SourceScheme
-								}
-								else if (languageTokensFiles.has(path)) {
-									return VGUIFileType.LanguageTokens
-								}
-								else {
-									return VGUIFileType.None
-								}
-							}
-							else {
-								return VGUIFileType.None
-							}
-						}),
-						distinctUntilChanged()
-					)
-
-				return type$.pipe(
+			writeRoot: workspace?.uri ?? null,
+			dependencies$: defer(() => {
+				return (
+					workspace != null
+						? workspace.fileType(init.uri)
+						: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
+				).pipe(
 					switchMap((type) => {
 						if (type != VGUIFileType.None || workspace == null) {
 							const schemas = {
@@ -113,7 +74,8 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 								[VGUIFileType.ClientScheme]: ClientSchemeSchema,
 								[VGUIFileType.SourceScheme]: SourceSchemeSchema,
 								[VGUIFileType.LanguageTokens]: LanguageTokensSchema,
-								[VGUIFileType.HUDAnimationsManifest]: HUDAnimationsManifestSchema
+								[VGUIFileType.HUDAnimationsManifest]: HUDAnimationsManifestSchema,
+								[VGUIFileType.SurfacePropertiesManifest]: SurfacePropertiesManifestSchema,
 							}
 
 							return of({
@@ -139,7 +101,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						}
 					})
 				)
-			})(),
+			}),
 		})
 
 		this.workspace = workspace
@@ -193,13 +155,12 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 									.filter((definitionReference): definitionReference is typeof definitionReference & { reference: NonNullable<typeof definitionReference["reference"]> } => definitionReference.reference != undefined)
 									.find(({ reference: { keys } }) => keys.has(documentSymbolKey))
 
-
 								if (definitionReferencesConfiguration != undefined && definitionReferencesConfiguration.type == string) {
 									const detail = definitionReferencesConfiguration.reference.toDefinition
 										? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail!)
 										: documentSymbol.detail!
 
-									const definitions = definitionReferences.definitions.get(definitionReferencesConfiguration.type, detail)
+									const definitions = definitionReferences.definitions.get(null, definitionReferencesConfiguration.type, detail)
 									if (definitions?.[0].detail) {
 										inlayHints.push({
 											position: documentSymbol.detailRange!.end,
@@ -215,7 +176,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 					})
 				)
 			}),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 	}
 

@@ -5,20 +5,21 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
 import { firstValueFrom, type Observable } from "rxjs"
-import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
+import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
-import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
+import { type TextDocumentInit } from "../TextDocumentBase"
 import { resolveFileDetail, VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	name: "popfile" | "vdf" | "vmt"
+	platform: string
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
-	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>, refCountDispose: (dispose: () => void) => void): Promise<TDocument>
+	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
 }
 
 export abstract class VDFLanguageServer<
@@ -32,6 +33,7 @@ export abstract class VDFLanguageServer<
 
 	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
 		super(languageId, name, connection, {
+			platform: VDFLanguageServerConfiguration.platform,
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,
@@ -39,7 +41,7 @@ export abstract class VDFLanguageServer<
 				colorProvider: true,
 				inlayHintProvider: true,
 			},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$, refCountDispose)
+			createDocument: async (init, documentConfiguration$) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$)
 		})
 
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
@@ -49,7 +51,7 @@ export abstract class VDFLanguageServer<
 		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
 		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
 		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
-			using document = await this.documents.get(new Uri(params.textDocument.uri))
+			await using document = await this.documents.get(new Uri(params.textDocument.uri))
 			return await firstValueFrom(document.inlayHints$)
 		})
 	}
@@ -58,19 +60,16 @@ export abstract class VDFLanguageServer<
 		return super.router(t)
 	}
 
-	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<{ onDidClose: () => void }> {
-		const { onDidClose } = await super.onDidOpen(event)
-		return {
-			onDidClose: () => {
-				onDidClose()
-
-				const key = event.document.uri.toString()
-				this.documentsColours.delete(key)
-			}
-		}
+	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
+		const stack = new AsyncDisposableStack()
+		stack.use(await super.onDidOpen(event))
+		stack.defer(() => {
+			this.documentsColours.delete(event.document.uri.toString())
+		})
+		return stack.move()
 	}
 
-	protected async getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null> {
+	protected async getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
 
 		const keys = async (text?: string) => {
 
@@ -174,7 +173,7 @@ export abstract class VDFLanguageServer<
 
 			if (definitionReferencesConfiguration != undefined) {
 				const definitionReferences = await firstValueFrom(document.definitionReferences$)
-				return definitionReferences.definitions.ofType(definitionReferencesConfiguration.type)
+				return definitionReferences.definitions.ofType(definitionReferences.scopes.get(definitionReferencesConfiguration.type)?.entries().find(([scope, range]) => range.contains(position))?.[0] ?? null, definitionReferencesConfiguration.type)
 					.values()
 					.filter((value) => value.length)
 					.filter((value) => text ? value[0].key.toLowerCase().startsWith(text.toLowerCase()) : true)
@@ -223,29 +222,6 @@ export abstract class VDFLanguageServer<
 			return null
 		}
 
-		const conditionals = (text?: string) => {
-			const [before, after] = document.getText(new VDFRange(
-				position.with({ character: position.character - 1 }),
-				position.with({ character: position.character + 1 }),
-			))
-
-			const start = before == "[" ? 1 : 0
-			const end = after == "]" ? -1 : undefined
-
-			return TextDocumentBase
-				.conditionals
-				.values()
-				.filter((conditional) => text ? conditional.toLowerCase().startsWith(text.toLowerCase()) : true)
-				.map((conditional) => {
-					return {
-						label: conditional,
-						kind: CompletionItemKind.Variable,
-						insertText: conditional.slice(start, end)
-					} as CompletionItem
-				})
-				.toArray()
-		}
-
 		const line = document.getText({ start: { line: position.line, character: 0 }, end: position })
 		const tokens = Array.from(generateTokens(line))
 
@@ -291,7 +267,7 @@ export abstract class VDFLanguageServer<
 	}
 
 	private async onHover(params: TextDocumentRequestParams<HoverParams>): Promise<Hover | null> {
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
 		const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(params.position)
@@ -323,11 +299,11 @@ export abstract class VDFLanguageServer<
 
 	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {
 
-		using document = await this.documents.get(params.textDocument.uri)
+		await using document = await this.documents.get(params.textDocument.uri)
 		const colours = await firstValueFrom(document.colours$)
 
 		this.documentsColours.set(
-			params.textDocument.uri.toString(),
+			document.uri.toString(),
 			new Map(colours.map(({ range, stringify }) => [`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`, stringify]))
 		)
 
@@ -372,12 +348,12 @@ export abstract class VDFLanguageServer<
 		]
 	}
 
-	protected async rename(document: TDocument, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
+	protected async rename(document: TDocument, scope: number | null, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
 
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		const changes: Record<string, TextEdit[]> = {}
 
-		for (const definition of definitionReferences.definitions.get(type, key) ?? []) {
+		for (const definition of definitionReferences.definitions.get(scope, type, key) ?? []) {
 			const edits = changes[definition.uri.toString()] ??= []
 			edits.push(TextEdit.replace(definition.keyRange, newName))
 			if (definition.nameRange) {
@@ -391,7 +367,7 @@ export abstract class VDFLanguageServer<
 			? toReference(newName)
 			: newName
 
-		for (const { uri, range } of definitionReferences.references.collect(type, key)) {
+		for (const { uri, range } of definitionReferences.references.collect(scope, type, key)) {
 			(changes[uri.toString()] ??= []).push(TextEdit.replace(range, referenceText))
 		}
 

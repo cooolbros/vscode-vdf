@@ -1,5 +1,41 @@
 # Change Log
 
+## [5.5.0]
+ - Add automatic Team Fortress 2 installation detection (Thanks [@james-ssh](https://github.com/James-SSH) for Linux support)
+ - Add autocompletion parent element type fallback ([#52](https://github.com/cooolbros/vscode-vdf/issues/52))
+ - Update VTF Viewer to reload when file changes
+ - Add support for `surfaceproperties_*.txt`
+ - Fix autocompletion not suggesting values when no whitespace is after key
+ - Fix crash caused by code actions ([#61](https://github.com/cooolbros/vscode-vdf/issues/61))
+ - Fix "process is not defined" crash in VSCode Web
+ - Fix some document symbols missing conditional
+ - Fix not always starting VMT Language Server
+ - Fix being unable to read root directory in VPKs
+ - VGUI:
+   - Add support for `blueimage`, `redimage` image links
+ - HUD Animations:
+   - Add autocompletion for `SetVisible` visible
+   - Add autocompletion for `SetInputEnabled` elements, enabled
+   - Add autocompletion for conditionals ([#66](https://github.com/cooolbros/vscode-vdf/issues/66))
+   - Fix event names autocompletion being lower case ([#77](https://github.com/cooolbros/vscode-vdf/issues/77))
+   - Fix element and event completions having duplicate entries
+ - Popfile:
+   - Fix WaveSpawns not being scoped to Waves ([#47](https://github.com/cooolbros/vscode-vdf/issues/47))
+   - Add `ClassIcon` missing "No Mipmap" and "No Level Of Detail" diagnostic ([#62](https://github.com/cooolbros/vscode-vdf/issues/62))
+   - Fix folding not including default folding ranges ([#53](https://github.com/cooolbros/vscode-vdf/issues/53))
+   - Allow `Tag` to be multiline (Thanks [@Brain-dawg](https://github.com/Brain-dawg))
+   - Add `Tag` maximum buffer size diagnostic (Thanks [@Brain-dawg](https://github.com/Brain-dawg))
+   - Add duplicate key diagnostics
+   - Fix Wave currency decorations not using last `TotalCurrency`
+   - Fix `Import #base templates into current popfile` command:
+     - Fix not including templates referenced inside `Mission`, `Squad`, and `RandomChoice` blocks ([#43](https://github.com/cooolbros/vscode-vdf/issues/43))
+     - Merge templates in #base files
+     - Ignore templates declared in `robot_standard.pop`, `robot_giant.pop`, `robot_gatebot.pop` ([#69](https://github.com/cooolbros/vscode-vdf/issues/69))
+ - VMT:
+   - Fix header completion items inserting `WaveSchedule`
+   - Add autocompletion for `$additive`, `$model`, `$nocull`, `$no_fullbright`, `$phong`, `$ssbump`
+   - Add image link keys
+
 ## [5.4.4]
  - Fix extension activation failing in VSCode Web
  - Fix always starting VMT Language Server

@@ -1,7 +1,7 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { Uri } from "common/Uri"
-import { map } from "rxjs"
-import { type Connection, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { defer, from, map, switchMap } from "rxjs"
+import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { References } from "../../DefinitionReferences"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -10,33 +10,34 @@ import { VGUIWorkspace } from "./VGUIWorkspace"
 
 export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocument> {
 
-	private readonly workspaces: Map<string, VGUIWorkspace>
+	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
 
-	constructor(languageId: "vdf", name: "VDF", connection: Connection) {
+	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			name: "vdf",
+			platform: platform,
 			servers: new Set(["hudanimations"]),
 			capabilities: {},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => {
+			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
-				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
-					hudRoot ? { type: "folder", uri: hudRoot } : { type: "folder", uri: init.uri.dirname() },
-					{ type: "tf2", uri: teamFortress2Folder }
+				const fileSystem = await this.fileSystems.get([
+					{ type: "folder", uri: hudRoot ?? init.uri.dirname() },
+					{ type: "tf2" },
 				])
 
-				let workspace: VGUIWorkspace | null
+				let workspace: Promise<VGUIWorkspace> | null
 
 				if (hudRoot != null) {
 					const key = hudRoot.toString()
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new VGUIWorkspace({
+						w = Promise.resolve(new VGUIWorkspace({
 							uri: hudRoot,
-							fileSystem$: fileSystem$,
+							fileSystem: fileSystem,
 							documents: this.documents,
 							request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: hudRoot })
-						})
+						}))
 						this.workspaces.set(key, w)
 					}
 					workspace = w
@@ -48,10 +49,10 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem$,
+					defer(() => from(this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(switchMap((observable) => observable))),
+					fileSystem,
 					this.documents,
-					workspace,
-					refCountDispose,
+					await workspace,
 				)
 			}
 		})
@@ -75,15 +76,15 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 							if (!this.workspaces.has(input.uri.toString())) {
 								this.workspaces.set(
 									input.uri.toString(),
-									new VGUIWorkspace({
+									Promise.try(async () => new VGUIWorkspace({
 										uri: input.uri,
-										fileSystem$: this.fileSystems.get((teamFortress2Folder) => [
+										fileSystem: await this.fileSystems.get([
 											{ type: "folder", uri: input.uri },
-											{ type: "tf2", uri: teamFortress2Folder }
+											{ type: "tf2" }
 										]),
 										documents: this.documents,
 										request: Promise.resolve()
-									})
+									}))
 								)
 							}
 						}),
@@ -96,7 +97,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 							})
 						)
 						.query(async ({ input }) => {
-							const workspace = this.workspaces.get(input.key.toString())
+							const workspace = await this.workspaces.get(input.key.toString())
 							if (!workspace) {
 								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
 							}
@@ -111,8 +112,8 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 								path: z.string(),
 							})
 						)
-						.query(({ input }) => {
-							const workspace = this.workspaces.get(input.key.toString())
+						.query(async ({ input }) => {
+							const workspace = await this.workspaces.get(input.key.toString())
 							if (!workspace) {
 								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
 							}
@@ -130,7 +131,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 							})
 						)
 						.mutation(async ({ input }) => {
-							const workspace = this.workspaces.get(input.key.toString())
+							const workspace = await this.workspaces.get(input.key.toString())
 							if (!workspace) {
 								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
 							}
@@ -142,9 +143,5 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 				}
 			})
 		)
-	}
-
-	protected async onDidOpen(event: TextDocumentChangeEvent<VGUITextDocument>): Promise<{ onDidClose: () => void }> {
-		return await super.onDidOpen(event)
 	}
 }

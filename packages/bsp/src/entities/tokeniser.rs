@@ -14,7 +14,7 @@ pub enum Token {
     EOF,
 }
 
-impl<'a> Iterator for Tokeniser<'a> {
+impl Iterator for Tokeniser<'_> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {

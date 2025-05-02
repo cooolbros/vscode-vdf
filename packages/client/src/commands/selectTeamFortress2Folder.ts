@@ -1,4 +1,4 @@
-import { commands, Uri, window, workspace } from "vscode"
+import vscode, { commands, FileType, window, workspace } from "vscode"
 
 export async function selectTeamFortress2Folder() {
 	const result = await window.showOpenDialog({
@@ -10,7 +10,7 @@ export async function selectTeamFortress2Folder() {
 	if (result && result.length) {
 		const uri = result[0]
 
-		const exists = await workspace.fs.stat(Uri.joinPath(uri, "tf/gameinfo.txt")).then(() => true, () => false)
+		const exists = await workspace.fs.stat(vscode.Uri.joinPath(uri, "tf/gameinfo.txt")).then((stat) => stat.type == FileType.File, () => false)
 		if (!exists) {
 			window.showErrorMessage(`Invalid Team Fortress 2 folder: "${uri.fsPath}"`)
 			return

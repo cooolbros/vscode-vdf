@@ -89,11 +89,6 @@
             },
             {
                 "category": "VDF",
-                "title": "Show References",
-                "command": "vscode-vdf.showReferences"
-            },
-            {
-                "category": "VDF",
                 "title": "Convert VDF to JSON",
                 "command": "vscode-vdf.VDFToJSON"
             }
@@ -370,12 +365,14 @@
                     "gameinfo.txt",
                     "hudanimations_manifest.txt",
                     "items_game.txt",
-                    "mod_textures.txt"
+                    "mod_textures.txt",
+                    "surfaceproperties.txt"
                 ],
                 "filenamePatterns": [
                     "appmanifest_*.acf",
                     "chat_*.txt",
                     "game_sounds_*.txt",
+                    "surfaceproperties_*.txt",
                     "tf_*.txt"
                 ],
                 "configuration": "./language-configuration/vdf-language-configuration.json"
@@ -442,13 +439,14 @@
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.97.0",
         "@types/vscode-webview": "^1.57.5",
-        "@vscode/test-web": "^0.0.67",
+        "@vscode/test-web": "^0.0.69",
         "@vscode/vsce": "^3.2.2",
+        "disposablestack": "^1.1.7",
         "path-browserify": "^1.0.1",
         "rxjs": "^7.8.1",
         "ts-loader": "^9.5.1",
         "ts-node": "^10.9.2",
-        "turbo": "^2.4.4",
+        "turbo": "^2.5.0",
         "typescript": "^5.8.2",
         "vscode-languageserver-textdocument": "^1.0.11",
         "webpack": "^5.97.1",
@@ -471,5 +469,5 @@
         "isPreReleaseVersion": false,
         "size": 2578099110
     },
-    "packageManager": "pnpm@10.5.2"
+    "packageManager": "pnpm@10.8.0"
 }

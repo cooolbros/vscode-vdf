@@ -59,8 +59,10 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 					switch (valueToken.type) {
 						case VDFTokenType.ControlCharacter: {
 							if (valueToken.value == "{") {
+								const start = new VDFPosition(tokeniser.line, tokeniser.character)
 								value = parseObject(true)
-								valueRange = null
+								const end = new VDFPosition(tokeniser.line, tokeniser.character - 1)
+								valueRange = new VDFRange(start, end)
 								conditional ??= null
 								break
 							}
@@ -104,7 +106,9 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 				typeof value == "object" ? SymbolKind.Object : SymbolKind.String,
 				conditional,
 				selectionRange,
-				typeof value == "object" ? value : { detail: value, range: valueRange! },
+				typeof value == "string"
+					? { detail: value, range: valueRange! }
+					: { children: value, range: valueRange! },
 			))
 		}
 

@@ -1,18 +1,18 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { finalizeWithValue } from "common/operators/finalizeWithValue"
 import { usingAsync } from "common/operators/usingAsync"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatestWith, concatMap, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
+import { combineLatestWith, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subject, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { getVDFDocumentSymbols, VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
-import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
-import type { TextDocuments } from "../TextDocuments"
 
 function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
 
@@ -25,16 +25,6 @@ function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b:
 	}
 
 	return arr1.some((_, index) => arr2.every((v, i) => index + i < arr1.length && comparer(arr1[index + i], v)))
-}
-
-function ArrayEndsWithArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
-
-	if (arr1.length < arr2.length) {
-		return false
-	}
-
-	const start = arr1.length - arr2.length
-	return arr2.every((value, index) => comparer(arr1[start + index], value))
 }
 
 export function resolveFileDetail(detail: string, configuration: VDFTextDocumentSchema["files"][number]) {
@@ -55,6 +45,7 @@ export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
+	writeRoot: Uri | null
 	dependencies$: Observable<VDFTextDocumentDependencies>
 }
 
@@ -64,10 +55,11 @@ export interface VDFTextDocumentDependencies {
 }
 
 export interface VDFTextDocumentSchema {
-	keys: Record<string, { distinct?: boolean, reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
+	keys: Record<string, { distinct?: KeyDistinct, reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	definitionReferences: {
 		type: symbol
+		scope?: string
 		definition: DefinitionMatcher | null
 		reference?: {
 			keys: Set<string>
@@ -111,6 +103,12 @@ export interface VDFTextDocumentSchema {
 	}
 }
 
+export const enum KeyDistinct {
+	None,
+	First,
+	Last,
+}
+
 export interface DefinitionMatcher {
 	match(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DefinitionResult | void
 }
@@ -137,12 +135,11 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<TDocument>,
-		refCountDispose: (dispose: () => void) => void,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, TDocument>,
 		configuration: VDFTextDocumentConfiguration<TDocument>,
 	) {
-		super(init, documentConfiguration$, fileSystem$, refCountDispose, {
+		super(init, documentConfiguration$, fileSystem, {
 			getDocumentSymbols: (text) => {
 				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
 			},
@@ -166,13 +163,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
 								}),
 								distinctUntilChanged((a, b) => a.length == b.length && a.every((v, i) => v == b[i])),
-								map((values) => values.map((value) => {
-									return fileSystem$.pipe(
-										switchMap((fileSystem) => {
-											return fileSystem.resolveFile(posix.resolve("/", relativeFolderPath ?? "", value).substring(1))
-										})
-									)
-								})),
+								map((values) => values.map((value) => fileSystem.resolveFile(posix.resolve("/", relativeFolderPath ?? "", value).substring(1)))),
 								combineLatestPersistent(),
 								map((uris) => uris.filter((uri) => uri != null)),
 							)
@@ -196,7 +187,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										const key = baseUri.toString()
 										let observable = context.get(key)
 										if (!observable) {
-											observable = usingAsync(() => documents.get(baseUri, true)).pipe(
+											observable = usingAsync(() => documents.get(baseUri)).pipe(
 												switchMap((baseDocument) => {
 													return check(baseDocument, [...stack, document.uri])
 												})
@@ -236,7 +227,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									const key = uri.toString()
 									let observable = context.get(key)
 									if (!observable) {
-										observable = usingAsync(() => documents.get(uri, true)).pipe(
+										observable = usingAsync(() => documents.get(uri)).pipe(
 											finalizeWithValue((document) => {
 												document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
 												context.delete(key)
@@ -300,14 +291,29 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					const definitions = new Collection<Definition>()
 					const references = new Collection<VDFRange>()
 
+					const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
+
+					const scopes: Map<symbol, Map<number, VDFRange>> = new Map(
+						dependencies.schema.definitionReferences
+							.filter(({ scope }) => scope != undefined)
+							.map(({ type, scope }) => [type, new Map(
+								header
+									?.values()
+									.filter((documentSymbol) => documentSymbol.key.toLowerCase() == scope)
+									.map((documentSymbol, index) => [index, documentSymbol.range])
+							)])
+					)
+
 					documentSymbols.forAll((documentSymbol, path) => {
 						const referenceKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
 						for (const { type, definition, reference } of dependencies.schema.definitionReferences) {
 
+							const scope = scopes.get(type)?.entries().find(([scope, range]) => range.contains(documentSymbol.range))?.[0] ?? null
+
 							if (definition) {
-								const result = definition.match(documentSymbol, path)
+								const result = definition.match(documentSymbol, path,)
 								if (result) {
-									definitions.set(type, result.key, {
+									definitions.set(scope, type, result.key, {
 										uri: this.uri,
 										key: result.key,
 										range: documentSymbol.range,
@@ -321,15 +327,15 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 
 							if (reference && documentSymbol.detail != undefined && reference.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
-								references.set(type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
+								references.set(scope, type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
 							}
 						}
 					})
 
 					for (const baseDefinitionReferences of base) {
-						for (const { type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
+						for (const { scope, type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
 							// Copy #base definitions to document, used for Goto Definition
-							definitions.set(type, key, ...baseDefinitions)
+							definitions.set(null, type, key, ...baseDefinitions)
 						}
 					}
 
@@ -341,6 +347,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						dependencies: dependencies,
 						documentSymbols: documentSymbols,
 						definitionReferences: new DefinitionReferences(
+							scopes,
 							new Definitions({ collection: definitions, globals: dependencies.globals.map(({ definitions }) => definitions) }),
 							new References(this.uri, references, base.map(({ references }) => references), this.references, this.references$)
 						)
@@ -358,11 +365,55 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 						}
 
+						const documentSymbolKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
+
+						// Distinct Keys
+						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct) {
+							const distinct = dependencies.schema.keys[documentSymbolKey].distinct
+							const parent = path.at(-1)
+							if (parent?.children != undefined) {
+								const find = distinct == KeyDistinct.First
+									? Array.prototype.find
+									: Array.prototype.findLast
+
+								const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+								if (first != documentSymbol) {
+									diagnostics.push({
+										range: documentSymbol.nameRange,
+										severity: DiagnosticSeverity.Warning,
+										code: "duplicate-key",
+										source: init.languageId,
+										message: `Duplicate ${first.key}`,
+										relatedInformation: [
+											{
+												location: {
+													uri: this.uri.toString(),
+													range: first.nameRange
+												},
+												message: `${first.key} is declared here.`
+											}
+										],
+										data: {
+											kind: CodeActionKind.QuickFix,
+											fix: ({ createDocumentWorkspaceEdit }) => {
+												return {
+													title: `Remove duplicate ${documentSymbol.key}`,
+													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+												}
+											}
+										}
+									})
+								}
+							}
+						}
+
 						if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
-							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
+							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions, definitionReferences.scopes)
 							diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 							return diagnostics
 						}
+
+						const documentSymbolValue = documentSymbol.detail.toLowerCase()
 
 						// #base
 						if (path.length == 0 && documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined) {
@@ -395,8 +446,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									: dirname.relative(dirname.joinPath(detail))
 
 								diagnostics.push(
-									fileSystem$.pipe(
-										switchMap((fileSystem) => fileSystem.resolveFile(relativePath)),
+									fileSystem.resolveFile(relativePath).pipe(
 										map((uri): DiagnosticCodeAction | null => {
 											if (uri == null) {
 												return {
@@ -452,44 +502,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 													edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, relative)
 												}
 											},
-										}
-									})
-								}
-							}
-						}
-
-						const documentSymbolKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
-						const documentSymbolValue = documentSymbol.detail.toLowerCase()
-
-						// Distinct Keys
-						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct == true) {
-							const parent = path.at(-1)
-							if (parent?.children != undefined) {
-								const first = parent.children.find((i) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
-								if (first != documentSymbol) {
-									diagnostics.push({
-										range: documentSymbol.nameRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "duplicate-key",
-										source: init.languageId,
-										message: `Duplicate ${first.key}`,
-										relatedInformation: [
-											{
-												location: {
-													uri: this.uri.toString(),
-													range: first.nameRange
-												},
-												message: `${first.key} is declared here.`
-											}
-										],
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit }) => {
-												return {
-													title: `Remove duplicate ${documentSymbol.key}`,
-													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
-												}
-											}
 										}
 									})
 								}
@@ -554,11 +566,13 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								.find(({ reference: { keys, match: test } }) => keys.has(documentSymbolKey) && (test != null ? test(documentSymbolValue) : true))
 
 							if (definitionReferencesConfiguration != undefined) {
+								const scope = definitionReferences.scopes.get(definitionReferencesConfiguration.type)?.entries().find(([scope, range]) => range.contains(documentSymbol.range))?.[0] ?? null
+
 								const detail = definitionReferencesConfiguration.reference.toDefinition
 									? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail)
 									: documentSymbol.detail
 
-								const definitions = definitionReferences.definitions.get(definitionReferencesConfiguration.type, detail)
+								const definitions = definitionReferences.definitions.get(scope, definitionReferencesConfiguration.type, detail)
 
 								if (!definitions || !definitions.length) {
 									diagnostics.push({
@@ -575,7 +589,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 													detail,
 													definitionReferences
 														.definitions
-														.ofType(definitionReferencesConfiguration.type)
+														.ofType(scope, definitionReferencesConfiguration.type)
 														.values()
 														.filter((definitions) => definitions.length)
 														.map((definitions) => definitions[0].key)
@@ -638,8 +652,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						if (fileConfiguration && documentSymbol.detail.trim() != "") {
 							const path = resolveFileDetail(documentSymbol.detail, fileConfiguration)
 							diagnostics.push(
-								fileSystem$.pipe(
-									switchMap((fileSystem) => fileSystem.resolveFile(path)),
+								fileSystem.resolveFile(path).pipe(
 									map((uri) => {
 										return uri != null
 											? null
@@ -659,12 +672,12 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							let newPath: string
 							if (fileConfiguration.folder) {
 								newPath = posix.relative(
-									fileConfiguration.folder,
-									posix.resolve(`/${fileConfiguration.folder}`, detail).substring(1)
+									`/${fileConfiguration.folder}`,
+									posix.resolve(`/${fileConfiguration.folder}`, detail)
 								)
 							}
 							else {
-								newPath = posix.resolve("/", ...documentSymbol.detail.split(/[/\\]+/)).substring(1)
+								newPath = posix.resolve(`/${detail}`).substring(1)
 							}
 
 							if (detail != newPath) {
@@ -687,7 +700,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							}
 						}
 
-						const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions)
+						const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions, definitionReferences.scopes)
 						diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
 						return diagnostics
 					}
@@ -719,11 +732,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										if (configuration.relativeFolderPath) {
 											const relativePath = posix.resolve(`/${configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
 
-											const target = await firstValueFrom(
-												fileSystem$.pipe(
-													switchMap((fileSystem) => fileSystem.resolveFile(relativePath))
-												)
-											)
+											const target = await firstValueFrom(fileSystem.resolveFile(relativePath))
 
 											if (target) {
 												return target
@@ -739,29 +748,16 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 						key = configuration.keyTransform(key)
 
-						for (const configuration of dependencies.schema.files) {
-							const { parentKeys, keys } = configuration
+						for (const fileConfiguration of dependencies.schema.files) {
+							const { parentKeys, keys } = fileConfiguration
 							if (keys.has(key) && ArrayContainsArray(path, parentKeys, (a, b) => a.key.toLowerCase() == b.toLowerCase()) && documentSymbol.detail != "") {
 								links.push({
 									range: documentSymbol.detailRange!,
 									data: {
 										uri: this.uri,
 										resolve: async () => {
-											const path = resolveFileDetail(documentSymbol.detail!, configuration)
-											return await firstValueFrom(
-												fileSystem$.pipe(
-													switchMap((fileSystem) => {
-														return fileSystem.resolveFile(path).pipe(
-															concatMap(async (uri) => {
-																if (uri) {
-																	return uri
-																}
-																return fileSystem.paths[0].joinPath(path)
-															})
-														)
-													})
-												)
-											)
+											const path = resolveFileDetail(documentSymbol.detail!, fileConfiguration)
+											return await firstValueFrom(fileSystem.resolveFile(path)) ?? configuration.writeRoot?.joinPath(path) ?? null
 										}
 									}
 								})
@@ -772,7 +768,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 				)
 			}),
-			shareReplay(1)
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.colours$ = this.documentSymbols$.pipe(
@@ -816,9 +812,9 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 				)
 			}),
-			shareReplay(1),
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 	}
 
-	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null>
+	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions, scopes: Map<symbol, Map<number | null, VDFRange>>): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null>
 }

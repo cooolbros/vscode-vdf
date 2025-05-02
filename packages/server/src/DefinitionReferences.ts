@@ -5,23 +5,29 @@ import { z, type ZodTypeAny } from "zod"
 
 export class Collection<T> {
 
-	public static readonly createSchema = <T extends ZodTypeAny>(schema: T) => z.map(z.symbol(), z.map(z.string(), schema.array())).transform((arg) => new Collection([arg]))
-	private readonly map: Map<symbol, Map<string, T[]>>
+	public static readonly createSchema = <T extends ZodTypeAny>(schema: T) => z.map(z.number().nullable(), z.map(z.symbol(), z.map(z.string(), schema.array()))).transform((arg) => new Collection(arg))
+	private readonly map: Map<number | null, Map<symbol, Map<string, T[]>>>
 
-	public constructor(init?: Map<symbol, Map<string, T[]>>[]) {
-		this.map = new Map(init ? init?.values().flatMap((map) => map) : [])
+	public constructor(map: Map<number | null, Map<symbol, Map<string, T[]>>> = new Map()) {
+		this.map = map
 	}
 
-	public get(type: symbol, key: string) {
-		return Object.freeze(this.map.get(type)?.get(key.toLowerCase())) ?? null
+	public get(scope: number | null, type: symbol, key: string) {
+		return Object.freeze(this.map.get(scope)?.get(type)?.get(key.toLowerCase())) ?? null
 	}
 
-	public set(type: symbol, key: string, ...value: T[]) {
+	public set(scope: number | null, type: symbol, key: string, ...value: T[]) {
 
-		let typeMap = this.map.get(type)
+		let scopeMap = this.map.get(scope)
+		if (!scopeMap) {
+			scopeMap = new Map()
+			this.map.set(scope, scopeMap)
+		}
+
+		let typeMap = scopeMap.get(type)
 		if (!typeMap) {
 			typeMap = new Map()
-			this.map.set(type, typeMap)
+			scopeMap.set(type, typeMap)
 		}
 
 		const keyLower = key.toLowerCase()
@@ -35,14 +41,16 @@ export class Collection<T> {
 		keyCollection.push(...value)
 	}
 
-	public ofType(type: symbol): ReadonlyMap<string, T[]> {
-		return this.map.get(type) ?? new Map()
+	public ofType(scope: number | null, type: symbol): ReadonlyMap<string, T[]> {
+		return this.map.get(scope)?.get(type) ?? new Map()
 	}
 
-	public *[Symbol.iterator](): Iterator<{ type: symbol, key: string, value: T[] }> {
-		for (const [type, keyCollection] of this.map) {
-			for (const [key, value] of keyCollection) {
-				yield { type, key, value }
+	public *[Symbol.iterator](): Iterator<{ scope: number | null, type: symbol, key: string, value: T[] }> {
+		for (const [scope, typeCollection] of this.map) {
+			for (const [type, keyCollection] of typeCollection) {
+				for (const [key, value] of keyCollection) {
+					yield { scope, type, key, value }
+				}
 			}
 		}
 	}
@@ -78,14 +86,14 @@ export class Definitions {
 		this.globals = globals
 	}
 
-	public get(type: symbol, key: string): readonly Definition[] | null {
-		const definitions = this.collection.get(type, key)
+	public get(scope: number | null, type: symbol, key: string): readonly Definition[] | null {
+		const definitions = this.collection.get(scope, type, key)
 		if (definitions != null) {
 			return definitions
 		}
 
 		for (const global of this.globals) {
-			const definitions = global.get(type, key)
+			const definitions = global.get(scope, type, key)
 			if (definitions != null) {
 				return definitions
 			}
@@ -94,15 +102,15 @@ export class Definitions {
 		return null
 	}
 
-	public ofType(type: symbol): ReadonlyMap<string, Definition[]> {
+	public ofType(scope: number | null, type: symbol): ReadonlyMap<string, Definition[]> {
 
-		const map = this.collection.ofType(type)
+		const map = this.collection.ofType(scope, type)
 		if (map.size) {
 			return map
 		}
 
 		for (const definitions of this.globals) {
-			const map = definitions.ofType(type)
+			const map = definitions.ofType(scope, type)
 			if (map.size) {
 				return map
 			}
@@ -161,8 +169,8 @@ export class References {
 		}
 	}
 
-	public get(type: symbol, key: string) {
-		return this.collection.get(type, key) ?? []
+	public get(scope: number | null, type: symbol, key: string) {
+		return this.collection.get(scope, type, key) ?? []
 	}
 
 	public [Symbol.iterator]() {
@@ -186,14 +194,14 @@ export class References {
 		}
 	}
 
-	public *collect(type: symbol, key: string) {
+	public *collect(scope: number | null, type: symbol, key: string) {
 		function* walk(references: References): Generator<{ uri: Uri, range: VDFRange }> {
-			for (const range of references.get(type, key)) {
+			for (const range of references.get(scope, type, key)) {
 				yield { uri: references.uri, range: range }
 			}
 
 			for (const dependency of references.rest.values()) {
-				yield* dependency.collect(type, key)
+				yield* dependency.collect(scope, type, key)
 			}
 		}
 
@@ -212,10 +220,12 @@ export class References {
 
 export class DefinitionReferences {
 
+	public readonly scopes: Map<symbol, Map<number, VDFRange>>
 	public readonly definitions: Definitions
 	public readonly references: References
 
-	constructor(definitions: Definitions, references: References) {
+	constructor(scopes: Map<symbol, Map<number, VDFRange>>, definitions: Definitions, references: References) {
+		this.scopes = scopes
 		this.definitions = definitions
 		this.references = references
 	}

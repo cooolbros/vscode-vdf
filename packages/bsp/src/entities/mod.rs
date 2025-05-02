@@ -23,7 +23,7 @@ impl Entities {
 
             match tokens.next() {
                 Some(Token::OpeningBrace) => loop {
-                    match tokens.next().ok_or_else(|| ())? {
+                    match tokens.next().ok_or(())? {
                         Token::String(key) => {
                             let value = tokens
                                 .next()
@@ -31,7 +31,7 @@ impl Entities {
                                     Token::String(value) => Some(value),
                                     _ => None,
                                 })
-                                .ok_or_else(|| ())?;
+                                .ok_or(())?;
 
                             entity.insert(key, value);
                         }
@@ -44,7 +44,7 @@ impl Entities {
                 _ => Err(())?,
             };
 
-            if entity.len() > 0 {
+            if !entity.is_empty() {
                 entities.push(entity);
             }
         }
@@ -79,8 +79,8 @@ impl From<()> for EntitiesError {
     }
 }
 
-impl Into<JsValue> for EntitiesError {
-    fn into(self) -> JsValue {
-        JsValue::from(JsError::new(&format!("{:?}", self)))
+impl From<EntitiesError> for JsValue {
+    fn from(value: EntitiesError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", value)))
     }
 }

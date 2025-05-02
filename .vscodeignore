@@ -19,6 +19,7 @@
 **/webpack.config.ts
 apps/**/package.json
 apps/**/src/**
+apps/docs
 apps/vtf-editor/index.html
 Cargo.lock
 Cargo.toml

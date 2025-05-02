@@ -2,6 +2,10 @@
     "unlitgeneric": {
         "values": [
             {
+                "label": "$additive",
+                "kind": 5
+            },
+            {
                 "label": "$baseTexture",
                 "kind": 5
             },
@@ -11,6 +15,14 @@
             },
             {
                 "label": "$ignorez",
+                "kind": 5
+            },
+            {
+                "label": "$model",
+                "kind": 5
+            },
+            {
+                "label": "$nocull",
                 "kind": 5
             },
             {

@@ -1,3 +1,4 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
@@ -6,7 +7,6 @@ import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type Docum
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { DefinitionReferences, References } from "./DefinitionReferences"
 import type { DiagnosticCodeAction } from "./LanguageServer"
-import { TeamFortress2FileSystem } from "./TeamFortress2FileSystem"
 
 export interface TextDocumentInit {
 	uri: Uri
@@ -25,7 +25,7 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
-> implements Disposable {
+> implements AsyncDisposable {
 
 	public static readonly conditionals = new Set([
 		"[$DECK]",
@@ -43,23 +43,19 @@ export abstract class TextDocumentBase<
 	protected readonly references$: BehaviorSubject<void>
 
 	public readonly documentConfiguration$: Observable<VSCodeVDFConfiguration>
-	public readonly fileSystem$: Observable<TeamFortress2FileSystem>
+	public readonly fileSystem: FileSystemMountPoint
 
-	private readonly text$: BehaviorSubject<string>
-
+	public readonly text$: BehaviorSubject<string>
 	public readonly documentSymbols$: Observable<TDocumentSymbols>
 	public readonly definitionReferences$: Observable<DefinitionReferences>
 	public readonly diagnostics$: Observable<DiagnosticCodeAction[]>
 	public readonly codeLens$: Observable<CodeLens[]>
 	public abstract readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>
 
-	private readonly refCountDispose: (dispose: () => void) => void
-
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		refCountDispose: (dispose: () => void) => void,
+		fileSystem: FileSystemMountPoint,
 		configuration: TextDocumentBaseConfiguration<TDocumentSymbols, TDependencies>,
 	) {
 		this.uri = init.uri
@@ -68,7 +64,7 @@ export abstract class TextDocumentBase<
 		this.references$ = new BehaviorSubject<void>(undefined)
 
 		this.documentConfiguration$ = documentConfiguration$
-		this.fileSystem$ = fileSystem$
+		this.fileSystem = fileSystem
 
 		this.text$ = new BehaviorSubject(this.document.getText())
 
@@ -187,10 +183,10 @@ export abstract class TextDocumentBase<
 				return Iterator
 					.from(definitionReferences.definitions)
 					.reduce(
-						(codeLens, { type, key, value: definitions }) => {
+						(codeLens, { scope, type, key, value: definitions }) => {
 							const definition = definitions[0]
 							if (definition != undefined && definition.uri.equals(this.uri)) {
-								const references = definitionReferences.references.collect(type, key).toArray()
+								const references = definitionReferences.references.collect(scope, type, key).toArray()
 
 								if (references.length > 0) {
 									codeLens.push({
@@ -214,8 +210,6 @@ export abstract class TextDocumentBase<
 			}),
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
-
-		this.refCountDispose = refCountDispose
 	}
 
 	public update(changes: TextDocumentContentChangeEvent[], version: number) {
@@ -240,11 +234,8 @@ export abstract class TextDocumentBase<
 		this.references$.next()
 	}
 
-	public dispose() {
-		this.refCountDispose(() => this.text$.complete())
-	}
-
-	[Symbol.dispose](): void {
-		this.dispose()
+	public async [Symbol.asyncDispose](): Promise<void> {
+		this.text$.complete()
+		await this.fileSystem[Symbol.asyncDispose]()
 	}
 }

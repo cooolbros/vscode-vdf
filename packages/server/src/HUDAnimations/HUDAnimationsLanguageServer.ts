@@ -61,35 +61,36 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		"Bias",
 	]
 
-	private readonly workspaces: Map<string, HUDAnimationsWorkspace>
+	private readonly workspaces: Map<string, Promise<HUDAnimationsWorkspace>>
 
-	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection) {
+	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
+			platform: platform,
 			servers: new Set(["vdf"]),
 			capabilities: {},
-			createDocument: async (init, documentConfiguration$, refCountDispose) => {
+			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
-				const fileSystem$ = this.fileSystems.get((teamFortress2Folder) => [
-					hudRoot ? { type: "folder", uri: hudRoot } : null,
-					{ type: "tf2", uri: teamFortress2Folder }
+				const fileSystem = await this.fileSystems.get([
+					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
+					{ type: "tf2" },
 				])
 
-				let workspace: HUDAnimationsWorkspace | null
+				let workspace: Promise<HUDAnimationsWorkspace> | null
 
 				if (hudRoot != null) {
 					const key = hudRoot.toString()
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new HUDAnimationsWorkspace({
+						w = Promise.resolve(new HUDAnimationsWorkspace({
 							uri: hudRoot,
-							fileSystem$: fileSystem$,
+							fileSystem: fileSystem,
 							documents: this.documents,
 							request: this.trpc.servers.vgui.workspace.open.mutate({ uri: hudRoot }),
 							getVDFDocumentSymbols: async (path) => await this.trpc.servers.vgui.workspace.documentSymbol.query({ key: hudRoot, path }),
 							getDefinitions: async (path) => await this.trpc.servers.vgui.workspace.definitions.query({ key: hudRoot, path: path }),
 							setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: hudRoot, references: references })
-						})
+						}))
 						this.workspaces.set(key, w)
 					}
 					workspace = w
@@ -101,9 +102,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 				return new HUDAnimationsTextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem$,
-					workspace,
-					refCountDispose
+					fileSystem,
+					await workspace,
 				)
 			}
 		})
@@ -123,22 +123,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 								uri: Uri.schema,
 							})
 						)
-						.mutation(({ input }) => {
+						.mutation(async ({ input }) => {
 							if (!this.workspaces.has(input.uri.toString())) {
 								this.workspaces.set(
 									input.uri.toString(),
-									new HUDAnimationsWorkspace({
+									Promise.try(async () => new HUDAnimationsWorkspace({
 										uri: input.uri,
-										fileSystem$: this.fileSystems.get((teamFortress2Folder) => [
+										fileSystem: await this.fileSystems.get([
 											{ type: "folder", uri: input.uri },
-											{ type: "tf2", uri: teamFortress2Folder }
+											{ type: "tf2" }
 										]),
 										documents: this.documents,
 										request: Promise.resolve(),
 										getVDFDocumentSymbols: async (path) => await this.trpc.servers.vgui.workspace.documentSymbol.query({ key: input.uri, path: path }),
 										getDefinitions: async (path) => await this.trpc.servers.vgui.workspace.definitions.query({ key: input.uri, path: path }),
 										setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: input.uri, references: references })
-									})
+									}))
 								)
 							}
 						})
@@ -147,9 +147,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		)
 	}
 
-	protected async onDidOpen(event: TextDocumentChangeEvent<HUDAnimationsTextDocument>): Promise<{ onDidClose: () => void }> {
+	protected async onDidOpen(event: TextDocumentChangeEvent<HUDAnimationsTextDocument>): Promise<AsyncDisposable> {
 
-		const { onDidClose } = await super.onDidOpen(event)
+		const stack = new AsyncDisposableStack()
+		stack.use(await super.onDidOpen(event))
 
 		const key = await this.trpc.client.window.createTextEditorDecorationType.mutate({
 			options: {
@@ -161,6 +162,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		})
 
 		const subscriptions: Subscription[] = []
+		stack.defer(() => {
+			for (const subscription of subscriptions) {
+				subscription.unsubscribe()
+			}
+		})
 
 		const workspace = event.document.workspace
 
@@ -185,17 +191,10 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			})
 		)
 
-		return {
-			onDidClose: () => {
-				onDidClose()
-				for (const subscription of subscriptions) {
-					subscription.unsubscribe()
-				}
-			}
-		}
+		return stack.move()
 	}
 
-	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, files: CompletionFiles): Promise<CompletionItem[] | null> {
+	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
 
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
@@ -223,6 +222,20 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		}
 
 		switch (tokens[0].toLowerCase()) {
+			case "event": {
+				switch (tokens.length) {
+					case 2:
+						return line.endsWith(tokens[1])
+							? null
+							: conditionals()
+					case 3:
+						return line.endsWith(tokens[2])
+							? conditionals(tokens[2])
+							: null
+					default:
+						return null
+				}
+			}
 			case "animate": {
 				switch (tokens.length) {
 					case 1:
@@ -241,11 +254,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						return line.endsWith(tokens[3])
 							? colours(tokens[3])
 							: interpolators()
-					case 5: {
+					case 5:
 						return line.endsWith(tokens[4])
 							? interpolators(tokens[4])
+							: null /* delay */
+					case 6:
+						return line.endsWith(tokens[5])
+							? null /* delay */
+							: null /* duration */
+					case 7:
+						return line.endsWith(tokens[6])
+							? null /* duration */
+							: conditionals()
+					case 8:
+						return line.endsWith(tokens[7])
+							? conditionals(tokens[7])
 							: null
-					}
 					default:
 						return null
 				}
@@ -258,6 +282,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? events(tokens[1])
+							: null /* delay */
+					case 3:
+						return line.endsWith(tokens[2])
+							? null /* delay */
+							: conditionals()
+					case 4:
+						return line.endsWith(tokens[3])
+							? conditionals(tokens[3])
 							: null
 					default:
 						return null
@@ -270,6 +302,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
+							: [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* visible */
+					case 3:
+						return line.endsWith(tokens[2])
+							? [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* visible */
+							: null /* delay */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* delay */
+							: conditionals()
+					case 5:
+						return line.endsWith(tokens[4])
+							? conditionals(tokens[4])
 							: null
 					default:
 						return null
@@ -285,6 +329,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 3:
 						return line.endsWith(tokens[2])
 							? events(tokens[2])
+							: null /* delay */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* delay */
+							: conditionals()
+					case 5:
+						return line.endsWith(tokens[4])
+							? conditionals(tokens[4])
 							: null
 					default:
 						return null
@@ -295,22 +347,38 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						return elements()
 					case 2:
 						return line.endsWith(tokens[1])
-							? null
-							: elements(tokens[1])
+							? elements(tokens[1])
+							: [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* enabled */
+					case 3:
+						return line.endsWith(tokens[2])
+							? [{ label: "0", kind: CompletionItemKind.Enum }, { label: "1", kind: CompletionItemKind.Enum }] /* enabled */
+							: null /* delay */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* delay */
+							: conditionals()
+					case 5:
+						return line.endsWith(tokens[4])
+							? conditionals(tokens[4])
+							: null
 					default:
 						return null
 				}
 			case "playsound":
 				switch (tokens.length) {
 					case 1:
-						return null
+						return null /* delay */
 					case 2:
 						return line.endsWith(tokens[1])
-							? null
+							? null /* delay */
 							: sounds()
 					case 3:
 						return line.endsWith(tokens[2])
 							? sounds(tokens[2])
+							: conditionals()
+					case 4:
+						return line.endsWith(tokens[3])
+							? conditionals(tokens[3])
 							: null
 					default:
 						return null
@@ -322,6 +390,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
+							: null /* delay */
+					case 3:
+						return line.endsWith(tokens[2])
+							? null /* delay */
+							: conditionals()
+					case 4:
+						return line.endsWith(tokens[3])
+							? conditionals(tokens[3])
 							: null
 					default:
 						return null
@@ -334,16 +410,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
 							: fontProperties()
-					case 3: {
+					case 3:
 						return line.endsWith(tokens[2])
 							? fontProperties(tokens[2])
 							: fonts()
-					}
-					case 4: {
+					case 4:
 						return line.endsWith(tokens[3])
 							? fonts(tokens[3])
+							: null /* delay */
+					case 5:
+						return line.endsWith(tokens[4])
+							? null /* delay */
+							: conditionals()
+					case 6:
+						return line.endsWith(tokens[5])
+							? conditionals(tokens[5])
 							: null
-					}
 					default:
 						return null
 				}
@@ -355,6 +437,22 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					case 2:
 						return line.endsWith(tokens[1])
 							? elements(tokens[1])
+							: null /* property */
+					case 3:
+						return line.endsWith(tokens[2])
+							? null /* property */
+							: null /* value */
+					case 4:
+						return line.endsWith(tokens[3])
+							? null /* value */
+							: null /* delay */
+					case 5:
+						return line.endsWith(tokens[4])
+							? null /* delay */
+							: conditionals()
+					case 6:
+						return line.endsWith(tokens[5])
+							? conditionals(tokens[5])
 							: null
 					default:
 						return null
@@ -373,7 +471,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 				.keywords
 				.values()
 				.filter(filter(text))
-				.map((str) => ({ label: str, kind: CompletionItemKind.Variable }))
+				.map((str) => ({ label: str, kind: CompletionItemKind.Keyword }))
 				.toArray()
 		}
 
@@ -383,17 +481,20 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(Symbol.for(eventDocumentSymbol.eventName.toLowerCase()))
+			const definitions = definitionReferences.definitions.ofType(null, Symbol.for(eventDocumentSymbol.eventName.toLowerCase()))
 
-			return definitions
-				.values()
-				.flatMap((definitions) => definitions)
-				.map((definition) => definition.key)
-				.filter(filter(text))
-				.map((key) => ({
-					label: key,
-					kind: CompletionItemKind.Variable
-				})).toArray()
+			return [
+				...new Set(
+					definitions
+						.values()
+						.flatMap((definitions) => definitions)
+						.map((definition) => definition.key)
+						.filter(filter(text))
+				)
+			].map((key) => ({
+				label: key,
+				kind: CompletionItemKind.Variable
+			}))
 		}
 
 		function properties(text?: string) {
@@ -426,7 +527,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(Symbol.for("color"))
+			const definitions = definitionReferences.definitions.ofType(null, Symbol.for("color"))
 
 			const f = filter(text)
 
@@ -449,7 +550,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			}
 
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(Symbol.for("font"))
+			const definitions = definitionReferences.definitions.ofType(null, Symbol.for("font"))
 
 			return definitions
 				.values()
@@ -476,17 +577,20 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 
 		async function events(text?: string) {
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
-			const definitions = definitionReferences.definitions.ofType(EventType)
+			const definitions = definitionReferences.definitions.ofType(null, EventType)
 
-			return definitions
-				.values()
-				.flatMap((definitions) => definitions)
-				.map((definition) => definition.key)
-				.filter(filter(text))
-				.map((key) => ({
-					label: key,
-					kind: CompletionItemKind.Event
-				})).toArray()
+			return [
+				...new Set(
+					definitions
+						.values()
+						.flatMap((definitions) => definitions)
+						.map((definition) => definition.key)
+						.filter(filter(text))
+				)
+			].map((key) => ({
+				label: key,
+				kind: CompletionItemKind.Event
+			}))
 		}
 
 		function sounds(text?: string) {
@@ -517,7 +621,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		]
 	}
 
-	protected async rename(document: HUDAnimationsTextDocument, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
+	protected async rename(document: HUDAnimationsTextDocument, scope: number | null, type: symbol, key: string, newName: string): Promise<Record<string, TextEdit[]>> {
 
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
 		const changes: Record<string, TextEdit[]> = {}
@@ -527,11 +631,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		await document.workspace?.ready
 
 		if (type == EventType) {
-			for (const definition of definitionReferences.definitions.get(type, key) ?? []) {
+			for (const definition of definitionReferences.definitions.get(scope, type, key) ?? []) {
 				(changes[definition.uri.toString()] ??= []).push(TextEdit.replace(definition.keyRange, newName))
 			}
 
-			for (const { uri, range } of definitionReferences.references.collect(type, key)) {
+			for (const { uri, range } of definitionReferences.references.collect(scope, type, key)) {
 				(changes[uri.toString()] ??= []).push(TextEdit.replace(range, newName))
 			}
 		}
@@ -539,7 +643,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			const eventName = Symbol.keyFor(type)
 			if (eventName != undefined && eventName in eventFiles) {
 				const uris: Uri[] = []
-				for (const uri of definitionReferences.definitions.get(type, key)?.flatMap(({ uri }) => uri) ?? []) {
+				for (const uri of definitionReferences.definitions.get(scope, type, key)?.flatMap(({ uri }) => uri) ?? []) {
 					if (!uris.some((u) => u.equals(uri))) {
 						uris.push(uri)
 					}
@@ -549,7 +653,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 					uris.map((uri) =>
 						this.trpc.servers.vgui.textDocument.rename.query({
 							textDocument: { uri: uri },
-							oldName: { type: Symbol.for("element"), key: key },
+							oldName: { scope: scope, type: Symbol.for("element"), key: key },
 							newName: newName
 						}).then((result) => {
 							for (const uri in result) {
@@ -564,7 +668,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		if ((type == Symbol.for("color") || type == Symbol.for("font")) && document.workspace != null) {
 			return await this.trpc.servers.vgui.textDocument.rename.query({
 				textDocument: { uri: document.workspace.uri.joinPath("resource/clientscheme.res") },
-				oldName: { type: type, key: key },
+				oldName: { scope: scope, type: type, key: key },
 				newName: newName
 			})
 		}

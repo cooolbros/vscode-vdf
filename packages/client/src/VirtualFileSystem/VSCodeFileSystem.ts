@@ -1,9 +1,9 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import { Minimatch } from "minimatch"
 import { posix } from "path"
 import { catchError, concat, from, map, of, Subject } from "rxjs"
-import * as vscode from "vscode"
-import type { FileSystemMountPoint } from "./FileSystemMountPoint"
+import vscode from "vscode"
 
 export async function VSCodeFileSystem(
 	root: Uri,
@@ -127,7 +127,7 @@ export async function VSCodeFileSystem(
 
 			return paths
 		},
-		dispose: () => {
+		async [Symbol.asyncDispose]() {
 			watcher?.dispose()
 		}
 	}

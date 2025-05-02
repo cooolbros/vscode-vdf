@@ -1,16 +1,18 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import initBSP, { BSP } from "bsp"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { firstValueFrom } from "rxjs"
+import { concat, distinctUntilChanged, firstValueFrom, from, map, Observable, switchMap } from "rxjs"
 import { commands, env, languages, UIKind, window, workspace, type ExtensionContext } from "vscode"
 import initVTFPNG, { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
+import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { searchForHUDRoot } from "./searchForHUDRoot"
-import type { FileSystemMountPoint } from "./VirtualFileSystem/FileSystemMountPoint"
-import type { FileSystemMountPointFactory } from "./VirtualFileSystem/FileSystemMountPointFactory"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
+import { VTFDocument } from "./VTF/VTFDocument"
 
 // @ts-ignore
 import bsp_bg_url from "bsp/pkg/bsp_bg.wasm?url"
@@ -31,10 +33,12 @@ let VTFPNGWASM: import("vtf-png").InitOutput
 export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>,
 	context: ExtensionContext,
-	fileSystemMountPointFactory: FileSystemMountPointFactory
+	teamFortress2Folder$: Observable<Uri>,
+	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
+	fileSystemWatcherFactory: FileSystemWatcherFactory,
 ) {
 	async function initWASM<T>(url: string, init: (module: Uint8Array) => Promise<T>): Promise<T> {
-		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url}`).with({ query: null })
+		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url.split("/").pop()!}`).with({ query: null })
 		const buf = await workspace.fs.readFile(uri)
 		return await init(buf)
 	}
@@ -66,14 +70,17 @@ export function TRPCClientRouter(
 		}),
 		teamFortress2FileSystem: t
 			.router({
+				teamFortress2Folder: t
+					.procedure
+					.query(async () => teamFortress2Folder$),
 				open: t
 					.procedure
 					.input(
 						z.object({
-							paths: z.object({
-								type: z.enum(["folder", "tf2", "vpk", "wildcard"]),
-								uri: Uri.schema
-							}).array()
+							paths: z.union([
+								z.object({ type: z.literal("tf2") }),
+								z.object({ type: z.literal("folder"), uri: Uri.schema }),
+							]).array()
 						})
 					)
 					.mutation(async ({ input }) => {
@@ -82,20 +89,7 @@ export function TRPCClientRouter(
 
 						let fileSystem = fileSystems.get(key)
 						if (!fileSystem) {
-							const results = await Promise.allSettled(
-								input.paths.map(async ({ type, uri }) => {
-									switch (type) {
-										case "folder":
-											return await fileSystemMountPointFactory.folder(uri)
-										case "tf2":
-											return await fileSystemMountPointFactory.tf2(uri)
-										case "vpk":
-											return await fileSystemMountPointFactory.vpk(uri)
-										case "wildcard":
-											return await fileSystemMountPointFactory.wildcard(uri)
-									}
-								})
-							)
+							const results = await Promise.allSettled(input.paths.map(async (path) => fileSystemMountPointFactory.get(path)))
 
 							fileSystems.set(key, VirtualFileSystem(
 								results
@@ -145,7 +139,7 @@ export function TRPCClientRouter(
 						})
 					)
 					.mutation(async ({ input }) => {
-						fileSystems.get(input.key)?.dispose()
+						fileSystems.get(input.key)?.[Symbol.asyncDispose]()
 						fileSystems.delete(input.key)
 					})
 			}),
@@ -242,6 +236,22 @@ export function TRPCClientRouter(
 						}
 					})
 			}),
+			classIcon: t.router({
+				flags: t
+					.procedure
+					.input(URISchema)
+					.query(async ({ input }) => {
+						return concat(
+							from(Promise.try(async () => VTFDocument.flags(await workspace.fs.readFile(input.uri)))),
+							from(fileSystemWatcherFactory.get(input.uri)).pipe(
+								switchMap((observable) => observable),
+								map((buf) => VTFDocument.flags(buf))
+							),
+						).pipe(
+							distinctUntilChanged(),
+						)
+					})
+			}),
 			vscript: t.router({
 				install: t
 					.procedure
@@ -249,7 +259,8 @@ export function TRPCClientRouter(
 						z.object({
 							name: z.string()
 						})
-					).query(async ({ input }) => {
+					)
+					.query(async ({ input }) => {
 						const configuration = workspace.getConfiguration("vscode-vdf")
 						if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
 							const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install a VScript extension?`, "Yes", "No", "Don't ask again")

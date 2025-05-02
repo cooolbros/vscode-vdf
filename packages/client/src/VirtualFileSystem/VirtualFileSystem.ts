@@ -1,7 +1,7 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
-import { combineLatest, defer, distinctUntilChanged, map, Observable, of, shareReplay } from "rxjs"
-import * as vscode from "vscode"
-import type { FileSystemMountPoint } from "./FileSystemMountPoint"
+import { combineLatest, defer, distinctUntilChanged, finalize, map, Observable, of, shareReplay } from "rxjs"
+import vscode from "vscode"
 
 /**
  * @class
@@ -18,8 +18,9 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 						: of([])
 				}).pipe(
 					map((uris) => uris.find((uri) => uri != null) ?? null),
-					distinctUntilChanged(Uri.equals),
-					shareReplay(1)
+					distinctUntilChanged((a, b) => Uri.equals(a, b)),
+					finalize(() => observables.delete(path)),
+					shareReplay({ bufferSize: 1, refCount: true })
 				)
 				observables.set(path, observable)
 			}
@@ -40,9 +41,9 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 					return a
 				}, <[string, vscode.FileType][]>[])
 		},
-		dispose: () => {
+		[Symbol.asyncDispose]: async () => {
 			for (const fileSystem of fileSystems) {
-				fileSystem.dispose()
+				fileSystem[Symbol.asyncDispose]()
 			}
 		}
 	}

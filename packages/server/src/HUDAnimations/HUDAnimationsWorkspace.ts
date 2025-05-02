@@ -1,11 +1,11 @@
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import { BehaviorSubject, combineLatest, concatMap, firstValueFrom, from, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
-import type { TeamFortress2FileSystem } from "../TeamFortress2FileSystem"
-import type { TextDocuments } from "../TextDocuments"
 import { WorkspaceBase } from "../WorkspaceBase"
 import eventFiles from "./eventFiles.json"
 import { EventType, HUDAnimationsTextDocument } from "./HUDAnimationsTextDocument"
@@ -20,7 +20,7 @@ interface HUDAnimationsWorkspaceDocumentDependencies {
 
 export class HUDAnimationsWorkspace extends WorkspaceBase {
 
-	private readonly fileSystem$: Observable<TeamFortress2FileSystem>
+	private readonly fileSystem: FileSystemMountPoint
 	private readonly getVDFDocumentSymbols: (path: string) => Promise<Observable<VDFDocumentSymbols | null>>
 	private readonly getDefinitions: (path: string) => Promise<Observable<DefinitionReferences["definitions"] | null>>
 
@@ -32,7 +32,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 	constructor({
 		uri,
-		fileSystem$,
+		fileSystem,
 		documents,
 		request,
 		getVDFDocumentSymbols,
@@ -40,15 +40,15 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		setFileReferences,
 	}: {
 		uri: Uri
-		fileSystem$: Observable<TeamFortress2FileSystem>,
-		documents: TextDocuments<HUDAnimationsTextDocument>,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, HUDAnimationsTextDocument>,
 		request: Promise<void>,
 		getVDFDocumentSymbols: (path: string) => Promise<Observable<VDFDocumentSymbols | null>>,
 		getDefinitions: (path: string) => Promise<Observable<DefinitionReferences["definitions"] | null>>,
 		setFileReferences: (references: Map<string /* path */, Map<string /* Uri */, References | null>>) => Promise<void>,
 	}) {
 		super(uri)
-		this.fileSystem$ = fileSystem$
+		this.fileSystem = fileSystem
 		this.files = new Map()
 		this.getVDFDocumentSymbols = async (path) => {
 			await request
@@ -86,11 +86,10 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 				return combineLatest(
 					files.map((file) => {
-						return this.fileSystem$.pipe(
-							switchMap((fileSystem) => fileSystem.resolveFile(file)),
+						return fileSystem.resolveFile(file).pipe(
 							concatMap(async (uri) => {
 								return uri != null
-									? await documents.get(uri, true)
+									? await documents.get(uri)
 									: null
 							})
 						)
@@ -126,7 +125,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 								map((documentSymbols) => {
 									return documentSymbols.reduce(
 										(result, documentSymbol) => {
-											result.definitions.set(EventType, documentSymbol.eventName, {
+											result.definitions.set(null, EventType, documentSymbol.eventName, {
 												uri: document.uri,
 												key: documentSymbol.eventName,
 												range: documentSymbol.range,
@@ -141,22 +140,22 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 											for (const statement of documentSymbol.children) {
 												if ("event" in statement) {
-													result.references.set(EventType, statement.event, statement.eventRange)
+													result.references.set(null, EventType, statement.event, statement.eventRange)
 												}
 
 												if ("element" in statement) {
-													result.references.set(type, statement.element, statement.elementRange)
+													result.references.set(null, type, statement.element, statement.elementRange)
 												}
 
 												if (statement.type == HUDAnimationStatementType.Animate) {
 													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														result.references.set(Symbol.for("color"), statement.value, statement.valueRange)
+														result.references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
 													}
 												}
 
 												// HUDAnimationStatementType.SetFont
 												if ("font" in statement) {
-													result.references.set(Symbol.for("font"), statement.font, statement.fontRange)
+													result.references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
 												}
 											}
 
@@ -199,11 +198,12 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 				for (const file of files) {
 					for (const { type, key, value } of file.definitions) {
-						definitions.set(type, key, ...value)
+						definitions.set(null, type, key, ...value)
 					}
 				}
 
 				const definitionReferences = new DefinitionReferences(
+					new Map(),
 					new Definitions({
 						collection: definitions,
 						globals: [
@@ -270,8 +270,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 				definitions$ = combineLatest(
 					paths.map((path) => {
 
-						const uri$ = this.fileSystem$.pipe(
-							switchMap((fileSystem) => fileSystem.resolveFile(path)),
+						const uri$ = this.fileSystem.resolveFile(path).pipe(
 							shareReplay(1)
 						)
 
@@ -297,7 +296,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 								collection: files.reduce(
 									(collection, file) => {
 										for (const { key, value } of file.definitions) {
-											collection.set(Symbol.for(event), key, ...value)
+											collection.set(null, Symbol.for(event), key, ...value)
 										}
 										return collection
 									},
@@ -372,7 +371,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 					pathReferences.set(uri.toString(), uriReferences)
 				}
 
-				uriReferences.set(target.type, key, ...ranges)
+				uriReferences.set(null, target.type, key, ...ranges)
 			}
 		}
 

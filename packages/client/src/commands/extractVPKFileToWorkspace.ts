@@ -1,5 +1,5 @@
 import { join } from "path"
-import { Uri, window, workspace, type TextEditor, type WorkspaceFolder } from "vscode"
+import vscode, { window, workspace, type TextEditor, type WorkspaceFolder } from "vscode"
 
 export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<void> {
 
@@ -18,7 +18,7 @@ export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<voi
 	}
 
 	const source = editor.document.uri
-	const target = Uri.file(join(currentWorkspace.uri.fsPath, source.fsPath))
+	const target = vscode.Uri.file(join(currentWorkspace.uri.fsPath, source.fsPath))
 
 	await workspace.fs.copy(source, target)
 
