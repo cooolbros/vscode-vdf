@@ -1,6 +1,1 @@
-# API
-
-```properties filename=".env"
-STEAM_USERNAME="XXXXXXXXXX"
-STEAM_PASSWORD="XXXXXXXXXX"
-```
+https://cooolbros.github.io/vscode-vdf
