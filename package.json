@@ -439,7 +439,7 @@
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.97.0",
         "@types/vscode-webview": "^1.57.5",
-        "@vscode/test-web": "^0.0.67",
+        "@vscode/test-web": "^0.0.69",
         "@vscode/vsce": "^3.2.2",
         "disposablestack": "^1.1.7",
         "path-browserify": "^1.0.1",
