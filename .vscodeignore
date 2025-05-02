@@ -19,6 +19,7 @@
 **/webpack.config.ts
 apps/**/package.json
 apps/**/src/**
+apps/API
 apps/docs
 apps/vtf-editor/index.html
 Cargo.lock
@@ -28,3 +29,4 @@ pnpm-*.yaml
 rustfmt.toml
 target
 turbo.json
+vscode-vdf.slnx
