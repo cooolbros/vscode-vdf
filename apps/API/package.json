@@ -9,7 +9,6 @@
         "start:linux-x64": "./bin/Release/net9.0/linux-x64/publish/API"
     },
     "devDependencies": {
-        "@types/bun": "^1.2.6",
         "dotenv-cli": "^8.0.0",
         "drizzle-orm": "^0.41.0",
         "vdf": "workspace:^",
