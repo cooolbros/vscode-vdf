@@ -5,7 +5,7 @@
     },
     "devDependencies": {
         "@trpc/client": "^11.0.0",
-        "@trpc/server": "^11.0.0",
+        "@trpc/server": "^11.1.1",
         "@types/string-similarity": "^4.0.2",
         "client": "workspace:^",
         "common": "workspace:^",
