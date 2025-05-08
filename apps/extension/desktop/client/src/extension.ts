@@ -77,7 +77,7 @@ export function activate(context: ExtensionContext): void {
 			})
 
 			async function steam(installPath: string) {
-				const buf = await workspace.fs.readFile(new Uri({ scheme: "file", path: `/${posix.join(installPath, "steamapps/libraryfolders.vdf")}` }))
+				const buf = await workspace.fs.readFile(new Uri({ scheme: "file", path: posix.join(installPath, "steamapps/libraryfolders.vdf") }))
 				const text = decoder.decode(buf)
 				const { libraryfolders } = libraryFoldersSchema.parse(VDF.parse(text))
 
@@ -133,7 +133,7 @@ export function activate(context: ExtensionContext): void {
 
 					const installPath = result.get(key)?.get("InstallPath")
 					if (installPath) {
-						const result = await steam(installPath)
+						const result = await steam(`/${installPath.replaceAll("\\", "/")}`)
 						if (result != null) {
 							update(result)
 							return result
