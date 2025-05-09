@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.5.1]
+ - Fix crash on Linux
+ - Add Language Status items
+
 ## [5.5.0]
  - Add automatic Team Fortress 2 installation detection (Thanks [@james-ssh](https://github.com/James-SSH) for Linux support)
  - Add autocompletion parent element type fallback ([#52](https://github.com/cooolbros/vscode-vdf/issues/52))
