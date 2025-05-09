@@ -123,5 +123,5 @@ export function activate(context: ExtensionContext): void {
 	}
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)
-	workspace.onDidOpenTextDocument(onDidOpenTextDocument)
+	context.subscriptions.push(workspace.onDidOpenTextDocument(onDidOpenTextDocument))
 }
