@@ -17,7 +17,7 @@ import { homedir } from "os"
 import { join, posix, win32 } from "path"
 import { concat, defer, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
-import { commands, ConfigurationTarget, Disposable, FileType, languages, LanguageStatusSeverity, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, ConfigurationTarget, Disposable, FileSystemError, FileType, languages, LanguageStatusSeverity, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { z } from "zod"
 import { FileSystemMountPointFactory } from "./FileSystemMountPointFactory"
@@ -77,23 +77,32 @@ export function activate(context: ExtensionContext): void {
 			})
 
 			async function steam(installPath: string) {
-				const buf = await workspace.fs.readFile(new Uri({ scheme: "file", path: posix.join(installPath, "steamapps/libraryfolders.vdf") }))
-				const text = decoder.decode(buf)
-				const { libraryfolders } = libraryFoldersSchema.parse(VDF.parse(text))
+				try {
+					const buf = await workspace.fs.readFile(new Uri({ scheme: "file", path: posix.join(installPath, "steamapps/libraryfolders.vdf") }))
+					const text = decoder.decode(buf)
+					const { libraryfolders } = libraryFoldersSchema.parse(VDF.parse(text))
 
-				const path = Object.values(libraryfolders).find((folder) => Object.keys(folder.apps).includes("440"))?.path
-				if (path != undefined) {
+					const path = Object.values(libraryfolders).find((folder) => Object.keys(folder.apps).includes("440"))?.path
+					if (!path) {
+						return null
+					}
+
 					const uri = new Uri({ scheme: "file", path: posix.join(path.replaceAll(/[\\]+/g, "/"), "steamapps/common/Team Fortress 2") })
 					if (await workspace.fs.stat(uri).then(() => true, () => false)) {
 						return uri
 					}
 				}
+				catch (error) {
+					if (!(error instanceof FileSystemError) || error.code != "FileNotFound") {
+						console.error(error)
+					}
 
-				return null
+					return null
+				}
 			}
 
 			function update(uri: Uri) {
-				configuration.update("teamFortress2Folder", uri.fsPath.replaceAll(/[\\]+/g, "/"), ConfigurationTarget.Global)
+				configuration.update("teamFortress2Folder", uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase()).replaceAll(/[\\]+/g, "/"), ConfigurationTarget.Global)
 			}
 
 			switch (process.platform) {
@@ -128,6 +137,7 @@ export function activate(context: ExtensionContext): void {
 
 						return result
 					}
+
 					const key = win32.join("HKEY_LOCAL_MACHINE\\SOFTWARE", process.arch == "x64" ? "Wow6432Node" : "", "Valve\\Steam")
 					const result = parseRegistryResult(decoder.decode(execSync(`REG QUERY ${key} /v InstallPath`)))
 
