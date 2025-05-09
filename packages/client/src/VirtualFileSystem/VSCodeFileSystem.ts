@@ -73,7 +73,7 @@ export async function VSCodeFileSystem(
 			const paths: [string, vscode.FileType][] = []
 
 			const uri = resolvePath(path)
-			const exists = await vscode.workspace.fs.stat(uri).then((stat) => stat.type == FileType.Directory, () => false)
+			const exists = await vscode.workspace.fs.stat(uri).then((stat) => stat.type == vscode.FileType.Directory, () => false)
 			if (!exists) {
 				return paths
 			}
