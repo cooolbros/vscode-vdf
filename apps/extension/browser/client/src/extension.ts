@@ -16,7 +16,7 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { of } from "rxjs"
-import { commands, FileType, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, FileType, languages, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
@@ -88,6 +88,16 @@ export function activate(context: ExtensionContext): void {
 
 		const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
+
+		const languageStatusItem = languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
+		context.subscriptions.push(languageStatusItem)
+
+		languageStatusItem.text = "$(cloud)"
+		languageStatusItem.command = {
+			title: RemoteResourceFileSystemProvider.base,
+			command: "vscode.open",
+			arguments: [RemoteResourceFileSystemProvider.base]
+		}
 
 		const client = languageClients[languageId] = new Client(
 			context,

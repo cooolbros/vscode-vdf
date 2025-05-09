@@ -17,7 +17,7 @@ import { homedir } from "os"
 import { join, posix, win32 } from "path"
 import { concat, defer, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
-import { commands, ConfigurationTarget, FileType, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, ConfigurationTarget, Disposable, FileType, languages, LanguageStatusSeverity, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { z } from "zod"
 import { FileSystemMountPointFactory } from "./FileSystemMountPointFactory"
@@ -250,6 +250,34 @@ export function activate(context: ExtensionContext): void {
 
 		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
+
+		const languageStatusItem = languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
+		context.subscriptions.push(languageStatusItem)
+		languageStatusItem.busy = true
+
+		const subscription = teamFortress2Folder$.subscribe((teamFortress2Folder) => {
+			switch (teamFortress2Folder.scheme) {
+				case "file":
+					languageStatusItem.text = `$(folder-active) ${teamFortress2Folder.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
+					languageStatusItem.severity = LanguageStatusSeverity.Information
+					languageStatusItem.command = undefined
+					break
+				case RemoteResourceFileSystemProvider.scheme:
+					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
+					languageStatusItem.severity = LanguageStatusSeverity.Warning
+					languageStatusItem.command = {
+						title: "Select Team Fortress 2 folder",
+						command: "vscode-vdf.selectTeamFortress2Folder"
+					}
+					break
+				default:
+					throw new Error()
+			}
+
+			languageStatusItem.busy = false
+		})
+
+		context.subscriptions.push(new Disposable(() => subscription.unsubscribe()))
 
 		const options = {
 			execArgv: [

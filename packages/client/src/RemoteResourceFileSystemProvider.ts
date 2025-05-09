@@ -4,7 +4,7 @@ import { z } from "zod"
 export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 
 	public static readonly scheme = "vscode-vdf-tf-remote-resource"
-	private readonly base = "https://vscode.pfwobcke.dev"
+	public static readonly base = "https://vscode.pfwobcke.dev"
 
 	public readonly onDidChangeFile: Event<FileChangeEvent[]>
 
@@ -18,7 +18,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 
 	public async stat(uri: vscode.Uri): Promise<FileStat> {
 
-		const url = new URL(uri.path, this.base)
+		const url = new URL(uri.path, RemoteResourceFileSystemProvider.base)
 		url.searchParams.set("stat", "")
 		const response = await fetch(url)
 
@@ -40,7 +40,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 
 	public async readDirectory(uri: vscode.Uri): Promise<[string, FileType][]> {
 
-		const url = new URL(uri.path, this.base)
+		const url = new URL(uri.path, RemoteResourceFileSystemProvider.base)
 		url.searchParams.set("readdir", "")
 		const response = await fetch(url)
 
@@ -63,7 +63,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 
 	public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
 
-		const url = new URL(uri.path, this.base)
+		const url = new URL(uri.path, RemoteResourceFileSystemProvider.base)
 		const response = await fetch(url)
 
 		switch (response.status) {
