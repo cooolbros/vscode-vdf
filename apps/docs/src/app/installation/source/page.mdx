@@ -1,4 +1,4 @@
-import { Steps } from "nextra/components"
+import { Steps, Tabs } from "nextra/components"
 
 # Installation from source
 
@@ -8,6 +8,17 @@ import { Steps } from "nextra/components"
  - [pnpm](https://pnpm.io)
  - [Rust](https://www.rust-lang.org)
  - [wasm-pack](https://rustwasm.github.io/wasm-pack)
+
+<Tabs items={["Windows", "Linux"]}>
+	<Tabs.Tab>
+	 - [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+	</Tabs.Tab>
+	<Tabs.Tab>
+	```bash
+	sudo apt install build-essential
+	```
+	</Tabs.Tab>
+</Tabs>
 
 <Steps>
 
@@ -30,6 +41,12 @@ pnpm install
 ```sh
 rustup toolchain install nightly
 rustup default nightly
+```
+
+### Add Rust wasm target
+
+```sh
+rustup target add wasm32-unknown-unknown
 ```
 
 ### Build
