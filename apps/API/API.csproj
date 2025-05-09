@@ -3,11 +3,11 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <Nullable>Enable</Nullable>
+    <InvariantGlobalization>True</InvariantGlobalization>
     <SelfContained>True</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
-    <PublishAot>true</PublishAot>
+    <PublishSingleFile>True</PublishSingleFile>
+    <PublishAot>True</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
