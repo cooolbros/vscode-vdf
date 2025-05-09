@@ -58,7 +58,7 @@ export async function VSCodeFileSystem(
 						return uri
 					}),
 					catchError((error) => {
-						if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
+						if (!(error instanceof vscode.FileSystemError) || (error.code != "FileNotFound" && error.code != "FileIsADirectory")) {
 							console.error(error)
 						}
 						return of(null)
