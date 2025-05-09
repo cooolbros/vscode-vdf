@@ -81,13 +81,14 @@ app.MapGet("{**path}", (HttpRequest request, HttpResponse response, SqliteConnec
 		using SqliteDataReader reader = command.ExecuteReader(CommandBehavior.SingleRow);
 		if (reader.Read())
 		{
+			int size = reader.GetInt32("size");
 			long time = UserVersion(connection);
 			return Results.Json(new FileStat
 			{
-				Type = FileType.File,
+				Type = size == 0 ? FileType.Directory : FileType.File,
 				CTime = time,
 				MTime = time,
-				Size = reader.GetInt32("size"),
+				Size = size,
 				Permissions = FilePermission.Readonly
 			}, options);
 		}
