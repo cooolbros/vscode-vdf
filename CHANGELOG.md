@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.5.2]
+ - Fix crash when Steam or Team Fortress 2 are not installed
+
 ## [5.5.1]
  - Fix crash on Linux
  - Add Language Status items
