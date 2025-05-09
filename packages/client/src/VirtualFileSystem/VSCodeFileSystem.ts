@@ -72,10 +72,16 @@ export async function VSCodeFileSystem(
 			const match = options.pattern ? new Minimatch(options.pattern) : null
 			const paths: [string, vscode.FileType][] = []
 
+			const uri = resolvePath(path)
+			const exists = await vscode.workspace.fs.stat(uri).then((stat) => stat.type == FileType.Directory, () => false)
+			if (!exists) {
+				return paths
+			}
+
 			if (!options.recursive) {
 				// Add files and directories
 
-				for (const [name, type] of await vscode.workspace.fs.readDirectory(resolvePath(path))) {
+				for (const [name, type] of await vscode.workspace.fs.readDirectory(uri)) {
 					// Ignore hidden entries
 					if (name.startsWith(".")) {
 						continue
