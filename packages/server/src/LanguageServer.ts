@@ -119,7 +119,6 @@ export abstract class LanguageServer<
 				const { key } = await this.trpc.client.teamFortress2FileSystem.open.mutate({ paths })
 				const files = new Map<string, Observable<Uri | null>>()
 				return {
-					paths: paths.values().filter((path) => path.type == "folder").map((path) => path.uri).toArray(),
 					resolveFile: (path) => {
 						let file$ = files.get(path)
 						if (!file$) {
