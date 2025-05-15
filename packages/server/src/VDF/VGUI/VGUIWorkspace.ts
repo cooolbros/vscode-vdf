@@ -97,16 +97,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 		const files = (path: string): Observable<string[]> => {
 			return fileSystem.resolveFile(path).pipe(
 				switchMap((uri) => {
-					return uri != null
-						? usingAsync(() => documents.get(uri))
-						: of(null)
-				}),
-				switchMap((document) => {
-					if (!document) {
+					if (uri == null) {
 						return of([path])
 					}
 
-					return document.documentSymbols$.pipe(
+					return usingAsync(async () => await documents.get(uri)).pipe(
+						switchMap((document) => document.documentSymbols$),
 						map((documentSymbols) => {
 							return documentSymbols
 								.filter((documentSymbol) => documentSymbol.key == "#base" && documentSymbol.detail)
