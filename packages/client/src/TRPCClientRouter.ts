@@ -1,11 +1,11 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
-import initBSP, { BSP } from "bsp"
+import { BSP } from "bsp"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { concat, distinctUntilChanged, firstValueFrom, from, map, Observable, switchMap } from "rxjs"
-import { commands, env, languages, UIKind, window, workspace, type ExtensionContext } from "vscode"
-import initVTFPNG, { VTF, VTFToPNG } from "vtf-png"
+import { commands, languages, window, workspace, type ExtensionContext } from "vscode"
+import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
@@ -13,12 +13,8 @@ import { searchForHUDRoot } from "./searchForHUDRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
 import { VTFDocument } from "./VTF/VTFDocument"
-
-// @ts-ignore
-import bsp_bg_url from "bsp/pkg/bsp_bg.wasm?url"
-
-// @ts-ignore
-import vtf_png_bg_url from "vtf-png/pkg/vtf_png_bg.wasm?url"
+import { initBSP } from "./wasm/bsp"
+import { initVTFPNG } from "./wasm/vtf"
 
 const URISchema = z.object({
 	uri: Uri.schema
@@ -27,9 +23,6 @@ const URISchema = z.object({
 const UTF8Decoder = new TextDecoder("utf-8")
 const UTF16LEDecoder = new TextDecoder("utf-16le")
 
-let BSPWASM: import("bsp").InitOutput
-let VTFPNGWASM: import("vtf-png").InitOutput
-
 export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>,
 	context: ExtensionContext,
@@ -37,12 +30,6 @@ export function TRPCClientRouter(
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 ) {
-	async function initWASM<T>(url: string, init: (module: Uint8Array) => Promise<T>): Promise<T> {
-		const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url.split("/").pop()!}`).with({ query: null })
-		const buf = await workspace.fs.readFile(uri)
-		return await init(buf)
-	}
-
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
 		searchForHUDRoot: t
@@ -149,7 +136,7 @@ export function TRPCClientRouter(
 					uri: Uri.schema
 				})
 			).mutation(async ({ input }) => {
-				VTFPNGWASM ??= await initWASM(vtf_png_bg_url, initVTFPNG)
+				await initVTFPNG(context)
 				const vtf = new VTF(await workspace.fs.readFile(input.uri))
 				return VTFToPNG(vtf, 256)
 			}),
@@ -225,7 +212,7 @@ export function TRPCClientRouter(
 					)
 					.query(async ({ input }) => {
 						try {
-							BSPWASM ??= await initWASM(bsp_bg_url, initBSP)
+							await initBSP(context)
 							const buf = await workspace.fs.readFile(input.uri)
 							const bsp = new BSP(buf)
 							return bsp.entities()
