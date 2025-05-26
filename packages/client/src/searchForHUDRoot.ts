@@ -1,5 +1,5 @@
 import type { Uri } from "common/Uri"
-import { workspace } from "vscode"
+import { FileType, workspace } from "vscode"
 
 /**
  * Resolve root folder of an absolute HUD file uri
@@ -11,11 +11,9 @@ export async function searchForHUDRoot(uri: Uri) {
 	let folderUriReference = uri
 
 	while (!folderUri.equals(folderUriReference)) {
-		try {
-			await workspace.fs.stat(folderUri.joinPath("info.vdf"))
+		if (await workspace.fs.stat(folderUri.joinPath("info.vdf")).then((stat) => stat.type == FileType.File, () => false)) {
 			return folderUri
 		}
-		catch (error: any) { }
 
 		folderUri = folderUri.dirname()
 		folderUriReference = folderUriReference.dirname()
