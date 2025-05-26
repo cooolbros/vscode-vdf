@@ -378,9 +378,9 @@ impl VTF {
             VTFImageFormat::BGR888 => {
                 let mut i = 0;
                 for chunk in buf.chunks_exact(3) {
-                    rgba[i] = chunk[3];
-                    rgba[i + 1] = chunk[2];
-                    rgba[i + 2] = chunk[1];
+                    rgba[i] = chunk[2];
+                    rgba[i + 1] = chunk[1];
+                    rgba[i + 2] = chunk[0];
                     rgba[i + 3] = 255;
                     i += 4;
                 }
