@@ -58,8 +58,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(webpack@5.97.1)
       zod:
-        specifier: ^3.23.8
-        version: 3.23.8
+        specifier: ^3.25.49
+        version: 3.25.49
 
   apps/API:
     devDependencies:
@@ -4862,11 +4862,11 @@ packages:
     peerDependencies:
       zod: ^3.18.0
 
-  zod@3.23.8:
-    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
-
   zod@3.24.1:
     resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
+
+  zod@3.25.49:
+    resolution: {integrity: sha512-JMMPMy9ZBk3XFEdbM3iL1brx4NUSejd6xr3ELrrGEfGb355gjhiAWtG3K5o+AViV/3ZfkIrCzXsZn6SbLwTR8Q==}
 
   zustand@5.0.3:
     resolution: {integrity: sha512-14fwWQtU3pH4dE0dOpdMiWjddcH+QzKIgk1cl8epwSE7yag43k/AD/m4L6+K7DytAOr9gGBe3/EXj9g7cdostg==}
@@ -10166,9 +10166,9 @@ snapshots:
     dependencies:
       zod: 3.24.1
 
-  zod@3.23.8: {}
-
   zod@3.24.1: {}
+
+  zod@3.25.49: {}
 
   zustand@5.0.3(@types/react@18.3.12)(react@19.0.0):
     optionalDependencies:
