@@ -12,6 +12,12 @@ importers:
 
   .:
     devDependencies:
+      '@trpc/client':
+        specifier: ^11.2.0
+        version: 11.2.0(@trpc/server@11.2.0(typescript@5.8.2))(typescript@5.8.2)
+      '@trpc/server':
+        specifier: ^11.2.0
+        version: 11.2.0(typescript@5.8.2)
       '@types/path-browserify':
         specifier: ^1.0.2
         version: 1.0.3
@@ -209,9 +215,6 @@ importers:
 
   packages/client:
     devDependencies:
-      '@trpc/server':
-        specifier: ^11.2.0
-        version: 11.2.0(typescript@5.8.2)
       bsp:
         specifier: workspace:^
         version: link:../bsp
@@ -283,12 +286,6 @@ importers:
 
   packages/server:
     devDependencies:
-      '@trpc/client':
-        specifier: ^11.2.0
-        version: 11.2.0(@trpc/server@11.2.0(typescript@5.8.2))(typescript@5.8.2)
-      '@trpc/server':
-        specifier: ^11.2.0
-        version: 11.2.0(typescript@5.8.2)
       '@types/string-similarity':
         specifier: ^4.0.2
         version: 4.0.2

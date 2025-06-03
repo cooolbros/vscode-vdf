@@ -436,6 +436,8 @@
         "package": "vsce package --no-dependencies"
     },
     "devDependencies": {
+        "@trpc/client": "^11.2.0",
+        "@trpc/server": "^11.2.0",
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.97.0",
         "@types/vscode-webview": "^1.57.5",

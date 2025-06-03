@@ -4,8 +4,6 @@
         "directory": "src"
     },
     "devDependencies": {
-        "@trpc/client": "^11.2.0",
-        "@trpc/server": "^11.2.0",
         "@types/string-similarity": "^4.0.2",
         "client": "workspace:^",
         "common": "workspace:^",

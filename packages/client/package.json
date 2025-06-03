@@ -4,7 +4,6 @@
         "directory": "src"
     },
     "devDependencies": {
-        "@trpc/server": "^11.2.0",
         "bsp": "workspace:^",
         "common": "workspace:^",
         "minimatch": "^10.0.1",
