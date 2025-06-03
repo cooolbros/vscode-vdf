@@ -210,8 +210,8 @@ importers:
   packages/client:
     devDependencies:
       '@trpc/server':
-        specifier: ^11.1.1
-        version: 11.1.1(typescript@5.8.2)
+        specifier: ^11.2.0
+        version: 11.2.0(typescript@5.8.2)
       bsp:
         specifier: workspace:^
         version: link:../bsp
@@ -284,11 +284,11 @@ importers:
   packages/server:
     devDependencies:
       '@trpc/client':
-        specifier: ^11.0.0
-        version: 11.0.0(@trpc/server@11.1.1(typescript@5.8.2))(typescript@5.8.2)
+        specifier: ^11.2.0
+        version: 11.2.0(@trpc/server@11.2.0(typescript@5.8.2))(typescript@5.8.2)
       '@trpc/server':
-        specifier: ^11.1.1
-        version: 11.1.1(typescript@5.8.2)
+        specifier: ^11.2.0
+        version: 11.2.0(typescript@5.8.2)
       '@types/string-similarity':
         specifier: ^4.0.2
         version: 4.0.2
@@ -1198,14 +1198,14 @@ packages:
   '@theguild/remark-npm2yarn@0.3.3':
     resolution: {integrity: sha512-ma6DvR03gdbvwqfKx1omqhg9May/VYGdMHvTzB4VuxkyS7KzfZ/lzrj43hmcsggpMje0x7SADA/pcMph0ejRnA==}
 
-  '@trpc/client@11.0.0':
-    resolution: {integrity: sha512-U2THlxsdr4ykAX5lpTU8k5WRADPQ+68Ex2gfUht3MlCxGK7njBmNSSzjpQSWNt7tMI/xsYrddFiRlmEPrh+Cbg==}
+  '@trpc/client@11.2.0':
+    resolution: {integrity: sha512-uGehc0QvK3+UmTZb1KmIwvMLtRW0I5ykiYQHA1Yqa7yHPzpF9zw7mbwna6gqZAgjclt0/S6jwxAMJizoaP8uqQ==}
     peerDependencies:
-      '@trpc/server': 11.0.0
+      '@trpc/server': 11.2.0
       typescript: '>=5.7.2'
 
-  '@trpc/server@11.1.1':
-    resolution: {integrity: sha512-ZjPN3ypBHvGMAlMgeZPrxlRcH/3dn4AK0s5Ph1z+E6uiAvIQVCj7ZoMlXeeBsIy4THGDAk953jHVW2kMnlbb4g==}
+  '@trpc/server@11.2.0':
+    resolution: {integrity: sha512-clESXvCT3rTRUavB3wjtmPDlbB+rayVPeaTeXEQVeQNdTrK5o6GnYfCdiJJSdQspUQAwkGgQFRnku5pckuISlw==}
     peerDependencies:
       typescript: '>=5.7.2'
 
@@ -5618,12 +5618,12 @@ snapshots:
       npm-to-yarn: 3.0.1
       unist-util-visit: 5.0.0
 
-  '@trpc/client@11.0.0(@trpc/server@11.1.1(typescript@5.8.2))(typescript@5.8.2)':
+  '@trpc/client@11.2.0(@trpc/server@11.2.0(typescript@5.8.2))(typescript@5.8.2)':
     dependencies:
-      '@trpc/server': 11.1.1(typescript@5.8.2)
+      '@trpc/server': 11.2.0(typescript@5.8.2)
       typescript: 5.8.2
 
-  '@trpc/server@11.1.1(typescript@5.8.2)':
+  '@trpc/server@11.2.0(typescript@5.8.2)':
     dependencies:
       typescript: 5.8.2
 
