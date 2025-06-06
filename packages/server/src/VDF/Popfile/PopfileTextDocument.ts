@@ -285,7 +285,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		const key = documentSymbol.key.toLowerCase()
 
 		// https://github.com/cooolbros/vscode-vdf/issues/33
-		if ((key == "Squad".toLowerCase()) && documentSymbol.children && documentSymbol.children.length == 1 && this.configuration.keyTransform(documentSymbol.children[0].key.toLowerCase()) == "TFBot".toLowerCase()) {
+		if ((key == "Squad".toLowerCase()) && path.at(-1)?.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children && documentSymbol.children.length == 1 && this.configuration.keyTransform(documentSymbol.children[0].key.toLowerCase()) == "TFBot".toLowerCase()) {
 			return {
 				range: documentSymbol.range,
 				severity: DiagnosticSeverity.Warning,
