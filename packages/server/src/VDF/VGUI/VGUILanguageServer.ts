@@ -1,6 +1,6 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { Uri } from "common/Uri"
-import { defer, from, map, switchMap } from "rxjs"
+import { defer, from, map, switchAll } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { References } from "../../DefinitionReferences"
@@ -49,7 +49,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
-					defer(() => from(this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(switchMap((observable) => observable))),
+					defer(() => from(this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(switchAll())),
 					fileSystem,
 					this.documents,
 					await workspace,

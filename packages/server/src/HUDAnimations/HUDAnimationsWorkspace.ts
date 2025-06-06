@@ -2,7 +2,7 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concatMap, firstValueFrom, from, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, firstValueFrom, from, map, Observable, of, shareReplay, switchAll, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
@@ -66,7 +66,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		}
 
 		this.manifest$ = from(this.getVDFDocumentSymbols("scripts/hudanimations_manifest.txt")).pipe(
-			switchMap((observable) => observable),
+			switchAll(),
 			map((documentSymbols) => {
 				if (!documentSymbols) {
 					return []
@@ -103,7 +103,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		)
 
 		this.clientScheme$ = from(this.getDefinitions("resource/clientscheme.res")).pipe(
-			switchMap((observable) => observable),
+			switchAll(),
 			map((definitions) => definitions!),
 			shareReplay(1)
 		)
@@ -279,7 +279,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						return uri$.pipe(
 							switchMap((uri) => {
 								return definitions$.pipe(
-									switchMap((observable) => observable),
+									switchAll(),
 									map((definitions) => {
 										return { uri, definitions }
 									})

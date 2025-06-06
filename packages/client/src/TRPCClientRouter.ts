@@ -3,7 +3,7 @@ import { BSP } from "bsp"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { concat, distinctUntilChanged, firstValueFrom, from, map, Observable, switchMap } from "rxjs"
+import { concat, distinctUntilChanged, firstValueFrom, from, map, Observable, switchAll } from "rxjs"
 import { commands, languages, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
@@ -231,7 +231,7 @@ export function TRPCClientRouter(
 						return concat(
 							from(Promise.try(async () => VTFDocument.flags(await workspace.fs.readFile(input.uri)))),
 							from(fileSystemWatcherFactory.get(input.uri)).pipe(
-								switchMap((observable) => observable),
+								switchAll(),
 								map((buf) => VTFDocument.flags(buf))
 							),
 						).pipe(

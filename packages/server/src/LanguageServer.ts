@@ -10,7 +10,7 @@ import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchMap } from "rxjs"
+import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchAll, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { FileType } from "vscode"
@@ -123,7 +123,7 @@ export abstract class LanguageServer<
 						let file$ = files.get(path)
 						if (!file$) {
 							file$ = from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
-								switchMap((observable) => observable),
+								switchAll(),
 								distinctUntilChanged((a, b) => Uri.equals(a, b)),
 								finalize(() => {
 									files.delete(key)
@@ -463,7 +463,7 @@ export abstract class LanguageServer<
 			await using document = await this.documents.get(uri)
 			return await firstValueFrom(
 				document.fileSystem.resolveFile(path).pipe(
-					switchMap((uri) => uri != null ? defer(() => this.trpc.servers.vmt.baseTexture.query({ uri })).pipe(switchMap((observable) => observable)) : of(null)),
+					switchMap((uri) => uri != null ? defer(() => this.trpc.servers.vmt.baseTexture.query({ uri })).pipe(switchAll()) : of(null)),
 					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNG.mutate({ uri }) : null),
 				)
 			)
