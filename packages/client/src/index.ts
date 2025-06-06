@@ -37,7 +37,7 @@ export class Client<T extends BaseLanguageClient> {
 	public readonly client: T
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly subscriptions: { dispose(): any }[]
-	private router?: ReturnType<typeof TRPCClientRouter>
+	private readonly router: ReturnType<typeof TRPCClientRouter>
 
 	constructor(
 		context: ExtensionContext,
@@ -51,36 +51,35 @@ export class Client<T extends BaseLanguageClient> {
 		this.client = client
 		this.startServer = startServer
 		this.subscriptions = []
+		this.router = TRPCClientRouter(
+			initTRPC.create({
+				transformer: devalueTransformer({
+					reducers: {},
+					revivers: {},
+					name: null,
+					subscriptions: this.subscriptions,
+					onRequest: (method, handler) => client.onRequest(method, handler),
+					onNotification: (method, handler) => client.onNotification(method, handler),
+					sendRequest: (server, method, param) => {
+						throw new Error(`server == null (${server}, ${method}, ${JSON.stringify(param)})`)
+					},
+					sendNotification: async (server, method, param) => {
+						await languageClients[server]!.client.sendNotification(method, param)
+					},
+				}),
+				isDev: true,
+			}),
+			context,
+			teamFortress2Folder$,
+			fileSystemMountPointFactory,
+			fileSystemWatcherFactory
+		)
 
 		this.subscriptions.push(
 			this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
 				const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
 
 				if (languageId == null) {
-					this.router ??= TRPCClientRouter(
-						initTRPC.create({
-							transformer: devalueTransformer({
-								reducers: {},
-								revivers: {},
-								name: null,
-								subscriptions: this.subscriptions,
-								onRequest: (method, handler) => client.onRequest(method, handler),
-								onNotification: (method, handler) => client.onNotification(method, handler),
-								sendRequest: (server, method, param) => {
-									throw new Error(`server == null (${server}, ${method}, ${JSON.stringify(param)})`)
-								},
-								sendNotification: async (server, method, param) => {
-									await languageClients[server]!.client.sendNotification(method, param)
-								},
-							}),
-							isDev: true,
-						}),
-						context,
-						teamFortress2Folder$,
-						fileSystemMountPointFactory,
-						fileSystemWatcherFactory
-					)
-
 					const response = await fetchRequestHandler<AnyTRPCRouter>({
 						endpoint: "",
 						req: new Request(new URL(url, "https://vscode.vdf"), init),
