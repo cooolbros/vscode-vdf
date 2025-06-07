@@ -223,9 +223,7 @@ export abstract class LanguageServer<
 		this.connection.onDidChangeTextDocument(async (params) => {
 			if (params.contentChanges.length != 0) {
 				await using document = await this.documents.get(new Uri(params.textDocument.uri))
-				if (document) {
-					document.update(params.contentChanges, params.textDocument.version)
-				}
+				document.update(params.contentChanges, params.textDocument.version)
 			}
 		})
 
