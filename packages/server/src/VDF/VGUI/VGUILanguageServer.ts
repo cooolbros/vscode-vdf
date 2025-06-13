@@ -1,9 +1,11 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
+import { observableToAsyncIterable } from "@trpc/server/observable"
 import { Uri } from "common/Uri"
-import { defer, from, map, switchAll } from "rxjs"
+import { map, Observable } from "rxjs"
+import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
-import { References } from "../../DefinitionReferences"
+import { Definitions, References } from "../../DefinitionReferences"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { VGUITextDocument } from "./VGUITextDocument"
 import { VGUIWorkspace } from "./VGUIWorkspace"
@@ -49,7 +51,13 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
-					defer(() => from(this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.query()).pipe(switchAll())),
+					new Observable<Uri>((subscriber) => {
+						return this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.subscribe(undefined, {
+							onData: (value) => subscriber.next(value),
+							onError: (err) => subscriber.error(err),
+							onComplete: () => subscriber.complete(),
+						})
+					}),
 					fileSystem,
 					this.documents,
 					await workspace,
@@ -96,13 +104,13 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 								path: z.string(),
 							})
 						)
-						.query(async ({ input }) => {
+						.subscription(async ({ input, signal }) => {
 							const workspace = await this.workspaces.get(input.key.toString())
 							if (!workspace) {
 								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
 							}
 
-							return workspace.getVDFDocumentSymbols(input.path)
+							return observableToAsyncIterable<VDFDocumentSymbols | null>(workspace.getVDFDocumentSymbols(input.path), signal!)
 						}),
 					definitions: t
 						.procedure
@@ -112,14 +120,17 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 								path: z.string(),
 							})
 						)
-						.query(async ({ input }) => {
+						.subscription(async ({ input, signal }) => {
 							const workspace = await this.workspaces.get(input.key.toString())
 							if (!workspace) {
 								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
 							}
 
-							return workspace.getDefinitionReferences(input.path).pipe(
-								map((definitionReferences) => definitionReferences?.definitions ?? null)
+							return observableToAsyncIterable<Definitions | null>(
+								workspace.getDefinitionReferences(input.path).pipe(
+									map((definitionReferences) => definitionReferences?.definitions ?? null)
+								),
+								signal!
 							)
 						}),
 					setFilesReferences: t

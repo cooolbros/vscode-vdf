@@ -1,16 +1,16 @@
-import { createTRPCClient, httpBatchLink, type CreateTRPCClientOptions, type TRPCClient } from "@trpc/client"
+import { createTRPCClient, type CreateTRPCClientOptions, type TRPCClient } from "@trpc/client"
 import { initTRPC, type AnyTRPCRouter, type TRPCCombinedDataTransformer } from "@trpc/server"
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
-import type { Client } from "client"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
+import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, from, Observable, of, shareReplay, Subject, Subscription, switchAll, switchMap } from "rxjs"
+import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, Observable, of, shareReplay, Subject, Subscription, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { FileType } from "vscode"
@@ -122,12 +122,15 @@ export abstract class LanguageServer<
 					resolveFile: (path) => {
 						let file$ = files.get(path)
 						if (!file$) {
-							file$ = from(this.trpc.client.teamFortress2FileSystem.resolveFile.query({ key, path })).pipe(
-								switchAll(),
+							file$ = new Observable<Uri | null>((subscriber) => {
+								return this.trpc.client.teamFortress2FileSystem.resolveFile.subscribe({ key, path }, {
+									onData: (value) => subscriber.next(value),
+									onError: (err) => subscriber.error(err),
+									onComplete: () => subscriber.complete(),
+								})
+							}).pipe(
 								distinctUntilChanged((a, b) => Uri.equals(a, b)),
-								finalize(() => {
-									files.delete(key)
-								}),
+								finalize(() => files.delete(key)),
 								shareReplay({ bufferSize: 1, refCount: true })
 							)
 							files.set(path, file$)
@@ -285,8 +288,6 @@ export abstract class LanguageServer<
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 
-		let _router: AnyTRPCRouter
-
 		const transformer = devalueTransformer({
 			reducers: {
 				Definitions: (value: unknown) => value instanceof Definitions && value.toJSON(),
@@ -295,80 +296,34 @@ export abstract class LanguageServer<
 			revivers: {
 				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
 				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
-			},
-			name: this.languageId,
-			subscriptions: [],
-			onRequest: (method, handler) => this.connection.onRequest(method, handler),
-			onNotification: (method, handler) => this.connection.onNotification(method, handler),
-			sendRequest: async (server, method, param) => {
-				if (server != null) {
-					return await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param } satisfies z.infer<typeof Client["sendSchema"]>)
-				}
-				else {
-					return await this.connection.sendRequest(method, param)
-				}
-			},
-			sendNotification: async (server, method, param) => {
-				await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param } satisfies z.infer<typeof Client["sendSchema"]>)
-			},
-		}) satisfies TRPCCombinedDataTransformer
+			}
+		})
 
-		const resolveTRPC = async (input: string, init?: RequestInit) => {
-			_router ??= this.router(initTRPC.create({ transformer: transformer, isDev: true }))
-			const response = await fetchRequestHandler({
-				endpoint: "",
-				req: new Request(new URL(input, "https://vscode.vdf"), init),
-				router: _router
-			})
-			return await response.text()
-		}
-
-		this.connection.onRequest("vscode-vdf/trpc", async (params: unknown) => {
-			const [url, init] = z.tuple([
-				z.string(),
-				z.object({
-					method: z.string().optional(),
-					headers: z.record(z.string()).optional(),
-					body: z.string().optional()
+		this.connection.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
+			router: this.router(
+				initTRPC.create({
+					transformer: transformer,
+					isDev: true,
 				})
-			]).parse(params)
+			),
+			onRequest: (method, handler) => this.connection.onRequest(method, handler),
+			sendNotification: async (server, method, param) => {
+				return await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param })
+			}
+		}))
 
-			return await resolveTRPC(url, init)
+		const link = VSCodeJSONRPCLink({
+			name: this.languageId,
+			transformer: transformer,
+			onNotification: (type, handler) => this.connection.onNotification(type, handler),
 		})
 
 		const VSCodeRPCOptions = (server: VSCodeVDFLanguageID | null) => ({
 			links: [
-				httpBatchLink({
-					url: "",
-					transformer: transformer,
-					fetch: async (input, init) => {
-						let body: string
-
-						if (server != languageId) {
-							body = await this.connection.sendRequest(
-								"vscode-vdf/trpc",
-								[
-									server,
-									[
-										input,
-										{
-											method: init?.method,
-											headers: init?.headers,
-											body: init?.body
-										}
-									]
-								]
-							)
-						}
-						else {
-							let url = typeof input == "object"
-								? ("url" in input ? input.url : input.pathname)
-								: input
-							body = await resolveTRPC(url, init)
-						}
-
-						return new Response(body)
-					}
+				link({
+					sendRequest: server != null
+						? async (method, param) => this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
+						: async (method, param) => this.connection.sendRequest(method, param)
 				})
 			]
 		} satisfies CreateTRPCClientOptions<AnyTRPCRouter>)
@@ -461,7 +416,20 @@ export abstract class LanguageServer<
 			await using document = await this.documents.get(uri)
 			return await firstValueFrom(
 				document.fileSystem.resolveFile(path).pipe(
-					switchMap((uri) => uri != null ? defer(() => this.trpc.servers.vmt.baseTexture.query({ uri })).pipe(switchAll()) : of(null)),
+					switchMap((uri) => {
+						if (uri != null) {
+							return new Observable<Uri | null>((subscriber) => {
+								return this.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
+									onData: (value) => subscriber.next(value),
+									onError: (err) => subscriber.error(err),
+									onComplete: () => subscriber.complete(),
+								})
+							})
+						}
+						else {
+							return of(null)
+						}
+					}),
 					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNG.mutate({ uri }) : null),
 				)
 			)

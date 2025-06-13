@@ -1,8 +1,8 @@
-import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch"
+import { initTRPC } from "@trpc/server"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import type { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { Observable } from "rxjs"
@@ -16,18 +16,6 @@ export * from "common/VSCodeVDFLanguageID"
 
 export class Client<T extends BaseLanguageClient> {
 
-	private static readonly TRPCRequestSchema = z.tuple([
-		VSCodeVDFLanguageIDSchema.nullable(),
-		z.tuple([
-			z.string(),
-			z.object({
-				method: z.string(),
-				headers: z.record(z.string()),
-				body: z.string().optional()
-			})
-		])
-	])
-
 	private static readonly sendSchema = z.object({
 		server: VSCodeVDFLanguageIDSchema,
 		method: z.string(),
@@ -35,9 +23,10 @@ export class Client<T extends BaseLanguageClient> {
 	})
 
 	public readonly client: T
+
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
-	private readonly subscriptions: { dispose(): any }[]
 	private readonly router: ReturnType<typeof TRPCClientRouter>
+	private readonly stack: DisposableStack
 
 	constructor(
 		context: ExtensionContext,
@@ -50,23 +39,9 @@ export class Client<T extends BaseLanguageClient> {
 	) {
 		this.client = client
 		this.startServer = startServer
-		this.subscriptions = []
 		this.router = TRPCClientRouter(
 			initTRPC.create({
-				transformer: devalueTransformer({
-					reducers: {},
-					revivers: {},
-					name: null,
-					subscriptions: this.subscriptions,
-					onRequest: (method, handler) => client.onRequest(method, handler),
-					onNotification: (method, handler) => client.onNotification(method, handler),
-					sendRequest: (server, method, param) => {
-						throw new Error(`server == null (${server}, ${method}, ${JSON.stringify(param)})`)
-					},
-					sendNotification: async (server, method, param) => {
-						await languageClients[server]!.client.sendNotification(method, param)
-					},
-				}),
+				transformer: devalueTransformer({ reducers: {}, revivers: {} }),
 				isDev: true,
 			}),
 			context,
@@ -75,31 +50,34 @@ export class Client<T extends BaseLanguageClient> {
 			fileSystemWatcherFactory
 		)
 
-		this.subscriptions.push(
-			this.client.onRequest("vscode-vdf/trpc", async (params: unknown) => {
-				const [languageId, [url, init]] = Client.TRPCRequestSchema.parse(params)
+		const stack = this.stack = new DisposableStack()
+		stack.adopt(this.client, (disposable) => disposable.dispose())
 
-				if (languageId == null) {
-					const response = await fetchRequestHandler<AnyTRPCRouter>({
-						endpoint: "",
-						req: new Request(new URL(url, "https://vscode.vdf"), init),
-						router: this.router
-					})
+		stack.adopt(
+			this.client.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
+				router: this.router,
+				onRequest: (method, handler) => stack.adopt(this.client.onRequest(method, handler), (disposable) => disposable.dispose()),
+				sendNotification: async (server, method, param) => {
+					await languageClients[server]!.client.sendNotification(method, param)
+				}
+			})),
+			(disposable) => disposable.dispose()
+		)
 
-					return await response.text()
-				}
-				else {
-					return await languageClients[languageId]!.client.sendRequest("vscode-vdf/trpc", [url, init])
-				}
-			}),
+		stack.adopt(
 			this.client.onRequest("vscode-vdf/sendRequest", async (...params) => {
 				const { server, method, param } = Client.sendSchema.parse(params[0])
 				return await languageClients[server]!.client.sendRequest(method, param)
 			}),
+			(disposable) => disposable.dispose()
+		)
+
+		stack.adopt(
 			this.client.onNotification("vscode-vdf/sendNotification", async (...params) => {
 				const { server, method, param } = Client.sendSchema.parse(params[0])
-				return await languageClients[server]!.client.sendNotification(method, param)
-			})
+				await languageClients[server]!.client.sendNotification(method, param)
+			}),
+			(disposable) => disposable.dispose()
 		)
 	}
 
@@ -118,8 +96,6 @@ export class Client<T extends BaseLanguageClient> {
 	}
 
 	public dispose() {
-		for (const subscription of this.subscriptions) {
-			subscription.dispose()
-		}
+		this.stack.dispose()
 	}
 }

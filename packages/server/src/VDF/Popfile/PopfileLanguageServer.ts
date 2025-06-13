@@ -1,4 +1,5 @@
-import { defer, firstValueFrom, from, map, of, shareReplay, Subscription, switchAll, switchMap } from "rxjs"
+import type { Uri } from "common/Uri"
+import { defer, firstValueFrom, map, Observable, of, shareReplay, Subscription, switchMap } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -10,17 +11,27 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 	private readonly workspace$ = defer(async () => new PopfileWorkspace(
 		await this.fileSystems.get([{ type: "tf2" }]),
 		async (uri) => await this.trpc.client.popfile.bsp.entities.query({ uri }),
-		(uri) => from(this.trpc.servers.vmt.baseTexture.query({ uri })).pipe(
-			switchAll(),
+		(uri) => new Observable<Uri | null>((subscriber) => {
+			return this.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
+				onData: (value) => subscriber.next(value),
+				onError: (err) => subscriber.error(err),
+				onComplete: () => subscriber.complete(),
+			})
+		}).pipe(
 			switchMap((uri) => {
-				if (uri != null) {
-					return from(this.trpc.client.popfile.classIcon.flags.query({ uri })).pipe(
-						switchAll(),
-						map((flags) => ({ uri, flags }))
-					)
+				if (uri == null) {
+					return of(null)
 				}
 
-				return of(null)
+				return new Observable<number>((subscriber) => {
+					return this.trpc.client.popfile.classIcon.flags.subscribe({ uri }, {
+						onData: (value) => subscriber.next(value),
+						onError: (err) => subscriber.error(err),
+						onComplete: () => subscriber.complete(),
+					})
+				}).pipe(
+					map((flags) => ({ uri, flags }))
+				)
 			})
 		),
 		this.documents,

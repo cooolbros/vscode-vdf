@@ -2,7 +2,7 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concatMap, firstValueFrom, from, map, Observable, of, shareReplay, switchAll, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concat, concatMap, firstValueFrom, from, ignoreElements, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
@@ -21,8 +21,8 @@ interface HUDAnimationsWorkspaceDocumentDependencies {
 export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 	private readonly fileSystem: FileSystemMountPoint
-	private readonly getVDFDocumentSymbols: (path: string) => Promise<Observable<VDFDocumentSymbols | null>>
-	private readonly getDefinitions: (path: string) => Promise<Observable<DefinitionReferences["definitions"] | null>>
+	private readonly getVDFDocumentSymbols: (path: string) => Observable<VDFDocumentSymbols | null>
+	private readonly getDefinitions: (path: string) => Observable<DefinitionReferences["definitions"] | null>
 
 	public readonly manifest$: Observable<HUDAnimationsTextDocument[]>
 	public readonly clientScheme$: Observable<DefinitionReferences["definitions"]>
@@ -43,30 +43,29 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		fileSystem: FileSystemMountPoint,
 		documents: RefCountAsyncDisposableFactory<Uri, HUDAnimationsTextDocument>,
 		request: Promise<void>,
-		getVDFDocumentSymbols: (path: string) => Promise<Observable<VDFDocumentSymbols | null>>,
-		getDefinitions: (path: string) => Promise<Observable<DefinitionReferences["definitions"] | null>>,
+		getVDFDocumentSymbols: (path: string) => Observable<VDFDocumentSymbols | null>,
+		getDefinitions: (path: string) => Observable<DefinitionReferences["definitions"] | null>,
 		setFileReferences: (references: Map<string /* path */, Map<string /* Uri */, References | null>>) => Promise<void>,
 	}) {
 		super(uri)
 		this.fileSystem = fileSystem
 		this.files = new Map()
-		this.getVDFDocumentSymbols = async (path) => {
-			await request
-			return await getVDFDocumentSymbols(path)
-		}
 
-		const fileDefinitions = new Map<string, Promise<Observable<DefinitionReferences["definitions"] | null>>>()
+		const ready$ = from(request).pipe(ignoreElements())
+
+		this.getVDFDocumentSymbols = (path) => concat(ready$, getVDFDocumentSymbols(path))
+
+		const fileDefinitions = new Map<string, Observable<DefinitionReferences["definitions"] | null>>()
 		this.getDefinitions = (path: string) => {
 			let definitions = fileDefinitions.get(path)
 			if (!definitions) {
-				definitions = getDefinitions(path)
+				definitions = concat(ready$, getDefinitions(path))
 				fileDefinitions.set(path, definitions)
 			}
 			return definitions
 		}
 
-		this.manifest$ = from(this.getVDFDocumentSymbols("scripts/hudanimations_manifest.txt")).pipe(
-			switchAll(),
+		this.manifest$ = this.getVDFDocumentSymbols("scripts/hudanimations_manifest.txt").pipe(
 			map((documentSymbols) => {
 				if (!documentSymbols) {
 					return []
@@ -102,8 +101,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			shareReplay(1)
 		)
 
-		this.clientScheme$ = from(this.getDefinitions("resource/clientscheme.res")).pipe(
-			switchAll(),
+		this.clientScheme$ = this.getDefinitions("resource/clientscheme.res").pipe(
 			map((definitions) => definitions!),
 			shareReplay(1)
 		)
@@ -279,7 +277,6 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						return uri$.pipe(
 							switchMap((uri) => {
 								return definitions$.pipe(
-									switchAll(),
 									map((definitions) => {
 										return { uri, definitions }
 									})

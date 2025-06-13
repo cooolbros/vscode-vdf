@@ -1,9 +1,10 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
+import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { concat, distinctUntilChanged, firstValueFrom, from, map, Observable, switchAll } from "rxjs"
+import { concat, distinctUntilChanged, from, map, Observable, switchAll } from "rxjs"
 import { commands, languages, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
@@ -59,7 +60,7 @@ export function TRPCClientRouter(
 			.router({
 				teamFortress2Folder: t
 					.procedure
-					.query(async () => teamFortress2Folder$),
+					.subscription(({ signal }) => observableToAsyncIterable<Uri>(teamFortress2Folder$, signal!)),
 				open: t
 					.procedure
 					.input(
@@ -98,10 +99,8 @@ export function TRPCClientRouter(
 							path: z.string(),
 						})
 					)
-					.query(async ({ input }) => {
-						const observable = fileSystems.get(input.key)!.resolveFile(input.path)
-						await firstValueFrom(observable)
-						return observable
+					.subscription(({ input, signal }) => {
+						return observableToAsyncIterable<Uri | null>(fileSystems.get(input.key)!.resolveFile(input.path), signal!)
 					}),
 				readDirectory: t
 					.procedure
@@ -227,15 +226,18 @@ export function TRPCClientRouter(
 				flags: t
 					.procedure
 					.input(URISchema)
-					.query(async ({ input }) => {
-						return concat(
-							from(Promise.try(async () => VTFDocument.flags(await workspace.fs.readFile(input.uri)))),
-							from(fileSystemWatcherFactory.get(input.uri)).pipe(
-								switchAll(),
-								map((buf) => VTFDocument.flags(buf))
+					.subscription(({ input, signal }) => {
+						return observableToAsyncIterable<number>(
+							concat(
+								from(Promise.try(async () => VTFDocument.flags(await workspace.fs.readFile(input.uri)))),
+								from(fileSystemWatcherFactory.get(input.uri)).pipe(
+									switchAll(),
+									map((buf) => VTFDocument.flags(buf))
+								),
+							).pipe(
+								distinctUntilChanged(),
 							),
-						).pipe(
-							distinctUntilChanged(),
+							signal!
 						)
 					})
 			}),
