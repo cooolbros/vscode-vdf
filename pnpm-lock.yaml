@@ -42,6 +42,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.1
+      svelte:
+        specifier: ^5.34.1
+        version: 5.34.1
       ts-loader:
         specifier: ^9.5.1
         version: 9.5.1(typescript@5.8.2)(webpack@5.97.1)
@@ -54,6 +57,9 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
+      vite:
+        specifier: ^6.3.5
+        version: 6.3.5(@types/node@22.15.3)(jiti@1.21.7)(terser@5.36.0)(yaml@2.7.0)
       vscode-languageserver-textdocument:
         specifier: ^1.0.11
         version: 1.0.12
@@ -201,12 +207,6 @@ importers:
       client:
         specifier: workspace:^
         version: link:../../packages/client/src
-      svelte:
-        specifier: ^5.34.1
-        version: 5.34.1
-      vite:
-        specifier: ^6.3.5
-        version: 6.3.5(@types/node@22.15.3)(jiti@1.21.7)(terser@5.36.0)(yaml@2.7.0)
       vtf-canvas:
         specifier: workspace:^
         version: link:../../packages/vtf-canvas
@@ -3194,9 +3194,6 @@ packages:
   lru-cache@6.0.0:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
-
-  magic-string@0.30.14:
-    resolution: {integrity: sha512-5c99P1WKTed11ZC0HMJOj6CDIue6F8ySu+bJL+85q1zBEIY8IklrJ1eiKC2NDRh3Ct3FcvmJPyQHb9erXMTJNw==}
 
   magic-string@0.30.17:
     resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
@@ -7848,10 +7845,6 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  magic-string@0.30.14:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.0
-
   magic-string@0.30.17:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
@@ -9567,7 +9560,7 @@ snapshots:
       esrap: 1.4.9
       is-reference: 3.0.3
       locate-character: 3.0.0
-      magic-string: 0.30.14
+      magic-string: 0.30.17
       zimmerframe: 1.1.2
 
   system-architecture@0.1.0: {}
