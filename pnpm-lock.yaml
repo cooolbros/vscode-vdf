@@ -232,7 +232,7 @@ importers:
         version: link:../vdf
       vdf-documentsymbols:
         specifier: workspace:^
-        version: link:../vdf-documentsymbols
+        version: link:../vdf-documentsymbols/src
       vscode-languageclient:
         specifier: ^9.0.1
         version: 9.0.1
