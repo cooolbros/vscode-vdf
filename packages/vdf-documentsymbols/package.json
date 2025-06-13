@@ -1,6 +1,9 @@
 {
     "name": "vdf-documentsymbols",
     "main": "./src/index.ts",
+    "publishConfig": {
+        "directory": "src"
+    },
     "devDependencies": {
         "tsconfig": "workspace:^",
         "vdf": "workspace:^",

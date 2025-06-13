@@ -1,6 +1,7 @@
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { getVDFDocumentSymbols, type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
+import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
+import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { Position, env, window, type TextEditor } from "vscode"
 import { searchForHUDRoot } from "../searchForHUDRoot"
 

@@ -254,7 +254,7 @@ importers:
         version: link:../vdf
       vdf-documentsymbols:
         specifier: workspace:^
-        version: link:../vdf-documentsymbols
+        version: link:../vdf-documentsymbols/src
       vscode-uri:
         specifier: ^3.0.8
         version: 3.0.8
@@ -312,7 +312,7 @@ importers:
         version: link:../vdf
       vdf-documentsymbols:
         specifier: workspace:^
-        version: link:../vdf-documentsymbols
+        version: link:../vdf-documentsymbols/src
       vdf-format:
         specifier: workspace:^
         version: link:../vdf-format
@@ -353,6 +353,7 @@ importers:
       vscode-languageserver:
         specifier: ^9.0.1
         version: 9.0.1
+    publishDirectory: src
 
   packages/vdf-format:
     devDependencies:
