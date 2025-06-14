@@ -1,12 +1,13 @@
 {
     "name": "vdf-documentsymbols",
-    "main": "./src/index.ts",
-    "publishConfig": {
-        "directory": "src"
+    "exports": {
+        ".": "./src/index.ts",
+        "./*": "./src/*.ts"
     },
     "devDependencies": {
         "tsconfig": "workspace:^",
         "vdf": "workspace:^",
         "vscode-languageserver": "*"
-    }
+    },
+    "type": "module"
 }
