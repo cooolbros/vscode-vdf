@@ -22,7 +22,7 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 	const opSchema = z.object({
 		id: z.number(),
 		type: z.enum(procedureTypes),
-		input: z.unknown().transform((arg) => transformer.input.deserialize(arg) as {}),
+		input: z.unknown().optional().transform((arg) => transformer.input.deserialize(arg) as {}),
 		path: z.string(),
 		context: z.record(z.unknown()),
 		signal: z.instanceof(AbortSignal).nullable().default(null),
