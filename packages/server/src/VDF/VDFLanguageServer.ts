@@ -285,10 +285,10 @@ export abstract class VDFLanguageServer<
 
 		if (fileSchema.asset == VGUIAssetType.Image) {
 			const path = resolveFileDetail(documentSymbol.detail!, fileSchema)
-			const uri = await this.VTFToPNG(document.uri, path)
-			if (uri) {
+			const value = await this.VTFToPNGBase64(document.uri, path)
+			if (value) {
 				return {
-					contents: `![](${uri})`,
+					contents: value,
 					range: documentSymbol.detailRange
 				}
 			}

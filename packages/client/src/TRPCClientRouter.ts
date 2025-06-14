@@ -6,7 +6,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { concat, distinctUntilChanged, from, map, Observable, switchAll } from "rxjs"
 import { commands, languages, window, workspace, type ExtensionContext } from "vscode"
-import { VTF, VTFToPNG } from "vtf-png"
+import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
@@ -129,15 +129,16 @@ export function TRPCClientRouter(
 						fileSystems.delete(input.key)
 					})
 			}),
-		VTFToPNG: t
-			.procedure.input(
+		VTFToPNGBase64: t
+			.procedure
+			.input(
 				z.object({
 					uri: Uri.schema
 				})
 			).mutation(async ({ input }) => {
 				await initVTFPNG(context)
 				const vtf = new VTF(await workspace.fs.readFile(input.uri))
-				return VTFToPNG(vtf, 256)
+				return VTFToPNGBase64(vtf, 256)
 			}),
 		window: t.router({
 			createTextEditorDecorationType: t

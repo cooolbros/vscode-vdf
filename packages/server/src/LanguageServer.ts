@@ -8,7 +8,7 @@ import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
 import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
+import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
 import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, Observable, of, shareReplay, Subject, Subscription, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
@@ -412,7 +412,7 @@ export abstract class LanguageServer<
 		})
 	}
 
-	protected async VTFToPNG(uri: Uri, path: string) {
+	protected async VTFToPNGBase64(uri: Uri, path: string) {
 		try {
 			await using document = await this.documents.get(uri)
 			return await firstValueFrom(
@@ -431,7 +431,7 @@ export abstract class LanguageServer<
 							return of(null)
 						}
 					}),
-					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNG.mutate({ uri }) : null),
+					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.mutate({ uri }) : null),
 				)
 			)
 		}
@@ -640,11 +640,11 @@ export abstract class LanguageServer<
 
 		if (result.success) {
 			const { image } = result.data
-			const uri = await this.VTFToPNG(image.uri, image.path)
-			if (uri) {
+			const value = await this.VTFToPNGBase64(image.uri, image.path)
+			if (value) {
 				item.documentation = {
 					kind: MarkupKind.Markdown,
-					value: `![](${uri})`
+					value: value
 				}
 			}
 		}
