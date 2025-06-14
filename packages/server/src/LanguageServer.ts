@@ -306,6 +306,7 @@ export abstract class LanguageServer<
 					isDev: true,
 				})
 			),
+			schema: VSCodeVDFLanguageIDSchema,
 			onRequest: (method, handler) => this.connection.onRequest(method, handler),
 			sendNotification: async (server, method, param) => {
 				return await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param })

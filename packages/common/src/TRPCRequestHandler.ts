@@ -3,19 +3,19 @@ import { type AnyTRPCRouter } from "@trpc/server"
 import { observableToPromise, type Unsubscribable } from "@trpc/server/observable"
 import { getErrorShape, getTRPCErrorFromUnknown, procedureTypes } from "@trpc/server/unstable-core-do-not-import"
 import { z } from "zod"
-import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "./VSCodeVDFLanguageID"
 
-export interface TRPCRequestHandlerOptions {
+export interface TRPCRequestHandlerOptions<T extends [string, ...string[]]> {
 	router: AnyTRPCRouter
+	schema: z.ZodEnum<T>
 	onRequest: (method: string, handler: (param: unknown) => void) => void,
-	sendNotification: (server: VSCodeVDFLanguageID, method: string, param: any) => Promise<any>
+	sendNotification: (server: z.infer<z.ZodEnum<T>>, method: string, param: any) => Promise<any>
 }
 
 function next(): never {
 	throw new Error("unreachable")
 }
 
-export function TRPCRequestHandler(opts: TRPCRequestHandlerOptions) {
+export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRequestHandlerOptions<T>) {
 
 	const transformer = opts.router._def._config.transformer
 
@@ -68,7 +68,7 @@ export function TRPCRequestHandler(opts: TRPCRequestHandlerOptions) {
 						return { error: error }
 					})
 			case "subscription":
-				const server = VSCodeVDFLanguageIDSchema.parse(op.context.name)
+				const server = opts.schema.parse(op.context.name)
 				let serverSubscriptions = subscriptions.get(server)
 				if (!serverSubscriptions) {
 					serverSubscriptions = new Map()

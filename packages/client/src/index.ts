@@ -56,6 +56,7 @@ export class Client<T extends BaseLanguageClient> {
 		stack.adopt(
 			this.client.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
 				router: this.router,
+				schema: VSCodeVDFLanguageIDSchema,
 				onRequest: (method, handler) => stack.adopt(this.client.onRequest(method, handler), (disposable) => disposable.dispose()),
 				sendNotification: async (server, method, param) => {
 					await languageClients[server]!.client.sendNotification(method, param)
