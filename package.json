@@ -73,6 +73,12 @@
                 "command": "vscode-vdf.restartPopfileLanguageServer"
             },
             {
+                "category": "Popfile",
+                "title": "Open Wave Status Preview to the Side",
+                "command": "vscode-vdf.showWaveStatusPreviewToSide",
+                "when": "editorLangId == popfile"
+            },
+            {
                 "category": "VDF",
                 "title": "Restart VDF Language Server",
                 "command": "vscode-vdf.restartVDFLanguageServer"
@@ -235,6 +241,31 @@
                     "vscode-vdf.popfile.vscript.enable": {
                         "type": "boolean",
                         "description": "Enable/disable VScript language support.",
+                        "default": true
+                    },
+                    "vscode-vdf.popfile.waveStatusPreview.background.colour": {
+                        "type": "string",
+                        "description": "Background colour for Wave Status Preview.",
+                        "default": "rgb(31, 31, 31)"
+                    },
+                    "vscode-vdf.popfile.waveStatusPreview.background.sky": {
+                        "type": "boolean",
+                        "description": "Show/Hide sky for Wave Status Preview.",
+                        "default": true
+                    },
+                    "vscode-vdf.popfile.waveStatusPreview.font.bold": {
+                        "type": "string",
+                        "description": "Bold font for Wave Status Preview. Must be installed",
+                        "default": "TF2 Build"
+                    },
+                    "vscode-vdf.popfile.waveStatusPreview.font.regular": {
+                        "type": "string",
+                        "description": "Regular font for Wave Status Preview. Must be installed",
+                        "default": "TF2 Secondary"
+                    },
+                    "vscode-vdf.popfile.waveStatusPreview.panel.enable": {
+                        "type": "boolean",
+                        "description": "Show/Hide Wave Status Panel Background in Wave Status Preview.",
                         "default": true
                     }
                 }

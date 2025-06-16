@@ -11,6 +11,7 @@ import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
 import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Folder"
 import { setVTFFlags } from "client/commands/setVTFFlags"
 import { showReferences } from "client/commands/showReferences"
+import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
 import { onDidChangeActiveTextEditor } from "client/decorations"
 import { Uri } from "common/Uri"
 import { homedir } from "os"
@@ -235,6 +236,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window

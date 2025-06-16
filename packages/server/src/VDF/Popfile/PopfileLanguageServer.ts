@@ -1,6 +1,6 @@
 import type { Uri } from "common/Uri"
 import { defer, firstValueFrom, map, Observable, of, shareReplay, Subscription, switchMap } from "rxjs"
-import { FoldingRange, FoldingRangeKind, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { PopfileTextDocument } from "./PopfileTextDocument"
@@ -116,6 +116,26 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		}
 
 		return stack.move()
+	}
+
+	protected async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
+		const codeLens = await super.onCodeLens(params)
+
+		await using document = await this.documents.get(params.textDocument.uri)
+		const documentSymbols = await firstValueFrom(document.documentSymbols$)
+
+		const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key != "#base")
+		if (waveSchedule) {
+			codeLens.unshift({
+				range: waveSchedule.nameRange,
+				command: {
+					title: "$(output-view-icon) Wave Status Preview",
+					command: "vscode-vdf.showWaveStatusPreviewToSide"
+				}
+			})
+		}
+
+		return codeLens
 	}
 
 	private async onFoldingRanges(params: TextDocumentRequestParams<FoldingRangeParams>) {

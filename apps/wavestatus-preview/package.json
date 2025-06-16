@@ -1,0 +1,18 @@
+{
+    "name": "wavestatus-preview",
+    "private": true,
+    "scripts": {
+        "dev": "vite build --watch",
+        "build": "vite build"
+    },
+    "devDependencies": {
+        "@sveltejs/vite-plugin-svelte": "^5.0.1",
+        "@tsconfig/svelte": "^5.0.4",
+        "@types/vscode-webview": "^1.57.5",
+        "@vscode/codicons": "^0.0.36",
+        "client": "workspace:^",
+        "common": "workspace:^",
+        "tsconfig": "workspace:^"
+    },
+    "type": "module"
+}

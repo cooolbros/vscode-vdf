@@ -792,7 +792,7 @@ export abstract class LanguageServer<
 		]
 	}
 
-	private async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
+	protected async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {
 		await using document = await this.documents.get(params.textDocument.uri)
 		return await firstValueFrom(document.codeLens$)
 	}

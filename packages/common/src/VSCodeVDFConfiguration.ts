@@ -24,7 +24,21 @@ export const VSCodeVDFConfigurationSchema = z.object({
 			enable: z.boolean()
 		})
 	}),
-	popfile: VDFLanguageConfigurationSchema,
+	popfile: VDFLanguageConfigurationSchema.merge(z.object({
+		waveStatusPreview: z.object({
+			background: z.object({
+				colour: z.string(),
+				sky: z.boolean(),
+			}),
+			font: z.object({
+				bold: z.string(),
+				regular: z.string(),
+			}),
+			panel: z.object({
+				enable: z.boolean()
+			})
+		})
+	})),
 	vmt: VDFLanguageConfigurationSchema,
 	vdf: VDFLanguageConfigurationSchema,
 })

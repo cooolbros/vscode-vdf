@@ -211,6 +211,30 @@ importers:
         specifier: workspace:^
         version: link:../../packages/vtf-canvas
 
+  apps/wavestatus-preview:
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^5.0.1
+        version: 5.1.0(svelte@5.34.1)(vite@6.3.5(@types/node@22.15.3)(jiti@1.21.7)(terser@5.36.0)(yaml@2.7.0))
+      '@tsconfig/svelte':
+        specifier: ^5.0.4
+        version: 5.0.4
+      '@types/vscode-webview':
+        specifier: ^1.57.5
+        version: 1.57.5
+      '@vscode/codicons':
+        specifier: ^0.0.36
+        version: 0.0.36
+      client:
+        specifier: workspace:^
+        version: link:../../packages/client/src
+      common:
+        specifier: workspace:^
+        version: link:../../packages/common
+      tsconfig:
+        specifier: workspace:^
+        version: link:../../packages/tsconfig
+
   packages/bsp: {}
 
   packages/client:
@@ -1404,6 +1428,9 @@ packages:
 
   '@ungap/structured-clone@1.2.1':
     resolution: {integrity: sha512-fEzPV3hSkSMltkw152tJKNARhOupqbH96MZWyRjNaYZOMIzbrTeQDG+MTc6Mr2pgzFQzFxAfmhGDNP5QK++2ZA==}
+
+  '@vscode/codicons@0.0.36':
+    resolution: {integrity: sha512-wsNOvNMMJ2BY8rC2N2MNBG7yOowV3ov8KlvUE/AiVUlHKTfWsw3OgAOQduX7h0Un6GssKD3aoTVH+TF3DSQwKQ==}
 
   '@vscode/test-web@0.0.69':
     resolution: {integrity: sha512-oyxD6eHbooxCDrlNQagMosSs0UtoJHRm7Jg+I88E2Owc8mUlK+bbvo8DaAbfgZpbqFfB4qIp6O3yEG+eNLXQmg==}
@@ -5839,6 +5866,8 @@ snapshots:
       - supports-color
 
   '@ungap/structured-clone@1.2.1': {}
+
+  '@vscode/codicons@0.0.36': {}
 
   '@vscode/test-web@0.0.69':
     dependencies:
