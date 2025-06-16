@@ -1,5 +1,13 @@
 # Change Log
 
+## [5.5.3]
+ - Fix BGR888 VTFs not displaying in VTF editor
+ - Fix console spam
+ - [VGUI] Fix workspace references not including `scripts` folder
+ - [Popfile] Add Wave Status Preview
+ - [Popfile] Fix useless-squad false positive diagnostic inside RandomChoice
+ - [Popfile] Fix "Fix all issues of type" code action not working for "ClassIcon ... does not set VTF flag" diagnostics
+
 ## [5.5.2]
  - Fix crash when Steam or Team Fortress 2 are not installed
 
