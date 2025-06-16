@@ -197,8 +197,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 				firstValueFrom(this.languageTokensFiles$),
 			])
 
-			const entries = await fileSystem.readDirectory("resource/ui", { recursive: true, pattern: "**/*.res" })
-			for (const [name, type] of entries) {
+			const entries = async function*() {
+				yield* await fileSystem.readDirectory("resource/ui", { recursive: true, pattern: "**/*.res" })
+				yield* await fileSystem.readDirectory("scripts", { recursive: true, pattern: "**/*.res" })
+			}
+
+			for await (const [name, type] of entries()) {
 				if (type == 2 || clientSchemeFiles.has(name) || sourceSchemeFiles.has(name) || languageTokenFiles.has(name)) {
 					continue
 				}
