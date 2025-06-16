@@ -10,7 +10,7 @@ import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, finalize, firstValueFrom, Observable, of, shareReplay, Subject, Subscription, switchMap } from "rxjs"
+import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, Subscription, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { FileType } from "vscode"
@@ -205,7 +205,7 @@ export abstract class LanguageServer<
 					switchMap(({ updateDiagnosticsEvent }) => {
 						return updateDiagnosticsEvent == "type"
 							? document.diagnostics$
-							: new Subject<DiagnosticCodeAction[]>()
+							: EMPTY
 					})
 				).subscribe((diagnostics) => {
 					this.sendDiagnostics(document, diagnostics)
@@ -797,7 +797,7 @@ export abstract class LanguageServer<
 						kind: CodeActionKind.QuickFix,
 						diagnostics: diagnostics,
 						...(Object.keys(changes).length && {
-						edit: {
+							edit: {
 								changes
 							}
 						}),
