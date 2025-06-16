@@ -137,7 +137,7 @@ importers:
         version: link:../../../../packages/client/src
       common:
         specifier: workspace:^
-        version: link:../../../../packages/common/src
+        version: link:../../../../packages/common
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
@@ -167,7 +167,7 @@ importers:
         version: link:../../../../packages/client/src
       common:
         specifier: workspace:^
-        version: link:../../../../packages/common/src
+        version: link:../../../../packages/common
       tsconfig:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
@@ -244,7 +244,7 @@ importers:
         version: link:../bsp
       common:
         specifier: workspace:^
-        version: link:../common/src
+        version: link:../common
       minimatch:
         specifier: ^10.0.1
         version: 10.0.1
@@ -256,7 +256,7 @@ importers:
         version: link:../vdf
       vdf-documentsymbols:
         specifier: workspace:^
-        version: link:../vdf-documentsymbols/src
+        version: link:../vdf-documentsymbols
       vscode-languageclient:
         specifier: ^9.0.1
         version: 9.0.1
@@ -278,11 +278,10 @@ importers:
         version: link:../vdf
       vdf-documentsymbols:
         specifier: workspace:^
-        version: link:../vdf-documentsymbols/src
+        version: link:../vdf-documentsymbols
       vscode-uri:
         specifier: ^3.0.8
         version: 3.0.8
-    publishDirectory: src
 
   packages/hudanimations-documentsymbols:
     devDependencies:
@@ -318,7 +317,7 @@ importers:
         version: link:../client/src
       common:
         specifier: workspace:^
-        version: link:../common/src
+        version: link:../common
       hudanimations-documentsymbols:
         specifier: workspace:^
         version: link:../hudanimations-documentsymbols
@@ -336,7 +335,7 @@ importers:
         version: link:../vdf
       vdf-documentsymbols:
         specifier: workspace:^
-        version: link:../vdf-documentsymbols/src
+        version: link:../vdf-documentsymbols
       vdf-format:
         specifier: workspace:^
         version: link:../vdf-format
@@ -377,7 +376,6 @@ importers:
       vscode-languageserver:
         specifier: ^9.0.1
         version: 9.0.1
-    publishDirectory: src
 
   packages/vdf-format:
     devDependencies:
