@@ -1,5 +1,6 @@
 import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
+import { executeCommands } from "client/commands/executeCommands"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
 import { JSONToVDF } from "client/commands/JSONToVDF"
 import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Folder"
@@ -61,6 +62,7 @@ export function activate(context: ExtensionContext): void {
 	// https://code.visualstudio.com/api/references/vscode-api
 
 	// Commands
+	context.subscriptions.push(commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
 	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
 	context.subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))

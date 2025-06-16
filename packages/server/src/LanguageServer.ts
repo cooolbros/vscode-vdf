@@ -773,19 +773,41 @@ export abstract class LanguageServer<
 				.map((code) => diagnostics.values().filter((diagnostic) => diagnostic.code == code).toArray())
 				.filter((diagnostics) => diagnostics.length > 1)
 				.map((diagnostics) => {
+					const codeActions = diagnostics
+						.values()
+						.map((diagnostic) => diagnostic.data!.fix(utils))
+						.filter((codeAction) => codeAction != null)
+
+					const changes: Record<string, TextEdit[]> = {}
+					const commands: { command: string, rest?: any[] }[] = []
+
+					for (const codeAction of codeActions) {
+						if (codeAction.edit?.changes) {
+							for (const uri in codeAction.edit.changes) {
+								(changes[uri] ??= []).push(...codeAction.edit.changes[uri])
+							}
+						}
+						if (codeAction.command) {
+							commands.push({ command: codeAction.command.command, rest: codeAction.command.arguments })
+						}
+					}
+
 					return {
 						title: `Fix all issues of kind '${diagnostics[0].message}'`,
 						kind: CodeActionKind.QuickFix,
 						diagnostics: diagnostics,
+						...(Object.keys(changes).length && {
 						edit: {
-							changes: {
-								[uri]: diagnostics
-									.values()
-									.flatMap((diagnostic) => diagnostic.data!.fix(utils)?.edit?.changes?.[uri] ?? [])
-									.filter(edit => edit != undefined)
-									.toArray()
+								changes
 							}
-						}
+						}),
+						...(commands.length && {
+							command: {
+								command: "vscode-vdf.executeCommands",
+								title: "",
+								arguments: [commands]
+							}
+						})
 					} satisfies CodeAction
 				})
 				.toArray()
