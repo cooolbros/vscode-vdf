@@ -10,7 +10,7 @@ import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "commo
 import { posix } from "path"
 import { concatMap, filter, firstValueFrom, map, Observable, of, share, startWith, switchMap, type ObservedValueOf } from "rxjs"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
-import vscode, { commands, DocumentSymbol, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor } from "vscode"
+import vscode, { commands, DocumentSymbol, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { Popfile } from "../Popfile"
@@ -26,7 +26,7 @@ export interface HUDEnemyData {
 	alwayscrit: boolean
 }
 
-async function getWaveStatus(name: string, popfile: Popfile) {
+async function getWaveStatus(popfile: Popfile) {
 	const starting = parseInt(popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "StartingCurrency".toLowerCase())?.detail ?? "") || 0
 	const templates = await popfile.templates()
 
@@ -253,13 +253,30 @@ async function getWaveStatus(name: string, popfile: Popfile) {
 		})
 
 	return {
-		name,
 		starting,
 		waves,
 	}
 }
 
 export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>) {
+
+	const webviewPanels = new Map<string, WebviewPanel>()
+
+	function send(command: string) {
+		return (args: any) => {
+			const webviewPanel = webviewPanels.get(args.id)
+			if (webviewPanel) {
+				webviewPanel.reveal()
+				webviewPanel.webview.postMessage({ type: "context_menu", command: command })
+			}
+		}
+	}
+
+	context.subscriptions.push(
+		commands.registerCommand("vscode-vdf.waveStatusPreviewSaveImageAs", send("vscode-vdf.waveStatusPreviewSaveImageAs")),
+		commands.registerCommand("vscode-vdf.waveStatusPreviewCopyImage", send("vscode-vdf.waveStatusPreviewCopyImage")),
+	)
+
 	return async ({ document }: TextEditor) => {
 		if (document.languageId != "popfile") {
 			window.showWarningMessage(document.languageId)
@@ -268,6 +285,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 
 		const fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
 
+		const id = document.uri.toString()
 		const name = posix.parse(new Uri(document.uri).basename()).name
 
 		const t = initTRPC.create({
@@ -289,6 +307,11 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 		const stack = new AsyncDisposableStack()
 		webviewPanel.onDidDispose(() => stack.disposeAsync())
 
+		webviewPanels.set(id, webviewPanel)
+		stack.defer(() => {
+			webviewPanels.delete(id)
+		})
+
 		stack.use(fileSystem)
 
 		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
@@ -305,7 +328,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			concatMap(async () => {
 				try {
 					const popfile = new Popfile(new Uri(document.uri), document.getText(), fileSystem)
-					return await getWaveStatus(name, popfile)
+					return await getWaveStatus(popfile)
 				}
 				catch (error) {
 					return null
@@ -510,7 +533,9 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 
 		const dist = vscode.Uri.joinPath(context.extensionUri, "apps/wavestatus-preview/dist")
 		const html = new TextDecoder("utf-8").decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
-		webviewPanel.webview.html = html.replaceAll("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
+		webviewPanel.webview.html = html
+			.replaceAll("%ID%", id)
+			.replaceAll("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
 
 		return router
 	}

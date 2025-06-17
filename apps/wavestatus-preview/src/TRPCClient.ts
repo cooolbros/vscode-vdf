@@ -2,7 +2,7 @@ import { createTRPCClient } from "@trpc/client"
 import type { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
 import { devalueTransformer } from "common/devalueTransformer"
 import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
-import { filter, fromEvent, map, partition } from "rxjs"
+import { filter, fromEvent, Subject } from "rxjs"
 import { z } from "zod"
 
 type AppRouter = NonNullable<Awaited<ReturnType<ReturnType<typeof showWaveStatusPreviewToSide>>>>
@@ -23,12 +23,27 @@ const messageSchema = z.discriminatedUnion("type", [
 		method: z.string(),
 		param: z.any(),
 	}),
+	z.object({
+		type: z.literal("context_menu"),
+		command: z.enum(["vscode-vdf.waveStatusPreviewSaveImageAs", "vscode-vdf.waveStatusPreviewCopyImage"]),
+	})
 ])
 
-const [onResponse$, onNotification$] = partition(
-	fromEvent<MessageEvent>(window, "message").pipe(map((event) => messageSchema.parse(event.data))),
-	(message) => message.type == "response",
-)
+const onResponse$ = new Subject<z.infer<typeof messageSchema.options[0]>>()
+const onNotification$ = new Subject<z.infer<typeof messageSchema.options[1]>>()
+export const contextMenu$ = new Subject<z.infer<typeof messageSchema.options[2]>>()
+
+const subjects = {
+	response: onResponse$,
+	notification: onNotification$,
+	context_menu: contextMenu$
+}
+
+fromEvent<MessageEvent>(window, "message").subscribe((event) => {
+	const message = messageSchema.parse(event.data)
+	// @ts-ignore
+	subjects[message.type].next(message)
+})
 
 onResponse$.subscribe((response) => {
 	requests.get(response.id)?.resolve(response.response)

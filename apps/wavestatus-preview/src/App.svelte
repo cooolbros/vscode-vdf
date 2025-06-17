@@ -12,7 +12,7 @@
 	import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 	import { combineLatest, concatMap, map, Observable, of, share, shareReplay, switchMap } from "rxjs"
 	import { toStore } from "svelte/store"
-	import { trpc } from "./TRPCClient"
+	import { contextMenu$, trpc } from "./TRPCClient"
 
 	const SCALE = 6
 
@@ -154,7 +154,7 @@
 			context.imageSmoothingEnabled = true
 			context.textRendering = "optimizeLegibility"
 
-			const { name, starting, waves } = waveStatus
+			const { starting, waves } = waveStatus
 
 			const widths = waves.map((wave) => {
 				const count = Math.min(
@@ -530,38 +530,49 @@
 		)
 	}
 
-	async function click() {
-		const uriPromise = trpc.showSaveDialog.query()
+	contextMenu$.subscribe(async (message) => {
+		switch (message.command) {
+			case "vscode-vdf.waveStatusPreviewSaveImageAs":
+				await saveAs()
+				break
+			case "vscode-vdf.waveStatusPreviewCopyImage":
+				await navigator.clipboard.write([new ClipboardItem({ "image/png": await save() })])
+				break
+		}
+	})
 
-		const out = document.createElement("canvas")
+	async function saveAs() {
+		const uriPromise = trpc.showSaveDialog.query()
+		const [uri, buf] = await Promise.all([
+			uriPromise,
+			save().then(async (blob) => new Uint8Array(await blob.arrayBuffer())),
+		])
+		if (uri) {
+			// @ts-ignore
+			await trpc.save.mutate({ uri: uri, buf: buf })
+		}
+	}
+
+	async function save() {
+		const out = new OffscreenCanvas(canvas.width / 2, canvas.height / 2)
 		const ctx = out.getContext("2d")!
 		ctx.imageSmoothingEnabled = true
 		ctx.textRendering = "optimizeLegibility"
-
-		out.width = canvas.width / 2
-		out.height = canvas.height / 2
 		ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, out.width, out.height)
-
-		out.toBlob(
-			async (blob) => {
-				const [uri, buf] = await Promise.all([uriPromise, blob!.arrayBuffer()])
-				if (uri) {
-					await trpc.save.mutate({ uri: uri, buf: new Uint8Array(buf) })
-				}
-			},
-			"image/png",
-			1,
-		)
+		return await out.convertToBlob({ type: "image/png", quality: 1 })
 	}
 </script>
 
-<main style:display={$data$ != undefined ? "grid" : "none"}>
-	<canvas bind:this={canvas}></canvas>
+<main
+	data-vscode-context={JSON.stringify({ id: document.head.querySelector<HTMLMetaElement>("meta[name=id]")!.content })}
+	style:display={$data$ != undefined ? "grid" : "none"}
+>
+	<canvas data-vscode-context={JSON.stringify({ webviewSection: "canvas" })} bind:this={canvas}></canvas>
 	<div>
 		<button class="settings" onclick={() => trpc.openSettings.query()}>
 			<i class="codicon codicon-settings-gear"></i>
 		</button>
-		<button class="floating-click-widget" onclick={click}>Save</button>
+		<button class="floating-click-widget" onclick={saveAs}>Save</button>
 	</div>
 </main>
 

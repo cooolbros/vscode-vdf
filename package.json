@@ -97,6 +97,18 @@
                 "category": "VDF",
                 "title": "Convert VDF to JSON",
                 "command": "vscode-vdf.VDFToJSON"
+            },
+            {
+                "category": "Popfile",
+                "title": "Copy image",
+                "command": "vscode-vdf.waveStatusPreviewCopyImage",
+                "when": "webviewId == 'vscode-vdf.waveStatusPreview'"
+            },
+            {
+                "category": "Popfile",
+                "title": "Save image as...",
+                "command": "vscode-vdf.waveStatusPreviewSaveImageAs",
+                "when": "webviewId == 'vscode-vdf.waveStatusPreview'"
             }
         ],
         "configurationDefaults": {
@@ -443,6 +455,18 @@
                     "command": "vscode-vdf.extractVPKFileToWorkspace",
                     "group": "navigation",
                     "when": "resourceScheme == vpk && workspaceFolderCount > 0"
+                }
+            ],
+            "webview/context": [
+                {
+                    "command": "vscode-vdf.waveStatusPreviewSaveImageAs",
+                    "group": "navigation@1",
+                    "when": "webviewId == 'vscode-vdf.waveStatusPreview' && webviewSection == 'canvas'"
+                },
+                {
+                    "command": "vscode-vdf.waveStatusPreviewCopyImage",
+                    "group": "navigation@2",
+                    "when": "webviewId == 'vscode-vdf.waveStatusPreview' && webviewSection == 'canvas'"
                 }
             ]
         },
