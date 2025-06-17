@@ -103,6 +103,15 @@ async function getWaveStatus(popfile: Popfile) {
 			let actual = 0
 
 			function addSpawner(spawner: VDFDocumentSymbol, totalCount: number, support: boolean, allowMiniboss: boolean, mission: boolean) {
+				const populationSpawnerKeys = [
+					"Mob",
+					"RandomChoice",
+					"SentryGun",
+					"Squad",
+					"Tank",
+					"TFBot",
+				].map((key) => key.toLowerCase())
+
 				switch (spawner.key.toLowerCase()) {
 					case "TFBot".toLowerCase(): {
 						const icon = getClassIcon(spawner.children)?.toLowerCase() ?? null
@@ -116,14 +125,10 @@ async function getWaveStatus(popfile: Popfile) {
 							return
 						}
 
-						for (const documentSymbol of spawner.children) {
-							if (documentSymbol.key.toLowerCase() == "FormationSize".toLowerCase() || documentSymbol.key.toLowerCase() == "ShouldPreserveSquad".toLowerCase()) {
-								spawner.children.splice(spawner.children.indexOf(documentSymbol), 1)
-							}
-						}
+						const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
 
 						for (const i of Array.from({ length: totalCount }).keys()) {
-							const member = spawner.children[i % spawner.children.length]
+							const member = children[i % children.length]
 							switch (member.key.toLowerCase()) {
 								case "TFBot".toLowerCase(): {
 									const icon = getClassIcon(member.children)
@@ -144,8 +149,11 @@ async function getWaveStatus(popfile: Popfile) {
 						if (!spawner.children) {
 							return
 						}
+
+						const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
+
 						for (const i of Array.from({ length: totalCount }).keys()) {
-							const member = spawner.children[Math.floor(Math.random() * spawner.children.length)]
+							const member = children[Math.floor(Math.random() * children.length)]
 							switch (member.key.toLowerCase()) {
 								case "TFBot".toLowerCase(): {
 									const icon = getClassIcon(member.children)
