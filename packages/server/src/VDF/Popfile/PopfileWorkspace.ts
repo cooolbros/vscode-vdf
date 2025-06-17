@@ -286,7 +286,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 					return uri != null
 						? this.getClassIconFlags(uri)
 						: of(null)
-				})
+				}),
+				shareReplay(1)
 			)
 
 			this.classIcons.set(icon, flags$)
