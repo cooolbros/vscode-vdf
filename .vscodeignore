@@ -22,6 +22,7 @@ apps/**/src/**
 apps/API
 apps/docs
 apps/vtf-editor/index.html
+apps/wavestatus-preview/index.html
 Cargo.lock
 Cargo.toml
 packages/**
