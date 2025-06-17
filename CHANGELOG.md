@@ -1,5 +1,10 @@
 # Change Log
 
+## [5.5.4]
+ - [Popfile] Add context menu items "Save image as..." and "Copy image" to Wave Status Preview
+ - [Popfile] Fix unknown keys causing incorrect spawn counts in Wave Status Preview
+ - [Popfile] Fix performance issues caused by "ClassIcon ... does not set VTF flag" diagnostics
+
 ## [5.5.3]
  - Fix BGR888 VTFs not displaying in VTF editor
  - Fix console spam
