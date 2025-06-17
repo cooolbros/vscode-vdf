@@ -410,12 +410,12 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 						?.[0]
 
 					if (!map) {
-						return observableToAsyncIterable(of(null), signal!)
+						return observableToAsyncIterable<null>(of(null), signal!)
 					}
 
 					const uri = await firstValueFrom(fileSystem.resolveFile(`maps/${map}`))
 					if (!uri) {
-						return observableToAsyncIterable(of(null), signal!)
+						return observableToAsyncIterable<null>(of(null), signal!)
 					}
 
 					const buf = await workspace.fs.readFile(uri)
