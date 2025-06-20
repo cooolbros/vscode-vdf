@@ -40,6 +40,14 @@ async function getWaveStatus(popfile: Popfile) {
 			return true
 		}
 
+		for (const eventChangeAttributes of documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "EventChangeAttributes".toLowerCase() && documentSymbol.children)) {
+			const defaultEvent = eventChangeAttributes.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Default".toLowerCase())?.children
+			const value = attribute(defaultEvent, key)
+			if (value) {
+				return true
+			}
+		}
+
 		const templateName = documentSymbols.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
 		if (templateName) {
 			const value = attribute(templates.get(templateName)?.documentSymbols, key)
