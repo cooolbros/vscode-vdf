@@ -10,6 +10,7 @@ import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPrevi
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { onDidChangeActiveTextEditor } from "client/decorations"
 import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
+import { createMiddleware } from "client/middleware"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
 import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
@@ -84,6 +85,8 @@ export function activate(context: ExtensionContext): void {
 		}
 	}
 
+	const middleware = createMiddleware(context)
+
 	const startServer = async (languageId: VSCodeVDFLanguageID): Promise<void> => {
 
 		if (languageClients[languageId]) {
@@ -116,7 +119,8 @@ export function activate(context: ExtensionContext): void {
 				{
 					documentSelector: [
 						languageId
-					]
+					],
+					middleware: middleware[languageId],
 				} satisfies LanguageClientOptions,
 				new Worker(serverModule)
 			)

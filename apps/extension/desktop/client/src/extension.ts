@@ -14,6 +14,7 @@ import { setVTFFlags } from "client/commands/setVTFFlags"
 import { showReferences } from "client/commands/showReferences"
 import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
 import { onDidChangeActiveTextEditor } from "client/decorations"
+import { createMiddleware } from "client/middleware"
 import { Uri } from "common/Uri"
 import { homedir } from "os"
 import { join, posix, win32 } from "path"
@@ -256,6 +257,8 @@ export function activate(context: ExtensionContext): void {
 		}
 	}
 
+	const middleware = createMiddleware(context)
+
 	const startServer = async (languageId: VSCodeVDFLanguageID): Promise<void> => {
 
 		if (languageClients[languageId]) {
@@ -328,6 +331,7 @@ export function activate(context: ExtensionContext): void {
 					documentSelector: [
 						languageId
 					],
+					middleware: middleware[languageId],
 					...(process.env.NODE_ENV != "production" && {
 						connectionOptions: {
 							maxRestartCount: 1
