@@ -5,7 +5,7 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { concat, distinctUntilChanged, from, map, Observable, switchAll } from "rxjs"
-import { commands, languages, window, workspace, type ExtensionContext } from "vscode"
+import vscode, { commands, languages, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
@@ -253,10 +253,10 @@ export function TRPCClientRouter(
 					.query(async ({ input }) => {
 						const configuration = workspace.getConfiguration("vscode-vdf")
 						if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
-							const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install a VScript extension?`, "Yes", "No", "Don't ask again")
+							const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
 							switch (result) {
 								case "Yes":
-									await commands.executeCommand("workbench.extensions.search", "@ext:nut")
+									await commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: "vscode", path: "extension/ocet247.tf2-vscript-support" }))
 									break
 								case "No":
 									break
