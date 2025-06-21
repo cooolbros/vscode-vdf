@@ -110,7 +110,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 				}
 
 				const vscript = documentSymbols.findRecursive((documentSymbol) => {
-					return documentSymbol.key.toLowerCase() == "Action".toLowerCase() && (documentSymbol.detail == "RunScriptCode".toLowerCase() || documentSymbol.detail == "RunScriptFile".toLowerCase())
+					return documentSymbol.key.toLowerCase() == "Action".toLowerCase() && (documentSymbol.detail?.toLowerCase() == "RunScriptCode".toLowerCase() || documentSymbol.detail?.toLowerCase() == "RunScriptFile".toLowerCase())
 				})
 
 				if (vscript) {
