@@ -3,7 +3,7 @@
 ## [5.5.5]
  - [Popfile] Add embedded Squirrel support (autcompletion, hover, signature help) for `RunScriptCode`
  - [Popfile] Fix incorrect attributes when using `EventChangeAttributes` in Wave Status Preview
- - Recommend `ocet247.tf2-vscript-support` for embedded Squirrel
+ - [Popfile] Recommend `ocet247.tf2-vscript-support` for embedded Squirrel
 
 ## [5.5.4]
  - [Popfile] Add context menu items "Save image as..." and "Copy image" to Wave Status Preview
