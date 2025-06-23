@@ -8,7 +8,7 @@ import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { concatMap, filter, firstValueFrom, map, Observable, of, share, startWith, switchMap, type ObservedValueOf } from "rxjs"
+import { catchError, concatMap, filter, firstValueFrom, map, Observable, of, share, startWith, switchMap, type ObservedValueOf } from "rxjs"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import vscode, { commands, DocumentSymbol, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
@@ -387,6 +387,10 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 										height: vtf.header.height,
 										buf: VTFToPNG(vtf, 4096)
 									}
+								}),
+								catchError((err) => {
+									console.dir(err)
+									return of(null)
 								})
 							)
 						})
