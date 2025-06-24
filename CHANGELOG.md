@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.5.6]
+ - Add support for VTF image formats: `RGB888BlueScreen` and `BGR888BlueScreen`
+ - [Popfile] Fix Wave Status Preview not loading when map skybox uses an unsupported VTF image format
+
 ## [5.5.5]
  - [Popfile] Add embedded Squirrel support (autcompletion, hover, signature help) for `RunScriptCode`
  - [Popfile] Fix incorrect attributes when using `EventChangeAttributes` in Wave Status Preview
