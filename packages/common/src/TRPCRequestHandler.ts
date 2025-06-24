@@ -39,8 +39,9 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 
 	opts.onRequest("vscode-vdf/trpc/observable/unsubscribe", (param: unknown) => {
 		const { server, id } = z.object({ server: z.string(), id: z.number() }).parse(param)
-		subscriptions.get(server)?.get(id)?.unsubscribe()
+		const subscription = subscriptions.get(server)?.get(id)
 		subscriptions.get(server)?.delete(id)
+		subscription?.unsubscribe()
 		if (subscriptions.get(server)?.size == 0) {
 			subscriptions.delete(server)
 		}
@@ -96,7 +97,9 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 							opts.sendNotification(server, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "E", error: error } })
 						},
 						complete: () => {
-							opts.sendNotification(server, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "C" } })
+							if (subscriptions.get(server)?.has(op.id)) {
+								opts.sendNotification(server, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "C" } })
+							}
 						},
 					})
 				)

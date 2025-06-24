@@ -41,6 +41,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 				subject.error(TRPCClientError.from(notification.error))
 				break
 			case "C":
+				subjects.delete(id)
 				subject.complete()
 				break
 		}
@@ -77,8 +78,10 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 							sendRequest("vscode-vdf/trpc", op)
 							return subject.pipe(
 								finalize(() => {
+									if (subjects.has(id)) {
+										sendRequest("vscode-vdf/trpc/observable/unsubscribe", { server: opts.name, id: op.id })
+									}
 									subjects.delete(op.id)
-									sendRequest("vscode-vdf/trpc/observable/unsubscribe", { server: opts.name, id: op.id })
 								})
 							).subscribe({
 								next: (value) => observer.next(value),
