@@ -167,8 +167,8 @@ impl VTFImageFormat {
             VTFImageFormat::IA88 => Err(VTFImageFormat::IA88),
             VTFImageFormat::P8 => Err(VTFImageFormat::P8),
             VTFImageFormat::A8 => Ok(width * height),
-            VTFImageFormat::RGB888BlueScreen => Err(VTFImageFormat::RGB888BlueScreen),
-            VTFImageFormat::BGR888BlueScreen => Err(VTFImageFormat::BGR888BlueScreen),
+            VTFImageFormat::RGB888BlueScreen => Ok(width * height * 3),
+            VTFImageFormat::BGR888BlueScreen => Ok(width * height * 3),
             VTFImageFormat::ARGB8888 => Ok(width * height * 4),
             VTFImageFormat::BGRA8888 => Ok(width * height * 4),
             VTFImageFormat::DXT1 => Ok(texpresso::Format::Bc1.compressed_size(width, height)),
@@ -402,6 +402,30 @@ impl VTF {
                     rgba[i + 1] = 0;
                     rgba[i + 2] = 0;
                     rgba[i + 3] = *byte;
+                    i += 4;
+                }
+            }
+            VTFImageFormat::RGB888BlueScreen => {
+                let mut i = 0;
+                for chunk in buf.chunks_exact(3) {
+                    if chunk != [0, 0, 255] {
+                        rgba[i] = chunk[0];
+                        rgba[i + 1] = chunk[1];
+                        rgba[i + 2] = chunk[2];
+                        rgba[i + 3] = 255;
+                    }
+                    i += 4;
+                }
+            }
+            VTFImageFormat::BGR888BlueScreen => {
+                let mut i = 0;
+                for chunk in buf.chunks_exact(3) {
+                    if chunk != [255, 0, 0] {
+                        rgba[i] = chunk[2];
+                        rgba[i + 1] = chunk[1];
+                        rgba[i + 2] = chunk[0];
+                        rgba[i + 3] = 255;
+                    }
                     i += 4;
                 }
             }
