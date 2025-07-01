@@ -113,6 +113,10 @@
                 "kind": 5
             },
             {
+                "label": "TFBot",
+                "kind": 7
+            },
+            {
                 "label": "Where",
                 "kind": 5,
                 "multiple": true
