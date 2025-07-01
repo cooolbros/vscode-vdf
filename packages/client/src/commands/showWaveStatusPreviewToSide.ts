@@ -26,6 +26,12 @@ export interface HUDEnemyData {
 	alwayscrit: boolean
 }
 
+const enum Type {
+	Normal,
+	Support,
+	Mission,
+}
+
 async function getWaveStatus(popfile: Popfile) {
 	const starting = parseInt(popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "StartingCurrency".toLowerCase())?.detail ?? "") || 0
 	const templates = await popfile.templates()
@@ -101,16 +107,14 @@ async function getWaveStatus(popfile: Popfile) {
 			let currency = 0
 
 			const icons = {
-				miniboss: <HUDEnemyData[]>[],
 				normal: <HUDEnemyData[]>[],
 				support: <HUDEnemyData[]>[],
-				count: 0,
 			}
 
 			let expected = 0
 			let actual = 0
 
-			function addSpawner(spawner: VDFDocumentSymbol, totalCount: number, support: boolean, allowMiniboss: boolean, mission: boolean) {
+			function addSpawner({ type, spawner, totalCount }: { type: Type, spawner: VDFDocumentSymbol, totalCount: number }) {
 				const populationSpawnerKeys = [
 					"Mob",
 					"RandomChoice",
@@ -122,10 +126,15 @@ async function getWaveStatus(popfile: Popfile) {
 
 				switch (spawner.key.toLowerCase()) {
 					case "TFBot".toLowerCase(): {
-						const icon = getClassIcon(spawner.children)?.toLowerCase() ?? null
-						const miniboss = attribute(spawner.children, "MiniBoss".toLowerCase())
-						const alwayscrit = attribute(spawner.children, "AlwaysCrit".toLowerCase())
-						addIcon(support ? icons.support : miniboss ? icons.miniboss : icons.normal, icon, miniboss, alwayscrit, totalCount, allowMiniboss, mission)
+						if (totalCount > 0 || type == Type.Support) {
+							addIcon({
+								type,
+								icon: getClassIcon(spawner.children)?.toLowerCase() ?? null,
+								count: totalCount,
+								miniboss: attribute(spawner.children, "MiniBoss".toLowerCase()),
+								alwayscrit: attribute(spawner.children, "AlwaysCrit".toLowerCase()),
+							})
+						}
 						break
 					}
 					case "Squad".toLowerCase(): {
@@ -139,14 +148,23 @@ async function getWaveStatus(popfile: Popfile) {
 							const member = children[i % children.length]
 							switch (member.key.toLowerCase()) {
 								case "TFBot".toLowerCase(): {
-									const icon = getClassIcon(member.children)
-									const miniboss = attribute(member.children, "MiniBoss".toLowerCase())
-									const alwayscrit = attribute(member.children, "AlwaysCrit".toLowerCase())
-									addIcon(support ? icons.support : miniboss ? icons.miniboss : icons.normal, icon, miniboss, alwayscrit, 1, allowMiniboss, mission)
+									addIcon({
+										type: type,
+										icon: getClassIcon(member.children),
+										count: 1,
+										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
+										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
+									})
 									break
 								}
 								case "Tank".toLowerCase(): {
-									addIcon(support ? icons.support : icons.miniboss, getClassIcon(member.children) ?? "Tank".toLowerCase(), true, false, 1, allowMiniboss, mission)
+									addIcon({
+										type: type,
+										icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
+										count: 1,
+										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
+										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
+									})
 									break
 								}
 							}
@@ -164,14 +182,23 @@ async function getWaveStatus(popfile: Popfile) {
 							const member = children[Math.floor(Math.random() * children.length)]
 							switch (member.key.toLowerCase()) {
 								case "TFBot".toLowerCase(): {
-									const icon = getClassIcon(member.children)
-									const miniboss = attribute(member.children, "MiniBoss".toLowerCase())
-									const alwayscrit = attribute(member.children, "AlwaysCrit".toLowerCase())
-									addIcon(support ? icons.support : miniboss ? icons.miniboss : icons.normal, icon, miniboss, alwayscrit, 1, allowMiniboss, mission)
+									addIcon({
+										type: type,
+										icon: getClassIcon(member.children),
+										count: 1,
+										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
+										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
+									})
 									break
 								}
 								case "Tank".toLowerCase(): {
-									addIcon(support ? icons.support : icons.miniboss, getClassIcon(member.children) ?? "Tank".toLowerCase(), true, false, 1, allowMiniboss, mission)
+									addIcon({
+										type: type,
+										icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
+										count: 1,
+										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
+										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
+									})
 									break
 								}
 							}
@@ -179,30 +206,48 @@ async function getWaveStatus(popfile: Popfile) {
 						break
 					}
 					case "Tank".toLowerCase(): {
-						addIcon(icons.miniboss, getClassIcon(spawner.children) ?? "Tank".toLowerCase(), true, false, totalCount, allowMiniboss, mission)
+						addIcon({
+							type: type,
+							icon: getClassIcon(spawner.children) ?? "Tank".toLowerCase(),
+							count: totalCount,
+							miniboss: type != Type.Mission,
+							alwayscrit: false,
+						})
 						break
 					}
 				}
 			}
 
-			function addIcon(arr: HUDEnemyData[], icon: string | null, miniboss: boolean, alwayscrit: boolean, count: number, allowMiniboss: boolean, mission: boolean) {
-				const path = icon && `materials/hud/leaderboard_class_${icon}.vmt`
+			function addIcon({ type, icon, count, miniboss, alwayscrit }: {
+				type: Type,
+				icon: string | null,
+				count: number,
+				miniboss: boolean,
+				alwayscrit: boolean,
+			}) {
+				const arr = {
+					[Type.Normal]: icons.normal,
+					[Type.Support]: icons.support,
+					[Type.Mission]: icons.support,
+				}[type]
+
+				const path = icon && `materials/hud/leaderboard_class_${icon.toLowerCase()}.vmt`
 				const existing = arr.find((value) => value.classIconName == path)
 				if (existing) {
 					existing.count += count
-					existing.miniboss ??= miniboss
-					existing.alwayscrit ??= alwayscrit
+					existing.miniboss ||= miniboss
+					existing.alwayscrit ||= alwayscrit
 				}
 				else {
 					arr.push({
 						count: count,
 						classIconName: path,
-						miniboss: allowMiniboss && miniboss,
+						miniboss: type != Type.Mission && miniboss,
 						alwayscrit: alwayscrit,
 					})
 				}
 
-				if (!mission) {
+				if (type == Type.Normal) {
 					actual += count
 				}
 			}
@@ -210,7 +255,6 @@ async function getWaveStatus(popfile: Popfile) {
 			const waveSpawns = documentSymbol.children!.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children)
 
 			for (const waveSpawn of waveSpawns) {
-				icons.count++
 
 				const totalCurrency = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCurrency".toLowerCase())?.detail ?? "") || 0
 				if (totalCurrency > 0) {
@@ -219,17 +263,25 @@ async function getWaveStatus(popfile: Popfile) {
 
 				const support = waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail != undefined
 
-				const totalCount = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCount".toLowerCase())?.detail ?? "") || 0
-				if (totalCount > 0) {
-					expected += totalCount
-				}
-				else {
-					continue
+				// @ts-ignore
+				const totalCount = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCount".toLowerCase())?.detail) || 0
+
+				if (!support) {
+					if (totalCount > 0) {
+						expected += totalCount
+					}
+					else {
+						continue
+					}
 				}
 
 				const spawner = waveSpawn.children!.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
 				if (spawner) {
-					addSpawner(spawner, totalCount, support, true, false)
+					addSpawner({
+						type: support ? Type.Support : Type.Normal,
+						spawner: spawner,
+						totalCount: totalCount,
+					})
 				}
 			}
 
@@ -257,14 +309,26 @@ async function getWaveStatus(popfile: Popfile) {
 
 				const spawner = mission.children!.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
 				if (spawner) {
-					addSpawner(spawner, 1, true, true, true)
+					addSpawner({
+						type: Type.Mission,
+						spawner: spawner,
+						totalCount: 1
+					})
 				}
 			}
 
+			const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
+
 			return {
 				currency,
-				percentage: actual / expected,
-				icons,
+				percentage: expected != 0
+					? actual / expected
+					: 1,
+				icons: {
+					miniboss: miniboss,
+					normal: normal,
+					support: icons.support,
+				},
 			}
 		})
 
