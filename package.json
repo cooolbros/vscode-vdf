@@ -479,7 +479,7 @@
     },
     "scripts": {
         "vscode:prepublish": "pnpm build",
-        "dev": "turbo dev",
+        "dev": "turbo dev --concurrency=12",
         "dev:desktop": "turbo dev --filter=desktop-*",
         "dev:browser": "turbo dev --filter=browser-*",
         "dev:docs": "turbo dev --filter=docs",
