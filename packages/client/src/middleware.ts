@@ -6,7 +6,7 @@ function createEmbeddedLanguageMiddleware(
 	context: ExtensionContext,
 	languageId: string,
 	extension: `.${string}`,
-	getVirtualContent: (document: TextDocument, documentSymbols: DocumentSymbol[], position: Position) => string | null
+	getVirtualContent: (document: TextDocument, documentSymbols: DocumentSymbol[] | undefined, position: Position) => string | null
 ): Middleware {
 	const documentContents = new Map<string, string>()
 	const eventEmitter = new EventEmitter<Uri>()
@@ -86,6 +86,10 @@ function createEmbeddedLanguageMiddleware(
 export function createMiddleware(context: ExtensionContext): Partial<Record<VSCodeVDFLanguageID, Middleware>> {
 	return {
 		popfile: createEmbeddedLanguageMiddleware(context, "squirrel", ".nut", (document, documentSymbols, position) => {
+			if (documentSymbols == undefined) {
+				return null
+			}
+
 			function walk(documentSymbols: DocumentSymbol[]): DocumentSymbol | null {
 				for (const documentSymbol of documentSymbols) {
 					if (documentSymbol.range.contains(position)) {
