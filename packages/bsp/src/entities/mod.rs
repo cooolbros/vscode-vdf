@@ -1,11 +1,9 @@
-use std::{collections::HashMap, error::Error, fmt::Display};
+use std::collections::HashMap;
 
 use serde::Serialize;
+use thiserror::Error;
 use tokeniser::{Token, Tokeniser};
 use tsify::Tsify;
-use wasm_bindgen::{JsError, JsValue};
-
-use crate::bsp::BSPError;
 
 mod tokeniser;
 
@@ -13,8 +11,12 @@ mod tokeniser;
 #[tsify(into_wasm_abi)]
 pub struct Entities(pub Vec<HashMap<String, String>>);
 
+#[derive(Debug, Error)]
+#[error("{:#?}", self)]
+pub struct SyntaxError;
+
 impl Entities {
-    pub fn new(str: String) -> Result<Self, ()> {
+    pub fn new(str: String) -> Result<Self, SyntaxError> {
         let mut tokens = Tokeniser { chars: str.chars() };
         let mut entities = vec![];
 
@@ -23,7 +25,7 @@ impl Entities {
 
             match tokens.next() {
                 Some(Token::OpeningBrace) => loop {
-                    match tokens.next().ok_or(())? {
+                    match tokens.next().ok_or(SyntaxError)? {
                         Token::String(key) => {
                             let value = tokens
                                 .next()
@@ -31,17 +33,17 @@ impl Entities {
                                     Token::String(value) => Some(value),
                                     _ => None,
                                 })
-                                .ok_or(())?;
+                                .ok_or(SyntaxError)?;
 
                             entity.insert(key, value);
                         }
                         Token::ClosingBrace => break,
-                        _ => Err(())?,
+                        _ => Err(SyntaxError)?,
                     };
                 },
                 Some(Token::EOF) => break,
                 None => break,
-                _ => Err(())?,
+                _ => Err(SyntaxError)?,
             };
 
             if !entity.is_empty() {
@@ -50,37 +52,5 @@ impl Entities {
         }
 
         Ok(Entities(entities))
-    }
-}
-
-#[derive(Debug)]
-pub enum EntitiesError {
-    BSPError(BSPError),
-    SyntaxError,
-}
-
-impl Error for EntitiesError {}
-
-impl Display for EntitiesError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<BSPError> for EntitiesError {
-    fn from(value: BSPError) -> Self {
-        EntitiesError::BSPError(value)
-    }
-}
-
-impl From<()> for EntitiesError {
-    fn from(_value: ()) -> Self {
-        EntitiesError::SyntaxError
-    }
-}
-
-impl From<EntitiesError> for JsValue {
-    fn from(value: EntitiesError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
     }
 }

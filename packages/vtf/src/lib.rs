@@ -7,6 +7,7 @@ use bincode::{
     error::{AllowedEnumVariants, DecodeError},
     impl_borrow_decode, Decode,
 };
+use thiserror::Error;
 use wasm_bindgen::{prelude::wasm_bindgen, JsError, JsValue};
 
 #[wasm_bindgen]
@@ -30,7 +31,7 @@ pub struct VTF {
     pub resources: Option<Vec<VTFResourceEntryInfo>>,
 
     #[wasm_bindgen(skip)]
-    pub mipmaps: Result<Vec<VTFMipMap>, VTFError>,
+    pub mipmaps: Result<Vec<VTFMipMap>, VTFExtractError>,
 }
 
 #[wasm_bindgen]
@@ -209,24 +210,13 @@ pub struct VTFFrame {
     pub bytes: usize,
 }
 
-#[derive(Debug)]
-pub struct VTFDecodeError(DecodeError);
+#[derive(Debug, Error)]
+#[error("{:#?}", self)]
+pub struct VTFError(#[from] DecodeError);
 
-impl Display for VTFDecodeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", self)
-    }
-}
-
-impl From<DecodeError> for VTFDecodeError {
-    fn from(value: DecodeError) -> Self {
-        VTFDecodeError(value)
-    }
-}
-
-impl From<VTFDecodeError> for JsValue {
-    fn from(value: VTFDecodeError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value.0)))
+impl From<VTFError> for JsValue {
+    fn from(value: VTFError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", value)))
     }
 }
 
@@ -237,28 +227,29 @@ pub struct VTFData {
     pub rgba: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
-pub enum VTFError {
+#[derive(Debug, Error, Clone)]
+pub enum VTFExtractError {
+    #[error("{:#?}", self)]
     FormatError(VTFImageFormat),
-    UnexpectedEnd { additional: usize },
+
+    #[error("{:#?}", self)]
     UnexpectedMipMap { mipmap_count: u8, found: usize },
+
+    #[error("{:#?}", self)]
     UnexpectedFrame { frame_count: u16, found: usize },
+
+    #[error("{:#?}", self)]
+    UnexpectedEnd { additional: usize },
 }
 
-impl From<VTFImageFormat> for VTFError {
+impl From<VTFImageFormat> for VTFExtractError {
     fn from(value: VTFImageFormat) -> Self {
-        VTFError::FormatError(value)
+        VTFExtractError::FormatError(value)
     }
 }
 
-impl From<usize> for VTFError {
-    fn from(value: usize) -> Self {
-        VTFError::UnexpectedEnd { additional: value }
-    }
-}
-
-impl From<VTFError> for JsValue {
-    fn from(value: VTFError) -> Self {
+impl From<VTFExtractError> for JsValue {
+    fn from(value: VTFExtractError) -> Self {
         JsValue::from(JsError::new(&format!("{:?}", value)))
     }
 }
@@ -266,7 +257,7 @@ impl From<VTFError> for JsValue {
 #[wasm_bindgen]
 impl VTF {
     #[wasm_bindgen(constructor)]
-    pub fn new(buf: Vec<u8>) -> Result<VTF, VTFDecodeError> {
+    pub fn new(buf: Vec<u8>) -> Result<VTF, VTFError> {
         let mut reader = BufReader::new(Cursor::new(&buf));
         let config = bincode::config::standard().with_fixed_int_encoding();
 
@@ -307,7 +298,7 @@ impl VTF {
 
         let mipmaps = (0..header.mipmap_count)
             .rev()
-            .map(|i| -> Result<VTFMipMap, VTFError> {
+            .map(|i| -> Result<VTFMipMap, VTFExtractError> {
                 let width = (header.width as usize >> i).max(1);
                 let height = (header.height as usize >> i).max(1);
 
@@ -316,10 +307,10 @@ impl VTF {
                 let frames = (0..header.frames)
                     .map(|_| {
                         let offset = reader.stream_position().unwrap() as usize;
-                        reader.seek_relative(bytes as i64).map_err(|_| bytes)?;
+                        reader.seek_relative(bytes as i64).map_err(|_| VTFExtractError::UnexpectedEnd { additional: bytes })?;
                         Ok(VTFFrame { offset, bytes })
                     })
-                    .collect::<Result<Vec<VTFFrame>, VTFError>>()?;
+                    .collect::<Result<Vec<VTFFrame>, VTFExtractError>>()?;
 
                 Ok(VTFMipMap {
                     width: width as u16,
@@ -327,27 +318,30 @@ impl VTF {
                     frames,
                 })
             })
-            .collect::<Result<Vec<VTFMipMap>, VTFError>>();
+            .collect::<Result<Vec<VTFMipMap>, VTFExtractError>>();
 
         Ok(VTF { buf, header, resources, mipmaps })
     }
 }
 
 impl VTF {
-    pub fn extract(&self, mipmap_index: usize, frame_index: usize) -> Result<VTFData, VTFError> {
+    pub fn extract(&self, mipmap_index: usize, frame_index: usize) -> Result<VTFData, VTFExtractError> {
         let mipmaps = self.mipmaps.as_ref().map_err(|err| err.clone())?;
 
-        let mipmap = mipmaps.get(mipmap_index).ok_or(VTFError::UnexpectedMipMap {
+        let mipmap = mipmaps.get(mipmap_index).ok_or(VTFExtractError::UnexpectedMipMap {
             mipmap_count: self.header.mipmap_count,
             found: mipmap_index,
         })?;
 
-        let frame = mipmap.frames.get(frame_index).ok_or(VTFError::UnexpectedFrame {
+        let frame = mipmap.frames.get(frame_index).ok_or(VTFExtractError::UnexpectedFrame {
             frame_count: self.header.frames,
             found: frame_index,
         })?;
 
-        let buf = self.buf.get(frame.offset..(frame.offset + frame.bytes)).ok_or(frame.bytes)?;
+        let buf = self
+            .buf
+            .get(frame.offset..(frame.offset + frame.bytes))
+            .ok_or(VTFExtractError::UnexpectedEnd { additional: frame.bytes })?;
 
         let mut rgba = vec![0; mipmap.width as usize * mipmap.height as usize * 4];
 

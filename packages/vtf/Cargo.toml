@@ -9,4 +9,5 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 bincode = { version = "2.0.0-rc.3", features = ["derive", "serde"] }
 texpresso = "2.0.1"
+thiserror = { workspace = true }
 wasm-bindgen = { workspace = true }

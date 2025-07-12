@@ -1,5 +1,4 @@
 use std::{
-    error::Error,
     fmt::Display,
     io::{BufReader, Cursor},
     vec,
@@ -10,9 +9,10 @@ use bincode::{
     error::{DecodeError, EncodeError},
     impl_borrow_decode,
 };
+use thiserror::Error;
 use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
 
-use crate::{Entities, entities::EntitiesError};
+use crate::{Entities, entities::SyntaxError};
 
 #[wasm_bindgen]
 #[derive(Debug, Decode)]
@@ -100,41 +100,37 @@ pub struct LZMAHeader {
     pub actual_size: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("{:#?}", self)]
 pub enum BSPError {
-    DecodeError(DecodeError),
-    EncodeError(EncodeError),
-    LZMA(lzma_rs::error::Error),
-}
+    #[error(transparent)]
+    DecodeError(#[from] DecodeError),
 
-impl Error for BSPError {}
+    #[error(transparent)]
+    EncodeError(#[from] EncodeError),
 
-impl Display for BSPError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", self)
-    }
-}
-
-impl From<DecodeError> for BSPError {
-    fn from(value: DecodeError) -> Self {
-        BSPError::DecodeError(value)
-    }
-}
-
-impl From<EncodeError> for BSPError {
-    fn from(value: EncodeError) -> Self {
-        BSPError::EncodeError(value)
-    }
-}
-
-impl From<lzma_rs::error::Error> for BSPError {
-    fn from(value: lzma_rs::error::Error) -> Self {
-        BSPError::LZMA(value)
-    }
+    #[error(transparent)]
+    LZMA(#[from] lzma_rs::error::Error),
 }
 
 impl From<BSPError> for JsValue {
     fn from(value: BSPError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", value)))
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("{:#?}", self)]
+pub enum EntitiesError {
+    #[error(transparent)]
+    BSPError(#[from] BSPError),
+
+    #[error(transparent)]
+    SyntaxError(#[from] SyntaxError),
+}
+
+impl From<EntitiesError> for JsValue {
+    fn from(value: EntitiesError) -> Self {
         JsValue::from(JsError::new(&format!("{:?}", value)))
     }
 }
