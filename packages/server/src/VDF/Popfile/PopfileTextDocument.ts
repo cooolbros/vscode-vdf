@@ -5,7 +5,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { combineLatest, combineLatestWith, from, map, shareReplay, zip, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat } from "vscode-languageserver"
+import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TextDocumentInit } from "../../TextDocumentBase"
@@ -297,7 +297,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					fix: ({ createDocumentWorkspaceEdit }) => {
 						return {
 							title: `Replace Squad with TFBot`,
-							edit: createDocumentWorkspaceEdit(documentSymbol.range, this.document.getText(documentSymbol.children![0]!.range))
+							edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.range, this.document.getText(documentSymbol.children![0]!.range)))
 						}
 					},
 				}

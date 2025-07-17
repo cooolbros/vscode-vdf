@@ -201,7 +201,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						fix: ({ createDocumentWorkspaceEdit }) => {
 							return {
 								title: `Change fieldName to '${parent}'`,
-								edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, parent),
+								edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, parent)),
 							}
 						},
 					}

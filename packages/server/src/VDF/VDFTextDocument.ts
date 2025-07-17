@@ -10,7 +10,7 @@ import { combineLatestWith, defer, distinctUntilChanged, finalize, firstValueFro
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { CodeActionKind, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint } from "vscode-languageserver"
+import { CodeActionKind, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
@@ -399,7 +399,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 											fix: ({ createDocumentWorkspaceEdit }) => {
 												return {
 													title: `Remove duplicate ${documentSymbol.key}`,
-													edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+													edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
 												}
 											}
 										}
@@ -432,7 +432,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										fix: ({ createDocumentWorkspaceEdit }) => {
 											return {
 												title: "Remove empty #base",
-												edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+												edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
 											}
 										},
 									}
@@ -472,7 +472,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 														fix({ createDocumentWorkspaceEdit }) {
 															return {
 																title: "Remove #base",
-																edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+																edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
 															}
 														},
 													}
@@ -500,7 +500,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 											fix: ({ createDocumentWorkspaceEdit }) => {
 												return {
 													title: "Normalize file path",
-													edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, relative)
+													edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, relative))
 												}
 											},
 										}
@@ -550,7 +550,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 										return {
 											title: `Change ${documentSymbol.key} to '${newText}'`,
-											edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, newText)
+											edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, newText))
 										}
 									}
 								}
@@ -607,7 +607,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 												return {
 													title: `Change ${documentSymbol.key} to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, newText ?? "")
+													edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, newText))
 												}
 											},
 										}
@@ -693,7 +693,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										fix: ({ createDocumentWorkspaceEdit }) => {
 											return {
 												title: "Normalize file path",
-												edit: createDocumentWorkspaceEdit(documentSymbol.detailRange!, newPath)
+												edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, newPath))
 											}
 										},
 									}

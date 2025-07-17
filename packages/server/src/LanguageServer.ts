@@ -62,7 +62,7 @@ export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<
 
 export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
 
-export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { kind: (typeof CodeActionKind)[keyof (typeof CodeActionKind)], fix: ({ createDocumentWorkspaceEdit, findBestMatch }: { createDocumentWorkspaceEdit: (range: VDFRange, newText: string) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
+export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { kind: (typeof CodeActionKind)[keyof (typeof CodeActionKind)], fix: ({ createDocumentWorkspaceEdit, findBestMatch }: { createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
 
 export type CompletionFiles = (path: string, options: CompletionFilesOptions) => Promise<CompletionItem[]>
 
@@ -700,13 +700,7 @@ export abstract class LanguageServer<
 		const uri = params.textDocument.uri.toString()
 
 		const utils = {
-			createDocumentWorkspaceEdit: (range: VDFRange, newText: string) => ({
-				changes: {
-					[uri]: [
-						TextEdit.replace(range, newText)
-					]
-				}
-			}),
+			createDocumentWorkspaceEdit: (edit: TextEdit) => ({ changes: { [uri]: [edit] } }),
 			findBestMatch: (mainString: string, targetStrings: string[]) => {
 				return targetStrings.length != 0
 					? findBestMatch(mainString, targetStrings).bestMatch.target

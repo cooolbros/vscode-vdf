@@ -5,7 +5,7 @@ import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnima
 import { posix } from "path"
 import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
-import { CodeActionKind, DiagnosticSeverity, DiagnosticTag, type DocumentLink } from "vscode-languageserver"
+import { CodeActionKind, DiagnosticSeverity, DiagnosticTag, TextEdit, type DocumentLink } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../LanguageServer"
 import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
@@ -199,7 +199,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										return {
 											title: "Remove duplicate event",
 											isPreferred: true,
-											edit: createDocumentWorkspaceEdit(documentSymbol.range, "")
+											edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
 										}
 									},
 								}
@@ -231,7 +231,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 												return {
 													title: `Change event to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(statement.eventRange, newText)
+													edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.eventRange, newText))
 												}
 											},
 										}
@@ -283,7 +283,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 																return {
 																	title: `Change element to '${newText}'`,
-																	edit: createDocumentWorkspaceEdit(statement.elementRange, newText)
+																	edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.elementRange, newText))
 																}
 															},
 														}
@@ -325,7 +325,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 												return {
 													title: `Change font to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(statement.fontRange, newText)
+													edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.fontRange, newText))
 												}
 											}
 										}
@@ -363,7 +363,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 												return {
 													title: `Change colour to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(statement.valueRange, newText)
+													edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.valueRange, newText))
 												}
 											}
 										}
