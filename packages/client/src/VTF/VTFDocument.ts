@@ -68,7 +68,7 @@ export class VTFDocument implements CustomDocument {
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
-		this.flags$ = new DistinctBehaviorSubject(backup ?? new DataView(this.buf$.value.buffer).getUint16(VTF_WIDTH_OFFSET, true))
+		this.flags$ = new DistinctBehaviorSubject(backup ?? new DataView(this.buf$.value.buffer).getUint32(VTF_FLAGS_OFFSET, true))
 		stack.defer(() => this.flags$.complete())
 		stack.adopt(
 			dataView$.pipe(skip(1)).subscribe((dataView) => this.flags$.next(dataView.getUint32(VTF_FLAGS_OFFSET, true))),
