@@ -369,7 +369,8 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 		const name = posix.parse(new Uri(document.uri).basename()).name
 
 		const t = initTRPC.create({
-			transformer: devalueTransformer({ reducers: {}, revivers: {} })
+			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
+			isDev: true
 		})
 
 		await Promise.all([
