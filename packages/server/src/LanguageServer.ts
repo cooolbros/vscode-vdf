@@ -345,30 +345,6 @@ export abstract class LanguageServer<
 	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
 		return t.router({
 			textDocument: {
-				documentSymbol: t
-					.procedure
-					.input(
-						z.object({
-							uri: Uri.schema
-						})
-					)
-					.query(async ({ input }) => {
-						return await this.onDocumentSymbol({ textDocument: input })
-					}),
-				references: t
-					.procedure
-					.input(
-						z.object({
-							textDocument: z.object({
-								uri: Uri.schema
-							}),
-							position: VDFPosition.schema,
-							context: z.object({
-								includeDeclaration: z.boolean()
-							})
-						})
-					)
-					.query(async ({ input }) => await this.onReferences(input)),
 				rename: t
 					.procedure
 					.input(
