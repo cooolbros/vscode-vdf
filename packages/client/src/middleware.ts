@@ -121,7 +121,7 @@ export function createMiddleware(context: ExtensionContext): Partial<Record<VSCo
 				+ document.getText(range)
 					.replace(/^.*?"/i, (str) => " ".repeat(str.length))
 					.replace(/"$/, (str) => " ".repeat(str.length))
-					.replace("`", "\"")
+					.replaceAll("`", "\"")
 				+ content.slice(document.offsetAt(range.end))
 		})
 	}
