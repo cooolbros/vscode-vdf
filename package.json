@@ -257,8 +257,11 @@
                     },
                     "vscode-vdf.popfile.waveStatusPreview.background.colour": {
                         "type": "string",
-                        "description": "Background colour for Wave Status Preview.",
-                        "default": "rgb(31, 31, 31)"
+                        "markdownDescription": "Background colour for Wave Status Preview. `rgba(0, 0, 0, 0)` = transparent",
+                        "default": "rgb(31, 31, 31)",
+                        "examples": [
+                            "rgba(0, 0, 0, 0)"
+                        ]
                     },
                     "vscode-vdf.popfile.waveStatusPreview.background.sky": {
                         "type": "boolean",
