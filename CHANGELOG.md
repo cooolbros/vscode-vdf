@@ -1,5 +1,18 @@
 # Change Log
 
+## [5.5.7]
+ - Fix VTF flags becoming incorrect when edited
+ - Popfile:
+   - Add TFBot key to Mission block autocompletion
+   - Fix root autocompletion
+   - Fix crash caused by autocompletion
+   - Wave Status Preview:
+     - Fix Support Tanks being placed in normal wave ([#88](https://github.com/cooolbros/vscode-vdf/issues/88), [#89](https://github.com/cooolbros/vscode-vdf/issues/89))
+     - Fix not adding Attributes to existing icons
+     - Fix Support WaveSpawns with TotalCount 0 not showing
+     - Fix Support WaveSpawns causing incorrect progress bar progress
+     - Fix waves with 0 robots causing incorrect progress bar progress
+
 ## [5.5.6]
  - Add support for VTF image formats: `RGB888BlueScreen` and `BGR888BlueScreen`
  - [Popfile] Fix Wave Status Preview not loading when map skybox uses an unsupported VTF image format
