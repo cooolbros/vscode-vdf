@@ -130,7 +130,7 @@ export abstract class LanguageServer<
 								})
 							}).pipe(
 								distinctUntilChanged((a, b) => Uri.equals(a, b)),
-								finalize(() => files.delete(key)),
+								finalize(() => files.delete(path)),
 								shareReplay({ bufferSize: 1, refCount: true })
 							)
 							files.set(path, file$)
