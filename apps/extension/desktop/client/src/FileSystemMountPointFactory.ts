@@ -16,12 +16,12 @@ import { z } from "zod"
  * @class
  */
 async function VPKFileSystem(root: Uri): Promise<FileSystemMountPoint> {
-	const authority = JSON.stringify(root)
+	const query = `?root=${JSON.stringify(root)}`
 	return await VSCodeFileSystem({
 		root: root,
 		type: vscode.FileType.File,
 		watch: false,
-		resolvePath: (path) => new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
+		resolvePath: (path) => new Uri({ scheme: "vpk", authority: "", path: `/${path}`, query: query, fragment: "" })
 	})
 }
 

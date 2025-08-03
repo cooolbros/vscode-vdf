@@ -16,7 +16,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 
 	private async resolve(uri: vscode.Uri) {
 
-		const vpkUri = vscode.Uri.from(JSON.parse(uri.authority))
+		const vpkUri = vscode.Uri.from(JSON.parse(new URLSearchParams(uri.query).get("root")!))
 
 		let vpk = this.vpks.get(vpkUri.toString())
 		if (!vpk) {
@@ -114,7 +114,7 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 			throw FileSystemError.FileIsADirectory()
 		}
 
-		const vpkUri = vscode.Uri.from(JSON.parse(uri.authority))
+		const vpkUri = vscode.Uri.from(JSON.parse(new URLSearchParams(uri.query).get("root")!))
 
 		const archiveUri = vpkUri.with({
 			path: posix.join(posix.dirname(vpkUri.path), posix.basename(vpkUri.path).replace("_dir.vpk", `_${entry.value.archiveIndex == 255 ? "_dir" : entry.value.archiveIndex.toString().padStart(3, "0")}.vpk`))
