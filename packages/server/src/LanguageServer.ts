@@ -229,7 +229,7 @@ export abstract class LanguageServer<
 			const disposable = onDidClose.get(key)
 			onDidClose.delete(key)
 			if (disposable) {
-				(await disposable)?.[Symbol.asyncDispose]()
+				(await disposable)[Symbol.asyncDispose]()
 			}
 		})
 
