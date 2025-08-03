@@ -6,7 +6,7 @@ import { finalize, Subject } from "rxjs"
 import { z } from "zod"
 
 export interface VSCodeJSONRPCLinkOptions {
-	name: string
+	client: { name: string }
 	transformer: TRPCCombinedDataTransformer
 	onNotification: (type: string, handler: (param: unknown) => void) => void
 }
@@ -72,14 +72,14 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 							})
 							break
 						case "subscription":
-							op.context.name = opts.name
+							op.context.client = opts.client.name
 							const subject = new Subject<any>()
 							subjects.set(op.id, subject)
 							sendRequest("vscode-vdf/trpc", op)
 							return subject.pipe(
 								finalize(() => {
 									if (subjects.has(id)) {
-										sendRequest("vscode-vdf/trpc/observable/unsubscribe", { server: opts.name, id: op.id })
+										sendRequest("vscode-vdf/trpc/observable/unsubscribe", { server: op.context.client, id: op.id })
 									}
 									subjects.delete(op.id)
 								})

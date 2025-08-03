@@ -38,12 +38,12 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 	const subscriptions = new Map<string, Map<number, Unsubscribable>>()
 
 	opts.onRequest("vscode-vdf/trpc/observable/unsubscribe", (param: unknown) => {
-		const { server, id } = z.object({ server: z.string(), id: z.number() }).parse(param)
-		const subscription = subscriptions.get(server)?.get(id)
-		subscriptions.get(server)?.delete(id)
+		const { client, id } = z.object({ client: z.string(), id: z.number() }).parse(param)
+		const subscription = subscriptions.get(client)?.get(id)
+		subscriptions.get(client)?.delete(id)
 		subscription?.unsubscribe()
-		if (subscriptions.get(server)?.size == 0) {
-			subscriptions.delete(server)
+		if (subscriptions.get(client)?.size == 0) {
+			subscriptions.delete(client)
 		}
 	})
 
@@ -69,18 +69,18 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 						return { error: error }
 					})
 			case "subscription":
-				const server = opts.schema.parse(op.context.name)
-				let serverSubscriptions = subscriptions.get(server)
-				if (!serverSubscriptions) {
-					serverSubscriptions = new Map()
-					subscriptions.set(server, serverSubscriptions)
+				const client = opts.schema.parse(op.context.client)
+				let clientSubscriptions = subscriptions.get(client)
+				if (!clientSubscriptions) {
+					clientSubscriptions = new Map()
+					subscriptions.set(client, clientSubscriptions)
 				}
-				serverSubscriptions.set(
+				clientSubscriptions.set(
 					op.id,
 					observable.subscribe({
 						next: (value) => {
 							if ("data" in value.result) {
-								opts.sendNotification(server, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "N", value: transformer.output.serialize(value) } })
+								opts.sendNotification(client, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "N", value: transformer.output.serialize(value) } })
 							}
 						},
 						error: (err) => {
@@ -94,11 +94,11 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 								ctx: op.context,
 							})
 							console.dir(error)
-							opts.sendNotification(server, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "E", error: error } })
+							opts.sendNotification(client, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "E", error: error } })
 						},
 						complete: () => {
-							if (subscriptions.get(server)?.has(op.id)) {
-								opts.sendNotification(server, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "C" } })
+							if (subscriptions.get(client)?.has(op.id)) {
+								opts.sendNotification(client, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "C" } })
 							}
 						},
 					})

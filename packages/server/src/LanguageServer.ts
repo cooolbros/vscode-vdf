@@ -316,7 +316,7 @@ export abstract class LanguageServer<
 		}))
 
 		const link = VSCodeJSONRPCLink({
-			name: this.languageId,
+			client: { name: this.languageId },
 			transformer: transformer,
 			onNotification: (type, handler) => this.connection.onNotification(type, handler),
 		})

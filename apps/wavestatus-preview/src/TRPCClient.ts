@@ -53,7 +53,7 @@ onResponse$.subscribe((response) => {
 export const trpc = createTRPCClient<AppRouter>({
 	links: [
 		VSCodeJSONRPCLink({
-			name: "webview",
+			client: { name: "webview" },
 			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
 			onNotification: (type, handler) => {
 				onNotification$
