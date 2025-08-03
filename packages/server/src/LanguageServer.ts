@@ -10,7 +10,7 @@ import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, Subscription, switchMap } from "rxjs"
+import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
@@ -175,7 +175,7 @@ export abstract class LanguageServer<
 
 			const stack = new AsyncDisposableStack()
 
-			const document = await this.documents.get(uri, async (uri) => languageServerConfiguration.createDocument(
+			const document = stack.use(await this.documents.get(uri, async (uri) => languageServerConfiguration.createDocument(
 				{
 					uri: uri,
 					languageId: this.languageId,
@@ -186,21 +186,18 @@ export abstract class LanguageServer<
 					concatMap(async () => VSCodeVDFConfigurationSchema.parse(await this.connection.workspace.getConfiguration({ scopeUri: uri.toString(), section: "vscode-vdf" }))),
 					shareReplay({ bufferSize: 1, refCount: true })
 				)
-			))
+			)))
 
-			stack.use(document)
 			stack.use(await this.onDidOpen({ document }))
 
-			const subscriptions: Subscription[] = []
-			stack.defer(() => {
-				for (const subscription of subscriptions) {
-					subscription.unsubscribe()
-				}
-			})
+			stack.adopt(
+				document.definitionReferences$.pipe(
+					switchMap((definitionReferences) => definitionReferences.references.references$)
+				).subscribe(() => this.connection.sendRequest(CodeLensRefreshRequest.method)),
+				(subscription) => subscription.unsubscribe()
+			)
 
-			stack.defer(() => this.sendDiagnostics(document, []))
-
-			subscriptions.push(
+			stack.adopt(
 				document.documentConfiguration$.pipe(
 					distinctUntilKeyChanged("updateDiagnosticsEvent"),
 					switchMap(({ updateDiagnosticsEvent }) => {
@@ -210,15 +207,11 @@ export abstract class LanguageServer<
 					})
 				).subscribe((diagnostics) => {
 					this.sendDiagnostics(document, diagnostics)
-				})
-			)
-
-			subscriptions.push(
-				document.definitionReferences$.pipe(
-					switchMap((definitionReferences) => definitionReferences.references.references$)
-				).subscribe(() => {
-					this.connection.sendRequest(CodeLensRefreshRequest.method)
-				})
+				}),
+				(subscription) => {
+					this.sendDiagnostics(document, [])
+					subscription.unsubscribe()
+				}
 			)
 
 			resolve(stack.move())
