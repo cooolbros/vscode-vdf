@@ -73,19 +73,16 @@ export function TRPCClientRouter(
 					)
 					.mutation(async ({ input }) => {
 
-						const key = JSON.stringify(input.paths)
+						const key = crypto.randomUUID()
+						const results = await Promise.allSettled(input.paths.map(async (path) => await fileSystemMountPointFactory.get(path)))
 
-						let fileSystem = fileSystems.get(key)
-						if (!fileSystem) {
-							const results = await Promise.allSettled(input.paths.map(async (path) => fileSystemMountPointFactory.get(path)))
-
-							fileSystems.set(key, VirtualFileSystem(
-								results
-									.filter((result) => result.status == "fulfilled")
-									.map((result) => result.value)
-							))
-						}
-
+						fileSystems.set(key, VirtualFileSystem(
+							results
+								.values()
+								.filter((result) => result.status == "fulfilled")
+								.map((result) => result.value)
+								.toArray()
+						))
 						return {
 							key: key,
 							paths: input.paths
