@@ -218,7 +218,6 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 
 															if (basename.endsWith(".vpk")) {
 																const vpk = uri.dirname().joinPath(basename.replace(".vpk", "_dir.vpk"))
-
 																return await VPKFileSystem(vpk)
 															}
 
