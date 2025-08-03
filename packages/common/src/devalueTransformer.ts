@@ -1,5 +1,4 @@
 import * as devalue from "devalue"
-import { isObservable } from "rxjs"
 import { Uri } from "./Uri"
 
 export interface Options {
@@ -23,11 +22,6 @@ export function devalueTransformer({ reducers, revivers }: Options) {
 	const inputReducers = {
 		...common.reducers,
 		...reducers,
-		Observable: (value: unknown) => {
-			if (isObservable(value)) {
-				throw new Error("Cannot stringify input Observable")
-			}
-		}
 	}
 
 	const inputRevivers = {
@@ -38,11 +32,6 @@ export function devalueTransformer({ reducers, revivers }: Options) {
 	const outputReducers = {
 		...common.reducers,
 		...reducers,
-		Observable: (value: unknown) => {
-			if (isObservable(value)) {
-				throw new Error("Cannot stringify output Observable")
-			}
-		}
 	}
 
 	const outputRevivers = {
