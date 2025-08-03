@@ -8,5 +8,5 @@ import bsp_bg_url from "bsp/pkg/bsp_bg.wasm?url"
 let BSPWASM: import("bsp").InitOutput
 
 export async function initBSP(context: ExtensionContext) {
-	BSPWASM ??= await init(readFile(context, bsp_bg_url))
+	BSPWASM ??= await init({ module_or_path: readFile(context, bsp_bg_url) })
 }

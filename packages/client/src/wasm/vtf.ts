@@ -8,5 +8,5 @@ import vtf_png_bg_url from "vtf-png/pkg/vtf_png_bg.wasm?url"
 let VTFPNGWASM: import("vtf-png").InitOutput
 
 export async function initVTFPNG(context: ExtensionContext) {
-	VTFPNGWASM ??= await init(readFile(context, vtf_png_bg_url))
+	VTFPNGWASM ??= await init({ module_or_path: readFile(context, vtf_png_bg_url) })
 }
