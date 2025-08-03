@@ -292,10 +292,18 @@ export abstract class LanguageServer<
 			reducers: {
 				Definitions: (value: unknown) => value instanceof Definitions && value.toJSON(),
 				References: (value: unknown) => value instanceof References && value.toJSON(),
+				VDFDocumentSymbol: (value: unknown) => value instanceof VDFDocumentSymbol ? value.toJSON() : undefined,
+				VDFDocumentSymbols: (value: unknown) => value instanceof VDFDocumentSymbols ? value.toJSON() : undefined,
+				VDFPosition: (value: unknown) => value instanceof VDFPosition ? value.toJSON() : undefined,
+				VDFRange: (value: unknown) => value instanceof VDFRange ? value.toJSON() : undefined,
 			},
 			revivers: {
 				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
 				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
+				VDFDocumentSymbol: (value: ReturnType<VDFDocumentSymbol["toJSON"]>) => VDFDocumentSymbol.schema.parse(value),
+				VDFDocumentSymbols: (value: ReturnType<VDFDocumentSymbols["toJSON"]>) => VDFDocumentSymbols.schema.parse(value),
+				VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
+				VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
 			}
 		})
 
