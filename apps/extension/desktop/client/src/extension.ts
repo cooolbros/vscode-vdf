@@ -331,7 +331,6 @@ export function activate(context: ExtensionContext): void {
 					documentSelector: [
 						languageId
 					],
-					outputChannel: window.createOutputChannel(`${name} Language Server`, { log: true }),
 					middleware: middleware[languageId],
 					...(process.env.NODE_ENV != "production" && {
 						connectionOptions: {
