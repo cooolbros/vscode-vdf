@@ -6,6 +6,7 @@ import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import type { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { Observable } from "rxjs"
+import { VDFPosition, VDFRange } from "vdf"
 import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
@@ -41,7 +42,13 @@ export class Client<T extends BaseLanguageClient> {
 		this.startServer = startServer
 		this.router = TRPCClientRouter(
 			initTRPC.create({
-				transformer: devalueTransformer({ reducers: {}, revivers: {} }),
+				transformer: devalueTransformer({
+					reducers: {},
+					revivers: {
+						VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
+						VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
+					}
+				}),
 				isDev: true,
 			}),
 			context,
