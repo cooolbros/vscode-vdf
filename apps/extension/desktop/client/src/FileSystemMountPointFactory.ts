@@ -17,12 +17,12 @@ import { z } from "zod"
  */
 async function VPKFileSystem(root: Uri): Promise<FileSystemMountPoint> {
 	const authority = JSON.stringify(root)
-	return await VSCodeFileSystem(
-		root,
-		vscode.FileType.File,
-		false,
-		(path) => new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
-	)
+	return await VSCodeFileSystem({
+		root: root,
+		type: vscode.FileType.File,
+		watch: false,
+		resolvePath: (path) => new Uri({ scheme: "vpk", authority: authority, path: `/${path}`, query: "", fragment: "" })
+	})
 }
 
 class SortedArray<T> extends Array<T> {
@@ -250,12 +250,12 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 											context.subscriptions.push(vscode.workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
 										}
 
-										return await VSCodeFileSystem(
-											root,
-											vscode.FileType.Directory,
-											false,
-											(path) => root.joinPath(path)
-										)
+										return await VSCodeFileSystem({
+											root: root,
+											type: vscode.FileType.Directory,
+											watch: false,
+											resolvePath: (path) => root.joinPath(path)
+										})
 									}
 									default:
 										throw new Error(teamFortress2Folder.scheme)

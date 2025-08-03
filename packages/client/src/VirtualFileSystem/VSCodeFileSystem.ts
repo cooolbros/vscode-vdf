@@ -5,12 +5,14 @@ import { posix } from "path"
 import { catchError, concat, from, map, of, Subject } from "rxjs"
 import vscode from "vscode"
 
-export async function VSCodeFileSystem(
+interface VSCodeFileSystem {
 	root: Uri,
 	type: vscode.FileType,
 	watch: boolean,
 	resolvePath: (path: string) => Uri,
-): Promise<FileSystemMountPoint> {
+}
+
+export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCodeFileSystem): Promise<FileSystemMountPoint> {
 
 	const stat = await vscode.workspace.fs.stat(root)
 	if (stat.type != type) {

@@ -46,12 +46,12 @@ export function activate(context: ExtensionContext): void {
 						context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
 					}
 
-					return await VSCodeFileSystem(
-						root,
-						FileType.Directory,
-						false,
-						(path) => root.joinPath(path)
-					)
+					return await VSCodeFileSystem({
+						root: root,
+						type: FileType.Directory,
+						watch: false,
+						resolvePath: (path) => root.joinPath(path)
+					})
 				}
 			}
 		}

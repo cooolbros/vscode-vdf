@@ -7,10 +7,10 @@ import { VSCodeFileSystem } from "./VSCodeFileSystem"
  * @class
  */
 export async function FolderFileSystem(root: Uri): Promise<FileSystemMountPoint> {
-	return await VSCodeFileSystem(
-		root,
-		vscode.FileType.Directory,
-		true,
-		(path) => root.joinPath(path)
-	)
+	return await VSCodeFileSystem({
+		root: root,
+		type: vscode.FileType.Directory,
+		watch: true,
+		resolvePath: (path) => root.joinPath(path)
+	})
 }
