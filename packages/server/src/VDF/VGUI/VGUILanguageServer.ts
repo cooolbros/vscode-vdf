@@ -1,7 +1,7 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { Uri } from "common/Uri"
-import { map, Observable } from "rxjs"
+import { Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
@@ -126,10 +126,8 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
 							}
 
-							return observableToAsyncIterable<Definitions | null>(
-								workspace.getDefinitionReferences(input.path).pipe(
-									map((definitionReferences) => definitionReferences?.definitions ?? null)
-								),
+							return observableToAsyncIterable<{ uri: Uri, definitions: Definitions } | null>(
+								workspace.getDefinitionReferences(input.path),
 								signal!
 							)
 						}),

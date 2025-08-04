@@ -188,7 +188,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										const key = baseUri.toString()
 										let observable = context.get(key)
 										if (!observable) {
-											observable = usingAsync(() => documents.get(baseUri)).pipe(
+											observable = usingAsync(async () => await documents.get(baseUri)).pipe(
 												switchMap((baseDocument) => {
 													return check(baseDocument, [...stack, document.uri])
 												})
@@ -228,7 +228,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									const key = uri.toString()
 									let observable = context.get(key)
 									if (!observable) {
-										observable = usingAsync(() => documents.get(uri)).pipe(
+										observable = usingAsync(async () => await documents.get(uri)).pipe(
 											finalizeWithValue((document) => {
 												document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
 												context.delete(key)

@@ -22,7 +22,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 	private readonly fileSystem: FileSystemMountPoint
 	private readonly getVDFDocumentSymbols: (path: string) => Observable<VDFDocumentSymbols | null>
-	private readonly getDefinitions: (path: string) => Observable<DefinitionReferences["definitions"] | null>
+	private readonly getDefinitions: (path: string) => Observable<{ uri: Uri, definitions: Definitions } | null>
 
 	public readonly manifest$: Observable<HUDAnimationsTextDocument[]>
 	public readonly clientScheme$: Observable<DefinitionReferences["definitions"]>
@@ -44,7 +44,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		documents: RefCountAsyncDisposableFactory<Uri, HUDAnimationsTextDocument>,
 		request: Promise<void>,
 		getVDFDocumentSymbols: (path: string) => Observable<VDFDocumentSymbols | null>,
-		getDefinitions: (path: string) => Observable<DefinitionReferences["definitions"] | null>,
+		getDefinitions: (path: string) => Observable<{ uri: Uri, definitions: Definitions } | null>,
 		setFileReferences: (references: Map<string /* path */, Map<string /* Uri */, References | null>>) => Promise<void>,
 	}) {
 		super(uri)
@@ -55,7 +55,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 		this.getVDFDocumentSymbols = (path) => concat(ready$, getVDFDocumentSymbols(path))
 
-		const fileDefinitions = new Map<string, Observable<DefinitionReferences["definitions"] | null>>()
+		const fileDefinitions = new Map<string, Observable<{ uri: Uri, definitions: Definitions } | null>>()
 		this.getDefinitions = (path: string) => {
 			let definitions = fileDefinitions.get(path)
 			if (!definitions) {
@@ -102,7 +102,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		)
 
 		this.clientScheme$ = this.getDefinitions("resource/clientscheme.res").pipe(
-			map((definitions) => definitions!),
+			map((document) => document!.definitions),
 			shareReplay(1)
 		)
 
@@ -266,33 +266,16 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			if (eventFile) {
 				const paths = typeof eventFile == "string" ? [eventFile] : eventFile
 				definitions$ = combineLatest(
-					paths.map((path) => {
-
-						const uri$ = this.fileSystem.resolveFile(path).pipe(
-							shareReplay(1)
-						)
-
-						const definitions$ = from(this.getDefinitions(path)).pipe(shareReplay(1))
-
-						return uri$.pipe(
-							switchMap((uri) => {
-								return definitions$.pipe(
-									map((definitions) => {
-										return { uri, definitions }
-									})
-								)
-							})
-						)
-					})
+					paths.map((path) => this.getDefinitions(path))
 				).pipe(
-					map((files) => files.filter((file): file is { [P in keyof typeof file as P]: NonNullable<typeof file[P]> } => file.uri != null && file.definitions != null)),
-					map((files) => {
+					map((documents) => documents.filter((document) => document != null)),
+					map((documents) => {
 						return {
-							uris: files.map((file) => file.uri),
+							uris: documents.map((document) => document.uri),
 							definitions: new Definitions({
-								collection: files.reduce(
-									(collection, file) => {
-										for (const { key, value } of file.definitions) {
+								collection: documents.reduce(
+									(collection, document) => {
+										for (const { key, value } of document.definitions) {
 											collection.set(null, Symbol.for(event), key, ...value)
 										}
 										return collection

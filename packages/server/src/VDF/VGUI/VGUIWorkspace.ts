@@ -270,9 +270,19 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 	public getDefinitionReferences(path: string) {
 		return this.fileSystem.resolveFile(path).pipe(
-			switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri)) : of(null)),
-			switchMap((document) => document != null ? document.definitionReferences$ : of(null)),
-			shareReplay(1)
+			switchMap((uri) => {
+				if (uri == null) {
+					return of(null)
+				}
+
+				return usingAsync(async () => await this.documents.get(uri)).pipe(
+					switchMap((document) => {
+						return document.definitionReferences$.pipe(
+							map((definitionReferences) => ({ uri: uri, definitions: definitionReferences.definitions }))
+						)
+					})
+				)
+			})
 		)
 	}
 
@@ -282,7 +292,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 			fileReferences = {
 				references$: new BehaviorSubject(new Map()),
 				document$: this.fileSystem.resolveFile(path).pipe(
-					switchMap((uri) => uri != null ? usingAsync(() => this.documents.get(uri)) : of(null)),
+					switchMap((uri) => uri != null ? usingAsync(async () => await this.documents.get(uri)) : of(null)),
 					startWith(null),
 					pairwise(),
 					map(([previous, current]) => {
