@@ -1,6 +1,6 @@
 import type { Uri } from "common/Uri"
 import { defer, firstValueFrom, map, Observable, of, shareReplay, Subscription, switchMap } from "rxjs"
-import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { PopfileTextDocument } from "./PopfileTextDocument"
@@ -68,6 +68,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 			}
 		})
 
+		this.onTextDocumentRequest(this.connection.onSignatureHelp, this.onSignatureHelp)
 		this.onTextDocumentRequest(this.connection.onFoldingRanges, this.onFoldingRanges)
 	}
 
@@ -141,6 +142,10 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		}
 
 		return codeLens
+	}
+
+	private onSignatureHelp(params: TextDocumentRequestParams<SignatureHelpParams>) {
+		return null
 	}
 
 	private async onFoldingRanges(params: TextDocumentRequestParams<FoldingRangeParams>) {
