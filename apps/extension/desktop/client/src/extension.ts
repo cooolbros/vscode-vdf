@@ -9,6 +9,7 @@ import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { executeCommands } from "client/commands/executeCommands"
 import { extractVPKFileToWorkspace } from "client/commands/extractVPKFileToWorkspace"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
+import { listPopfileClassIcons } from "client/commands/listPopfileClassIcons"
 import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Folder"
 import { setVTFFlags } from "client/commands/setVTFFlags"
 import { showReferences } from "client/commands/showReferences"
@@ -238,6 +239,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))

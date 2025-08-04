@@ -63,6 +63,12 @@
                 "command": "vscode-vdf.JSONToVDF"
             },
             {
+                "category": "Popfile",
+                "title": "List Class Icons",
+                "command": "vscode-vdf.listPopfileClassIcons",
+                "when": "editorLangId == popfile"
+            },
+            {
                 "category": "HUD Animations",
                 "title": "Restart HUD Animations Language Server",
                 "command": "vscode-vdf.restartHUDAnimationsLanguageServer"

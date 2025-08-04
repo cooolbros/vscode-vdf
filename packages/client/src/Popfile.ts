@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import { posix } from "path"
 import { firstValueFrom } from "rxjs"
 import { VDFRange, VDFSyntaxError } from "vdf"
-import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
+import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { workspace } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
@@ -154,6 +154,24 @@ export class Popfile {
 		return templates
 	}
 
+	private waveSpawns() {
+		return [
+			// https://github.com/cooolbros/vscode-vdf/issues/43
+			...this.waveSchedule
+				.values()
+				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Mission".toLowerCase())
+				.map((documentSymbol) => documentSymbol.children)
+				.filter((children) => children != undefined),
+			...this.waveSchedule
+				.values()
+				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase())
+				.flatMap((documentSymbol) => documentSymbol.children ?? [])
+				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase())
+				.map((documentSymbol) => documentSymbol.children)
+				.filter((children) => children != undefined)
+		]
+	}
+
 	public referencedTemplates() {
 
 		const collect = (squad: VDFDocumentSymbols): string[] => squad.flatMap((documentSymbol) => {
@@ -173,21 +191,7 @@ export class Popfile {
 			}
 		})
 
-		const waveSpawns = [
-			// https://github.com/cooolbros/vscode-vdf/issues/43
-			...this.waveSchedule
-				.values()
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Mission".toLowerCase())
-				.map((documentSymbol) => documentSymbol.children)
-				.filter((children) => children != undefined),
-			...this.waveSchedule
-				.values()
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase())
-				.flatMap((documentSymbol) => documentSymbol.children ?? [])
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase())
-				.map((documentSymbol) => documentSymbol.children)
-				.filter((children) => children != undefined)
-		]
+		const waveSpawns = this.waveSpawns()
 
 		return new Set(
 			waveSpawns
@@ -201,6 +205,69 @@ export class Popfile {
 						case "TFBot".toLowerCase(): {
 							const template = spawner.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
 							return template ? [template] : []
+						}
+						case "Squad".toLowerCase():
+						case "RandomChoice".toLowerCase(): {
+							return spawner.children != undefined
+								? collect(spawner.children)
+								: []
+						}
+						default:
+							return []
+					}
+				})
+		)
+	}
+
+	public async classIcons() {
+
+		const templates = await this.templates()
+		const waveSpawns = this.waveSpawns()
+
+		const collect = (squad: VDFDocumentSymbols): string[] => squad.flatMap((documentSymbol) => {
+			switch (documentSymbol.key.toLowerCase()) {
+				case "TFBot".toLowerCase(): {
+					const classIcon = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+					if (classIcon) {
+						return [classIcon]
+					}
+
+					const template = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+					if (template) {
+						const value = templates.get(template)
+						if (value) {
+							const classIcon = value.documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+							if (classIcon) {
+								return [classIcon]
+							}
+						}
+					}
+
+					return []
+				}
+				case "Squad".toLowerCase():
+				case "RandomChoice".toLowerCase(): {
+					return documentSymbol.children != undefined
+						? collect(documentSymbol.children)
+						: []
+				}
+				default:
+					return []
+			}
+		})
+
+		return new Set(
+			waveSpawns
+				.flatMap((documentSymbols) => {
+					const spawner = documentSymbols.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+					if (!spawner) {
+						return []
+					}
+
+					switch (spawner.key.toLowerCase()) {
+						case "TFBot".toLowerCase(): {
+							const classIcon = spawner.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+							return classIcon ? [classIcon] : []
 						}
 						case "Squad".toLowerCase():
 						case "RandomChoice".toLowerCase(): {
