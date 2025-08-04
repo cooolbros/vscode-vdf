@@ -1,5 +1,11 @@
 # Change Log
 
+## [5.6.0]
+ - Fix VPK reading on Linux
+ - [Popfile] Add command to list ClassIcons in Popfile (`Popfile: List Class Icons`) ([#64](https://github.com/cooolbros/vscode-vdf/issues/64))
+ - [Popfile] Fix crash caused by missing Signature Help provider
+ - [Popfile] Fix not replacing `` ` `` characters in embedded VScript
+
 ## [5.5.7]
  - Fix VTF flags becoming incorrect when edited
  - Popfile:
