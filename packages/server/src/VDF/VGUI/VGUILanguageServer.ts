@@ -14,6 +14,16 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 
 	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
 
+	private readonly teamFortress2Folder$ = new Observable<Uri>((subscriber) => {
+		return this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.subscribe(undefined, {
+			onData: (value) => subscriber.next(value),
+			onError: (err) => subscriber.error(err),
+			onComplete: () => subscriber.complete(),
+		})
+	}).pipe(
+		shareReplay({ bufferSize: 1, refCount: true })
+	)
+
 	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			name: "vdf",
@@ -51,13 +61,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
-					new Observable<Uri>((subscriber) => {
-						return this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.subscribe(undefined, {
-							onData: (value) => subscriber.next(value),
-							onError: (err) => subscriber.error(err),
-							onComplete: () => subscriber.complete(),
-						})
-					}),
+					this.teamFortress2Folder$,
 					fileSystem,
 					this.documents,
 					await workspace,
