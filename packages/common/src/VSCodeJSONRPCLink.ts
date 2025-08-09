@@ -78,8 +78,8 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 							sendRequest("vscode-vdf/trpc", op)
 							return subject.pipe(
 								finalize(() => {
-									if (subjects.has(id)) {
-										sendRequest("vscode-vdf/trpc/observable/unsubscribe", { server: op.context.client, id: op.id })
+									if (subjects.has(op.id)) {
+										sendRequest("vscode-vdf/trpc/observable/unsubscribe", { client: op.context.client, id: op.id })
 									}
 									subjects.delete(op.id)
 								})
