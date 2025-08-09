@@ -122,8 +122,11 @@ export function TRPCClientRouter(
 						})
 					)
 					.mutation(async ({ input }) => {
-						fileSystems.get(input.key)?.[Symbol.asyncDispose]()
+						const fileSystem = fileSystems.get(input.key)
 						fileSystems.delete(input.key)
+						if (fileSystem) {
+							await fileSystem[Symbol.asyncDispose]()
+						}
 					})
 			}),
 		VTFToPNGBase64: t
