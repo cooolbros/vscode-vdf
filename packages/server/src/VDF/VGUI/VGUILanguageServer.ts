@@ -1,7 +1,7 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { Uri } from "common/Uri"
-import { Observable } from "rxjs"
+import { Observable, shareReplay } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
