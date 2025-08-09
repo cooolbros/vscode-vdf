@@ -5,6 +5,7 @@ import type { Configuration } from "webpack"
 export default {
 	mode: "production",
 	target: "node",
+	devtool: "source-map",
 	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, [import.meta.resolve("disposablestack/auto"), posix.join(import.meta.dirname, `src/${name}`)]])),
 	output: {
 		path: posix.join(import.meta.dirname, "dist"),

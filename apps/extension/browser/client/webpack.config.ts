@@ -5,6 +5,7 @@ import type { Configuration } from "webpack"
 export default {
 	mode: "production",
 	target: "webworker",
+	devtool: "source-map",
 	entry: {
 		extension: posix.join(import.meta.dirname, "src/extension.ts")
 	},

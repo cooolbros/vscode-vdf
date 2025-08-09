@@ -299,10 +299,14 @@ export function activate(context: ExtensionContext): void {
 		context.subscriptions.push(new Disposable(() => subscription.unsubscribe()))
 
 		const options = {
-			execArgv: [
+			execArgv: ["--enable-source-maps"]
+		}
+
+		if (process.env.NODE_ENV != "production") {
+			options.execArgv.push(
 				"--nolazy",
-				`--inspect=${6000 + Object.keys(VSCodeVDFLanguageNameSchema.shape).indexOf(languageId)}`
-			]
+				`--inspect=${6000 + Object.keys(VSCodeVDFLanguageNameSchema.shape).indexOf(languageId)}`,
+			)
 		}
 
 		const client = languageClients[languageId] = new Client<LanguageClient>(
@@ -319,14 +323,12 @@ export function activate(context: ExtensionContext): void {
 					run: {
 						module: serverModule,
 						transport: TransportKind.ipc,
-						...(process.env.NODE_ENV != "production" && {
-							options: options
-						})
+						options: options,
 					},
 					debug: {
 						module: serverModule,
 						transport: TransportKind.ipc,
-						options: options
+						options: options,
 					}
 				} satisfies ServerOptions,
 				{

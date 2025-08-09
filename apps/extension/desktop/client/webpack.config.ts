@@ -4,6 +4,7 @@ import type { Configuration } from "webpack"
 export default {
 	mode: "production",
 	target: "node",
+	devtool: "source-map",
 	entry: {
 		extension: [
 			import.meta.resolve("disposablestack/auto"),
