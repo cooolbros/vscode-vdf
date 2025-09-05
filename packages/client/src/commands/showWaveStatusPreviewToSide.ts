@@ -33,6 +33,9 @@ const enum Type {
 }
 
 async function getWaveStatus(popfile: Popfile) {
+
+	const TANK_PATH = "materials/hud/leaderboard_class_tank.vmt"
+
 	const starting = parseInt(popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "StartingCurrency".toLowerCase())?.detail ?? "") || 0
 	const templates = await popfile.templates()
 
@@ -111,6 +114,38 @@ async function getWaveStatus(popfile: Popfile) {
 				support: <HUDEnemyData[]>[],
 			}
 
+			for (const mission of missions) {
+
+				const objective = mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Objective".toLowerCase())
+				if (objective?.detail?.toLowerCase() == "DestroySentries".toLowerCase()) {
+					continue
+				}
+
+				let beginAtWave = parseInt(mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "BeginAtWave".toLowerCase())?.detail ?? "")
+				let runForThisManyWaves = parseInt(mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.detail ?? "")
+
+				if (!isNaN(beginAtWave)) {
+					beginAtWave += -1
+					if (beginAtWave > index) {
+						continue
+					}
+					else if (!isNaN(runForThisManyWaves)) {
+						if ((beginAtWave + runForThisManyWaves) <= index) {
+							continue
+						}
+					}
+				}
+
+				const spawner = mission.children!.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+				if (spawner) {
+					addSpawner({
+						type: Type.Mission,
+						spawner: spawner,
+						totalCount: 1
+					})
+				}
+			}
+
 			let expected = 0
 			let actual = 0
 
@@ -158,13 +193,15 @@ async function getWaveStatus(popfile: Popfile) {
 									break
 								}
 								case "Tank".toLowerCase(): {
-									addIcon({
-										type: type,
-										icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
-										count: 1,
-										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
-										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
-									})
+									if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
+										addIcon({
+											type: type,
+											icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
+											count: 1,
+											miniboss: type != Type.Mission,
+											alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
+										})
+									}
 									break
 								}
 							}
@@ -192,13 +229,15 @@ async function getWaveStatus(popfile: Popfile) {
 									break
 								}
 								case "Tank".toLowerCase(): {
-									addIcon({
-										type: type,
-										icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
-										count: 1,
-										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
-										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
-									})
+									if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
+										addIcon({
+											type: type,
+											icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
+											count: 1,
+											miniboss: type != Type.Mission,
+											alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
+										})
+									}
 									break
 								}
 							}
@@ -206,13 +245,15 @@ async function getWaveStatus(popfile: Popfile) {
 						break
 					}
 					case "Tank".toLowerCase(): {
-						addIcon({
-							type: type,
-							icon: getClassIcon(spawner.children) ?? "Tank".toLowerCase(),
-							count: totalCount,
-							miniboss: type != Type.Mission,
-							alwayscrit: false,
-						})
+						if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
+							addIcon({
+								type: type,
+								icon: getClassIcon(spawner.children) ?? "Tank".toLowerCase(),
+								count: totalCount,
+								miniboss: type != Type.Mission,
+								alwayscrit: false,
+							})
+						}
 						break
 					}
 				}
@@ -285,37 +326,7 @@ async function getWaveStatus(popfile: Popfile) {
 				}
 			}
 
-			for (const mission of missions) {
 
-				const objective = mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Objective".toLowerCase())
-				if (objective?.detail?.toLowerCase() == "DestroySentries".toLowerCase()) {
-					continue
-				}
-
-				let beginAtWave = parseInt(mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "BeginAtWave".toLowerCase())?.detail ?? "")
-				let runForThisManyWaves = parseInt(mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.detail ?? "")
-
-				if (!isNaN(beginAtWave)) {
-					beginAtWave += -1
-					if (beginAtWave > index) {
-						continue
-					}
-					else if (!isNaN(runForThisManyWaves)) {
-						if ((beginAtWave + runForThisManyWaves) <= index) {
-							continue
-						}
-					}
-				}
-
-				const spawner = mission.children!.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
-				if (spawner) {
-					addSpawner({
-						type: Type.Mission,
-						spawner: spawner,
-						totalCount: 1
-					})
-				}
-			}
 
 			const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
 
