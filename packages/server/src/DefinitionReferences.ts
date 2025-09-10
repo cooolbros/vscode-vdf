@@ -5,7 +5,16 @@ import { z } from "zod"
 
 export class Collection<T> {
 
-	public static readonly createSchema = <T extends z.ZodType>(schema: T) => z.map(z.number().nullable(), z.map(z.symbol(), z.map(z.string(), z.array(schema)))).transform((arg) => new Collection(arg))
+	public static readonly createSchema = <T extends z.ZodType>(schema: T) => z.map(
+		z.number().nullable(),
+		z.map(
+			z.symbol(),
+			z.map(
+				z.string(),
+				z.array(schema)
+			)
+		)
+	).transform((arg) => new Collection(arg))
 	private readonly map: Map<number | null, Map<symbol, Map<string, T[]>>>
 
 	public constructor(map: Map<number | null, Map<symbol, Map<string, T[]>>> = new Map()) {
@@ -67,7 +76,7 @@ export const definitionSchema = z.object({
 	nameRange: VDFRange.schema.optional(),
 	keyRange: VDFRange.schema,
 	detail: z.string().optional(),
-	conditional: z.string().optional(),
+	conditional: z.templateLiteral(["[", z.string(), "]"]).optional(),
 })
 
 export type Definition = z.infer<typeof definitionSchema>
