@@ -20,7 +20,7 @@ import { VGUISchema } from "./schemas/VGUISchema"
 
 export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 
-	public static KeyTransform = (key: string) => key.replace(/_(minmode|override|(lo|hi)def)$/, "")
+	public static keyTransform = (key: string) => key.replace(/_(minmode|override|(lo|hi)def)$/, "")
 	public readonly workspace: VGUIWorkspace | null
 
 	public readonly inlayHints$: Observable<InlayHint[]>
@@ -59,7 +59,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 					}
 				})()
 			},
-			keyTransform: VGUITextDocument.KeyTransform,
+			keyTransform: VGUITextDocument.keyTransform,
 			writeRoot: workspace?.uri ?? null,
 			dependencies$: defer(() => {
 				return (
@@ -132,7 +132,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 									return inlayHints
 								}
 
-								const documentSymbolKey = VGUITextDocument.KeyTransform(documentSymbol.key.toLowerCase())
+								const documentSymbolKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
 								if (documentSymbolKey in dependencies.schema.values) {
 									const valueData = dependencies.schema.values[documentSymbolKey]
 									if (valueData.enumIndex) {
