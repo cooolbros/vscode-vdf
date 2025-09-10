@@ -181,7 +181,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 										const result = z.object({
 											GameInfo: z.object({
 												FileSystem: z.object({
-													SearchPaths: z.record(z.union([z.string(), z.array(z.string())]))
+													SearchPaths: z.record(z.string(), z.union([z.string(), z.array(z.string())]))
 												})
 											})
 										}).safeParse(gameInfo)

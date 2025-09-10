@@ -1,11 +1,11 @@
 import { Uri } from "common/Uri"
 import { BehaviorSubject } from "rxjs"
 import { VDFRange } from "vdf"
-import { z, type ZodTypeAny } from "zod"
+import { z } from "zod"
 
 export class Collection<T> {
 
-	public static readonly createSchema = <T extends ZodTypeAny>(schema: T) => z.map(z.number().nullable(), z.map(z.symbol(), z.map(z.string(), schema.array()))).transform((arg) => new Collection(arg))
+	public static readonly createSchema = <T extends z.ZodType>(schema: T) => z.map(z.number().nullable(), z.map(z.symbol(), z.map(z.string(), z.array(schema)))).transform((arg) => new Collection(arg))
 	private readonly map: Map<number | null, Map<symbol, Map<string, T[]>>>
 
 	public constructor(map: Map<number | null, Map<symbol, Map<string, T[]>>> = new Map()) {
@@ -132,15 +132,17 @@ export class Definitions {
 
 export class References {
 
-	public static readonly schema: z.ZodType<References, z.ZodTypeDef, any> = z.lazy(() => {
-		return z.object({
-			uri: Uri.schema,
-			collection: Collection.createSchema(VDFRange.schema),
-			dependencies: References.schema.array(),
-			rest: z.map(z.string(), References.schema)
-		}).transform((arg) => {
-			return new References(arg.uri, arg.collection, arg.dependencies, arg.rest, new BehaviorSubject<void>(undefined))
-		})
+	public static readonly schema: z.ZodType<References> = z.object({
+		uri: Uri.schema,
+		collection: Collection.createSchema(VDFRange.schema),
+		get dependencies() {
+			return z.array(References.schema)
+		},
+		get rest() {
+			return z.map(z.string(), References.schema)
+		}
+	}).transform((arg) => {
+		return new References(arg.uri, arg.collection, arg.dependencies, arg.rest, new BehaviorSubject<void>(undefined))
 	})
 
 	public readonly uri: Uri

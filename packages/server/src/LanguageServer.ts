@@ -673,7 +673,7 @@ export abstract class LanguageServer<
 			return null
 		}
 
-		const diagnosticDataSchema = z.object({ id: z.string().uuid() })
+		const diagnosticDataSchema = z.object({ id: z.uuid() })
 
 		const uri = params.textDocument.uri.toString()
 

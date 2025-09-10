@@ -91,7 +91,7 @@ export class Client<T extends BaseLanguageClient> {
 
 	public async start(): Promise<void> {
 		return this.client.start().then(() => {
-			const result = VSCodeVDFLanguageIDSchema.array().transform((arg) => new Set(arg)).safeParse(this.client.initializeResult?.["servers"])
+			const result = z.array(VSCodeVDFLanguageIDSchema).transform((arg) => new Set(arg)).safeParse(this.client.initializeResult?.["servers"])
 			if (result.success) {
 				for (const languageId of result.data) {
 					this.startServer(languageId)

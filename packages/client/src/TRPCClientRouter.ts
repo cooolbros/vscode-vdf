@@ -40,7 +40,7 @@ export function TRPCClientRouter(
 		workspace: t.router({
 			openTextDocument: t
 				.procedure
-				.input(URISchema.merge(z.object({ languageId: z.string() })))
+				.input(URISchema.extend({ languageId: z.string() }))
 				.query(async ({ input }) => {
 					return {
 						uri: input.uri,
@@ -65,10 +65,12 @@ export function TRPCClientRouter(
 					.procedure
 					.input(
 						z.object({
-							paths: z.union([
-								z.object({ type: z.literal("tf2") }),
-								z.object({ type: z.literal("folder"), uri: Uri.schema }),
-							]).array()
+							paths: z.array(
+								z.discriminatedUnion("type", [
+									z.object({ type: z.literal("tf2") }),
+									z.object({ type: z.literal("folder"), uri: Uri.schema }),
+								])
+							)
 						})
 					)
 					.mutation(async ({ input }) => {
@@ -163,19 +165,19 @@ export function TRPCClientRouter(
 			decoration: t
 				.procedure
 				.input(
-					URISchema.merge(
-						z.object({
-							key: z.string(),
-							decorations: z.object({
+					URISchema.extend({
+						key: z.string(),
+						decorations: z.array(
+							z.object({
 								range: VSCodeRangeSchema,
 								renderOptions: z.object({
 									after: z.object({
 										contentText: z.string()
 									})
 								})
-							}).array()
-						})
-					)
+							})
+						)
+					})
 				)
 				.mutation(async ({ input }) => {
 

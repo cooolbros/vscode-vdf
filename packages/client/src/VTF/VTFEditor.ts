@@ -7,11 +7,11 @@ import { VTFDocument } from "./VTFDocument"
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 	private static readonly decoder = new TextDecoder("utf-8")
-	public static readonly commandSchema = z.union([
+	public static readonly commandSchema = z.discriminatedUnion("type", [
 		z.object({ type: z.literal("buf") }),
 		z.object({ type: z.literal("flags"), label: z.string(), value: z.number() }),
 		z.object({ type: z.literal("scale"), scale: z.number().min(10).max(200) }),
-		z.object({ type: z.literal("showErrorMessage"), message: z.string(), items: z.string().array() }),
+		z.object({ type: z.literal("showErrorMessage"), message: z.string(), items: z.array(z.string()) }),
 		z.object({ type: z.literal("unsupportedVTFFormat"), format: z.string() })
 	])
 

@@ -4,7 +4,7 @@ import { observableToPromise, type Unsubscribable } from "@trpc/server/observabl
 import { getErrorShape, getTRPCErrorFromUnknown, procedureTypes } from "@trpc/server/unstable-core-do-not-import"
 import { z } from "zod"
 
-export interface TRPCRequestHandlerOptions<T extends [string, ...string[]]> {
+export interface TRPCRequestHandlerOptions<T extends z.util.EnumLike> {
 	router: AnyTRPCRouter
 	schema: z.ZodEnum<T>
 	onRequest: (method: string, handler: (param: unknown) => void) => void,
@@ -15,7 +15,7 @@ function next(): never {
 	throw new Error("unreachable")
 }
 
-export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRequestHandlerOptions<T>) {
+export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestHandlerOptions<T>) {
 
 	const transformer = opts.router._def._config.transformer
 
@@ -24,7 +24,7 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 		type: z.enum(procedureTypes),
 		input: z.unknown().optional().transform((arg) => transformer.input.deserialize(arg) as {}),
 		path: z.string(),
-		context: z.record(z.unknown()),
+		context: z.record(z.string(), z.unknown()),
 		signal: z.instanceof(AbortSignal).nullable().default(null),
 	})
 
@@ -35,10 +35,10 @@ export function TRPCRequestHandler<T extends [string, ...string[]]>(opts: TRPCRe
 		transformer: transformer,
 	})({})
 
-	const subscriptions = new Map<string, Map<number, Unsubscribable>>()
+	const subscriptions = new Map<z.infer<z.ZodEnum<T>>, Map<number, Unsubscribable>>()
 
 	opts.onRequest("vscode-vdf/trpc/observable/unsubscribe", (param: unknown) => {
-		const { client, id } = z.object({ client: z.string(), id: z.number() }).parse(param)
+		const { client, id } = z.object({ client: opts.schema, id: z.number() }).parse(param)
 		const subscription = subscriptions.get(client)?.get(id)
 		subscriptions.get(client)?.delete(id)
 		subscription?.unsubscribe()

@@ -17,7 +17,7 @@ await rm(posix.join(teamFortress2Folder, "tf/download"), { recursive: true, forc
 const { GameInfo: { FileSystem: { SearchPaths: searchPaths } } } = z.object({
 	GameInfo: z.object({
 		FileSystem: z.object({
-			SearchPaths: z.record(z.union([z.string(), z.array(z.string())])).transform((arg) => {
+			SearchPaths: z.record(z.string(), z.union([z.string(), z.array(z.string())])).transform((arg) => {
 				return Object
 					.values(arg)
 					.flat()

@@ -74,9 +74,9 @@ export function activate(context: ExtensionContext): void {
 			const decoder = new TextDecoder("utf-8")
 
 			const libraryFoldersSchema = z.object({
-				libraryfolders: z.record(z.object({
+				libraryfolders: z.record(z.string(), z.object({
 					path: z.string(),
-					apps: z.record(z.string())
+					apps: z.record(z.string(), z.string())
 				}))
 			})
 

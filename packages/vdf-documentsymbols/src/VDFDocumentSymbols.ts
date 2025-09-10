@@ -9,7 +9,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		return Array
 	}
 
-	public static readonly schema = z.lazy(() => VDFDocumentSymbol.schema.array().transform((arg) => new VDFDocumentSymbols(...arg)))
+	public static readonly schema = z.array(VDFDocumentSymbol.schema).transform((arg) => new VDFDocumentSymbols(...arg))
 
 	public forAll(callback: (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => void): void {
 		const path: VDFDocumentSymbol[] = []

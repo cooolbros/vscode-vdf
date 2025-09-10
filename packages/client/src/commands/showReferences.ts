@@ -5,7 +5,7 @@ import { VSCodeLocationSchema, VSCodePositionSchema, VSCodeUriSchema } from "../
 const showReferencesSchema = z.tuple([
 	VSCodeUriSchema,
 	VSCodePositionSchema,
-	VSCodeLocationSchema.array(),
+	z.array(VSCodeLocationSchema)
 ])
 
 export async function showReferences(editor: TextEditor, edit: TextEditorEdit, ...params: any[]): Promise<void> {

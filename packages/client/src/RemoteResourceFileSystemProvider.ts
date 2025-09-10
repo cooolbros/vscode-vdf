@@ -25,7 +25,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 		switch (response.status) {
 			case 200:
 				return z.object({
-					type: z.number().transform((arg) => (FileType.Unknown | arg) as FileType),
+					type: z.number(),
 					ctime: z.number(),
 					mtime: z.number(),
 					size: z.number(),
@@ -46,10 +46,7 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 
 		switch (response.status) {
 			case 200:
-				return z
-					.tuple([z.string(), z.number()])
-					.array()
-					.parse(await response.json())
+				return z.array(z.tuple([z.string(), z.number()])).parse(await response.json())
 			case 415:
 				throw FileSystemError.FileNotADirectory()
 			default:

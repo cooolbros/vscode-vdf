@@ -8,24 +8,25 @@ import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
  */
 export class VDFDocumentSymbol implements DocumentSymbol {
 
-	// https://github.com/colinhacks/zod?tab=readme-ov-file#zodtype-with-zodeffects
-	public static readonly schema: z.ZodType<VDFDocumentSymbol, z.ZodTypeDef, any> = z.object({
+	public static readonly schema: z.ZodType<VDFDocumentSymbol> = z.object({
 		name: z.string(),
 		key: z.string(),
 		nameRange: VDFRange.schema,
 		kind: z.number().min(1).max(26).transform((arg) => <SymbolKind>arg),
-		conditional: z.string().startsWith("[").endsWith("]").nullable(),
+		conditional: z.templateLiteral(["[", z.string(), "]"]).nullable(),
 		range: VDFRange.schema,
 		selectionRange: VDFRange.schema,
 		detail: z.string().optional(),
 		detailRange: VDFRange.schema.optional(),
-		children: z.lazy(() => VDFDocumentSymbols.schema.optional()),
+		get children() {
+			return VDFDocumentSymbols.schema.optional()
+		},
 		childrenRange: VDFRange.schema.optional(),
 	}).transform((arg) => new VDFDocumentSymbol(
 		arg.key,
 		arg.nameRange,
 		arg.kind,
-		<`[${string}]` | null>arg.conditional,
+		arg.conditional,
 		arg.range,
 		arg.detail != undefined
 			? { detail: arg.detail!, range: arg.detailRange! }

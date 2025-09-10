@@ -24,7 +24,7 @@ export const VSCodeVDFConfigurationSchema = z.object({
 			enable: z.boolean()
 		})
 	}),
-	popfile: VDFLanguageConfigurationSchema.merge(z.object({
+	popfile: VDFLanguageConfigurationSchema.extend({
 		waveStatusPreview: z.object({
 			background: z.object({
 				colour: z.string(),
@@ -38,7 +38,7 @@ export const VSCodeVDFConfigurationSchema = z.object({
 				enable: z.boolean()
 			})
 		})
-	})),
+	}),
 	vmt: VDFLanguageConfigurationSchema,
 	vdf: VDFLanguageConfigurationSchema,
 })
