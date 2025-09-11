@@ -1,4 +1,4 @@
-import type { VDFRange, VDFToken } from "vdf"
+import type { VDFRange, VDFToken, VDFTokenType } from "vdf"
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver"
 import type { HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
@@ -8,13 +8,13 @@ export class HUDAnimationsEventDocumentSymbol implements DocumentSymbol {
 	public readonly name: string
 	public readonly eventName: string
 	public readonly eventNameRange: VDFRange
-	public readonly conditional: { value: string, range: VDFRange } | null
+	public readonly conditional: { value: `[${string}]`, range: VDFRange } | null
 	public readonly kind: typeof SymbolKind.Event
 	public readonly range: VDFRange
 	public readonly selectionRange: VDFRange
 	public readonly children: HUDAnimationsStatementDocumentSymbols
 
-	constructor(event: VDFToken, conditional: VDFToken | null, range: VDFRange, children: HUDAnimationsStatementDocumentSymbols) {
+	constructor(event: VDFToken, conditional: Extract<VDFToken, { type: VDFTokenType.Conditional }> | null, range: VDFRange, children: HUDAnimationsStatementDocumentSymbols) {
 		this.name = event.value + (conditional ? ` ${conditional.value}` : "")
 		this.eventName = event.value
 		this.eventNameRange = event.range
