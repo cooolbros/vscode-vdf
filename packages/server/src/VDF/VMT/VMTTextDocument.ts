@@ -35,7 +35,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			writeRoot: workspace?.uri ?? null,
 			dependencies$: (workspace?.surfaceProperties$ ?? of(null)).pipe(
 				map((surfaceProperties) => ({
-					schema: <VDFTextDocumentSchema>{
+					schema: {
 						keys: keys,
 						values: {
 							...values,
@@ -78,7 +78,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 								folder: "materials",
 								extensionsPattern: ".vtf",
 								resolveBaseName: (value, withExtension) => withExtension(".vtf"),
-								toCompletionItem: (name, type, withoutExtension) => withoutExtension(),
+								toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
 							}
 						],
 						colours: {
@@ -143,7 +143,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 							typeKey: null,
 							defaultType: null
 						}
-					},
+					} satisfies VDFTextDocumentSchema,
 					globals: []
 				}))
 			)
