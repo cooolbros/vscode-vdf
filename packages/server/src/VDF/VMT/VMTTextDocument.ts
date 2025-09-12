@@ -17,6 +17,108 @@ import type { VMTWorkspace } from "./VMTWorkspace"
 
 export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
+	public static readonly Schema: VDFTextDocumentSchema = {
+		keys: keys,
+		values: values,
+		definitionReferences: [],
+		files: [
+			{
+				name: "image",
+				parentKeys: [],
+				keys: new Set([
+					"%tooltexture",
+					"$baseTexture".toLowerCase(),
+					"$baseTexture2".toLowerCase(),
+					"$blendmodulatetexture",
+					"$bottommaterial",
+					"$bumpmap",
+					"$bumpmap2",
+					"$detail",
+					"$dudvmap",
+					"$envmapmask",
+					"$fallbackmaterial",
+					"$hdrbaseTexture".toLowerCase(),
+					"$hdrcompressedTexture".toLowerCase(),
+					"$lightwarptexture",
+					"$normalmap",
+					"$phongexponenttexture",
+					"$refracttinttexture",
+					"$sheenmap",
+					"$sheenmapmask",
+					"$sheenmapmask",
+					"$texture2",
+					"$underwateroverlay",
+				]),
+				folder: "materials",
+				extensionsPattern: ".vtf",
+				resolveBaseName: (value, withExtension) => withExtension(".vtf"),
+				toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
+			}
+		],
+		colours: {
+			keys: null,
+			colours: [
+				{
+					pattern: /\[\s?[\d.]+\s+[\d.]+\s+[\d.]+\s?\]/,
+					parse(value) {
+						const colour = value.split(/[\s[\]]+/)
+						return {
+							red: parseFloat(colour[1]),
+							green: parseFloat(colour[2]),
+							blue: parseFloat(colour[3]),
+							alpha: 1
+						}
+					},
+					stringify(colour) {
+						return `[ ${colour.red.toFixed(2)} ${colour.green.toFixed(2)} ${colour.blue.toFixed(2)} ]`
+					},
+				},
+				{
+					pattern: /{\s?\d+\s+\d+\s+\d+\s?}/,
+					parse(value) {
+						const colour = value.split(/[\s{}]+/)
+						return {
+							red: parseInt(colour[1]) / 255,
+							green: parseInt(colour[2]) / 255,
+							blue: parseInt(colour[3]) / 255,
+							alpha: 1
+						}
+					},
+					stringify(colour) {
+						return `{ ${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} }`
+					},
+				}
+			]
+		},
+		completion: {
+			root: [
+				{
+					label: "LightmappedGeneric",
+					kind: CompletionItemKind.Class,
+					preselect: true,
+					insertText: "LightmappedGeneric\n{\n\t$0\n}",
+					insertTextFormat: InsertTextFormat.Snippet
+				},
+				{
+					label: "UnlitGeneric",
+					kind: CompletionItemKind.Class,
+					preselect: true,
+					insertText: "UnlitGeneric\n{\n\t$0\n}",
+					insertTextFormat: InsertTextFormat.Snippet
+				},
+				{
+					label: "VertexlitGeneric",
+					kind: CompletionItemKind.Class,
+					preselect: true,
+					insertText: "VertexlitGeneric\n{\n\t$0\n}",
+					insertTextFormat: InsertTextFormat.Snippet
+				}
+			],
+			typeKey: null,
+			defaultType: null
+		}
+	}
+
 	public readonly workspace: WorkspaceBase | null
 
 	public readonly inlayHints$: Observable<InlayHint[]>
@@ -36,9 +138,9 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			dependencies$: (workspace?.surfaceProperties$ ?? of(null)).pipe(
 				map((surfaceProperties) => ({
 					schema: {
-						keys: keys,
+						...VMTTextDocument.Schema,
 						values: {
-							...values,
+							...VMTTextDocument.Schema.values,
 							...(surfaceProperties != null && {
 								$surfaceprop: {
 									kind: CompletionItemKind.Constant,
@@ -46,103 +148,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 								}
 							})
 						},
-						definitionReferences: [],
-						files: [
-							{
-								name: "image",
-								parentKeys: [],
-								keys: new Set([
-									"%tooltexture",
-									"$baseTexture".toLowerCase(),
-									"$baseTexture2".toLowerCase(),
-									"$blendmodulatetexture",
-									"$bottommaterial",
-									"$bumpmap",
-									"$bumpmap2",
-									"$detail",
-									"$dudvmap",
-									"$envmapmask",
-									"$fallbackmaterial",
-									"$hdrbaseTexture".toLowerCase(),
-									"$hdrcompressedTexture".toLowerCase(),
-									"$lightwarptexture",
-									"$normalmap",
-									"$phongexponenttexture",
-									"$refracttinttexture",
-									"$sheenmap",
-									"$sheenmapmask",
-									"$sheenmapmask",
-									"$texture2",
-									"$underwateroverlay",
-								]),
-								folder: "materials",
-								extensionsPattern: ".vtf",
-								resolveBaseName: (value, withExtension) => withExtension(".vtf"),
-								toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
-							}
-						],
-						colours: {
-							keys: null,
-							colours: [
-								{
-									pattern: /\[\s?[\d.]+\s+[\d.]+\s+[\d.]+\s?\]/,
-									parse(value) {
-										const colour = value.split(/[\s[\]]+/)
-										return {
-											red: parseFloat(colour[1]),
-											green: parseFloat(colour[2]),
-											blue: parseFloat(colour[3]),
-											alpha: 1
-										}
-									},
-									stringify(colour) {
-										return `[ ${colour.red.toFixed(2)} ${colour.green.toFixed(2)} ${colour.blue.toFixed(2)} ]`
-									},
-								},
-								{
-									pattern: /{\s?\d+\s+\d+\s+\d+\s?}/,
-									parse(value) {
-										const colour = value.split(/[\s{}]+/)
-										return {
-											red: parseInt(colour[1]) / 255,
-											green: parseInt(colour[2]) / 255,
-											blue: parseInt(colour[3]) / 255,
-											alpha: 1
-										}
-									},
-									stringify(colour) {
-										return `{ ${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} }`
-									},
-								}
-							]
-						},
-						completion: {
-							root: [
-								{
-									label: "LightmappedGeneric",
-									kind: CompletionItemKind.Class,
-									preselect: true,
-									insertText: "LightmappedGeneric\n{\n\t$0\n}",
-									insertTextFormat: InsertTextFormat.Snippet
-								},
-								{
-									label: "UnlitGeneric",
-									kind: CompletionItemKind.Class,
-									preselect: true,
-									insertText: "UnlitGeneric\n{\n\t$0\n}",
-									insertTextFormat: InsertTextFormat.Snippet
-								},
-								{
-									label: "VertexlitGeneric",
-									kind: CompletionItemKind.Class,
-									preselect: true,
-									insertText: "VertexlitGeneric\n{\n\t$0\n}",
-									insertTextFormat: InsertTextFormat.Snippet
-								}
-							],
-							typeKey: null,
-							defaultType: null
-						}
+
 					} satisfies VDFTextDocumentSchema,
 					globals: []
 				}))
