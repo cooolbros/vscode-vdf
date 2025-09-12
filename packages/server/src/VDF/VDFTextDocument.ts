@@ -350,7 +350,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						definitionReferences: new DefinitionReferences(
 							scopes,
 							new Definitions({ collection: definitions, globals: dependencies.globals.map(({ definitions }) => definitions) }),
-							new References(this.uri, references, base.map(({ references }) => references), this.references, this.references$)
+							new References(this.uri, references, base.map(({ references }) => references), this.references$)
 						)
 					}
 				})

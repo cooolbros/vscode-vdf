@@ -213,9 +213,9 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						this.uri,
 						undefined,
 						[],
-						new Map<string, References>(
+						new BehaviorSubject(new Map<string, References>(
 							files.map((file) => <const>[file.document.uri.toString(), new References(file.document.uri, file.references, [])])
-						)
+						))
 					)
 				)
 
@@ -304,7 +304,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 		const iterator = (function*() {
 			yield* Iterator.from(references).map(s => ({ uri: uri, ...s }))
-			for (const documentReferences of references.rest.values()) {
+			for (const documentReferences of references.references$.value.values()) {
 				yield* Iterator.from(documentReferences).map(s => ({ uri: documentReferences.uri, ...s }))
 			}
 		})()

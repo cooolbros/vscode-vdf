@@ -633,7 +633,7 @@ export abstract class LanguageServer<
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
 		await using document = await this.documents.get(params.textDocument.uri)
 		const definitionReferences = await firstValueFrom(document.definitionReferences$)
-		for (const { scope, type, key, value: ranges } of (function*() { yield* definitionReferences.references.collection; yield* definitionReferences.references.rest.get(document.uri.toString())?.collection ?? [] })()) {
+		for (const { scope, type, key, value: ranges } of (function*() { yield* definitionReferences.references.collection; yield* definitionReferences.references.references$.value.get(document.uri.toString())?.collection ?? [] })()) {
 			if (ranges.some((range) => range.contains(params.position))) {
 				return definitionReferences.definitions.get(scope, type, key)?.map((definition) => ({
 					uri: definition.uri.toString(),

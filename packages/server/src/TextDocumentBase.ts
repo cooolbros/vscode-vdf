@@ -39,8 +39,7 @@ export abstract class TextDocumentBase<
 
 	public readonly uri: Uri
 	protected readonly document: TextDocument
-	protected readonly references: Map<string, References>
-	protected readonly references$: BehaviorSubject<void>
+	protected readonly references$: BehaviorSubject<Map<string, References>>
 
 	public readonly documentConfiguration$: Observable<VSCodeVDFConfiguration>
 	public readonly fileSystem: FileSystemMountPoint
@@ -60,8 +59,7 @@ export abstract class TextDocumentBase<
 	) {
 		this.uri = init.uri
 		this.document = TextDocument.create(init.uri.toString(), init.languageId, init.version, init.content)
-		this.references = new Map()
-		this.references$ = new BehaviorSubject<void>(undefined)
+		this.references$ = new BehaviorSubject(new Map())
 
 		this.documentConfiguration$ = documentConfiguration$
 		this.fileSystem = fileSystem
@@ -224,14 +222,14 @@ export abstract class TextDocumentBase<
 	public setDocumentReferences(references: Map<string, References | null>) {
 		for (const [uri, documentReferences] of references) {
 			if (documentReferences != null) {
-				this.references.set(uri, documentReferences)
+				this.references$.value.set(uri, documentReferences)
 			}
 			else {
-				this.references.delete(uri)
+				this.references$.value.delete(uri)
 			}
 		}
 
-		this.references$.next()
+		this.references$.next(this.references$.value)
 	}
 
 	public async [Symbol.asyncDispose](): Promise<void> {

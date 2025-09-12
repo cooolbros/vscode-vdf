@@ -122,7 +122,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 																clientScheme
 															]
 														}),
-														new References(this.uri, references, [], this.references, this.references$)
+														new References(this.uri, references, [], this.references$)
 													)
 												}
 											})
@@ -161,7 +161,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 								definitionReferences: new DefinitionReferences(
 									new Map(),
 									new Definitions({ collection: definitions }),
-									new References(this.uri, references, [], this.references, this.references$)
+									new References(this.uri, references, [], this.references$)
 								)
 							}
 						})

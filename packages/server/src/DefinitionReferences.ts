@@ -147,32 +147,28 @@ export class References {
 		get dependencies() {
 			return z.array(References.schema)
 		},
-		get rest() {
+		get references() {
 			return z.map(z.string(), References.schema)
 		}
 	}).transform((arg) => {
-		return new References(arg.uri, arg.collection, arg.dependencies, arg.rest, new BehaviorSubject<void>(undefined))
+		return new References(arg.uri, arg.collection, arg.dependencies, new BehaviorSubject(arg.references))
 	})
 
 	public readonly uri: Uri
 	public readonly collection: Collection<VDFRange>
 	private readonly dependencies: References[]
 
-	public readonly rest: Map<string, References>
-	public readonly references$: BehaviorSubject<void>
+	public readonly references$: BehaviorSubject<Map<string, References>>
 
 	constructor(
 		uri: Uri,
 		collection = new Collection<VDFRange>(),
 		dependencies: References[],
-		rest = new Map<string, References>(),
-		references$ = new BehaviorSubject<void>(undefined)
+		references$ = new BehaviorSubject(new Map<string, References>())
 	) {
 		this.uri = uri
 		this.collection = collection
 		this.dependencies = dependencies
-		this.rest = rest
-
 		this.references$ = references$
 
 		for (const dependency of this.dependencies) {
@@ -190,10 +186,10 @@ export class References {
 
 	public setDocumentReferences(uri: Uri, references: References | null, notify: boolean) {
 		if (references != null) {
-			this.rest.set(uri.toString(), references)
+			this.references$.value.set(uri.toString(), references)
 		}
 		else {
-			this.rest.delete(uri.toString())
+			this.references$.value.delete(uri.toString())
 		}
 
 		for (const dependency of this.dependencies) {
@@ -201,7 +197,7 @@ export class References {
 		}
 
 		if (notify) {
-			this.references$.next()
+			this.references$.next(this.references$.value)
 		}
 	}
 
@@ -211,7 +207,7 @@ export class References {
 				yield { uri: references.uri, range: range }
 			}
 
-			for (const dependency of references.rest.values()) {
+			for (const dependency of references.references$.value.values()) {
 				yield* dependency.collect(scope, type, key)
 			}
 		}
@@ -224,7 +220,7 @@ export class References {
 			uri: this.uri,
 			collection: this.collection.toJSON(),
 			dependencies: this.dependencies,
-			rest: this.rest
+			references: this.references$.value
 		}
 	}
 }
