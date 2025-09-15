@@ -45,8 +45,8 @@ impl Display for BSPSignature {
 
 impl Decode for BSPSignature {
     fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        match <[u8; 4] as bincode::Decode>::decode(decoder)? {
-            [b'V', b'B', b'S', b'P'] => Ok(BSPSignature),
+        match &<[u8; 4] as bincode::Decode>::decode(decoder)? {
+            b"VBSP" => Ok(BSPSignature),
             _ => Err(DecodeError::Other("VBSP")),
         }
     }
@@ -84,8 +84,8 @@ impl Display for LZMASignature {
 
 impl Decode for LZMASignature {
     fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        match <[u8; 4] as bincode::Decode>::decode(decoder)? {
-            [b'L', b'Z', b'M', b'A'] => Ok(LZMASignature),
+        match &<[u8; 4] as bincode::Decode>::decode(decoder)? {
+            b"LZMA" => Ok(LZMASignature),
             _ => Err(DecodeError::Other("LZMA")),
         }
     }
@@ -154,8 +154,8 @@ impl BSP {
             .get(lump.offset as usize..(lump.offset + lump.len) as usize)
             .ok_or(DecodeError::UnexpectedEnd { additional: lump.len as usize })?;
 
-        match buf[0..4] {
-            [b'L', b'Z', b'M', b'A'] => {
+        match &buf[0..4] {
+            b"LZMA" => {
                 let config = bincode::config::standard().with_fixed_int_encoding();
 
                 let (bsp_header, bytes_read): (BSPLZMAHeader, usize) = bincode::decode_from_slice(buf, config)?;

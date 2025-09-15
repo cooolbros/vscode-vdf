@@ -69,8 +69,8 @@ impl Display for VTFSignature {
 
 impl Decode for VTFSignature {
     fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        match <[u8; 4] as bincode::Decode>::decode(decoder)? {
-            [b'V', b'T', b'F', b'\0'] => Ok(VTFSignature),
+        match &<[u8; 4] as bincode::Decode>::decode(decoder)? {
+            b"VTF\0" => Ok(VTFSignature),
             _ => Err(DecodeError::Other("VTF\0")),
         }
     }
