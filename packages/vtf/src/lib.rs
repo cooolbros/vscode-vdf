@@ -287,9 +287,11 @@ impl VTF {
             None => None,
         };
 
-        reader.seek(SeekFrom::Start(header.header_size as u64)).map_err(|_| DecodeError::UnexpectedEnd {
-            additional: header.header_size as usize,
-        })?;
+        reader
+            .seek(SeekFrom::Start(header.header_size as u64))
+            .map_err(|_| DecodeError::UnexpectedEnd {
+                additional: header.header_size as usize,
+            })?;
 
         let thumbnail_bytes = texpresso::Format::Bc1.compressed_size(header.low_res_image_width as usize, header.low_res_image_height as usize);
         reader
@@ -307,7 +309,9 @@ impl VTF {
                 let frames = (0..header.frames)
                     .map(|_| {
                         let offset = reader.stream_position().unwrap() as usize;
-                        reader.seek_relative(bytes as i64).map_err(|_| VTFExtractError::UnexpectedEnd { additional: bytes })?;
+                        reader
+                            .seek_relative(bytes as i64)
+                            .map_err(|_| VTFExtractError::UnexpectedEnd { additional: bytes })?;
                         Ok(VTFFrame { offset, bytes })
                     })
                     .collect::<Result<Vec<VTFFrame>, VTFExtractError>>()?;
@@ -320,7 +324,12 @@ impl VTF {
             })
             .collect::<Result<Vec<VTFMipMap>, VTFExtractError>>();
 
-        Ok(VTF { buf, header, resources, mipmaps })
+        Ok(VTF {
+            buf,
+            header,
+            resources,
+            mipmaps,
+        })
     }
 }
 

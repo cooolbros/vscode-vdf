@@ -28,7 +28,15 @@ pub fn vtf_to_png(vtf: VTF, size: u16) -> Result<Vec<u8>, VTFExtractError> {
                 let thumbnail = DynamicImage::ImageRgba8(image_buffer).thumbnail(512, 512);
                 thumbnail.write_to(&mut Cursor::new(&mut out), ImageFormat::Png).unwrap();
             } else {
-                image::write_buffer_with_format(&mut Cursor::new(&mut out), &rgba, width as u32, height as u32, ColorType::Rgba8, ImageFormat::Png).unwrap();
+                image::write_buffer_with_format(
+                    &mut Cursor::new(&mut out),
+                    &rgba,
+                    width as u32,
+                    height as u32,
+                    ColorType::Rgba8,
+                    ImageFormat::Png,
+                )
+                .unwrap();
             };
 
             Ok(out)
