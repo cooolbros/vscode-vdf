@@ -319,6 +319,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										key: result.key,
 										range: documentSymbol.range,
 										keyRange: result.keyRange,
+										documentation: documentSymbol.documentation,
 										nameRange: result.nameRange,
 										detail: documentSymbol.detail
 									})

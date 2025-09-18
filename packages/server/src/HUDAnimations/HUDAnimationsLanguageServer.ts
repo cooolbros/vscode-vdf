@@ -604,18 +604,19 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			const definitionReferences = await firstValueFrom(document.definitionReferences$)
 			const definitions = definitionReferences.definitions.ofType(null, EventType)
 
-			return [
-				...new Set(
-					definitions
-						.values()
-						.flatMap((definitions) => definitions)
-						.map((definition) => definition.key)
-						.filter(filter(text))
-				)
-			].map((key) => ({
-				label: key,
-				kind: CompletionItemKind.Event
-			}))
+			const f = filter(text)
+			return definitions
+				.values()
+				.filter((definitions) => definitions.length > 0 && f(definitions[0].key))
+				.toArray()
+				.filter((value, index, array) => array.findIndex((v) => v[0].key == value[0].key) == index)
+				.map((value) => {
+					return {
+						label: value[0].key,
+						kind: CompletionItemKind.Event,
+						documentation: value.map((value) => value.documentation).filter((documentation) => documentation != undefined).join("\n")
+					} satisfies CompletionItem
+				})
 		}
 
 		function sounds(text?: string) {

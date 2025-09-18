@@ -73,6 +73,7 @@ export const definitionSchema = z.object({
 	uri: Uri.schema,
 	key: z.string(),
 	range: VDFRange.schema,
+	documentation: z.string().optional(),
 	nameRange: VDFRange.schema.optional(),
 	keyRange: VDFRange.schema,
 	detail: z.string().optional(),

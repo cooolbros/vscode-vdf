@@ -8,7 +8,7 @@ import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, MarkupKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
@@ -180,6 +180,10 @@ export abstract class VDFLanguageServer<
 					.map((value) => ({
 						label: value[0].key,
 						kind: CompletionItemKind.Variable,
+						documentation: value[0].documentation && {
+							kind: MarkupKind.Markdown,
+							value: value[0].documentation
+						},
 						...(definitionReferencesConfiguration.toCompletionItem && {
 							...definitionReferencesConfiguration.toCompletionItem(value[0])
 						})
