@@ -21,7 +21,7 @@ export class VDF {
 			const keyValues: KeyValues = {}
 
 			const terminator = obj
-				? { type: VDFTokenType.ControlCharacter, value: "}" }
+				? VDFTokenType.ClosingBrace
 				: null
 
 			while (true) {
@@ -30,9 +30,9 @@ export class VDF {
 				let value: string | KeyValues
 				let conditional: `[${string}]` | null
 
-				const keyToken = tokeniser.next()
+				const keyToken = tokeniser.token()
 
-				if (keyToken != null && terminator != null ? (keyToken.type == terminator.type && keyToken.value == terminator.value) : keyToken == terminator) {
+				if (keyToken != null && terminator != null ? (keyToken.type == terminator) : keyToken == terminator) {
 					break
 				}
 				if (keyToken == null) {
@@ -43,41 +43,32 @@ export class VDF {
 					case VDFTokenType.String: {
 						key = keyToken.value
 
-						let valueToken = tokeniser.next()
+						let valueToken = tokeniser.token()
 						if (valueToken == null) {
 							throw new UnexpectedEndOfFileError(["'{'", "value", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 						}
 
 						if (valueToken.type == VDFTokenType.Conditional) {
 							conditional = valueToken.value
-							valueToken = tokeniser.next()
+							valueToken = tokeniser.token()
 							if (valueToken == null) {
 								throw new UnexpectedEndOfFileError(["'{'", "value"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 							}
 						}
 
 						switch (valueToken.type) {
-							case VDFTokenType.ControlCharacter: {
-								if (valueToken.value == "{") {
-									value = parse(true)
-									conditional ??= null
-									break
-								}
-								else {
-									throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'", "value"], valueToken.range)
-								}
+							case VDFTokenType.OpeningBrace: {
+								value = parse(true)
+								conditional ??= null
+								break
 							}
 							case VDFTokenType.String: {
 								value = valueToken.value
-								const conditionalToken = tokeniser.next({ peek: true })
-								if (conditionalToken?.type == VDFTokenType.Conditional) {
-									conditional = conditionalToken.value
-									tokeniser.next()
-								}
-								else {
-									conditional = null
-								}
+								conditional = tokeniser.conditional()
 								break
+							}
+							case VDFTokenType.ClosingBrace: {
+								throw new UnexpectedTokenError(`'}'`, ["'{'", "value"], valueToken.range)
 							}
 							case VDFTokenType.Conditional: {
 								throw new UnexpectedTokenError(`'${valueToken.value}'`, ["'{'", "value"], valueToken.range)
@@ -85,12 +76,12 @@ export class VDF {
 						}
 						break
 					}
-					case VDFTokenType.ControlCharacter: {
+					case VDFTokenType.OpeningBrace:
+						throw new UnexpectedTokenError(`'{'`, ["key"], keyToken.range)
+					case VDFTokenType.ClosingBrace:
+						throw new UnexpectedTokenError(`'}'`, ["key", str], keyToken.range)
+					case VDFTokenType.Conditional:
 						throw new UnexpectedTokenError(`'${keyToken.value}'`, ["key"], keyToken.range)
-					}
-					case VDFTokenType.Conditional: {
-						throw new UnexpectedTokenError(`'${keyToken.value}'`, ["key"], keyToken.range)
-					}
 				}
 
 				if (key in keyValues) {

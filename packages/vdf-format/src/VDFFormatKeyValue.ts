@@ -1,6 +1,6 @@
-export interface VDFFormatDocumentSymbol {
+export interface VDFFormatKeyValue {
 	key?: string
-	value?: string | VDFFormatDocumentSymbol[]
+	value?: string | VDFFormatKeyValue[]
 	conditional?: `[${string}]`
 	blockComment?: string
 	inLineComment?: string

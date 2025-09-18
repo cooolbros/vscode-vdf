@@ -1,11 +1,11 @@
 import type { HUDAnimationStatementType } from "hudanimations-documentsymbols"
 
-export interface HUDAnimationsFormatDocumentSymbol {
+export interface HUDAnimationsFormatKeyValue {
 	comment?: string
-	event?: HUDAnimationsFormatEventDocumentSymbol
+	event?: HUDAnimationsFormatEventKeyValue
 }
 
-export interface HUDAnimationsFormatEventDocumentSymbol {
+export interface HUDAnimationsFormatEventKeyValue {
 	name: string
 	conditional?: string
 	comment?: string
@@ -13,7 +13,7 @@ export interface HUDAnimationsFormatEventDocumentSymbol {
 }
 
 /**
- * HUD Animations Format Document Symbol Base
+ * HUD Animations Format KeyValue Base
  */
 export interface StatementBase {
 	conditional?: string
@@ -21,7 +21,7 @@ export interface StatementBase {
 }
 
 /**
- * HUD Animations Format Animate Document Symbol
+ * HUD Animations Format Animate KeyValue
  */
 export interface Animate extends StatementBase {
 	type: HUDAnimationStatementType.Animate
@@ -34,7 +34,7 @@ export interface Animate extends StatementBase {
 }
 
 /**
- * HUD Animations Format RunEvent Document Symbol
+ * HUD Animations Format RunEvent KeyValue
  */
 export interface RunEvent extends StatementBase {
 	type: HUDAnimationStatementType.RunEvent
@@ -43,7 +43,7 @@ export interface RunEvent extends StatementBase {
 }
 
 /**
- * HUD Animations Format StopEvent Document Symbol
+ * HUD Animations Format StopEvent KeyValue
  */
 export interface StopEvent extends StatementBase {
 	type: HUDAnimationStatementType.StopEvent
@@ -52,7 +52,7 @@ export interface StopEvent extends StatementBase {
 }
 
 /**
- * HUD Animations Format SetVisible Document Symbol
+ * HUD Animations Format SetVisible KeyValue
  */
 export interface SetVisible extends StatementBase {
 	type: HUDAnimationStatementType.SetVisible
@@ -62,7 +62,7 @@ export interface SetVisible extends StatementBase {
 }
 
 /**
- * HUD Animations Format FireCommand Document Symbol
+ * HUD Animations Format FireCommand KeyValue
  */
 export interface FireCommand extends StatementBase {
 	type: HUDAnimationStatementType.FireCommand
@@ -71,7 +71,7 @@ export interface FireCommand extends StatementBase {
 }
 
 /**
- * HUD Animations Format RunEventChild Document Symbol
+ * HUD Animations Format RunEventChild KeyValue
  */
 export interface RunEventChild extends StatementBase {
 	type: HUDAnimationStatementType.RunEventChild
@@ -81,7 +81,7 @@ export interface RunEventChild extends StatementBase {
 }
 
 /**
- * HUD Animations Format SetInputEnabled Document Symbol
+ * HUD Animations Format SetInputEnabled KeyValue
  */
 export interface SetInputEnabled extends StatementBase {
 	type: HUDAnimationStatementType.SetInputEnabled
@@ -91,7 +91,7 @@ export interface SetInputEnabled extends StatementBase {
 }
 
 /**
- * HUD Animations Format PlaySound Document Symbol
+ * HUD Animations Format PlaySound KeyValue
  */
 export interface PlaySound extends StatementBase {
 	type: HUDAnimationStatementType.PlaySound
@@ -100,7 +100,7 @@ export interface PlaySound extends StatementBase {
 }
 
 /**
- * HUD Animations Format StopPanelAnimations Document Symbol
+ * HUD Animations Format StopPanelAnimations KeyValue
  */
 export interface StopPanelAnimations extends StatementBase {
 	type: HUDAnimationStatementType.StopPanelAnimations
@@ -156,7 +156,6 @@ type Animations = {
 }
 
 export type Animation = Animations[keyof Animations]
-
 
 export interface AccelInterpolator {
 	type: "Accel"

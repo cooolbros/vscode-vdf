@@ -1,8 +1,8 @@
 import { HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import type { Animation, HUDAnimationsFormatDocumentSymbol } from "./HUDAnimationsFormatDocumentSymbol"
+import type { Animation, HUDAnimationsFormatKeyValue } from "./HUDAnimationsFormatKeyValues"
 import type { HUDAnimationsFormatStringifyOptions } from "./HUDAnimationsFormatStringifyOptions"
 
-export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnimationsFormatDocumentSymbol[], options: HUDAnimationsFormatStringifyOptions): string {
+export function printHUDAnimationsFormatKeyValues(keyValues: HUDAnimationsFormatKeyValue[], options: HUDAnimationsFormatStringifyOptions): string {
 
 	const space = " "
 	const eol = "\n"
@@ -204,11 +204,11 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 
 		fileScopeMaxKeyLengths = Array.from<number>({ length: 20 }).fill(0)
 
-		for (const documentSymbol of documentSymbols) {
-			if (!documentSymbol.event) {
+		for (const keyValue of keyValues) {
+			if (!keyValue.event) {
 				continue
 			}
-			for (const animation of documentSymbol.event.animations) {
+			for (const animation of keyValue.event.animations) {
 				if ("type" in animation) {
 					for (const [index, keyLength] of getKeyLengths(animation).entries()) {
 						fileScopeMaxKeyLengths[index] = Math.max(fileScopeMaxKeyLengths[index], keyLength)
@@ -220,11 +220,11 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 
 	let str = ""
 
-	const length = documentSymbols.length - 1
+	const length = keyValues.length - 1
 
-	for (const [index, documentSymbol] of documentSymbols.entries()) {
-		if (documentSymbol.comment != undefined) {
-			str += `${printComment(documentSymbol.comment)}`
+	for (const [index, keyValue] of keyValues.entries()) {
+		if (keyValue.comment != undefined) {
+			str += `${printComment(keyValue.comment)}`
 			if (index < length) {
 				str += eol
 			}
@@ -234,13 +234,13 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 				}
 			}
 		}
-		else if (documentSymbol.event != undefined) {
-			str += `event ${print(documentSymbol.event.name)}`
-			if (documentSymbol.event.conditional != undefined) {
-				str += ` ${documentSymbol.event.conditional}`
+		else if (keyValue.event != undefined) {
+			str += `event ${print(keyValue.event.name)}`
+			if (keyValue.event.conditional != undefined) {
+				str += ` ${keyValue.event.conditional}`
 			}
-			if (documentSymbol.event.comment != undefined) {
-				str += `    ${printComment(documentSymbol.event.comment)}`
+			if (keyValue.event.comment != undefined) {
+				str += `    ${printComment(keyValue.event.comment)}`
 			}
 			str += `${eol}{${eol}`
 
@@ -250,7 +250,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 
 				eventScopeMaxKeyLengths = Array.from<number>({ length: 10 }).fill(0)
 
-				for (const animation of documentSymbol.event.animations) {
+				for (const animation of keyValue.event.animations) {
 					if ("type" in animation) {
 						for (const [index, keyLength] of getKeyLengths(animation).entries()) {
 							eventScopeMaxKeyLengths[index] = Math.max(eventScopeMaxKeyLengths[index], keyLength)
@@ -259,7 +259,7 @@ export function printHUDAnimationsFormatDocumentSymbols(documentSymbols: HUDAnim
 				}
 			}
 
-			for (const animation of documentSymbol.event.animations) {
+			for (const animation of keyValue.event.animations) {
 				if ("type" in animation) {
 					str += printAnimation(animation, eventScopeMaxKeyLengths)
 					if (animation.conditional) {

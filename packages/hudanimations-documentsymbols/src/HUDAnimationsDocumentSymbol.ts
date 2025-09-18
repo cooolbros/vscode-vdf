@@ -13,8 +13,9 @@ export class HUDAnimationsEventDocumentSymbol implements DocumentSymbol {
 	public readonly range: VDFRange
 	public readonly selectionRange: VDFRange
 	public readonly children: HUDAnimationsStatementDocumentSymbols
+	public readonly documentation?: string
 
-	constructor(event: VDFToken, conditional: Extract<VDFToken, { type: VDFTokenType.Conditional }> | null, range: VDFRange, children: HUDAnimationsStatementDocumentSymbols) {
+	constructor(event: VDFToken, conditional: Extract<VDFToken, { type: VDFTokenType.Conditional }> | null, range: VDFRange, children: HUDAnimationsStatementDocumentSymbols, documentation?: string) {
 		this.name = event.value + (conditional ? ` ${conditional.value}` : "")
 		this.eventName = event.value
 		this.eventNameRange = event.range
@@ -23,6 +24,7 @@ export class HUDAnimationsEventDocumentSymbol implements DocumentSymbol {
 		this.range = range
 		this.selectionRange = range
 		this.children = children
+		this.documentation = documentation
 	}
 }
 
@@ -69,7 +71,7 @@ export class AnimateDocumentSymbol extends HUDAnimationsStatementDocumentSymbolB
 	public readonly value: string
 	public readonly valueRange: VDFRange
 	constructor(
-		{ element, elementRange, property, propertyRange, value, valueRange, interpolator, delay, duration, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, interpolator: Interpolator, delay: number, duration: number, conditional?: string },
+		{ element, elementRange, property, propertyRange, value, valueRange, interpolator, delay, duration, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, interpolator: Interpolator, delay: number, duration: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`Animate ${element} ${property} ${value} ${interpolator} ${delay} ${duration}` + (conditional ? ` ${conditional}` : ""), range)
@@ -171,7 +173,7 @@ export class RunEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbol
 	public readonly event: string
 	public readonly eventRange: VDFRange
 	constructor(
-		{ event, eventRange, delay, conditional }: { event: string, eventRange: VDFRange, delay: number, conditional?: string },
+		{ event, eventRange, delay, conditional }: { event: string, eventRange: VDFRange, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`RunEvent ${event} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -185,7 +187,7 @@ export class StopEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 	public readonly event: string
 	public readonly eventRange: VDFRange
 	constructor(
-		{ event, eventRange, delay, conditional }: { event: string, eventRange: VDFRange, delay: number, conditional?: string },
+		{ event, eventRange, delay, conditional }: { event: string, eventRange: VDFRange, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`StopEvent ${event} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -199,7 +201,7 @@ export class SetVisibleDocumentSymbol extends HUDAnimationsStatementDocumentSymb
 	public readonly element: string
 	public readonly elementRange: VDFRange
 	constructor(
-		{ element, elementRange, visible, delay, conditional }: { element: string, elementRange: VDFRange, visible: string, delay: number, conditional?: string },
+		{ element, elementRange, visible, delay, conditional }: { element: string, elementRange: VDFRange, visible: string, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`SetVisible ${element} ${visible} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -212,7 +214,7 @@ export class SetVisibleDocumentSymbol extends HUDAnimationsStatementDocumentSymb
 export class FireCommandDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.FireCommand
 	constructor(
-		{ delay, command, conditional }: { delay: number, command: string, conditional?: string },
+		{ delay, command, conditional }: { delay: number, command: string, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`FireCommand ${delay} ${command}` + (conditional ? ` ${conditional}` : ""), range)
@@ -226,7 +228,7 @@ export class RunEventChildDocumentSymbol extends HUDAnimationsStatementDocumentS
 	public readonly event: string
 	public readonly eventRange: VDFRange
 	constructor(
-		{ element, elementRange, event, eventRange, delay, conditional }: { element: string, elementRange: VDFRange, event: string, eventRange: VDFRange, delay: number, conditional?: string },
+		{ element, elementRange, event, eventRange, delay, conditional }: { element: string, elementRange: VDFRange, event: string, eventRange: VDFRange, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`RunEventChild ${element} ${event} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -242,7 +244,7 @@ export class SetInputEnabledDocumentSymbol extends HUDAnimationsStatementDocumen
 	public readonly element: string
 	public readonly elementRange: VDFRange
 	constructor(
-		{ element, elementRange, enabled, delay, conditional }: { element: string, elementRange: VDFRange, enabled: string, delay: number, conditional?: string },
+		{ element, elementRange, enabled, delay, conditional }: { element: string, elementRange: VDFRange, enabled: string, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`SetInputEnabled ${element} ${enabled} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -256,7 +258,7 @@ export class PlaySoundDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 	public readonly sound: string
 	public readonly soundRange: VDFRange
 	constructor(
-		{ delay, sound, soundRange, conditional }: { delay: number, sound: string, soundRange: VDFRange, conditional?: string },
+		{ delay, sound, soundRange, conditional }: { delay: number, sound: string, soundRange: VDFRange, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`PlaySound ${delay} ${sound}` + (conditional ? ` ${conditional}` : ""), range)
@@ -268,7 +270,7 @@ export class PlaySoundDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 export class StopPanelAnimationsDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.StopPanelAnimations
 	constructor(
-		{ element, delay, conditional }: { element: string, delay: number, conditional?: string },
+		{ element, delay, conditional }: { element: string, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`StopPanelAnimations ${element} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -278,7 +280,7 @@ export class StopPanelAnimationsDocumentSymbol extends HUDAnimationsStatementDoc
 export class StopAnimationDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.StopAnimation
 	constructor(
-		{ element, property, delay, conditional }: { element: string, property: string, delay: number, conditional?: string },
+		{ element, property, delay, conditional }: { element: string, property: string, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`StopAnimation ${element} ${property} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -295,7 +297,7 @@ export class SetFontDocumentSymbol extends HUDAnimationsStatementDocumentSymbolB
 	public readonly font: string
 	public readonly fontRange: VDFRange
 	constructor(
-		{ element, elementRange, property, propertyRange, font, fontRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, font: string, fontRange: VDFRange, delay: number, conditional?: string },
+		{ element, elementRange, property, propertyRange, font, fontRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, font: string, fontRange: VDFRange, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`SetFont ${element} ${property} ${font} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -317,7 +319,7 @@ export class SetTextureDocumentSymbol extends HUDAnimationsStatementDocumentSymb
 	public readonly value: string
 	public readonly valueRange: VDFRange
 	constructor(
-		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional?: string },
+		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`SetTexture ${element} ${property} ${value} ${delay}` + (conditional ? ` ${conditional}` : ""), range)
@@ -339,7 +341,7 @@ export class SetStringDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 	public readonly value: string
 	public readonly valueRange: VDFRange
 	constructor(
-		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional?: string },
+		{ element, elementRange, property, propertyRange, value, valueRange, delay, conditional }: { element: string, elementRange: VDFRange, property: string, propertyRange: VDFRange, value: string, valueRange: VDFRange, delay: number, conditional: `[${string}]` | null },
 		range: VDFRange
 	) {
 		super(`SetString ${element} ${property} ${value} ${delay}` + (conditional ? ` ${conditional}` : ""), range)

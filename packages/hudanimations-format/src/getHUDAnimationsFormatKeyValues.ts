@@ -1,63 +1,85 @@
 import { AccelInterpolator, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FlickerInterpolator, GainInterpolator, HUDAnimationStatementType, LinearInterpolator, PulseInterpolator, SplineInterpolator } from "hudanimations-documentsymbols"
-import { VDFFormatTokenType, VDFFormatTokeniser, type VDFFormatToken } from "vdf-format"
-import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatDocumentSymbol, PlaySound, RunEvent, RunEventChild, SetFont, SetInputEnabled, SetString, SetTexture, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatDocumentSymbol"
+import { VDFTokeniser, VDFTokenType } from "vdf"
+import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatKeyValue, PlaySound, RunEvent, RunEventChild, SetFont, SetInputEnabled, SetString, SetTexture, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatKeyValues"
 
-export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimationsFormatDocumentSymbol[] {
+export function getHUDAnimationsFormatKeyValues(str: string): HUDAnimationsFormatKeyValue[] {
 
-	const tokeniser = new VDFFormatTokeniser(str)
+	const tokeniser = new VDFTokeniser(str)
 
-	function parseFile(): HUDAnimationsFormatDocumentSymbol[] {
+	function parseFile(): HUDAnimationsFormatKeyValue[] {
 
-		const documentSymbols: HUDAnimationsFormatDocumentSymbol[] = []
+		const keyValues: HUDAnimationsFormatKeyValue[] = []
 
 		while (true) {
-			const token = tokeniser.next({ skipNewlines: true })
+			const token = tokeniser.format()
 			if (token == null) {
 				break
 			}
 
-			const documentSymbol: HUDAnimationsFormatDocumentSymbol = {}
+			const keyValue: HUDAnimationsFormatKeyValue = {}
 
 			switch (token.type) {
-				case VDFFormatTokenType.Comment: {
-					documentSymbol.comment = token.value
-					break
-				}
-				case VDFFormatTokenType.String: {
+				case VDFTokenType.String: {
 					if (token.value != "event") {
-						throw new Error(token.type.toString())
+						throw new Error(token.value)
 					}
 
-					const eventName = tokeniser.next({ skipNewlines: true })
+					const eventName = tokeniser.format()
 					if (eventName == null) {
 						throw new Error("eventName == null")
 					}
 
-					if (eventName.type != VDFFormatTokenType.String) {
+					if (eventName.type != VDFTokenType.String) {
 						throw new Error(eventName.type.toString())
 					}
 
 					let conditional: string | undefined
-					const conditionalToken = tokeniser.next({ skipNewlines: true, peek: true })
-					if (conditionalToken?.type == VDFFormatTokenType.Conditional) {
-						conditional = conditionalToken.value
-						tokeniser.next({ skipNewlines: true })
-					}
-					else {
-						conditional = undefined
+					while (true) {
+						const conditionalToken = tokeniser.peek()
+						if (conditionalToken == null) {
+							conditional = undefined
+							break
+						}
+
+						if (conditionalToken.type == VDFTokenType.NewLine) {
+							tokeniser.next()
+							continue
+						}
+						else if (conditionalToken.type == VDFTokenType.Conditional) {
+							conditional = conditionalToken.value
+							tokeniser.next()
+							break
+						}
+						else {
+							conditional = undefined
+							break
+						}
 					}
 
 					let comment: string | undefined
-					const nextToken = tokeniser.next({ skipNewlines: true, peek: true })
-					if (nextToken?.type == VDFFormatTokenType.Comment) {
-						comment = nextToken.value
-						tokeniser.next({ skipNewlines: true })
-					}
-					else {
-						comment = undefined
+					while (true) {
+						const commentToken = tokeniser.peek()
+						if (commentToken == null) {
+							comment = undefined
+							break
+						}
+
+						if (commentToken.type == VDFTokenType.NewLine) {
+							tokeniser.next()
+							continue
+						}
+						else if (commentToken.type == VDFTokenType.Comment) {
+							comment = commentToken.value
+							tokeniser.next()
+							break
+						}
+						else {
+							comment = undefined
+							break
+						}
 					}
 
-					documentSymbol.event = {
+					keyValue.event = {
 						name: eventName.value,
 						conditional: conditional,
 						comment: comment,
@@ -66,52 +88,65 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 
 					break
 				}
-				case VDFFormatTokenType.NewLine:
-				case VDFFormatTokenType.ControlCharacter:
-				case VDFFormatTokenType.Conditional: {
+				case VDFTokenType.OpeningBrace: {
 					throw new Error(token.type.toString())
+				}
+				case VDFTokenType.ClosingBrace: {
+					throw new Error(token.type.toString())
+				}
+				case VDFTokenType.Conditional: {
+					throw new Error(token.type.toString())
+				}
+				case VDFTokenType.Comment: {
+					keyValue.comment = token.value
+					break
 				}
 			}
 
-			documentSymbols.push(documentSymbol)
+			keyValues.push(keyValue)
 		}
 
-		return documentSymbols
+		return keyValues
 	}
 
 	function parseEvent(): (Animation | { comment?: string })[] {
 
 		const statements: (Animation | { comment?: string })[] = []
 
-		const token = tokeniser.next({ skipNewlines: true })
+		const token = tokeniser.token()
 		if (token == null) {
 			throw new Error("token == null")
 		}
 
-		if (token.type != VDFFormatTokenType.ControlCharacter || token.value != "{") {
-			throw new Error(`${token.type} != VDFFormatTokenType.ControlCharacter || token.value != "{"`)
+		if (token.type != VDFTokenType.OpeningBrace) {
+			throw new Error(`${token.type} != VDFTokenType.OpeningBrace`)
 		}
 
 		loop:
 		while (true) {
-			const animationCommandToken = tokeniser.next({ skipNewlines: true })
-			if (animationCommandToken == null) {
-				throw new Error("animationCommandToken == null")
+			let animationCommandToken = tokeniser.next()
+			while (true) {
+				if (animationCommandToken == null) {
+					throw new Error("animationCommandToken == null")
+				}
+
+				if (animationCommandToken.type != VDFTokenType.NewLine) {
+					break
+				}
+
+				animationCommandToken = tokeniser.next()
 			}
 
 			switch (animationCommandToken.type) {
-				case VDFFormatTokenType.String: {
+				case VDFTokenType.String: {
 					statements.push(parseAnimation(animationCommandToken.value))
 					break
 				}
-				case VDFFormatTokenType.Comment: {
+				case VDFTokenType.Comment: {
 					statements.push({ comment: animationCommandToken.value })
 					break
 				}
-				case VDFFormatTokenType.ControlCharacter: {
-					if (animationCommandToken.value != "}") {
-						throw new Error("animationCommandToken.value != \"}\"")
-					}
+				case VDFTokenType.ClosingBrace: {
 					break loop
 				}
 				default:
@@ -122,19 +157,19 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 		return statements
 	}
 
-	function readString(skipNewlines = false, peek = false): VDFFormatToken {
-		const token = tokeniser.next({ skipNewlines, peek })
+	function readString() {
+		const token = tokeniser.token()
 		if (token == null) {
 			throw new Error("token == null")
 		}
-		if (token.type != VDFFormatTokenType.String) {
-			throw new Error("token.type != VDFFormatTokenType.String")
+		if (token.type != VDFTokenType.String) {
+			throw new Error("token.type != VDFTokenType.String")
 		}
 		return token
 	}
 
 	function readStringValue(): string {
-		return readString(true, false).value
+		return readString().value
 	}
 
 	function readNumberValue(): string {
@@ -151,7 +186,7 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 
 		switch (type.toLowerCase()) {
 			case "animate": {
-				statement = <Animate>{
+				statement = {
 					type: HUDAnimationStatementType.Animate,
 					element: readStringValue(),
 					property: readStringValue(),
@@ -172,113 +207,113 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 					})(),
 					delay: readNumberValue(),
 					duration: readNumberValue(),
-				}
+				} satisfies Animate
 				break
 			}
 			case "runevent": {
-				statement = <RunEvent>{
+				statement = {
 					type: HUDAnimationStatementType.RunEvent,
 					event: readStringValue(),
 					delay: readNumberValue()
-				}
+				} satisfies RunEvent
 				break
 			}
 			case "stopevent": {
-				statement = <StopEvent>{
+				statement = {
 					type: HUDAnimationStatementType.StopEvent,
 					event: readStringValue(),
 					delay: readNumberValue()
-				}
+				} satisfies StopEvent
 				break
 			}
 			case "setvisible": {
-				statement = <SetVisible>{
+				statement = {
 					type: HUDAnimationStatementType.SetVisible,
 					element: readStringValue(),
 					visible: readStringValue(),
 					delay: readNumberValue(),
-				}
+				} satisfies SetVisible
 				break
 			}
 			case "firecommand": {
-				statement = <FireCommand>{
+				statement = {
 					type: HUDAnimationStatementType.FireCommand,
 					delay: readNumberValue(),
 					command: readStringValue()
-				}
+				} satisfies FireCommand
 				break
 			}
 			case "runeventchild": {
-				statement = <RunEventChild>{
+				statement = {
 					type: HUDAnimationStatementType.RunEventChild,
 					element: readStringValue(),
 					event: readStringValue(),
 					delay: readNumberValue()
-				}
+				} satisfies RunEventChild
 				break
 			}
 			case "setinputenabled": {
-				statement = <SetInputEnabled>{
+				statement = {
 					type: HUDAnimationStatementType.SetInputEnabled,
 					element: readStringValue(),
 					enabled: readStringValue(),
 					delay: readStringValue(),
-				}
+				} satisfies SetInputEnabled
 				break
 			}
 			case "playsound": {
-				statement = <PlaySound>{
+				statement = {
 					type: HUDAnimationStatementType.PlaySound,
 					delay: readStringValue(),
 					sound: readStringValue(),
-				}
+				} satisfies PlaySound
 				break
 			}
 			case "stoppanelanimations": {
-				statement = <StopPanelAnimations>{
+				statement = {
 					type: HUDAnimationStatementType.StopPanelAnimations,
 					element: readStringValue(),
 					delay: readStringValue(),
-				}
+				} satisfies StopPanelAnimations
 				break
 			}
 			case "stopanimation": {
-				statement = <StopAnimation>{
+				statement = {
 					type: HUDAnimationStatementType.StopAnimation,
 					element: readStringValue(),
 					property: readStringValue(),
 					delay: readStringValue(),
-				}
+				} satisfies StopAnimation
 				break
 			}
 			case "setfont": {
-				statement = <SetFont>{
+				statement = {
 					type: HUDAnimationStatementType.SetFont,
 					element: readStringValue(),
 					property: readStringValue(),
 					value: readStringValue(),
 					delay: readNumberValue(),
-				}
+				} satisfies SetFont
 				break
 			}
 			case "settexture": {
-				statement = <SetTexture>{
+				statement = {
 					type: HUDAnimationStatementType.SetTexture,
 					element: readStringValue(),
 					property: readStringValue(),
 					value: readStringValue(),
 					delay: readNumberValue(),
-				}
+				} satisfies SetTexture
 				break
 			}
 			case "setstring": {
-				statement = <SetString>{
+				statement = {
 					type: HUDAnimationStatementType.SetString,
 					element: readStringValue(),
 					property: readStringValue(),
 					value: readStringValue(),
 					delay: readNumberValue(),
-				}
+				} satisfies SetString
 				break
 			}
 			default: {
@@ -286,28 +321,22 @@ export function getHUDAnimationsFormatDocumentSymbols(str: string): HUDAnimation
 			}
 		}
 
-		let nextToken = tokeniser.next({ skipNewlines: false, peek: true })
-		if (nextToken == null) {
-			return statement
-		}
+		let nextToken = tokeniser.peek()
+		if (nextToken != null) {
+			if (nextToken.type == VDFTokenType.Conditional) {
+				statement.conditional = nextToken.value
+				tokeniser.next()
 
-		if (nextToken.type == VDFFormatTokenType.Conditional) {
-			statement.conditional = nextToken.value
-			tokeniser.next({ skipNewlines: false })
-
-			// Comment
-			nextToken = tokeniser.next({ skipNewlines: false })
-			if (nextToken == null) {
-				return statement
+				nextToken = tokeniser.peek()
+				if (nextToken?.type == VDFTokenType.Comment) {
+					statement.comment = nextToken.value
+					tokeniser.next()
+				}
 			}
-
-			if (nextToken.type == VDFFormatTokenType.Comment) {
+			else if (nextToken.type == VDFTokenType.Comment) {
 				statement.comment = nextToken.value
+				tokeniser.next()
 			}
-		}
-		else if (nextToken.type == VDFFormatTokenType.Comment) {
-			statement.comment = nextToken.value
-			tokeniser.next({ skipNewlines: false })
 		}
 
 		return statement

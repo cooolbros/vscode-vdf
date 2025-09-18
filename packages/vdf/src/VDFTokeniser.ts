@@ -7,19 +7,24 @@ export class VDFTokeniser {
 
 	/**
 	 * ```ts
-	 * readonly [" ", "\t", "\r", "\n"]
+	 * readonly [" ", "\t", "\r"]
 	 * ```
 	 */
-	public static readonly whiteSpaceIgnore = new Set([" ", "\t", "\r", "\n"])
+	private static readonly whiteSpaceIgnore = new Set([" ", "\t", "\r"])
 
 	/**
 	 * ```ts
 	 * readonly ["\"", "{", "}"]
 	 * ```
 	 */
-	public static readonly whiteSpaceTokenTerminate = new Set(["\"", "{", "}"])
+	private static readonly whiteSpaceTokenTerminate = new Set(["\"", "{", "}"])
 
 	private readonly str: string
+
+	/**
+	 * Whether to allow multiline strings, only respected when token is double quoted string
+	 */
+	public allowMultilineString: boolean = false
 
 	/**
 	 * Zero-based offset position
@@ -36,55 +41,31 @@ export class VDFTokeniser {
 	 */
 	public character = 0
 
-	// Peek
-	private _peek: { token: VDFToken, index: number, line: number, character: number } | null = null
-
-	// EOF
-	private _EOFRead = false
+	private peeked: { token: VDFToken | null, index: number, line: number, character: number } | null = null
+	private _EOFRead: boolean = false
 
 	constructor(str: string) {
 		this.str = str
 	}
 
-	public next({ allowMultilineString = false, peek = false }: { allowMultilineString?: boolean, peek?: boolean } = {}): VDFToken | null {
+	public next(): VDFToken | null {
 
-		if (this._peek != null) {
-			const token = this._peek.token
-			if (!peek) {
-				this.index = this._peek.index
-				this.line = this._peek.line
-				this.character = this._peek.character
-				this._peek = null
-			}
-			return token
+		if (this.peeked != null) {
+			const peeked = this.peeked
+			this.index = peeked.index
+			this.line = peeked.line
+			this.character = peeked.character
+			this.peeked = null
+			return peeked.token
 		}
 
 		let index = this.index
 		let line = this.line
 		let character = this.character
 
-		while (index < this.str.length && (VDFTokeniser.whiteSpaceIgnore.has(this.str[index]) || this.str[index] == "/")) {
-			if (this.str[index] == "\n") {
-				line++
-				character = 0
-			}
-			else if (this.str[index] == "/") {
-				index++
-				if (index < this.str.length && this.str[index] == "/") {
-					while (index < this.str.length && this.str[index] != "\n") {
-						index++
-					}
-					line++
-					character = 0
-				}
-				else {
-					break
-				}
-			}
-			else {
-				character++
-			}
+		while (index < this.str.length && VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
 			index++
+			character++
 		}
 
 		if (index >= this.str.length) {
@@ -94,27 +75,61 @@ export class VDFTokeniser {
 			}
 			// The VDF Parser will need to read the last token twice, once for checking conditional
 			// and then again for checking that the last key is null
-			if (!peek) {
-				this._EOFRead = true
-			}
+			this._EOFRead = true
 			return null
 		}
 
 		let token: VDFToken
 
 		switch (this.str[index]) {
-			case "{":
+			case "\n": {
+				const range = new VDFRange(
+					new VDFPosition(line, character),
+					new VDFPosition(line, character + 1),
+				)
+
+				token = {
+					type: VDFTokenType.NewLine,
+					value: "\n",
+					range: range,
+					exteriorRange: range
+				}
+
+				index++
+				line++
+				character = 0
+				break
+			}
+			case "{": {
+				const range = new VDFRange(
+					new VDFPosition(line, character),
+					new VDFPosition(line, character + 1),
+				)
+
+				token = {
+					type: VDFTokenType.OpeningBrace,
+					value: "{",
+					range: range,
+					exteriorRange: range
+				}
+
+				index++
+				character++
+				break
+			}
 			case "}": {
 				const range = new VDFRange(
 					new VDFPosition(line, character),
 					new VDFPosition(line, character + 1),
 				)
+
 				token = {
-					type: VDFTokenType.ControlCharacter,
-					value: <"{" | "}">this.str[index],
+					type: VDFTokenType.ClosingBrace,
+					value: "}",
 					range: range,
 					exteriorRange: range
 				}
+
 				index++
 				character++
 				break
@@ -160,7 +175,7 @@ export class VDFTokeniser {
 						throw new UnexpectedEndOfFileError(["'\"'"], new VDFRange(startPosition, new VDFPosition(line, character)))
 					}
 					if (this.str[index] == "\n") {
-						if (allowMultilineString) {
+						if (this.allowMultilineString) {
 							line++
 							character = 0
 						}
@@ -196,46 +211,136 @@ export class VDFTokeniser {
 				break
 			}
 			default: {
-				const start = index
-				const startPosition = new VDFPosition(line, character)
-				while (index < this.str.length && !VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
-					if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
-						break
+				if (this.str[index] == "/" && index + 1 < this.str.length && this.str[index + 1] == "/") {
+
+					index += 2 // Skip '//'
+
+					const start = index
+					const startPosition = new VDFPosition(line, character)
+
+					while (index < this.str.length && this.str[index] != "\n") {
+						index++
+						character++
 					}
-					index++
-					character++
+
+					const end = index
+					const endPosition = new VDFPosition(line, character)
+
+					const range = new VDFRange(
+						startPosition,
+						endPosition
+					)
+
+					token = {
+						type: VDFTokenType.Comment,
+						value: this.str.slice(start, end).trim(),
+						range: range,
+						exteriorRange: range
+					}
 				}
-				const end = index
-				const endPosition = new VDFPosition(line, character)
-				const value = this.str.slice(start, end)
-				const range = new VDFRange(
-					startPosition,
-					endPosition
-				)
-				token = {
-					type: VDFTokenType.String,
-					value: value,
-					range: range,
-					exteriorRange: range
+				else {
+					const start = index
+					const startPosition = new VDFPosition(line, character)
+					while (index < this.str.length && !VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
+						if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
+							break
+						}
+						index++
+						character++
+					}
+					const end = index
+					const endPosition = new VDFPosition(line, character)
+					const value = this.str.slice(start, end)
+					const range = new VDFRange(
+						startPosition,
+						endPosition
+					)
+					token = {
+						type: VDFTokenType.String,
+						value: value,
+						range: range,
+						exteriorRange: range
+					}
 				}
 				break
 			}
 		}
 
-		if (peek) {
-			this._peek = {
-				token,
-				index,
-				line,
-				character
-			}
-		}
-		else {
-			this.index = index
-			this.line = line
-			this.character = character
-		}
+		this.index = index
+		this.line = line
+		this.character = character
 
 		return token
+	}
+
+	public peek() {
+		this.peeked ??= {
+			token: this.next(),
+			index: this.index,
+			line: this.line,
+			character: this.character
+		}
+
+		return this.peeked.token
+	}
+
+	/**
+	 * Skip `VDFTokenType.Comment` and `VDFTokenType.NewLine` tokens
+	 */
+	public token(): Exclude<VDFToken, { type: VDFTokenType.Comment } | { type: VDFTokenType.NewLine }> | null {
+		while (true) {
+			const token = this.next()
+			if (token == null) {
+				return token
+			}
+
+			if (token.type != VDFTokenType.Comment && token.type != VDFTokenType.NewLine) {
+				return token
+			}
+		}
+	}
+
+	/**
+	 * Consumes and returns the next token if it is a conditional, consuming comments and newlines
+	 */
+	public conditional(): Extract<VDFToken, { type: VDFTokenType.Conditional }>["value"] | null {
+		while (true) {
+			try {
+				const token = this.peek()
+				if (token == null) {
+					return token
+				}
+
+				if (token.type == VDFTokenType.Comment || token.type == VDFTokenType.NewLine) {
+					this.next()
+				}
+				else if (token.type == VDFTokenType.Conditional) {
+					this.next()
+					return token.value
+				}
+				else {
+					return null
+				}
+			}
+			catch (error) {
+				return null
+			}
+		}
+	}
+
+	/**
+	 * Skip `VDFTokenType.NewLine` tokens
+	 */
+	public format() {
+		while (true) {
+			const token = this.next()
+			if (token == null) {
+				return token
+			}
+
+			if (token.type != VDFTokenType.NewLine) {
+				return token
+			}
+		}
 	}
 }

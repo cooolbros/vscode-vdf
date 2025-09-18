@@ -1,8 +1,8 @@
 import { VDFIndentation, VDFNewLine } from "vdf"
-import type { VDFFormatDocumentSymbol } from "./VDFFormatDocumentSymbol"
+import type { VDFFormatKeyValue } from "./VDFFormatKeyValue"
 import type { VDFFormatStringifyOptions } from "./VDFFormatStringifyOptions"
 
-export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocumentSymbol[], options?: Partial<VDFFormatStringifyOptions>): string {
+export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?: Partial<VDFFormatStringifyOptions>): string {
 
 	const _options: VDFFormatStringifyOptions = {
 		indentation: options?.indentation ?? VDFIndentation.Tabs,
@@ -58,19 +58,19 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 	const lineCommentBeforeSlash = "\t"
 	const lineCommentAfterSlash = " "
 
-	const stringifyObject = (documentSymbols: VDFFormatDocumentSymbol[], level: number): string => {
+	const stringifyObject = (keyValues: VDFFormatKeyValue[], level: number): string => {
 		let str = ""
 
 		let longestKeyLength = 0
 
-		for (const documentSymbol of documentSymbols) {
-			if (documentSymbol.key && !Array.isArray(documentSymbol.value)) {
-				longestKeyLength = Math.max(longestKeyLength, documentSymbol.key.length + (!_options.quotes && (!documentSymbol.key.length || /\s/.test(documentSymbol.key)) ? 2 : 0))
+		for (const keyValue of keyValues) {
+			if (keyValue.key && !Array.isArray(keyValue.value)) {
+				longestKeyLength = Math.max(longestKeyLength, keyValue.key.length + (!_options.quotes && (!keyValue.key.length || /\s/.test(keyValue.key)) ? 2 : 0))
 			}
 		}
 
-		for (const [i, documentSymbol] of documentSymbols.entries()) {
-			if (documentSymbol.blockComment != undefined) {
+		for (const [i, keyValue] of keyValues.entries()) {
+			if (keyValue.blockComment != undefined) {
 
 				// If:
 				// - _options.insertNewlineBeforeObjects == true
@@ -81,55 +81,55 @@ export function printVDFFormatDocumentSymbols(documentSymbols: VDFFormatDocument
 				// Insert newline on behalf of object, so that comment is printed immediately above object without newline
 				// and newline is printed above block comment(s)
 				if (_options.insertNewlineBeforeObjects && i != 0) {
-					const prev = documentSymbols[i - 1]
-					const next = documentSymbols.slice(i + 1).values().find((documentSymbol) => documentSymbol.blockComment == undefined)
+					const prev = keyValues[i - 1]
+					const next = keyValues.slice(i + 1).values().find((keyValue) => keyValue.blockComment == undefined)
 					if (prev.blockComment == undefined && next && typeof next.value != "string") {
 						str += eol
 					}
 				}
 
-				str += `${getIndentation(level)}//${documentSymbol.blockComment != "" && documentSymbol.blockComment[0] != "/" ? blockCommentAfterSlash : ""}${documentSymbol.blockComment}`
+				str += `${getIndentation(level)}//${keyValue.blockComment != "" && keyValue.blockComment[0] != "/" ? blockCommentAfterSlash : ""}${keyValue.blockComment}`
 			}
-			else if (documentSymbol.key != undefined && documentSymbol.value != undefined) {
-				if (Array.isArray(documentSymbol.value)) {
+			else if (keyValue.key != undefined && keyValue.value != undefined) {
+				if (Array.isArray(keyValue.value)) {
 
 					// Only insert newline before object if previous node is not a comment
-					if (i != 0 && _options.insertNewlineBeforeObjects && (documentSymbols[i - 1].blockComment == undefined)) {
+					if (i != 0 && _options.insertNewlineBeforeObjects && (keyValues[i - 1].blockComment == undefined)) {
 						str += eol
 					}
 
-					str += `${getIndentation(level)}${getToken(documentSymbol.key)}`
+					str += `${getIndentation(level)}${getToken(keyValue.key)}`
 
-					if (documentSymbol.conditional != undefined) {
-						str += ` ${documentSymbol.conditional}`
+					if (keyValue.conditional != undefined) {
+						str += ` ${keyValue.conditional}`
 					}
 
-					if (documentSymbol.inLineComment != undefined) {
-						str += `${lineCommentBeforeSlash}//${documentSymbol.inLineComment != "" ? lineCommentAfterSlash : ""}${documentSymbol.inLineComment}${eol}`
+					if (keyValue.inLineComment != undefined) {
+						str += `${lineCommentBeforeSlash}//${keyValue.inLineComment != "" ? lineCommentAfterSlash : ""}${keyValue.inLineComment}${eol}`
 					}
 					else {
 						str += eol
 					}
 					str += `${getIndentation(level)}{${eol}`
-					str += stringifyObject(documentSymbol.value, level + 1)
+					str += stringifyObject(keyValue.value, level + 1)
 					str += `${getIndentation(level)}}`
 				}
 				else {
-					str += `${getIndentation(level)}${getToken(documentSymbol.key)}${getWhitespace(longestKeyLength, documentSymbol.key.length + (!_options.quotes && (!documentSymbol.key.length || /\s/.test(documentSymbol.key)) ? 2 : 0))}${getToken(documentSymbol.value)}`
-					if (documentSymbol.conditional != undefined) {
-						str += ` ${documentSymbol.conditional}`
+					str += `${getIndentation(level)}${getToken(keyValue.key)}${getWhitespace(longestKeyLength, keyValue.key.length + (!_options.quotes && (!keyValue.key.length || /\s/.test(keyValue.key)) ? 2 : 0))}${getToken(keyValue.value)}`
+					if (keyValue.conditional != undefined) {
+						str += ` ${keyValue.conditional}`
 					}
-					if (documentSymbol.inLineComment != undefined) {
-						str += `${lineCommentBeforeSlash}//${documentSymbol.inLineComment != "" ? lineCommentAfterSlash : ""}${documentSymbol.inLineComment}`
+					if (keyValue.inLineComment != undefined) {
+						str += `${lineCommentBeforeSlash}//${keyValue.inLineComment != "" ? lineCommentAfterSlash : ""}${keyValue.inLineComment}`
 					}
 				}
 			}
 
-			if (level != 0 || i < documentSymbols.length - 1 || _options.insertFinalNewline) {
+			if (level != 0 || i < keyValues.length - 1 || _options.insertFinalNewline) {
 				str += eol
 			}
 		}
 		return str
 	}
-	return stringifyObject(documentSymbols, 0)
+	return stringifyObject(keyValues, 0)
 }

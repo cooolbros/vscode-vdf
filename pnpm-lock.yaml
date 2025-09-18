@@ -303,6 +303,9 @@ importers:
       tsconfig:
         specifier: workspace:^
         version: link:../tsconfig
+      vdf:
+        specifier: workspace:*
+        version: link:../vdf
       vdf-format:
         specifier: workspace:^
         version: link:../vdf-format

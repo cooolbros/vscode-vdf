@@ -4,6 +4,7 @@
     "devDependencies": {
         "hudanimations-documentsymbols": "workspace:^",
         "tsconfig": "workspace:^",
+        "vdf": "workspace:^",
         "vdf-format": "workspace:^"
     }
 }

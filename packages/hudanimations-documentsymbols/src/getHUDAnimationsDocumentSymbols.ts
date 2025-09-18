@@ -9,15 +9,19 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 	function parseFile(): HUDAnimationsDocumentSymbols {
 
 		const documentSymbols = new HUDAnimationsDocumentSymbols()
+		let comments: string[] | undefined = undefined
 
 		while (true) {
-			const token = tokeniser.next()
+			const token = tokeniser.format()
 			if (token == null) {
 				break
 			}
 
-			if (token.type == VDFTokenType.String && token.value == "event") {
-				documentSymbols.push(parseEvent(token))
+			if (token.type == VDFTokenType.String && token.value.toLowerCase() == "event") {
+				documentSymbols.push(parseEvent(token, comments?.join("\n")))
+			}
+			else if (token.type == VDFTokenType.Comment) {
+				(comments ??= []).push(token.value)
 			}
 			else {
 				throw new UnexpectedTokenError(`'${token.value}'`, ["'event'"], token.range)
@@ -27,9 +31,9 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		return documentSymbols
 	}
 
-	function parseEvent(eventToken: VDFToken): HUDAnimationsEventDocumentSymbol {
+	function parseEvent(eventToken: VDFToken, documentation?: string): HUDAnimationsEventDocumentSymbol {
 
-		const eventName = tokeniser.next()
+		const eventName = tokeniser.token()
 		if (eventName == null) {
 			throw new UnexpectedEndOfFileError(["event name"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
@@ -39,25 +43,22 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 		let conditional: VDFToken | null = null
 
-		let token = tokeniser.next()
+		let token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["'{'", "conditional"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
 
 		switch (token.type) {
-			case VDFTokenType.ControlCharacter: {
-				if (token.value != "{") {
-					throw new UnexpectedTokenError(`'${token.value}'`, ["'{'", "conditional"], token.range)
-				}
+			case VDFTokenType.OpeningBrace: {
 				break
 			}
 			case VDFTokenType.Conditional: {
 				conditional = token
-				token = tokeniser.next()
+				token = tokeniser.token()
 				if (token == null) {
 					throw new UnexpectedEndOfFileError(["'{'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 				}
-				if (token.type != VDFTokenType.ControlCharacter || token.value != "{") {
+				if (token.type != VDFTokenType.OpeningBrace) {
 					throw new UnexpectedTokenError(`'${token.value}'`, ["'{'"], token.range)
 				}
 				break
@@ -69,7 +70,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		const statements = new HUDAnimationsStatementDocumentSymbols()
 
 		while (true) {
-			const animationCommandToken = tokeniser.next()
+			const animationCommandToken = tokeniser.token()
 			if (animationCommandToken == null) {
 				throw new UnexpectedEndOfFileError(["animation command", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 			}
@@ -77,7 +78,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 			if (animationCommandToken.type == VDFTokenType.String) {
 				statements.push(parseAnimation(animationCommandToken.value, animationCommandToken.range))
 			}
-			else if (animationCommandToken.type == VDFTokenType.ControlCharacter && animationCommandToken.value == "}") {
+			else if (animationCommandToken.type == VDFTokenType.ClosingBrace) {
 				break
 			}
 			else {
@@ -89,12 +90,13 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 			eventName,
 			conditional,
 			new VDFRange(eventToken.range.start, new VDFPosition(tokeniser.line, tokeniser.character)),
-			statements
+			statements,
+			documentation
 		)
 	}
 
 	function readString(check = true): VDFToken {
-		const token = tokeniser.next()
+		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
@@ -118,7 +120,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 	function readBool(): string {
 
-		const token = tokeniser.next()
+		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["'0'", "'1'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
@@ -128,20 +130,6 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		}
 
 		return token.value
-	}
-
-	function readConditional(): string | undefined {
-		try {
-			const token = tokeniser.next({ peek: true })
-			if (token?.type != VDFTokenType.Conditional) {
-				return undefined
-			}
-			tokeniser.next()
-			return token.value
-		}
-		catch (error: any) {
-			return undefined
-		}
 	}
 
 	function parseAnimation(type: string, typeRange: VDFRange): HUDAnimationsStatementDocumentSymbol {
@@ -162,7 +150,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						value: valueToken.value,
 						valueRange: valueToken.range,
 						interpolator: ((): Interpolator => {
-							const interpolator = tokeniser.next()
+							const interpolator = tokeniser.token()
 							if (interpolator == null) {
 								throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 							}
@@ -186,7 +174,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						})(),
 						delay: readNumber(),
 						duration: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -199,7 +187,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						event: eventToken.value,
 						eventRange: eventToken.range,
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -212,7 +200,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						event: eventToken.value,
 						eventRange: eventToken.range,
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -226,7 +214,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						elementRange: elementToken.range,
 						visible: readBool(),
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -237,7 +225,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 					{
 						delay: readNumber(),
 						command: readStringValue(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -253,7 +241,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						event: eventToken.value,
 						eventRange: eventToken.range,
 						delay: readNumber(),
-						conditional: readConditional()
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -267,7 +255,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						elementRange: elementToken.range,
 						enabled: readStringValue(),
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -281,7 +269,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						delay: delay,
 						sound: soundToken.value,
 						soundRange: soundToken.range,
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -292,7 +280,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 					{
 						element: readStringValue(),
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -304,7 +292,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						element: readStringValue(),
 						property: readStringValue(),
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -324,7 +312,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						font: fontToken.value,
 						fontRange: fontToken.range,
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -344,7 +332,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						value: valueToken.value,
 						valueRange: valueToken.range,
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -364,7 +352,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 						value: valueToken.value,
 						valueRange: valueToken.range,
 						delay: readNumber(),
-						conditional: readConditional(),
+						conditional: tokeniser.conditional(),
 					},
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)

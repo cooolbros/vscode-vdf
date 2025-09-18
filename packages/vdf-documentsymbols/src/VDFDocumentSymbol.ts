@@ -16,6 +16,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 		conditional: z.templateLiteral(["[", z.string(), "]"]).nullable(),
 		range: VDFRange.schema,
 		selectionRange: VDFRange.schema,
+		documentation: z.string().optional(),
 		detail: z.string().optional(),
 		detailRange: VDFRange.schema.optional(),
 		get children() {
@@ -27,6 +28,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 		arg.nameRange,
 		arg.kind,
 		arg.conditional,
+		arg.documentation,
 		arg.range,
 		arg.detail != undefined
 			? { detail: arg.detail!, range: arg.detailRange! }
@@ -94,7 +96,12 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly childrenRange?: VDFRange
 
-	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, range: VDFRange, value: { detail: string, range: VDFRange } | { children: VDFDocumentSymbols, range: VDFRange }) {
+	/**
+	 * VDF Document Symbol documentation
+	 */
+	public readonly documentation?: string
+
+	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, documentation: string | undefined, range: VDFRange, value: { detail: string, range: VDFRange } | { children: VDFDocumentSymbols, range: VDFRange }) {
 		this.name = `${key}${conditional ? " " + conditional : ""}`
 		this.key = key
 		this.nameRange = nameRange
@@ -102,6 +109,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 		this.conditional = conditional
 		this.range = range
 		this.selectionRange = range
+		this.documentation = documentation
 
 		if ("detail" in value) {
 			this.detail = value.detail
