@@ -1,5 +1,5 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import { posix } from "path"
