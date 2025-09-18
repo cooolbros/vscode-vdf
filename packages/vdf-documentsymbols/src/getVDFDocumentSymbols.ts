@@ -126,7 +126,7 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 							: { children: value, range: valueRange! },
 					))
 
-					comments = []
+					comments = undefined
 					break
 				}
 				case VDFTokenType.OpeningBrace: {

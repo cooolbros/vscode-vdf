@@ -19,6 +19,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 			if (token.type == VDFTokenType.String && token.value.toLowerCase() == "event") {
 				documentSymbols.push(parseEvent(token, comments?.join("\n")))
+				comments = undefined
 			}
 			else if (token.type == VDFTokenType.Comment) {
 				(comments ??= []).push(token.value)
