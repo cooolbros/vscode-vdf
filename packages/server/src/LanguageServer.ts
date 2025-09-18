@@ -800,7 +800,7 @@ export abstract class LanguageServer<
 
 		for (const { scope, type, key, value: definitions } of definitionReferences.definitions) {
 			for (const definition of definitions) {
-				if (definition.uri.equals(params.textDocument.uri)) {
+				if (Uri.equals(definition.uri, params.textDocument.uri)) {
 					if (definition.keyRange.contains(params.position)) {
 						this.oldName = [scope, type, key]
 						return {

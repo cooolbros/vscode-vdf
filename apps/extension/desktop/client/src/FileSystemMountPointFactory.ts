@@ -207,7 +207,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 										const fileSystems = (
 											await Promise.allSettled(
 												uris
-													.filter((uri, index) => uris.findIndex((u) => u.equals(uri)) == index)
+													.filter((uri, index) => uris.findIndex((u) => Uri.equals(u, uri)) == index)
 													.map(async (uri) => {
 														try {
 															const basename = uri.basename()

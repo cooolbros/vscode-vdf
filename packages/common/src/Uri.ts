@@ -6,7 +6,7 @@ export class Uri {
 
 	public static readonly schema = z.object({
 		scheme: z.string(),
-		authority: z.string(),
+		authority: z.string().toLowerCase(),
 		path: z.string(),
 		query: z.string(),
 		fragment: z.string(),
@@ -18,7 +18,11 @@ export class Uri {
 		}
 
 		if (a != null && b != null) {
-			return a.equals(b)
+			return a.scheme == b.scheme
+				&& a.authority.toLowerCase() == b.authority.toLowerCase()
+				&& a.path == b.path
+				&& a.query == b.query
+				&& a.fragment == b.fragment
 		}
 
 		return false
@@ -57,18 +61,6 @@ export class Uri {
 
 	public relative(to: Uri): string {
 		return posix.relative(this.uri.path, to.path)
-	}
-
-	equals(other?: Uri | null): boolean {
-		if (!other) {
-			return false
-		}
-
-		return this.scheme == other.scheme
-			&& this.authority == other.authority
-			&& this.path == other.path
-			&& this.query == other.query
-			&& this.fragment == other.fragment
 	}
 
 	public with(changes: Parameters<URI["with"]>[0]) {

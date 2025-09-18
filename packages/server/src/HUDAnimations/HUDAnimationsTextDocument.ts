@@ -178,7 +178,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 						const events = definitionReferences.definitions.get(null, EventType, key)
 						const definition = events?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
 
-						if (!definition || !definition.uri.equals(this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
+						if (!definition || !Uri.equals(definition.uri, this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
 							diagnostics.push({
 								range: documentSymbol.range,
 								severity: DiagnosticSeverity.Hint,

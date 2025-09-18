@@ -437,7 +437,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 					}
 
 					return onDidChangeTextDocument$.pipe(
-						filter((event) => uri.equals(new Uri(event.document.uri))),
+						filter((event) => Uri.equals(uri, new Uri(event.document.uri))),
 						map(() => undefined),
 						startWith(undefined),
 						concatMap(async () => await commands.executeCommand<DocumentSymbol[]>("vscode.executeDocumentSymbolProvider", vscode.Uri.from(uri))),

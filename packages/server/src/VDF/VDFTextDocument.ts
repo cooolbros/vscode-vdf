@@ -181,7 +181,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									if (baseUri == null) {
 										return of(true)
 									}
-									else if (baseUri.equals(document.uri) || stack.some((u) => baseUri.equals(u))) {
+									else if (Uri.equals(baseUri, document.uri) || stack.some((u) => Uri.equals(baseUri, u))) {
 										return of(false)
 									}
 									else {
@@ -221,7 +221,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								if (uri == null) {
 									return of(null)
 								}
-								else if (uri.equals(this.uri)) {
+								else if (Uri.equals(uri, this.uri)) {
 									return of(null)
 								}
 								else {
@@ -461,7 +461,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 													]
 												}
 											}
-											else if (uri.equals(this.uri)) {
+											else if (Uri.equals(uri, this.uri)) {
 												return {
 													range: documentSymbol.detailRange!,
 													severity: DiagnosticSeverity.Error,
@@ -615,7 +615,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									})
 								}
 
-								if (definitions != null && definitions.some((definition) => definition.uri.equals(this.uri) && definition.range.contains(documentSymbol.detailRange!))) {
+								if (definitions != null && definitions.some((definition) => Uri.equals(definition.uri, this.uri) && definition.range.contains(documentSymbol.detailRange!))) {
 									diagnostics.push({
 										range: documentSymbol.detailRange,
 										severity: DiagnosticSeverity.Warning,

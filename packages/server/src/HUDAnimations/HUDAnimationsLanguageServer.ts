@@ -670,7 +670,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 			if (eventName != undefined && eventName in eventFiles) {
 				const uris: Uri[] = []
 				for (const uri of definitionReferences.definitions.get(scope, type, key)?.flatMap(({ uri }) => uri) ?? []) {
-					if (!uris.some((u) => u.equals(uri))) {
+					if (!uris.some((u) => Uri.equals(u, uri))) {
 						uris.push(uri)
 					}
 				}

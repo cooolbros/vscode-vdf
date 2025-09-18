@@ -1,4 +1,4 @@
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import { FileType, workspace } from "vscode"
 
 /**
@@ -10,7 +10,7 @@ export async function searchForHUDRoot(uri: Uri) {
 	let folderUri = uri.dirname()
 	let folderUriReference = uri
 
-	while (!folderUri.equals(folderUriReference)) {
+	while (!Uri.equals(folderUri, folderUriReference)) {
 		if (await workspace.fs.stat(folderUri.joinPath("info.vdf")).then((stat) => stat.type == FileType.File, () => false)) {
 			return folderUri
 		}

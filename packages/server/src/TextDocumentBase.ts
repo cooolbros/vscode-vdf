@@ -1,5 +1,5 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFSyntaxError, type IRange } from "vdf"
@@ -183,7 +183,7 @@ export abstract class TextDocumentBase<
 					.reduce(
 						(codeLens, { scope, type, key, value: definitions }) => {
 							const definition = definitions[0]
-							if (definition != undefined && definition.uri.equals(this.uri)) {
+							if (definition != undefined && Uri.equals(definition.uri, this.uri)) {
 								const references = definitionReferences.references.collect(scope, type, key).toArray()
 
 								if (references.length > 0) {
