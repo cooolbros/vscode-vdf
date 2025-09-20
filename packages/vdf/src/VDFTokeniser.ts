@@ -241,7 +241,7 @@ export class VDFTokeniser {
 				else {
 					const start = index
 					const startPosition = new VDFPosition(line, character)
-					while (index < this.str.length && !VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
+					while (index < this.str.length && this.str[index] != "\n" && !VDFTokeniser.whiteSpaceIgnore.has(this.str[index])) {
 						if (VDFTokeniser.whiteSpaceTokenTerminate.has(this.str[index])) {
 							break
 						}
