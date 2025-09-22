@@ -301,9 +301,13 @@ export class VDFTokeniser {
 	}
 
 	/**
-	 * Consumes and returns the next token if it is a conditional, consuming comments and newlines
+	 * Consumes and returns the next non-newline/comment token if it is a conditional, consuming comments and newlines if the next non-newline/comment token is a conditional
 	 */
 	public conditional(): Extract<VDFToken, { type: VDFTokenType.Conditional }>["value"] | null {
+		let index = this.index
+		let line = this.line
+		let character = this.character
+
 		while (true) {
 			try {
 				const token = this.peek()
@@ -319,6 +323,9 @@ export class VDFTokeniser {
 					return token.value
 				}
 				else {
+					this.index = index
+					this.line = line
+					this.character = character
 					return null
 				}
 			}
