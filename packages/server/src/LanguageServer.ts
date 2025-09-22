@@ -87,7 +87,8 @@ export abstract class LanguageServer<
 	protected readonly fileSystems: RefCountAsyncDisposableFactory<({ type: "tf2" } | { type: "folder", uri: Uri })[], FileSystemMountPoint>
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
-	private readonly documentDiagnostics: WeakMap<TDocument, Map<string, DiagnosticCodeAction>>
+	private readonly diagnostic = { id: 0 }
+	private readonly documentDiagnostics: WeakMap<TDocument, Map<number, DiagnosticCodeAction>>
 	private readonly documentsLinks: WeakMap<TDocument, Map<string, (documentLink: DocumentLink) => Promise<Uri | null>>>
 
 	private oldName: [number | null, symbol, string] | null = null
@@ -441,10 +442,10 @@ export abstract class LanguageServer<
 	private sendDiagnostics(document: TDocument, diagnostics: DiagnosticCodeAction[]) {
 
 		const result: Diagnostic[] = []
-		const map = new Map<string, DiagnosticCodeAction>()
+		const map = new Map<number, DiagnosticCodeAction>()
 
 		for (const diagnostic of diagnostics) {
-			const id = crypto.randomUUID()
+			const id = this.diagnostic.id++
 			const { data, ...rest } = diagnostic
 			map.set(id, diagnostic)
 			result.push({ ...rest, data: { id } })
@@ -673,7 +674,7 @@ export abstract class LanguageServer<
 			return null
 		}
 
-		const diagnosticDataSchema = z.object({ id: z.uuid() })
+		const diagnosticDataSchema = z.object({ id: z.number() })
 
 		const uri = params.textDocument.uri.toString()
 
