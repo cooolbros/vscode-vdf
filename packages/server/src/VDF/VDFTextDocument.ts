@@ -312,7 +312,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 												collection: definitions,
 												globals: globals.map(({ definitions }) => definitions)
 											}),
-											references: new References(this.uri, value.references, [], this.references$)
+											references: new References(this.uri, value.references, base.map(({ references }) => references), this.references$)
 										} satisfies DefinitionReferences
 									}
 								}),
