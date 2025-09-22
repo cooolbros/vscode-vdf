@@ -13,11 +13,11 @@ import type { PopfileTextDocument } from "./PopfileTextDocument"
 
 export class PopfileWorkspace extends WorkspaceBase {
 
-	public readonly items$: Observable<Pick<VDFTextDocumentSchema, "keys" | "values">>
-	public readonly attributes$: Observable<Pick<VDFTextDocumentSchema, "keys" | "values">>
+	public readonly items$: Observable<Pick<VDFTextDocumentSchema<PopfileTextDocument>, "keys" | "values">>
+	public readonly attributes$: Observable<Pick<VDFTextDocumentSchema<PopfileTextDocument>, "keys" | "values">>
 	public readonly paints$: Observable<Map<string, string>>
 
-	private readonly maps: Map<string, Promise<{ values: VDFTextDocumentSchema["values"], completion: { values: VDFTextDocumentSchema["completion"]["values"] } } | null>>
+	private readonly maps: Map<string, Promise<{ values: VDFTextDocumentSchema<PopfileTextDocument>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocument>["completion"]["values"] } } | null>>
 	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
 
 	constructor(

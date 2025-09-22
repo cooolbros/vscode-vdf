@@ -18,7 +18,11 @@ export interface TextDocumentInit {
 export interface TextDocumentBaseConfiguration<TDocumentSymbols extends DocumentSymbol[], TDependencies> {
 	getDocumentSymbols(text: string): TDocumentSymbols
 	defaultDocumentSymbols: TDocumentSymbols
-	definitionReferences$: Observable<{ dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences }>
+	definitionReferences$: Observable<{
+		dependencies: TDependencies,
+		documentSymbols: TDocumentSymbols,
+		definitionReferences: DefinitionReferences
+	}>
 	getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 }
 

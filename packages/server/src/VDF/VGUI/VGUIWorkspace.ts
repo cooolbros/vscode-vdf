@@ -76,6 +76,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public readonly languageTokensFiles$: Observable<Set<string>>
 	public readonly languageTokens$: Observable<DefinitionReferences>
 
+	public readonly globals$: Observable<DefinitionReferences[]>
+
 	private readonly documentSymbols: Map<string, Observable<VDFDocumentSymbols | null>>
 	public readonly fileReferences: Map<string, { references$: BehaviorSubject<Map<string, References | null>>, document$: Observable<VGUITextDocument | null> }>
 
@@ -184,6 +186,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 					new References(this.uri, undefined, dependencies.map(({ references }) => references))
 				)
 			}),
+			shareReplay(1)
+		)
+
+		this.globals$ = combineLatest([this.clientScheme$, this.languageTokens$]).pipe(
 			shareReplay(1)
 		)
 

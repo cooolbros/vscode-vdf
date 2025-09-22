@@ -4,9 +4,10 @@ import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { map, of, type Observable } from "rxjs"
+import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItemKind, InlayHint, InsertTextFormat } from "vscode-languageserver"
-import type { Definitions } from "../../DefinitionReferences"
+import { Collection, type Definition, type Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import type { WorkspaceBase } from "../../WorkspaceBase"
@@ -17,9 +18,20 @@ import type { VMTWorkspace } from "./VMTWorkspace"
 
 export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
-	public static readonly Schema: VDFTextDocumentSchema = {
+	public static readonly Schema: VDFTextDocumentSchema<VMTTextDocument> = {
 		keys: keys,
 		values: values,
+		getDefinitionReferences(params) {
+			const scopes = new Map<symbol, Map<number, VDFRange>>()
+			const definitions = new Collection<Definition>()
+			const references = new Collection<VDFRange>()
+
+			return {
+				scopes: scopes,
+				definitions: definitions,
+				references: references,
+			}
+		},
 		definitionReferences: [],
 		files: [
 			{
@@ -149,8 +161,8 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 							})
 						},
 
-					} satisfies VDFTextDocumentSchema,
-					globals: []
+					} satisfies VDFTextDocumentSchema<VMTTextDocument>,
+					globals$: of([])
 				}))
 			)
 		})

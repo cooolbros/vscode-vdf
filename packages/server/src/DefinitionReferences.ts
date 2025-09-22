@@ -64,6 +64,11 @@ export class Collection<T> {
 		}
 	}
 
+	public clone() {
+		// structuredClone does not support Symbols
+		return new Collection<T>(new Map(this.map.entries().map(([scope, map]) => <const>[scope, new Map(map.entries().map(([type, map]) => <const>[type, new Map(map.entries().map(([key, value]) => <const>[key, [...value]]))]))])))
+	}
+
 	public toJSON() {
 		return this.map
 	}
@@ -73,14 +78,14 @@ export const definitionSchema = z.object({
 	uri: Uri.schema,
 	key: z.string(),
 	range: VDFRange.schema,
-	documentation: z.string().optional(),
-	nameRange: VDFRange.schema.optional(),
 	keyRange: VDFRange.schema,
+	nameRange: VDFRange.schema.optional(),
 	detail: z.string().optional(),
+	documentation: z.string().optional(),
 	conditional: z.templateLiteral(["[", z.string(), "]"]).optional(),
 })
 
-export type Definition = z.infer<typeof definitionSchema>
+export type Definition = Readonly<z.infer<typeof definitionSchema>>
 
 export class Definitions {
 

@@ -1,4 +1,5 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import { Uri } from "common/Uri"
 import { posix } from "path"
 import { firstValueFrom } from "rxjs"
@@ -23,31 +24,6 @@ export class Popfile {
 
 	private static readonly decoder = new TextDecoder("utf-8")
 	public static readonly robot = ["robot_standard.pop", "robot_giant.pop", "robot_gatebot.pop"].map((name) => `scripts/population/${name}`)
-	public static readonly waveSpawnKeys = [
-		"ClosestPoint",
-		"DoneOutput",
-		"DoneWarningSound",
-		"FirstSpawnOutput",
-		"FirstSpawnWarningSound",
-		"LastSpawnOutput",
-		"LastSpawnWarningSound",
-		"MaxActive",
-		"Name",
-		"RandomSpawn",
-		"SpawnCount",
-		"StartWaveOutput",
-		"StartWaveWarningSound",
-		"Support",
-		"Template",
-		"TotalCount",
-		"TotalCurrency",
-		"WaitBeforeStarting",
-		"WaitBetweenSpawns",
-		"WaitBetweenSpawnsAfterDeath",
-		"WaitForAllDead",
-		"WaitForAllSpawned",
-		"Where",
-	].map((key) => key.toLowerCase())
 
 	public readonly base: { value: string, range: VDFRange }[]
 	public readonly waveSchedule: VDFDocumentSymbols
@@ -196,7 +172,7 @@ export class Popfile {
 		return new Set(
 			waveSpawns
 				.flatMap((documentSymbols) => {
-					const spawner = documentSymbols.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+					const spawner = documentSymbols.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
 					if (!spawner) {
 						return []
 					}
@@ -259,7 +235,7 @@ export class Popfile {
 		return new Set(
 			waveSpawns
 				.flatMap((documentSymbols) => {
-					const spawner = documentSymbols.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+					const spawner = documentSymbols.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
 					if (!spawner) {
 						return []
 					}

@@ -1,7 +1,10 @@
+import type { VDFRange } from "vdf"
 import { CompletionItemKind } from "vscode-languageserver"
+import { Collection, type Definition } from "../../../DefinitionReferences"
 import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
+import type { VGUITextDocument } from "../VGUITextDocument"
 
-export const SurfacePropertiesManifestSchema: VDFTextDocumentSchema = {
+export const SurfacePropertiesManifestSchema: VDFTextDocumentSchema<VGUITextDocument> = {
 	keys: {
 		surfaceproperties_manifest: {
 			distinct: KeyDistinct.First,
@@ -15,6 +18,17 @@ export const SurfacePropertiesManifestSchema: VDFTextDocumentSchema = {
 		}
 	},
 	values: {},
+	getDefinitionReferences(params) {
+		const scopes = new Map<symbol, Map<number, VDFRange>>()
+		const definitions = new Collection<Definition>()
+		const references = new Collection<VDFRange>()
+
+		return {
+			scopes: scopes,
+			definitions: definitions,
+			references: references,
+		}
+	},
 	definitionReferences: [],
 	files: [
 		{

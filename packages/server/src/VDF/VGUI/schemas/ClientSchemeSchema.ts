@@ -1,6 +1,9 @@
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import type { VDFRange } from "vdf"
+import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItemKind } from "vscode-languageserver"
+import { Collection, type Definition } from "../../../DefinitionReferences"
 import { VGUIAssetType, type DefinitionMatcher, type DefinitionResult, type VDFTextDocumentSchema } from "../../VDFTextDocument"
+import type { VGUITextDocument } from "../VGUITextDocument"
 
 class SchemeDefinitionMatcher implements DefinitionMatcher {
 
@@ -15,7 +18,47 @@ class SchemeDefinitionMatcher implements DefinitionMatcher {
 	}
 }
 
-export const ClientSchemeSchema: VDFTextDocumentSchema = {
+type SchemeAction = (documentSymbol: VDFDocumentSymbol) => void
+
+interface SchemeActions {
+	Colors: SchemeAction
+	BaseSettings: SchemeAction
+	BitmapFontFiles: SchemeAction
+	Fonts: SchemeAction
+	Borders: SchemeAction
+	CustomFontFiles: SchemeAction
+}
+
+function SchemeForEach(documentSymbols: VDFDocumentSymbols, callbacks: Partial<SchemeActions>) {
+	for (const documentSymbol of documentSymbols) {
+		if (documentSymbol.children == undefined) {
+			continue
+		}
+
+		switch (documentSymbol.key.toLowerCase()) {
+			case "Colors".toLowerCase():
+				documentSymbol.children.forEach((documentSymbol) => callbacks.Colors?.(documentSymbol))
+				break
+			case "BaseSettings".toLowerCase():
+				documentSymbol.children.forEach((documentSymbol) => callbacks.BaseSettings?.(documentSymbol))
+				break
+			case "BitmapFontFiles".toLowerCase():
+				documentSymbol.children.forEach((documentSymbol) => callbacks.BitmapFontFiles?.(documentSymbol))
+				break
+			case "Fonts".toLowerCase():
+				documentSymbol.children.forEach((documentSymbol) => callbacks.Fonts?.(documentSymbol))
+				break
+			case "Borders".toLowerCase():
+				documentSymbol.children.forEach((documentSymbol) => callbacks.Borders?.(documentSymbol))
+				break
+			case "CustomFontFiles".toLowerCase():
+				documentSymbol.children.forEach((documentSymbol) => callbacks.CustomFontFiles?.(documentSymbol))
+				break
+		}
+	}
+}
+
+export const ClientSchemeSchema: VDFTextDocumentSchema<VGUITextDocument> = {
 	keys: {},
 	values: {
 		backgroundtype: {
@@ -31,6 +74,57 @@ export const ClientSchemeSchema: VDFTextDocumentSchema = {
 				"image",
 				"scalable_image",
 			]
+		}
+	},
+	getDefinitionReferences({ document, documentSymbols }) {
+		const scopes = new Map<symbol, Map<number, VDFRange>>()
+		const definitions = new Collection<Definition>()
+		const references = new Collection<VDFRange>()
+
+		function SchemeDefinitionMatcher(type: symbol, children: boolean) {
+			return (documentSymbol: VDFDocumentSymbol) => {
+				if ((documentSymbol.children != undefined) == children) {
+					definitions.set(null, type, documentSymbol.key, {
+						uri: document.uri,
+						key: documentSymbol.key,
+						range: documentSymbol.range,
+						keyRange: documentSymbol.nameRange,
+						nameRange: undefined,
+						detail: documentSymbol.detail,
+						documentation: documentSymbol.documentation,
+						conditional: documentSymbol.conditional ?? undefined,
+					})
+				}
+			}
+		}
+
+		const color = SchemeDefinitionMatcher(Symbol.for("color"), false)
+		const font = SchemeDefinitionMatcher(Symbol.for("font"), true)
+		const border = SchemeDefinitionMatcher(Symbol.for("border"), true)
+
+		SchemeForEach(documentSymbols, {
+			Colors: (documentSymbol) => color(documentSymbol),
+			BaseSettings: (documentSymbol) => {
+				color(documentSymbol)
+				if (documentSymbol.detail != undefined) {
+					references.set(null, Symbol.for("color"), documentSymbol.detail, documentSymbol.detailRange!)
+				}
+			},
+			Fonts: (documentSymbol) => font(documentSymbol),
+			Borders: (documentSymbol) => {
+				border(documentSymbol)
+				documentSymbol.children?.forAll((documentSymbol) => {
+					if (documentSymbol.key.toLowerCase() == "color" && documentSymbol.detail != undefined) {
+						references.set(null, Symbol.for("color"), documentSymbol.detail, documentSymbol.detailRange!)
+					}
+				})
+			}
+		})
+
+		return {
+			scopes: scopes,
+			definitions: definitions,
+			references: references,
 		}
 	},
 	definitionReferences: [

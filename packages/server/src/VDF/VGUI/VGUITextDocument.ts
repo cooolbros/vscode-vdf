@@ -3,7 +3,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, defer, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { defer, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import type { Definitions } from "../../DefinitionReferences"
@@ -67,7 +67,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						? workspace.fileType(init.uri)
 						: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
 				).pipe(
-					switchMap((type) => {
+					map((type) => {
 						if (type != VGUIFileType.None || workspace == null) {
 							const schemas = {
 								[VGUIFileType.None]: VGUISchema,
@@ -78,26 +78,16 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 								[VGUIFileType.SurfacePropertiesManifest]: SurfacePropertiesManifestSchema,
 							}
 
-							return of({
+							return {
 								schema: schemas[type],
-								globals: []
-							} satisfies VDFTextDocumentDependencies)
+								globals$: of([])
+							} satisfies VDFTextDocumentDependencies<VGUITextDocument>
 						}
 						else {
-							return combineLatest({
-								clientScheme: workspace.clientScheme$,
-								languageTokens: workspace.languageTokens$
-							}).pipe(
-								map(({ clientScheme, languageTokens }) => {
-									return {
-										schema: VGUISchema,
-										globals: [
-											clientScheme,
-											languageTokens
-										]
-									} satisfies VDFTextDocumentDependencies
-								})
-							)
+							return {
+								schema: VGUISchema,
+								globals$: workspace.globals$,
+							} satisfies VDFTextDocumentDependencies<VGUITextDocument>
 						}
 					})
 				)

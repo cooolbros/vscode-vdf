@@ -25,7 +25,7 @@ export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocumen
 export abstract class VDFLanguageServer<
 	TLanguageId extends Extract<VSCodeVDFLanguageID, "popfile" | "vdf" | "vmt">,
 	TDocument extends VDFTextDocument<TDocument>,
-> extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, VDFTextDocumentDependencies> {
+> extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
 
 	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>
 

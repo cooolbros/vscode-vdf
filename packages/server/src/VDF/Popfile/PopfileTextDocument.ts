@@ -1,12 +1,13 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { combineLatest, combineLatestWith, from, map, shareReplay, zip, type Observable } from "rxjs"
+import { combineLatest, combineLatestWith, from, map, of, shareReplay, zip, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { type VDFDocumentSymbol, type VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CodeActionKind, CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
-import type { Definitions } from "../../DefinitionReferences"
+import { Collection, type Definition, type Definitions } from "../../DefinitionReferences"
 import type { DiagnosticCodeAction } from "../../LanguageServer"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import { VDFTextDocument, VGUIAssetType, type VDFTextDocumentSchema } from "../VDFTextDocument"
@@ -16,9 +17,98 @@ import values from "./values.json"
 
 export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
-	public static readonly Schema: VDFTextDocumentSchema = {
+	public static readonly Schema: VDFTextDocumentSchema<PopfileTextDocument> = {
 		keys: keys,
 		values: values,
+		getDefinitionReferences({ document, documentSymbols }) {
+			const wavespawn = Symbol.for("wavespawn")
+			const template = Symbol.for("template")
+
+			const scopes = new Map<symbol, Map<number, VDFRange>>([
+				[
+					wavespawn,
+					new Map(
+						documentSymbols
+							.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase() && documentSymbol.children != undefined)
+							.map((documentSymbol, index) => [index, documentSymbol.range])
+					)
+				]
+			])
+
+			const definitions = new Collection<Definition>()
+			const references = new Collection<VDFRange>()
+
+			const templates = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Templates".toLowerCase())?.children ?? []
+			for (const documentSymbol of templates.values().filter((documentSymbol) => documentSymbol.children != undefined)) {
+				definitions.set(null, template, documentSymbol.key, {
+					uri: document.uri,
+					key: documentSymbol.key,
+					range: documentSymbol.range,
+					keyRange: documentSymbol.nameRange,
+					nameRange: undefined,
+					detail: undefined,
+					documentation: documentSymbol.documentation,
+					conditional: documentSymbol.conditional ?? undefined,
+				})
+			}
+
+			for (const [index, documentSymbol] of documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase() && documentSymbol.children != undefined).entries()) {
+
+				documentSymbol.children!.forEach((documentSymbol) => {
+					if (documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children != undefined) {
+						const name = documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Name".toLowerCase())
+						if (name?.detail != undefined) {
+							definitions.set(index, wavespawn, name.detail!, {
+								uri: document.uri,
+								key: name.detail,
+								range: documentSymbol.range,
+								keyRange: name.detailRange!,
+								nameRange: undefined,
+								detail: name.detail!,
+								documentation: documentSymbol.documentation,
+								conditional: documentSymbol.conditional ?? undefined,
+							})
+						}
+
+						const values = Map.groupBy(
+							documentSymbol.children,
+							(documentSymbol) => {
+								const key = documentSymbol.key.toLowerCase()
+								if (key == "WaitForAllSpawned".toLowerCase() || key == "WaitForAllDead".toLowerCase()) {
+									return "wavespawn"
+								}
+								else if (!waveSpawnKeys.includes(documentSymbol.key.toLowerCase())) {
+									return "spawner"
+								}
+								else {
+									return null
+								}
+							}
+						)
+
+						for (const documentSymbol of values.get("wavespawn") ?? []) {
+							if (documentSymbol.detail != undefined) {
+								references.set(index, wavespawn, documentSymbol.detail!, documentSymbol.detailRange!)
+							}
+						}
+
+						for (const spawner of values.get("spawner") ?? []) {
+							spawner.children?.forAll((documentSymbol) => {
+								if (documentSymbol.key.toLowerCase() == "Template".toLowerCase() && documentSymbol.detail != undefined) {
+									references.set(null, template, documentSymbol.detail!, documentSymbol.detailRange!)
+								}
+							})
+						}
+					}
+				})
+			}
+
+			return {
+				scopes: scopes,
+				definitions: definitions,
+				references: references,
+			}
+		},
 		definitionReferences: [
 			{
 				type: Symbol.for("template"),
@@ -209,8 +299,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									...entities?.completion.values
 								}
 							}
-						} satisfies VDFTextDocumentSchema,
-						globals: []
+						} satisfies VDFTextDocumentSchema<PopfileTextDocument>,
+						globals$: of([])
 					}
 				})
 			)

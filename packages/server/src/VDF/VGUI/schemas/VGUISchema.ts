@@ -1,12 +1,54 @@
+import type { VDFRange } from "vdf"
 import { CompletionItemKind } from "vscode-languageserver"
+import { Collection, type Definition } from "../../../DefinitionReferences"
 import { VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import clientscheme from "../clientscheme.json"
 import keys from "../keys.json"
 import values from "../values.json"
+import { VGUITextDocument } from "../VGUITextDocument"
 
-export const VGUISchema: VDFTextDocumentSchema = {
+export const VGUISchema: VDFTextDocumentSchema<VGUITextDocument> = {
 	keys: keys,
 	values: values,
+	getDefinitionReferences({ document, documentSymbols }) {
+		const element = Symbol.for("element")
+
+		const scopes = new Map<symbol, Map<number, VDFRange>>()
+		const definitions = new Collection<Definition>()
+		const references = new Collection<VDFRange>()
+
+		for (const documentSymbol of documentSymbols) {
+			if (documentSymbol.children != undefined) {
+				definitions.set(null, element, documentSymbol.key, {
+					uri: document.uri,
+					key: documentSymbol.key,
+					range: documentSymbol.range,
+					keyRange: documentSymbol.nameRange,
+					nameRange: documentSymbol.children.find((i) => i.key.toLowerCase() == "fieldName".toLowerCase() && i.detail != undefined)?.detailRange,
+					detail: documentSymbol.detail,
+					documentation: documentSymbol.documentation,
+					conditional: documentSymbol.conditional ?? undefined,
+				})
+
+				documentSymbol.children.forAll((documentSymbol) => {
+					if (documentSymbol.detail != undefined) {
+						const referenceKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
+						for (const { type, reference } of this.definitionReferences) {
+							if (reference?.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
+								references.set(null, type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
+							}
+						}
+					}
+				})
+			}
+		}
+
+		return {
+			scopes: scopes,
+			definitions: definitions,
+			references: references,
+		}
+	},
 	definitionReferences: [
 		{
 			type: Symbol.for("element"),
