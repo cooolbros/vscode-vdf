@@ -5,7 +5,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, combineLatestWith, connectable, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, of, ReplaySubject, shareReplay, Subscription, switchMap, type Connectable } from "rxjs"
+import { combineLatest, combineLatestWith, concat, connectable, defer, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, ReplaySubject, shareReplay, Subscription, switchMap } from "rxjs"
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -133,6 +133,20 @@ export const enum VGUIAssetType {
 	Image = 1
 }
 
+const enum BaseResultType {
+	Self,
+	None,
+	Error,
+	Success,
+}
+
+type BaseResult<TDocument extends VDFTextDocument<TDocument>> = (
+	| { type: BaseResultType.Self }
+	| { type: BaseResultType.None }
+	| { type: BaseResultType.Error, paths: string[][] }
+	| { type: BaseResultType.Success, document: VDFTextDocument<TDocument> }
+)
+
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
 
 	public readonly configuration: VDFTextDocumentConfiguration<this>
@@ -144,6 +158,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	public readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri; resolve: () => Promise<Uri | null> } })[]>
 	public readonly colours$: Observable<(ColorInformation & { stringify(colour: Color): string })[]>
 	public abstract readonly inlayHints$: Observable<InlayHint[]>
+
+	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
 
 	constructor(
 		init: TextDocumentInit,
@@ -177,78 +193,91 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}),
 				(source$) => {
 
-					function check(document: TDocument, stack: Uri[]): Observable<boolean> {
-						const context = new Map<string, Observable<boolean>>()
-						return document.base$.pipe(
-							map((paths) => {
-								const observables = paths.map((path) => {
-									let observable$ = context.get(path)
-									if (!observable$) {
-										observable$ = fileSystem.resolveFile(path).pipe(
-											switchMap((uri) => {
-												if (uri == null) {
-													return of(true)
+					function check(path: string, stack: string[]): Observable<BaseResult<TDocument>> {
+
+						const index = stack.findIndex((p) => p.toLowerCase() == path.toLowerCase())
+						if (index != -1) {
+							return concat(
+								of({
+									type: <const>BaseResultType.Error,
+									paths: [
+										[...stack.slice(index), path]
+									]
+								}),
+								// Don't .complete() or Observable will be removed from this.context
+								NEVER
+							)
+						}
+
+						return fileSystem.resolveFile(path).pipe(
+							switchMap((uri) => {
+								if (uri == null) {
+									return of({ type: <const>BaseResultType.None })
+								}
+
+								return usingAsync(async () => await documents.get(uri)).pipe(
+									switchMap((document) => {
+										return document.base$.pipe(
+											map((paths) => {
+												return paths.map((p) => check(p, [...stack, path]))
+											}),
+											combineLatestPersistent(),
+											map((results) => {
+												if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+													return { type: <const>BaseResultType.Success, document: document }
 												}
-												else if (stack.some((u) => Uri.equals(u, uri)) || Uri.equals(uri, document.uri)) {
-													return of(false)
-												}
-												else {
-													return usingAsync(async () => await documents.get(uri)).pipe(
-														switchMap((baseDocument) => check(baseDocument, [...stack, document.uri]))
-													)
+
+												return {
+													type: <const>BaseResultType.Error,
+													paths: results
+														.values()
+														.filter((result) => result.type == BaseResultType.Error)
+														.map((result) => result.paths.flat())
+														.toArray()
 												}
 											})
 										)
-
-										context.set(path, observable$)
-									}
-
-									return observable$
-								})
-
-								for (const path in context.keys().filter((path) => !paths.includes(path))) {
-									context.delete(path)
-								}
-
-								return observables
-							}),
-							combineLatestPersistent(),
-							map((results) => results.every((result) => result)),
-							finalize(() => context.clear())
+									})
+								)
+							})
 						)
 					}
 
-					const context = new Map<string, { connectable: Connectable<DefinitionReferences | null>, subscription: Subscription }>()
+					const context = new Map<string, { connectable$: Observable<DefinitionReferences | null>, subscription: Subscription }>()
 
 					return source$.pipe(
 						switchMap((value) => {
 							const observables = value.base.map((path) => {
 								let value = context.get(path)
 								if (!value) {
-									const observable$ = connectable(
-										fileSystem.resolveFile(path).pipe(
-											switchMap((uri) => {
-												if (uri == null) {
-													return of(null)
-												}
-												else if (Uri.equals(uri, this.uri)) {
-													return of(null)
-												}
-												else {
-													return usingAsync(async () => await documents.get(uri)).pipe(
-														switchMap((document) => {
-															return check(document, [this.uri]).pipe(
-																switchMap((result) => {
-																	return result
-																		? document.definitionReferences$
-																		: of(null)
-																}),
-																finalize(() => {
-																	document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
-																})
-															)
-														})
-													)
+									let observable$ = this.context.get(path)
+									if (!observable$) {
+										const self = posix.resolve(`/${configuration.relativeFolderPath ?? ""}`, this.uri.basename()).substring(1)
+										observable$ = (
+											path.toLowerCase() == self.toLowerCase()
+												? concat(of({ type: BaseResultType.Self } satisfies BaseResult<TDocument>), NEVER)
+												: check(path, [self])
+										).pipe(
+											finalize(() => this.context.delete(path)),
+											shareReplay({ bufferSize: 1, refCount: true })
+										)
+										this.context.set(path, observable$)
+									}
+
+									const connectable$ = connectable(
+										observable$.pipe(
+											switchMap((result) => {
+												switch (result.type) {
+													case BaseResultType.Self:
+													case BaseResultType.None:
+													case BaseResultType.Error:
+														return of(null)
+													case BaseResultType.Success:
+														return result.document.definitionReferences$.pipe(
+															finalize(() => {
+																result.document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
+															})
+														)
 												}
 											})
 										),
@@ -259,14 +288,14 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 									)
 
 									value = {
-										connectable: observable$,
-										subscription: observable$.connect()
+										connectable$: connectable$,
+										subscription: connectable$.connect()
 									}
 
 									context.set(path, value)
 								}
 
-								return value.connectable
+								return value.connectable$
 							})
 
 							for (const key of context.keys().filter((key) => !value.base.includes(key))) {
@@ -328,8 +357,147 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}
 			),
 			getDiagnostics: (dependencies, documentSymbols, definitionReferences) => {
+				const diagnostics = <(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[]
+
+				const { base = [], rest = [] } = Object.groupBy(
+					documentSymbols,
+					(documentSymbol) => {
+						return documentSymbol.key.toLowerCase() == "#base"
+							? "base"
+							: "rest"
+					}
+				)
+
+				for (const documentSymbol of base) {
+					if (documentSymbol.children) {
+						diagnostics.push({
+							range: documentSymbol.childrenRange!,
+							severity: DiagnosticSeverity.Error,
+							code: "invalid-base",
+							source: "vdf",
+							message: "Invalid #base directive.",
+							data: {
+								kind: CodeActionKind.QuickFix,
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: "Remove invalid #base",
+										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+									}
+								},
+							}
+						})
+					}
+					else if (documentSymbol.detail!.trim() == "") {
+						diagnostics.push({
+							range: documentSymbol.range,
+							severity: DiagnosticSeverity.Hint,
+							source: "vdf",
+							message: "Unreachable code detected.",
+							tags: [
+								DiagnosticTag.Unnecessary
+							],
+							data: {
+								kind: CodeActionKind.QuickFix,
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: "Remove empty #base",
+										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+									}
+								},
+							}
+						})
+					}
+					else {
+						const detail = documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")
+						const dirname = this.uri.dirname()
+
+						const baseUri = dirname.joinPath(detail)
+						const relative = dirname.relative(baseUri)
+
+						if (detail != relative) {
+							diagnostics.push({
+								range: documentSymbol.detailRange!,
+								severity: DiagnosticSeverity.Warning,
+								code: "useless-path",
+								source: "vdf",
+								message: `Unnecessary relative file path. (Expected "${relative}")`,
+								data: {
+									kind: CodeActionKind.QuickFix,
+									fix: ({ createDocumentWorkspaceEdit }) => {
+										return {
+											title: "Normalize file path",
+											edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, relative))
+										}
+									},
+								}
+							})
+						}
+
+						const relativePath = configuration.relativeFolderPath
+							? posix.resolve(`/${configuration.relativeFolderPath}/${detail}`).substring(1)
+							: dirname.relative(dirname.joinPath(detail))
+
+						diagnostics.push(
+							this.context.get(relativePath)!.pipe(
+								map((result) => {
+									switch (result.type) {
+										case BaseResultType.Self:
+											return {
+												range: documentSymbol.detailRange!,
+												severity: DiagnosticSeverity.Error,
+												code: "base-self-reference",
+												source: "vdf",
+												message: "#base directive references itself.",
+												data: {
+													kind: CodeActionKind.QuickFix,
+													fix({ createDocumentWorkspaceEdit }) {
+														return {
+															title: "Remove self #base",
+															edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+														}
+													},
+												}
+											}
+										case BaseResultType.None:
+											return {
+												range: documentSymbol.range,
+												severity: DiagnosticSeverity.Hint,
+												message: "Unreachable code detected.",
+												tags: [
+													DiagnosticTag.Unnecessary
+												]
+											}
+										case BaseResultType.Error:
+											return {
+												range: documentSymbol.detailRange!,
+												severity: DiagnosticSeverity.Error,
+												code: "base-cyclic",
+												source: init.languageId,
+												message: [
+													"#base directive is cyclic.",
+													...result.paths.map((paths) => paths.map((path) => `"${path}"`).join(" -> "))
+												].join("\n"),
+												data: {
+													kind: CodeActionKind.QuickFix,
+													fix({ createDocumentWorkspaceEdit }) {
+														return {
+															title: "Remove cyclic #base",
+															edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+														}
+													},
+												}
+											}
+										case BaseResultType.Success:
+											return null
+									}
+								})
+							) ?? null
+						)
+					}
+				}
+
 				return documentSymbols.reduceRecursive(
-					<(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[],
+					diagnostics,
 					(diagnostics, documentSymbol, path) => {
 						if (documentSymbol.conditional != null && documentSymbol.conditional != "[]") {
 							const conditional = documentSymbol.conditional.toLowerCase()
@@ -387,99 +555,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						}
 
 						const documentSymbolValue = documentSymbol.detail.toLowerCase()
-
-						// #base
-						if (path.length == 0 && documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined) {
-							if (documentSymbol.detail.trim() == "") {
-								diagnostics.push({
-									range: documentSymbol.range,
-									severity: DiagnosticSeverity.Hint,
-									source: init.languageId,
-									message: "Unreachable code detected.",
-									tags: [
-										DiagnosticTag.Unnecessary
-									],
-									data: {
-										kind: CodeActionKind.QuickFix,
-										fix: ({ createDocumentWorkspaceEdit }) => {
-											return {
-												title: "Remove empty #base",
-												edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-											}
-										},
-									}
-								})
-							}
-							else {
-								const detail = documentSymbol.detail.replaceAll(/[/\\]+/g, "/")
-								const dirname = this.uri.dirname()
-
-								const relativePath = configuration.relativeFolderPath
-									? posix.resolve(`/${configuration.relativeFolderPath}/${detail}`).substring(1)
-									: dirname.relative(dirname.joinPath(detail))
-
-								diagnostics.push(
-									fileSystem.resolveFile(relativePath).pipe(
-										map((uri): DiagnosticCodeAction | null => {
-											if (uri == null) {
-												return {
-													range: documentSymbol.range,
-													severity: DiagnosticSeverity.Hint,
-													source: init.languageId,
-													message: "Unreachable code detected.",
-													tags: [
-														DiagnosticTag.Unnecessary
-													]
-												}
-											}
-											else if (Uri.equals(uri, this.uri)) {
-												return {
-													range: documentSymbol.detailRange!,
-													severity: DiagnosticSeverity.Error,
-													code: "base-self-reference",
-													source: init.languageId,
-													message: "#base file references itself.",
-													data: {
-														kind: CodeActionKind.QuickFix,
-														fix({ createDocumentWorkspaceEdit }) {
-															return {
-																title: "Remove #base",
-																edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-															}
-														},
-													}
-												}
-											}
-											else {
-												return null
-											}
-										})
-									)
-								)
-
-								const baseUri = dirname.joinPath(detail)
-								const relative = dirname.relative(baseUri)
-
-								if (detail != relative) {
-									diagnostics.push({
-										range: documentSymbol.detailRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "useless-path",
-										source: init.languageId,
-										message: `Unnecessary relative file path. (Expected "${relative}")`,
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit }) => {
-												return {
-													title: "Normalize file path",
-													edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, relative))
-												}
-											},
-										}
-									})
-								}
-							}
-						}
 
 						// Static
 						if (documentSymbolKey in dependencies.schema.values) {
