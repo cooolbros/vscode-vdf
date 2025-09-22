@@ -3,6 +3,7 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
@@ -136,7 +137,7 @@ async function getWaveStatus(popfile: Popfile) {
 					}
 				}
 
-				const spawner = mission.children!.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+				const spawner = mission.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
 				if (spawner) {
 					addSpawner({
 						type: Type.Mission,
@@ -316,7 +317,7 @@ async function getWaveStatus(popfile: Popfile) {
 					}
 				}
 
-				const spawner = waveSpawn.children!.findLast((documentSymbol) => !Popfile.waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+				const spawner = waveSpawn.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
 				if (spawner) {
 					addSpawner({
 						type: support ? Type.Support : Type.Normal,
