@@ -50,7 +50,13 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 
 	const getToken: (key: string) => string = _options.quotes
 		? (key: string): string => `"${key}"`
-		: (key: string): string => !key.length || /\s/.test(key) ? `"${key}"` : key
+		: (key: string): string => {
+			const k = key.trimStart()
+			if (!key.length || k.startsWith("{") || k.startsWith("}") || k.startsWith("[") || k.startsWith("//") || k.startsWith("\\") || /\s/.test(key)) {
+				return `"${key}"`
+			}
+			return key
+		}
 
 	// Comment text
 	const blockCommentAfterSlash = " "
