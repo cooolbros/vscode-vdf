@@ -488,6 +488,7 @@ export abstract class LanguageServer<
 		}
 
 		documentLink.target = (await resolve(documentLink))?.toString()
+		console.log(documentLink.target)
 		return documentLink
 	}
 
