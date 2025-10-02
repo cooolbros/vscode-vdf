@@ -261,7 +261,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"DesiredCount": [integer],
 			"InitialCooldown": [float],
 			"Objective": [set(values.objective.values)],
-			"RunForThisMTODOWaves": [integer],
+			"RunForThisManyWaves": [integer],
 		}, validatePopulator())
 
 		const validateWaitBetweenSpawnsFloat = float
