@@ -3,10 +3,9 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFSyntaxError, type IRange } from "vdf"
-import { CodeLens, DiagnosticSeverity, DocumentLink, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
+import { CodeAction, CodeLens, DiagnosticSeverity, DocumentLink, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { DefinitionReferences, References } from "./DefinitionReferences"
-import type { DiagnosticCodeAction } from "./LanguageServer"
 
 export interface TextDocumentInit {
 	uri: Uri
@@ -23,8 +22,11 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 		documentSymbols: TDocumentSymbols,
 		definitionReferences: DefinitionReferences
 	}>
-	getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 }
+
+export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({ createDocumentWorkspaceEdit, findBestMatch }: { createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
+
+export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
@@ -42,6 +44,7 @@ export abstract class TextDocumentBase<
 	])
 
 	public readonly uri: Uri
+	protected readonly languageId: string
 	protected readonly document: TextDocument
 	protected readonly references$: BehaviorSubject<Map<string, References>>
 
@@ -62,6 +65,7 @@ export abstract class TextDocumentBase<
 		configuration: TextDocumentBaseConfiguration<TDocumentSymbols, TDependencies>,
 	) {
 		this.uri = init.uri
+		this.languageId = init.languageId
 		this.document = TextDocument.create(init.uri.toString(), init.languageId, init.version, init.content)
 		this.references$ = new BehaviorSubject(new Map())
 
@@ -107,11 +111,11 @@ export abstract class TextDocumentBase<
 			shareReplay(1)
 		)
 
-		const definitionReferences$ = configuration.definitionReferences$.pipe(
+		const data$ = configuration.definitionReferences$.pipe(
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
-		this.definitionReferences$ = definitionReferences$.pipe(
+		this.definitionReferences$ = data$.pipe(
 			map(({ definitionReferences }) => definitionReferences),
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
@@ -139,9 +143,9 @@ export abstract class TextDocumentBase<
 			}),
 			switchMap((result) => {
 				if (result.success) {
-					return definitionReferences$.pipe(
+					return data$.pipe(
 						map(({ dependencies, documentSymbols, definitionReferences }) => {
-							return configuration.getDiagnostics(dependencies, documentSymbols, definitionReferences)
+							return this.getDiagnostics(dependencies, documentSymbols, definitionReferences)
 						}),
 						switchMap((diagnostics) => {
 							if (!diagnostics.length) {
@@ -240,4 +244,6 @@ export abstract class TextDocumentBase<
 		this.text$.complete()
 		await this.fileSystem[Symbol.asyncDispose]()
 	}
+
+	protected abstract getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): DiagnosticCodeActions
 }

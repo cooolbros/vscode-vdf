@@ -5,10 +5,9 @@ import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnima
 import { posix } from "path"
 import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
-import { CodeActionKind, DiagnosticSeverity, DiagnosticTag, TextEdit, type DocumentLink } from "vscode-languageserver"
+import { DiagnosticSeverity, DiagnosticTag, TextEdit, type DocumentLink } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
-import type { DiagnosticCodeAction } from "../LanguageServer"
-import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
+import { TextDocumentBase, type DiagnosticCodeActions, type TextDocumentInit } from "../TextDocumentBase"
 import { Fonts } from "../VDF/VGUI/clientscheme.json"
 import eventFiles from "./eventFiles.json"
 import type { HUDAnimationsWorkspace } from "./HUDAnimationsWorkspace"
@@ -32,6 +31,8 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 	].map((i) => i.toLowerCase()))
 
 	public static readonly fontProperties = new Set(Fonts.map((i) => i.toLowerCase()))
+
+	protected getDiagnostics: (dependencies: HUDAnimationsTextDocumentDependencies, documentSymbols: HUDAnimationsDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 
 	public readonly workspace: HUDAnimationsWorkspace | null
 	public readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri; resolve: () => Promise<Uri | null> } })[]>
@@ -169,237 +170,233 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 						})
 					)
 				}
-			}),
-			getDiagnostics: (dependencies, documentSymbols, definitionReferences) => {
-				return documentSymbols.reduce(
-					(diagnostics, documentSymbol) => {
-						const key = documentSymbol.eventName.toLowerCase()
-
-						const events = definitionReferences.definitions.get(null, EventType, key)
-						const definition = events?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
-
-						if (!definition || !Uri.equals(definition.uri, this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
-							diagnostics.push({
-								range: documentSymbol.range,
-								severity: DiagnosticSeverity.Hint,
-								code: "duplicate-event",
-								source: "hudanimations",
-								message: "Unreachable code detected.",
-								tags: [
-									DiagnosticTag.Unnecessary
-								],
-								relatedInformation: events?.map((event) => ({
-									location: {
-										uri: event.uri.toString(),
-										range: event.keyRange
-									},
-									message: `${event.key} is declared here.`
-								})),
-								data: {
-									kind: CodeActionKind.QuickFix,
-									fix: ({ createDocumentWorkspaceEdit }) => {
-										return {
-											title: "Remove duplicate event",
-											isPreferred: true,
-											edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-										}
-									},
-								}
-							})
-						}
-
-						for (const statement of documentSymbol.children) {
-							if ("event" in statement) {
-								const event = definitionReferences.definitions.get(null, EventType, statement.event.toLowerCase())
-								if (!event || !event.length) {
-									diagnostics.push({
-										range: statement.eventRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "invalid-reference",
-										source: "hudanimations",
-										message: `Cannot find event '${statement.event}'.`,
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-
-												const newText = findBestMatch(
-													statement.event,
-													[...definitionReferences.definitions.ofType(null, EventType).values()].flatMap((definitions) => definitions.map((definition) => definition.key))
-												)
-
-												if (!newText) {
-													return null
-												}
-
-												return {
-													title: `Change event to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.eventRange, newText))
-												}
-											},
-										}
-									})
-								}
-							}
-
-							if ("element" in statement && workspace != null && documentSymbol.eventName.toLowerCase() in eventFiles) {
-								const type = Symbol.for(documentSymbol.eventName.toLowerCase())
-								const definitions = definitionReferences.definitions.get(null, type, statement.element)
-
-								if (!definitions || !definitions.length) {
-									const files = workspace.files.get(documentSymbol.eventName.toLowerCase())
-									if (files) {
-										diagnostics.push(
-											files.pipe(
-												map((files) => {
-													return {
-														range: statement.elementRange,
-														severity: DiagnosticSeverity.Warning,
-														code: "invalid-reference",
-														source: "hudanimations",
-														message: `Cannot find element '${statement.element}'.`,
-														relatedInformation: files.uris.map((uri) => ({
-															location: {
-																uri: uri.toString(),
-																range: new VDFRange(new VDFPosition(0, 0))
-															},
-															message: "Elements are declared here."
-														})),
-														data: {
-															kind: CodeActionKind.QuickFix,
-															fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-
-																const newText = findBestMatch(
-																	statement.element,
-																	definitionReferences
-																		.definitions
-																		.ofType(null, type)
-																		.values()
-																		.filter((definitions) => definitions.length)
-																		.map((definitions) => definitions[0].key)
-																		.toArray()
-																)
-
-																if (!newText) {
-																	return null
-																}
-
-																return {
-																	title: `Change element to '${newText}'`,
-																	edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.elementRange, newText))
-																}
-															},
-														}
-													}
-												})
-											)
-										)
-
-									}
-								}
-							}
-
-							if ("font" in statement && workspace != null) {
-								const definitions = definitionReferences.definitions.get(null, Symbol.for("font"), statement.font)
-								if (!definitions || !definitions.length) {
-									diagnostics.push({
-										range: statement.fontRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "invalid-reference",
-										source: "hudanimations",
-										message: `Cannot find font '${statement.font}'.`,
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-												const newText = findBestMatch(
-													statement.font,
-													definitionReferences
-														.definitions
-														.ofType(null, Symbol.for("font"))
-														.values()
-														.filter((definitions) => definitions.length)
-														.map((definitions) => definitions[0].key)
-														.toArray()
-												)
-
-												if (!newText) {
-													return null
-												}
-
-												return {
-													title: `Change font to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.fontRange, newText))
-												}
-											}
-										}
-									})
-								}
-							}
-
-							if (statement.type == HUDAnimationStatementType.Animate && workspace != null && HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase()) && !/^\s*\d+\s+\d+\s+\d+\s+\d+\s*$/.test(statement.value)) {
-								const type = Symbol.for("color")
-								const definitions = definitionReferences.definitions.get(null, type, statement.value)
-								if (!definitions || !definitions.length) {
-									diagnostics.push({
-										range: statement.valueRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "invalid-reference",
-										source: "hudanimations",
-										message: `Cannot find colour '${statement.value}'.`,
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-												const newText = findBestMatch(
-													statement.value,
-													definitionReferences
-														.definitions
-														.ofType(null, type)
-														.values()
-														.filter((definitions) => definitions.length)
-														.map((definitions) => definitions[0].key)
-														.toArray()
-												)
-
-												if (!newText) {
-													return null
-												}
-
-												return {
-													title: `Change colour to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.valueRange, newText))
-												}
-											}
-										}
-									})
-								}
-							}
-
-							if ("sound" in statement) {
-								const path = posix.resolve(`/sound`, statement.sound.replaceAll(/[/\\]+/g, "/")).substring(1)
-								diagnostics.push(
-									fileSystem.resolveFile(path).pipe(
-										map((uri) => {
-											return uri != null
-												? null
-												: {
-													range: statement.soundRange,
-													severity: DiagnosticSeverity.Warning,
-													source: "hudanimations",
-													message: `Cannot find sound file '${statement.sound}'.`,
-												}
-										})
-									)
-								)
-							}
-						}
-
-						return diagnostics
-					},
-					<(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[]
-				)
-			},
+			})
 		})
 
 		this.workspace = workspace
+
+		this.getDiagnostics = (dependencies, documentSymbols, definitionReferences) => {
+			return documentSymbols.reduce(
+				(diagnostics, documentSymbol) => {
+					const key = documentSymbol.eventName.toLowerCase()
+
+					const events = definitionReferences.definitions.get(null, EventType, key)
+					const definition = events?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
+
+					if (!definition || !Uri.equals(definition.uri, this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
+						diagnostics.push({
+							range: documentSymbol.range,
+							severity: DiagnosticSeverity.Hint,
+							code: "duplicate-event",
+							source: "hudanimations",
+							message: "Unreachable code detected.",
+							tags: [
+								DiagnosticTag.Unnecessary
+							],
+							relatedInformation: events?.map((event) => ({
+								location: {
+									uri: event.uri.toString(),
+									range: event.keyRange
+								},
+								message: `${event.key} is declared here.`
+							})),
+							data: {
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: "Remove duplicate event",
+										isPreferred: true,
+										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+									}
+								},
+							}
+						})
+					}
+
+					for (const statement of documentSymbol.children) {
+						if ("event" in statement) {
+							const event = definitionReferences.definitions.get(null, EventType, statement.event.toLowerCase())
+							if (!event || !event.length) {
+								diagnostics.push({
+									range: statement.eventRange,
+									severity: DiagnosticSeverity.Warning,
+									code: "invalid-reference",
+									source: "hudanimations",
+									message: `Cannot find event '${statement.event}'.`,
+									data: {
+										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+
+											const newText = findBestMatch(
+												statement.event,
+												[...definitionReferences.definitions.ofType(null, EventType).values()].flatMap((definitions) => definitions.map((definition) => definition.key))
+											)
+
+											if (!newText) {
+												return null
+											}
+
+											return {
+												title: `Change event to '${newText}'`,
+												edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.eventRange, newText))
+											}
+										},
+									}
+								})
+							}
+						}
+
+						if ("element" in statement && workspace != null && documentSymbol.eventName.toLowerCase() in eventFiles) {
+							const type = Symbol.for(documentSymbol.eventName.toLowerCase())
+							const definitions = definitionReferences.definitions.get(null, type, statement.element)
+
+							if (!definitions || !definitions.length) {
+								const files = workspace.files.get(documentSymbol.eventName.toLowerCase())
+								if (files) {
+									diagnostics.push(
+										files.pipe(
+											map((files) => {
+												return {
+													range: statement.elementRange,
+													severity: DiagnosticSeverity.Warning,
+													code: "invalid-reference",
+													source: "hudanimations",
+													message: `Cannot find element '${statement.element}'.`,
+													relatedInformation: files.uris.map((uri) => ({
+														location: {
+															uri: uri.toString(),
+															range: new VDFRange(new VDFPosition(0, 0))
+														},
+														message: "Elements are declared here."
+													})),
+													data: {
+														fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+
+															const newText = findBestMatch(
+																statement.element,
+																definitionReferences
+																	.definitions
+																	.ofType(null, type)
+																	.values()
+																	.filter((definitions) => definitions.length)
+																	.map((definitions) => definitions[0].key)
+																	.toArray()
+															)
+
+															if (!newText) {
+																return null
+															}
+
+															return {
+																title: `Change element to '${newText}'`,
+																edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.elementRange, newText))
+															}
+														},
+													}
+												}
+											})
+										)
+									)
+
+								}
+							}
+						}
+
+						if ("font" in statement && workspace != null) {
+							const definitions = definitionReferences.definitions.get(null, Symbol.for("font"), statement.font)
+							if (!definitions || !definitions.length) {
+								diagnostics.push({
+									range: statement.fontRange,
+									severity: DiagnosticSeverity.Warning,
+									code: "invalid-reference",
+									source: "hudanimations",
+									message: `Cannot find font '${statement.font}'.`,
+									data: {
+										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+											const newText = findBestMatch(
+												statement.font,
+												definitionReferences
+													.definitions
+													.ofType(null, Symbol.for("font"))
+													.values()
+													.filter((definitions) => definitions.length)
+													.map((definitions) => definitions[0].key)
+													.toArray()
+											)
+
+											if (!newText) {
+												return null
+											}
+
+											return {
+												title: `Change font to '${newText}'`,
+												edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.fontRange, newText))
+											}
+										}
+									}
+								})
+							}
+						}
+
+						if (statement.type == HUDAnimationStatementType.Animate && workspace != null && HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase()) && !/^\s*\d+\s+\d+\s+\d+\s+\d+\s*$/.test(statement.value)) {
+							const type = Symbol.for("color")
+							const definitions = definitionReferences.definitions.get(null, type, statement.value)
+							if (!definitions || !definitions.length) {
+								diagnostics.push({
+									range: statement.valueRange,
+									severity: DiagnosticSeverity.Warning,
+									code: "invalid-reference",
+									source: "hudanimations",
+									message: `Cannot find colour '${statement.value}'.`,
+									data: {
+										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+											const newText = findBestMatch(
+												statement.value,
+												definitionReferences
+													.definitions
+													.ofType(null, type)
+													.values()
+													.filter((definitions) => definitions.length)
+													.map((definitions) => definitions[0].key)
+													.toArray()
+											)
+
+											if (!newText) {
+												return null
+											}
+
+											return {
+												title: `Change colour to '${newText}'`,
+												edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.valueRange, newText))
+											}
+										}
+									}
+								})
+							}
+						}
+
+						if ("sound" in statement) {
+							const path = posix.resolve(`/sound`, statement.sound.replaceAll(/[/\\]+/g, "/")).substring(1)
+							diagnostics.push(
+								fileSystem.resolveFile(path).pipe(
+									map((uri) => {
+										return uri != null
+											? null
+											: {
+												range: statement.soundRange,
+												severity: DiagnosticSeverity.Warning,
+												source: "hudanimations",
+												message: `Cannot find sound file '${statement.sound}'.`,
+											}
+									})
+								)
+							)
+						}
+					}
+
+					return diagnostics
+				},
+				<DiagnosticCodeActions>[]
+			)
+		}
 
 		this.links$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {

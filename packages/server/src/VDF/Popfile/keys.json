@@ -1,10 +1,6 @@
 {
-    "class": {
-        "distinct": 2
-    },
-    "classicon": {
-        "distinct": 2
-    },
+    "class": {},
+    "classicon": {},
     "default": {
         "values": [
             {
@@ -68,9 +64,7 @@
         ],
         "values": []
     },
-    "health": {
-        "distinct": 2
-    },
+    "health": {},
     "initwaveoutput": {
         "reference": [
             "startwaveoutput"
@@ -83,9 +77,7 @@
         ],
         "values": []
     },
-    "maxvisionrange": {
-        "distinct": 2
-    },
+    "maxvisionrange": {},
     "mission": {
         "values": [
             {
@@ -123,9 +115,7 @@
             }
         ]
     },
-    "name": {
-        "distinct": 2
-    },
+    "name": {},
     "population": {
         "reference": [
             "waveschedule"
@@ -138,9 +128,7 @@
         ],
         "values": []
     },
-    "scale": {
-        "distinct": 2
-    },
+    "scale": {},
     "sentrygun": {
         "values": [
             {
@@ -149,9 +137,7 @@
             }
         ]
     },
-    "skill": {
-        "distinct": 2
-    },
+    "skill": {},
     "squad": {
         "values": [
             {
@@ -536,7 +522,5 @@
             }
         ]
     },
-    "weaponrestrictions": {
-        "distinct": 2
-    }
+    "weaponrestrictions": {}
 }

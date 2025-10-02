@@ -194,7 +194,7 @@ export abstract class VDFLanguageServer<
 			// Files
 			const fileConfiguration = schema.files.find(({ keys }) => keys.has(key))
 			if (fileConfiguration != undefined) {
-				return await files(fileConfiguration.folder, {
+				return await files(fileConfiguration.folder ?? "", {
 					value: text ?? null,
 					extensionsPattern: fileConfiguration.extensionsPattern,
 					callbackfn: fileConfiguration.toCompletionItem != null

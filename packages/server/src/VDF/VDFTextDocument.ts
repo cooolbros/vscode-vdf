@@ -9,10 +9,9 @@ import { combineLatest, combineLatestWith, concat, connectable, defer, distinctU
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { CodeActionKind, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint, TextEdit } from "vscode-languageserver"
+import { Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
-import type { DiagnosticCodeAction } from "../LanguageServer"
-import { TextDocumentBase, type TextDocumentInit } from "../TextDocumentBase"
+import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type TextDocumentInit } from "../TextDocumentBase"
 
 function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
 
@@ -31,7 +30,7 @@ export function resolveFileDetail<TDocument extends VDFTextDocument<TDocument>>(
 	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
 
 	return posix.resolve(
-		`/${configuration.folder}`,
+		`/${configuration.folder ?? ""}`,
 		rest.reverse().join("/"),
 		configuration.resolveBaseName(basename, (extension) => {
 			return posix.extname(basename) == ""
@@ -55,13 +54,12 @@ export interface VDFTextDocumentDependencies<TDocument extends VDFTextDocument<T
 }
 
 export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocument>> {
-	keys: Record<string, { distinct?: KeyDistinct, reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
+	keys: Record<string, { reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	getDefinitionReferences(params: DefinitionReferencesHandlerParams<TDocument>): { scopes: Map<symbol, Map<number, VDFRange>>, definitions: Collection<Definition>, references: Collection<VDFRange> }
 	definitionReferences: {
 		type: symbol
 		scope?: string
-		definition: DefinitionMatcher | null
 		reference?: {
 			keys: Set<string>
 			match: ((string: string) => boolean) | null
@@ -70,13 +68,15 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 		toReference?: (value: string) => string
 		toCompletionItem?: (definition: Definition) => Partial<Omit<CompletionItem, "label">> | undefined
 	}[]
+	getDiagnostics(params: DiagnosticsHandlerParams<TDocument>): DiagnosticCodeActions
 	files: {
 		name: string
 
 		// Used for "font" links in ClientSchemeSchema
 		parentKeys: string[]
 		keys: Set<string>
-		folder: string
+		folder: string | null
+		extension: string | null
 		extensionsPattern: `.${string}` | null
 		resolveBaseName: (value: string, withExtension: (extension: `.${string}`) => string) => string,
 		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
@@ -104,28 +104,15 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 	}
 }
 
-export interface SchemaHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
-	document: TDocument
-}
-
-export interface DefinitionReferencesHandlerParams<TDocument extends VDFTextDocument<TDocument>> extends SchemaHandlerParams<TDocument> {
+export interface DefinitionReferencesHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+	document: VDFTextDocument<TDocument>
 	documentSymbols: VDFDocumentSymbols
 }
 
-export const enum KeyDistinct {
-	None,
-	First,
-	Last,
-}
-
-export interface DefinitionMatcher {
-	match(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]): DefinitionResult | void
-}
-
-export interface DefinitionResult {
-	key: string
-	keyRange: VDFRange
-	nameRange?: VDFRange
+export interface DiagnosticsHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+	dependencies: VDFTextDocumentDependencies<TDocument>
+	documentSymbols: VDFDocumentSymbol[]
+	definitionReferences: DefinitionReferences
 }
 
 export const enum VGUIAssetType {
@@ -147,9 +134,30 @@ type BaseResult<TDocument extends VDFTextDocument<TDocument>> = (
 	| { type: BaseResultType.Success, document: VDFTextDocument<TDocument> }
 )
 
+export interface Context<TDocument extends VDFTextDocument<TDocument>> {
+	document: TDocument,
+	dependencies: VDFTextDocumentDependencies<TDocument>,
+	documentSymbols: VDFDocumentSymbols | undefined,
+	definitionReferences: DefinitionReferences,
+}
+
+export type Validate<TDocument extends VDFTextDocument<TDocument>> = (key: string, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+
+export const enum KeyDistinct {
+	None,
+	First,
+	Last,
+}
+
+export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (key: string, detail: string, detailRange: VDFRange, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+
+export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeAction) => DiagnosticCodeActions
+
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
 
-	public readonly configuration: VDFTextDocumentConfiguration<this>
+	public readonly configuration: VDFTextDocumentConfiguration<TDocument>
+
+	protected getDiagnostics: (dependencies: VDFTextDocumentDependencies<TDocument>, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 
 	/**
 	 * #base
@@ -160,6 +168,364 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	public abstract readonly inlayHints$: Observable<InlayHint[]>
 
 	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
+
+	private readonly string = (refine?: RefineString<TDocument>): Validate<TDocument> => {
+		return (key, documentSymbol, path, context) => {
+			const diagnostics: DiagnosticCodeActions = []
+			if (documentSymbol.detail == undefined) {
+				diagnostics.push({
+					range: documentSymbol.childrenRange!,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-type",
+					source: this.languageId,
+					message: `Invalid ${key} type.`,
+				})
+			}
+			else {
+				diagnostics.push(...refine?.(key, documentSymbol.detail, documentSymbol.detailRange!, path, context) ?? [])
+			}
+
+			return diagnostics
+		}
+	}
+
+	public readonly diagnostics = {
+		unreachable: (range: VDFRange, fix?: NonNullable<DiagnosticCodeAction["data"]>["fix"]): DiagnosticCodeAction => {
+			return {
+				range: range,
+				severity: DiagnosticSeverity.Hint,
+				message: "Unreachable code detected.",
+				tags: [
+					DiagnosticTag.Unnecessary
+				],
+				...(fix && {
+					data: {
+						fix: fix
+					}
+				})
+			}
+		},
+		any: () => [],
+		header: (document: TDocument, validate: Validate<TDocument>, multiple: boolean): VDFTextDocumentSchema<TDocument>["getDiagnostics"] => {
+			return ({ dependencies, documentSymbols, definitionReferences }) => {
+				const diagnostics: DiagnosticCodeActions = []
+				const [header, ...rest] = documentSymbols
+				if (header != undefined) {
+					diagnostics.push(
+						...validate(
+							header.key,
+							header,
+							[],
+							{
+								document: document,
+								dependencies: dependencies,
+								documentSymbols: header.children,
+								definitionReferences: definitionReferences,
+							}
+						)
+					)
+				}
+
+				diagnostics.push(...rest.map((documentSymbol) => this.diagnostics.unreachable(documentSymbol.range)))
+				return diagnostics
+			}
+		},
+		documentSymbols: (distinct: KeyDistinct, schema: Record<string, [Validate<TDocument>] | [Validate<TDocument>, KeyDistinct]>, fallback?: Fallback<TDocument>): Validate<TDocument> => {
+			const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
+			return (key, documentSymbol, path, context) => {
+				const diagnostics: DiagnosticCodeActions = []
+				if (documentSymbol.children == undefined) {
+					diagnostics.push({
+						range: documentSymbol.detailRange!,
+						severity: DiagnosticSeverity.Warning,
+						code: "invalid-type",
+						source: this.languageId,
+						message: `Invalid ${key} type.`,
+					})
+				}
+				else {
+					const parent = documentSymbol
+					parent.children!.forEach((documentSymbol) => {
+						if (documentSymbol.conditional != null && documentSymbol.conditional.length > "[$]".length) {
+							const conditional = documentSymbol.conditional.toLowerCase()
+							if (TextDocumentBase.conditionals.values().map((c) => c.toLowerCase()).find((c) => c == conditional) == undefined) {
+								return
+							}
+						}
+
+						const data = map.get(documentSymbol.key.toLowerCase())
+						if (data == undefined) {
+							const unknown = (): DiagnosticCodeAction => ({
+								range: documentSymbol.nameRange,
+								severity: DiagnosticSeverity.Warning,
+								code: "unknown-key",
+								source: this.languageId,
+								message: `Unknown key '${documentSymbol.key}'.`,
+							})
+
+							diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, unknown) ?? [])
+						}
+						else {
+
+							// Distinct Keys
+							if (data.distinct != undefined && data.distinct != KeyDistinct.None) {
+								const find = data.distinct == KeyDistinct.First
+									? Array.prototype.find
+									: Array.prototype.findLast
+
+								const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+								if (first != documentSymbol) {
+									diagnostics.push({
+										range: documentSymbol.nameRange,
+										severity: DiagnosticSeverity.Warning,
+										code: "duplicate-key",
+										source: this.languageId,
+										message: `Duplicate key '${first.key}'`,
+										relatedInformation: [
+											{
+												location: {
+													uri: context.document.uri.toString(),
+													range: first.nameRange
+												},
+												message: `${first.key} is declared here.`
+											}
+										],
+										data: {
+											fix: ({ createDocumentWorkspaceEdit }) => {
+												return {
+													title: `Remove duplicate ${documentSymbol.key}`,
+													edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+												}
+											}
+										}
+									})
+								}
+							}
+
+							if (documentSymbol.key != data.key) {
+								diagnostics.push({
+									range: documentSymbol.nameRange,
+									severity: DiagnosticSeverity.Hint,
+									message: data.key,
+									data: {
+										fix: ({ createDocumentWorkspaceEdit }) => {
+											return {
+												title: `Replace "${documentSymbol.key}" with "${data.key}"`,
+												edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, data.key))
+											}
+										}
+									}
+								})
+							}
+
+							diagnostics.push(...data.validate(data.key, documentSymbol, [...path, parent], context))
+						}
+					})
+				}
+				return diagnostics
+			}
+		},
+		string: this.string,
+		length: (max: number): Validate<TDocument> => this.string((key, detail, detailRange, path, context) => {
+			const length = detail.length + "\0".length
+			if (length > max) {
+				return [{
+					range: detailRange,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-length",
+					source: this.languageId,
+					message: `Value exceeds maximum buffer size (max: ${max}, size: ${length}).`,
+				}]
+			}
+			return []
+		}),
+		integer: this.string((key, detail, detailRange, path, context) => {
+			if (/\D/.test(detail)) {
+				return [{
+					range: detailRange,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-integer",
+					source: this.languageId,
+					message: `Invalid value for ${key}. Expected integer`,
+				}]
+			}
+			return []
+		}),
+		float: this.string((key, detail, detailRange, path, context) => {
+			if (!/^\d*\.?\d+$/.test(detail)) {
+				return [{
+					range: detailRange,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-float",
+					source: this.languageId,
+					message: `Invalid value for ${key}. Expected float`,
+				}]
+			}
+			return []
+		}),
+		set: (values: string[]) => {
+			const set = new Set(values.map((value) => value.toLowerCase()))
+			return this.string((key, detail, detailRange, path, context) => {
+				if (!set.has(detail.toLowerCase())) {
+					return [{
+						range: detailRange,
+						severity: DiagnosticSeverity.Warning,
+						code: "invalid-value",
+						source: this.languageId,
+						message: `'${detail}' is not a valid value for ${key}. Expected '${values.join("' | '")}'.`,
+					}]
+				}
+				else {
+					const value = values.find((value) => value.toLowerCase() == detail!.toLowerCase())!
+					if (detail != value) {
+						return [{
+							range: detailRange,
+							severity: DiagnosticSeverity.Hint,
+							message: value,
+							data: {
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: `Replace "${detail}" with "${value}"`,
+										edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, value))
+									}
+								}
+							}
+						}]
+					}
+					return []
+				}
+			})
+		},
+		dynamic: (key: string) => {
+			const id = key.toLowerCase()
+			return this.diagnostics.string((key, detail, detailRange, path, context) => {
+				if (id in context.dependencies.schema.values) {
+					const values = context.dependencies.schema.values[id].values
+					if (!values.some((value) => value.toLowerCase() == detail.toLowerCase())) {
+						return [{
+							range: detailRange,
+							severity: DiagnosticSeverity.Warning,
+							code: "invalid-value",
+							source: this.languageId,
+							message: `'${detail}' is not a valid value for ${key}. Expected '${values.join("' | '")}'.`,
+						}]
+					}
+				}
+				return []
+			})
+		},
+		reference: (type: symbol, refine?: (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions): RefineString<TDocument> => {
+			return (key, detail, detailRange, path, context) => {
+				const diagnostics: DiagnosticCodeActions = []
+
+				const scope = context.definitionReferences.scopes.get(type)?.entries().find(([scope, range]) => range.contains(detailRange))?.[0] ?? null
+				const definitions = context.definitionReferences.definitions.get(scope, type, detail)
+
+				if (!definitions || !definitions.length) {
+					diagnostics.push({
+						range: detailRange,
+						severity: DiagnosticSeverity.Warning,
+						code: "invalid-reference",
+						source: this.languageId,
+						message: `Cannot find ${Symbol.keyFor(type)} '${detail}'.`,
+						data: {
+							fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+
+								const newText = findBestMatch(
+									detail,
+									context.definitionReferences
+										.definitions
+										.ofType(scope, type)
+										.values()
+										.filter((definitions) => definitions.length)
+										.map((definitions) => definitions[0].key)
+										.toArray()
+								)
+
+								if (!newText) {
+									return null
+								}
+
+								return {
+									title: `Change ${key} to '${newText}'`,
+									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, newText))
+								}
+							},
+						}
+					})
+
+				}
+				else {
+					diagnostics.push(...refine?.(key, detail, detailRange, path, context, definitions) ?? [])
+				}
+
+				return diagnostics
+			}
+		},
+		file: (name: string, folder: string | null, extension: string | null) => {
+			return this.string((key, detail, detailRange, path, context) => {
+				if (detail == "") {
+					return []
+				}
+
+				const diagnostics: DiagnosticCodeActions = []
+
+				const value = detail.replaceAll(/[/\\]+/g, "/")
+
+				const newPath = folder != null
+					? posix.relative(`/${folder}`, posix.resolve(`/${folder}`, detail))
+					: posix.resolve(`/${detail}`).substring(1)
+
+				if (value != newPath) {
+					diagnostics.push({
+						range: detailRange,
+						severity: DiagnosticSeverity.Warning,
+						code: "useless-path",
+						source: this.languageId,
+						message: `Unnecessary relative file path. Expected '${newPath}'`,
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: "Normalize file path",
+									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, newPath))
+								}
+							},
+						}
+					})
+				}
+
+				const file = posix.resolve(`/${folder ?? ""}/${extension != undefined && posix.extname(detail) == "" ? `${detail}${extension}` : detail}`).substring(1)
+
+				diagnostics.push(
+					this.fileSystem.resolveFile(file).pipe(
+						map((uri) => {
+							if (uri != null) {
+								return null
+							}
+
+							return {
+								range: detailRange,
+								severity: DiagnosticSeverity.Warning,
+								code: "missing-file",
+								source: this.languageId,
+								message: `Cannot find ${name} '${detail}'. (Resolved to "${file}")`,
+							}
+						})
+					)
+				)
+
+				return diagnostics
+			})
+		},
+		next: (schema: Map<string, Validate<TDocument>>): Validate<TDocument> => {
+			return (key, documentSymbol, path, context) => {
+				const validate = schema.get(key)
+				return validate != undefined
+					? validate(key, documentSymbol, path, context)
+					: []
+			}
+		}
+	}
 
 	constructor(
 		init: TextDocumentInit,
@@ -355,408 +721,138 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						})
 					)
 				}
-			),
-			getDiagnostics: (dependencies, documentSymbols, definitionReferences) => {
-				const diagnostics = <(DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]>[]
-
-				const { base = [], rest = [] } = Object.groupBy(
-					documentSymbols,
-					(documentSymbol) => {
-						return documentSymbol.key.toLowerCase() == "#base"
-							? "base"
-							: "rest"
-					}
-				)
-
-				for (const documentSymbol of base) {
-					if (documentSymbol.children) {
-						diagnostics.push({
-							range: documentSymbol.childrenRange!,
-							severity: DiagnosticSeverity.Error,
-							code: "invalid-base",
-							source: "vdf",
-							message: "Invalid #base directive.",
-							data: {
-								kind: CodeActionKind.QuickFix,
-								fix: ({ createDocumentWorkspaceEdit }) => {
-									return {
-										title: "Remove invalid #base",
-										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-									}
-								},
-							}
-						})
-					}
-					else if (documentSymbol.detail!.trim() == "") {
-						diagnostics.push({
-							range: documentSymbol.range,
-							severity: DiagnosticSeverity.Hint,
-							source: "vdf",
-							message: "Unreachable code detected.",
-							tags: [
-								DiagnosticTag.Unnecessary
-							],
-							data: {
-								kind: CodeActionKind.QuickFix,
-								fix: ({ createDocumentWorkspaceEdit }) => {
-									return {
-										title: "Remove empty #base",
-										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-									}
-								},
-							}
-						})
-					}
-					else {
-						const detail = documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")
-						const dirname = this.uri.dirname()
-
-						const baseUri = dirname.joinPath(detail)
-						const relative = dirname.relative(baseUri)
-
-						if (detail != relative) {
-							diagnostics.push({
-								range: documentSymbol.detailRange!,
-								severity: DiagnosticSeverity.Warning,
-								code: "useless-path",
-								source: "vdf",
-								message: `Unnecessary relative file path. (Expected "${relative}")`,
-								data: {
-									kind: CodeActionKind.QuickFix,
-									fix: ({ createDocumentWorkspaceEdit }) => {
-										return {
-											title: "Normalize file path",
-											edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, relative))
-										}
-									},
-								}
-							})
-						}
-
-						const relativePath = configuration.relativeFolderPath
-							? posix.resolve(`/${configuration.relativeFolderPath}/${detail}`).substring(1)
-							: dirname.relative(dirname.joinPath(detail))
-
-						diagnostics.push(
-							this.context.get(relativePath)!.pipe(
-								map((result) => {
-									switch (result.type) {
-										case BaseResultType.Self:
-											return {
-												range: documentSymbol.detailRange!,
-												severity: DiagnosticSeverity.Error,
-												code: "base-self-reference",
-												source: "vdf",
-												message: "#base directive references itself.",
-												data: {
-													kind: CodeActionKind.QuickFix,
-													fix({ createDocumentWorkspaceEdit }) {
-														return {
-															title: "Remove self #base",
-															edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-														}
-													},
-												}
-											}
-										case BaseResultType.None:
-											return {
-												range: documentSymbol.range,
-												severity: DiagnosticSeverity.Hint,
-												message: "Unreachable code detected.",
-												tags: [
-													DiagnosticTag.Unnecessary
-												]
-											}
-										case BaseResultType.Error:
-											return {
-												range: documentSymbol.detailRange!,
-												severity: DiagnosticSeverity.Error,
-												code: "base-cyclic",
-												source: init.languageId,
-												message: [
-													"#base directive is cyclic.",
-													...result.paths.map((paths) => paths.map((path) => `"${path}"`).join(" -> "))
-												].join("\n"),
-												data: {
-													kind: CodeActionKind.QuickFix,
-													fix({ createDocumentWorkspaceEdit }) {
-														return {
-															title: "Remove cyclic #base",
-															edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-														}
-													},
-												}
-											}
-										case BaseResultType.Success:
-											return null
-									}
-								})
-							) ?? null
-						)
-					}
-				}
-
-				return documentSymbols.reduceRecursive(
-					diagnostics,
-					(diagnostics, documentSymbol, path) => {
-						if (documentSymbol.conditional != null && documentSymbol.conditional != "[]") {
-							const conditional = documentSymbol.conditional.toLowerCase()
-							if (TextDocumentBase.conditionals.values().map((c) => c.toLowerCase()).find((c) => c == conditional) == undefined) {
-								return diagnostics
-							}
-						}
-
-						const documentSymbolKey = configuration.keyTransform(documentSymbol.key.toLowerCase())
-
-						// Distinct Keys
-						if (documentSymbolKey in dependencies.schema.keys && dependencies.schema.keys[documentSymbolKey].distinct) {
-							const distinct = dependencies.schema.keys[documentSymbolKey].distinct
-							const parent = path.at(-1)
-							if (parent?.children != undefined) {
-								const find = distinct == KeyDistinct.First
-									? Array.prototype.find
-									: Array.prototype.findLast
-
-								const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
-								if (first != documentSymbol) {
-									diagnostics.push({
-										range: documentSymbol.nameRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "duplicate-key",
-										source: init.languageId,
-										message: `Duplicate ${first.key}`,
-										relatedInformation: [
-											{
-												location: {
-													uri: this.uri.toString(),
-													range: first.nameRange
-												},
-												message: `${first.key} is declared here.`
-											}
-										],
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit }) => {
-												return {
-													title: `Remove duplicate ${documentSymbol.key}`,
-													edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-												}
-											}
-										}
-									})
-								}
-							}
-						}
-
-						if (documentSymbol.detail == undefined || documentSymbol.detailRange == undefined) {
-							const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions, definitionReferences.scopes)
-							diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
-							return diagnostics
-						}
-
-						const documentSymbolValue = documentSymbol.detail.toLowerCase()
-
-						// Static
-						if (documentSymbolKey in dependencies.schema.values) {
-							const valueData = dependencies.schema.values[documentSymbolKey]
-							for (const [index, value] of valueData.values.entries()) {
-								if (documentSymbolValue == value.toLowerCase() || (valueData.enumIndex && documentSymbolValue == index.toString())) {
-									return diagnostics
-								}
-							}
-
-							const values = !valueData.enumIndex
-								? valueData.values
-								: valueData.values.map((value, index) => [value, index]).flat()
-
-							diagnostics.push({
-								range: documentSymbol.detailRange,
-								severity: DiagnosticSeverity.Warning,
-								code: "invalid-value",
-								source: init.languageId,
-								message: `'${documentSymbol.detail}' is not a valid value for ${documentSymbol.key}. Expected '${values.join("' | '")}'.`,
-								data: {
-									kind: CodeActionKind.QuickFix,
-									fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-										let newText: string | null = null
-
-										const value = documentSymbol.detail!.toLowerCase()
-										if (valueData.fix && value in valueData.fix) {
-											newText = valueData.fix[value]
-										}
-										else {
-											newText = findBestMatch(
-												value,
-												valueData.values
-											)
-										}
-
-										if (!newText) {
-											return null
-										}
-
-										return {
-											title: `Change ${documentSymbol.key} to '${newText}'`,
-											edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, newText))
-										}
-									}
-								}
-							})
-						}
-
-						// Dynamic
-						if (documentSymbolValue != "") {
-							const definitionReferencesConfiguration = dependencies
-								.schema
-								.definitionReferences
-								.values()
-								.filter((definitionReference): definitionReference is typeof definitionReference & { reference: NonNullable<typeof definitionReference["reference"]> } => definitionReference.reference != undefined)
-								.find(({ reference: { keys, match: test } }) => keys.has(documentSymbolKey) && (test != null ? test(documentSymbolValue) : true))
-
-							if (definitionReferencesConfiguration != undefined) {
-								const scope = definitionReferences.scopes.get(definitionReferencesConfiguration.type)?.entries().find(([scope, range]) => range.contains(documentSymbol.range))?.[0] ?? null
-
-								const detail = definitionReferencesConfiguration.reference.toDefinition
-									? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail)
-									: documentSymbol.detail
-
-								const definitions = definitionReferences.definitions.get(scope, definitionReferencesConfiguration.type, detail)
-
-								if (!definitions || !definitions.length) {
-									diagnostics.push({
-										range: documentSymbol.detailRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "invalid-reference",
-										source: init.languageId,
-										message: `Cannot find ${Symbol.keyFor(definitionReferencesConfiguration.type)} '${detail}'.`,
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-
-												let newText = findBestMatch(
-													detail,
-													definitionReferences
-														.definitions
-														.ofType(scope, definitionReferencesConfiguration.type)
-														.values()
-														.filter((definitions) => definitions.length)
-														.map((definitions) => definitions[0].key)
-														.toArray()
-												)
-
-												if (!newText) {
-													return null
-												}
-
-												if (definitionReferencesConfiguration.toReference) {
-													newText = definitionReferencesConfiguration.toReference(newText)
-												}
-
-												return {
-													title: `Change ${documentSymbol.key} to '${newText}'`,
-													edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, newText))
-												}
-											},
-										}
-									})
-								}
-
-								if (definitions != null && definitions.some((definition) => Uri.equals(definition.uri, this.uri) && definition.range.contains(documentSymbol.detailRange!))) {
-									diagnostics.push({
-										range: documentSymbol.detailRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "self-reference",
-										source: init.languageId,
-										message: `${documentSymbol.key} '${documentSymbol.detail}' references itself.`,
-										data: {
-											kind: CodeActionKind.QuickFix,
-											fix: () => {
-												return {
-													title: `Remove ${documentSymbol.key}`,
-													isPreferred: true,
-													edit: {
-														changes: {
-															[this.uri.toString()]: [
-																{
-																	range: documentSymbol.range,
-																	newText: ""
-																}
-															]
-														}
-													}
-												}
-											},
-										}
-									})
-								}
-							}
-						}
-
-						// Files
-						const fileConfiguration = dependencies.schema.files.find(({ parentKeys, keys }) =>
-							keys.has(documentSymbolKey) && ArrayContainsArray(path, parentKeys, (a, b) => a.key.toLowerCase() == b.toLowerCase())
-						)
-
-						if (fileConfiguration && documentSymbol.detail.trim() != "") {
-							const path = resolveFileDetail(documentSymbol.detail, fileConfiguration)
-							diagnostics.push(
-								fileSystem.resolveFile(path).pipe(
-									map((uri) => {
-										return uri != null
-											? null
-											: {
-												range: documentSymbol.detailRange!,
-												severity: DiagnosticSeverity.Warning,
-												code: "missing-file",
-												source: init.languageId,
-												message: `Cannot find ${fileConfiguration.name} '${documentSymbol.detail}'. (Resolved to "${path}")`,
-											}
-									})
-								)
-							)
-
-							const detail = documentSymbol.detail.replaceAll(/[/\\]+/g, "/")
-
-							let newPath: string
-							if (fileConfiguration.folder) {
-								newPath = posix.relative(
-									`/${fileConfiguration.folder}`,
-									posix.resolve(`/${fileConfiguration.folder}`, detail)
-								)
-							}
-							else {
-								newPath = posix.resolve(`/${detail}`).substring(1)
-							}
-
-							if (detail != newPath) {
-								diagnostics.push({
-									range: documentSymbol.detailRange!,
-									severity: DiagnosticSeverity.Warning,
-									code: "useless-path",
-									source: init.languageId,
-									message: `Unnecessary relative file path. Expected '${newPath}'`,
-									data: {
-										kind: CodeActionKind.QuickFix,
-										fix: ({ createDocumentWorkspaceEdit }) => {
-											return {
-												title: "Normalize file path",
-												edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, newPath))
-											}
-										},
-									}
-								})
-							}
-						}
-
-						const diagnostic = this.validateDocumentSymbol(documentSymbol, path, documentSymbols, definitionReferences.definitions, definitionReferences.scopes)
-						diagnostics.push(...Array.isArray(diagnostic) ? diagnostic : [diagnostic])
-						return diagnostics
-					}
-				)
-			},
+			)
 		})
 
 		this.configuration = configuration
+
+		this.getDiagnostics = (dependencies, documentSymbols, definitionReferences) => {
+			const diagnostics: DiagnosticCodeActions = []
+
+			const { base = [], rest = [] } = Object.groupBy(
+				documentSymbols,
+				(documentSymbol) => {
+					return documentSymbol.key.toLowerCase() == "#base"
+						? "base"
+						: "rest"
+				}
+			)
+
+			for (const documentSymbol of base) {
+				if (documentSymbol.children) {
+					diagnostics.push({
+						range: documentSymbol.childrenRange!,
+						severity: DiagnosticSeverity.Error,
+						code: "invalid-base",
+						source: "vdf",
+						message: "Invalid #base directive.",
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: "Remove invalid #base",
+									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+								}
+							},
+						}
+					})
+				}
+				else if (documentSymbol.detail!.trim() == "") {
+					diagnostics.push(this.diagnostics.unreachable(documentSymbol.range, ({ createDocumentWorkspaceEdit }) => {
+						return {
+							title: "Remove empty #base",
+							edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+						}
+					}))
+				}
+				else {
+					const detail = documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")
+					const dirname = this.uri.dirname()
+
+					const baseUri = dirname.joinPath(detail)
+					const relative = dirname.relative(baseUri)
+
+					if (detail != relative) {
+						diagnostics.push({
+							range: documentSymbol.detailRange!,
+							severity: DiagnosticSeverity.Warning,
+							code: "useless-path",
+							source: "vdf",
+							message: `Unnecessary relative file path. (Expected "${relative}")`,
+							data: {
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: "Normalize file path",
+										edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, relative))
+									}
+								},
+							}
+						})
+					}
+
+					const relativePath = configuration.relativeFolderPath
+						? posix.resolve(`/${configuration.relativeFolderPath}/${detail}`).substring(1)
+						: dirname.relative(dirname.joinPath(detail))
+
+					diagnostics.push(
+						this.context.get(relativePath)!.pipe(
+							map((result) => {
+								switch (result.type) {
+									case BaseResultType.Self:
+										return {
+											range: documentSymbol.detailRange!,
+											severity: DiagnosticSeverity.Error,
+											code: "base-self-reference",
+											source: "vdf",
+											message: "#base directive references itself.",
+											data: {
+												fix({ createDocumentWorkspaceEdit }) {
+													return {
+														title: "Remove self #base",
+														edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+													}
+												},
+											}
+										}
+									case BaseResultType.None:
+										return this.diagnostics.unreachable(documentSymbol.range)
+									case BaseResultType.Error:
+										return {
+											range: documentSymbol.detailRange!,
+											severity: DiagnosticSeverity.Error,
+											code: "base-cyclic",
+											source: init.languageId,
+											message: [
+												"#base directive is cyclic.",
+												...result.paths.map((paths) => paths.map((path) => `"${path}"`).join(" -> "))
+											].join("\n"),
+											data: {
+												fix({ createDocumentWorkspaceEdit }) {
+													return {
+														title: "Remove cyclic #base",
+														edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+													}
+												},
+											}
+										}
+									case BaseResultType.Success:
+										return null
+								}
+							})
+						) ?? null
+					)
+				}
+			}
+
+			diagnostics.push(
+				...dependencies.schema.getDiagnostics({
+					dependencies: dependencies,
+					documentSymbols: rest,
+					definitionReferences: definitionReferences,
+				})
+			)
+
+			return diagnostics
+		}
 
 		this.base$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {
@@ -876,6 +972,4 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
 	}
-
-	protected abstract validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions, scopes: Map<symbol, Map<number | null, VDFRange>>): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null>
 }

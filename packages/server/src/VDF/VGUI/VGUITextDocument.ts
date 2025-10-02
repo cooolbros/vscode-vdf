@@ -4,12 +4,9 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { defer, map, of, shareReplay, switchMap, type Observable } from "rxjs"
-import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CodeActionKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
-import type { Definitions } from "../../DefinitionReferences"
-import type { DiagnosticCodeAction } from "../../LanguageServer"
+import { InlayHint, TextEdit } from "vscode-languageserver"
 import type { TextDocumentInit } from "../../TextDocumentBase"
-import { VDFTextDocument, type VDFTextDocumentDependencies } from "../VDFTextDocument"
+import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
 import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
 import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
@@ -69,23 +66,38 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 				).pipe(
 					map((type) => {
 						if (type != VGUIFileType.None || workspace == null) {
-							const schemas = {
-								[VGUIFileType.None]: VGUISchema,
-								[VGUIFileType.ClientScheme]: ClientSchemeSchema,
-								[VGUIFileType.SourceScheme]: SourceSchemeSchema,
-								[VGUIFileType.LanguageTokens]: LanguageTokensSchema,
-								[VGUIFileType.HUDAnimationsManifest]: HUDAnimationsManifestSchema,
-								[VGUIFileType.SurfacePropertiesManifest]: SurfacePropertiesManifestSchema,
+							let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocument>
+							switch (type) {
+								case VGUIFileType.None:
+									schema = VGUISchema
+									break
+								case VGUIFileType.ClientScheme:
+									schema = ClientSchemeSchema
+									break
+								case VGUIFileType.SourceScheme:
+									schema = SourceSchemeSchema
+									break
+								case VGUIFileType.LanguageTokens:
+									schema = LanguageTokensSchema
+									break
+								case VGUIFileType.HUDAnimationsManifest:
+									schema = HUDAnimationsManifestSchema
+									break
+								case VGUIFileType.SurfacePropertiesManifest:
+									schema = SurfacePropertiesManifestSchema
+									break
+								default:
+									throw new Error("unreachable")
 							}
 
 							return {
-								schema: schemas[type],
+								schema: schema(this),
 								globals$: of([])
 							} satisfies VDFTextDocumentDependencies<VGUITextDocument>
 						}
 						else {
 							return {
-								schema: VGUISchema,
+								schema: VGUISchema(this),
 								globals$: workspace.globals$,
 							} satisfies VDFTextDocumentDependencies<VGUITextDocument>
 						}
@@ -98,9 +110,9 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 
 		this.inlayHints$ = this.configuration.dependencies$.pipe(
 			switchMap((dependencies) => {
-				if (dependencies.schema != VGUISchema) {
-					return of([])
-				}
+				// if (dependencies.schema != VGUISchema) {
+				// 	return of([])
+				// }
 
 				return this.definitionReferences$.pipe(
 					switchMap((definitionReferences) => {
@@ -168,37 +180,5 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 			}),
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
-	}
-
-	protected validateDocumentSymbol(documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbols, definitions: Definitions): null | DiagnosticCodeAction | Observable<DiagnosticCodeAction | null> {
-		if (!documentSymbol.detail || !documentSymbol.detailRange) {
-			return null
-		}
-
-		const key = this.configuration.keyTransform(documentSymbol.key.toLowerCase())
-
-		if (key == "fieldName".toLowerCase()) {
-			const parent = path.at(-1)?.key
-			if (parent && documentSymbol.detail != parent) {
-				return {
-					range: documentSymbol.detailRange,
-					severity: DiagnosticSeverity.Warning,
-					code: "invalid-fieldname",
-					source: "vdf",
-					message: `fieldName '${documentSymbol.detail}' does not match element name. Expected '${parent}'.`,
-					data: {
-						kind: CodeActionKind.QuickFix,
-						fix: ({ createDocumentWorkspaceEdit }) => {
-							return {
-								title: `Change fieldName to '${parent}'`,
-								edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, parent)),
-							}
-						},
-					}
-				}
-			}
-		}
-
-		return null
 	}
 }

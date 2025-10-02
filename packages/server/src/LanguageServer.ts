@@ -15,11 +15,11 @@ import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type { FileType } from "vscode"
-import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, MarkupKind, TextDocumentSyncKind, TextEdit, WorkspaceEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
-import { TextDocumentBase, type TextDocumentInit } from "./TextDocumentBase"
+import { TextDocumentBase, type DiagnosticCodeAction, type TextDocumentInit } from "./TextDocumentBase"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
@@ -62,8 +62,6 @@ export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<
 }
 
 export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
-
-export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { kind: (typeof CodeActionKind)[keyof (typeof CodeActionKind)], fix: ({ createDocumentWorkspaceEdit, findBestMatch }: { createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
 
 export type CompletionFiles = (path: string, options: CompletionFilesOptions) => Promise<CompletionItem[]>
 
@@ -713,7 +711,7 @@ export abstract class LanguageServer<
 			})
 			.filter(
 				params.context.only
-					? (value): value is NonNullable<typeof value> => value != null && params.context.only!.includes(value.data.kind)
+					? (value): value is NonNullable<typeof value> => value != null && params.context.only!.includes(CodeActionKind.QuickFix)
 					: (value): value is NonNullable<typeof value> => value != null
 			)
 			.map(({ diagnostic, data }, index) => {
@@ -725,7 +723,7 @@ export abstract class LanguageServer<
 
 				return {
 					...codeAction,
-					kind: data.kind,
+					kind: CodeActionKind.QuickFix,
 					diagnostics: [diagnostic],
 					isPreferred: index == 0
 				} satisfies CodeAction

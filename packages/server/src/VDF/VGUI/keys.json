@@ -1,7 +1,5 @@
 {
-    "autoresize": {
-        "distinct": 1
-    },
+    "autoresize": {},
     "button": {
         "reference": [
             "cexlabel"
@@ -51,9 +49,7 @@
             }
         ]
     },
-    "controlname": {
-        "distinct": 1
-    },
+    "controlname": {},
     "ctfimagepanel": {
         "reference": [
             "imagepanel"
@@ -88,12 +84,8 @@
             }
         ]
     },
-    "enabled": {
-        "distinct": 1
-    },
-    "fieldname": {
-        "distinct": 1
-    },
+    "enabled": {},
+    "fieldname": {},
     "imagepanel": {
         "reference": [
             "panel"
@@ -276,25 +268,11 @@
             }
         ]
     },
-    "pincorner": {
-        "distinct": 1
-    },
-    "tall": {
-        "distinct": 1
-    },
-    "visible": {
-        "distinct": 1
-    },
-    "wide": {
-        "distinct": 1
-    },
-    "xpos": {
-        "distinct": 1
-    },
-    "ypos": {
-        "distinct": 1
-    },
-    "zpos": {
-        "distinct": 1
-    }
+    "pincorner": {},
+    "tall": {},
+    "visible": {},
+    "wide": {},
+    "xpos": {},
+    "ypos": {},
+    "zpos": {}
 }

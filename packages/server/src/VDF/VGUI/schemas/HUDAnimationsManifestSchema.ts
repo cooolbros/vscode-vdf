@@ -4,56 +4,65 @@ import { Collection, type Definition } from "../../../DefinitionReferences"
 import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
 
-export const HUDAnimationsManifestSchema: VDFTextDocumentSchema<VGUITextDocument> = {
-	keys: {
-		hudanimations_manifest: {
-			distinct: KeyDistinct.First,
-			values: [
-				{
-					label: "file",
-					kind: CompletionItemKind.Variable,
-					multiple: true
-				}
-			]
-		}
-	},
-	values: {},
-	getDefinitionReferences(params) {
-		const scopes = new Map<symbol, Map<number, VDFRange>>()
-		const definitions = new Collection<Definition>()
-		const references = new Collection<VDFRange>()
-
-		return {
-			scopes: scopes,
-			definitions: definitions,
-			references: references,
-		}
-	},
-	definitionReferences: [],
-	files: [
-		{
-			name: "file",
-			parentKeys: [],
-			keys: new Set([
-				"file"
-			]),
-			folder: "",
-			extensionsPattern: null,
-			resolveBaseName: (value, withExtension) => value,
-		},
-	],
-	colours: {
-		keys: null,
-		colours: []
-	},
-	completion: {
-		root: [
-			{
-				label: "hudanimations_manifest",
-				kind: CompletionItemKind.Class
+export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+	return {
+		keys: {
+			hudanimations_manifest: {
+				values: [
+					{
+						label: "file",
+						kind: CompletionItemKind.Variable,
+						multiple: true
+					}
+				]
 			}
+		},
+		values: {},
+		getDefinitionReferences(params) {
+			const scopes = new Map<symbol, Map<number, VDFRange>>()
+			const definitions = new Collection<Definition>()
+			const references = new Collection<VDFRange>()
+
+			return {
+				scopes: scopes,
+				definitions: definitions,
+				references: references,
+			}
+		},
+		definitionReferences: [],
+		getDiagnostics: document.diagnostics.header(
+			document,
+			document.diagnostics.documentSymbols(KeyDistinct.None, {
+				"file": [document.diagnostics.file("file", null, null)]
+			}),
+			false
+		),
+		files: [
+			{
+				name: "file",
+				parentKeys: [],
+				keys: new Set([
+					"file"
+				]),
+				folder: null,
+				extension: null,
+				extensionsPattern: null,
+				resolveBaseName: (value, withExtension) => value,
+			},
 		],
-		typeKey: null,
-		defaultType: null
+		colours: {
+			keys: null,
+			colours: []
+		},
+		completion: {
+			root: [
+				{
+					label: "hudanimations_manifest",
+					kind: CompletionItemKind.Class
+				}
+			],
+			typeKey: null,
+			defaultType: null
+		}
 	}
 }
