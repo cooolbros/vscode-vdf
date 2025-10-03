@@ -349,7 +349,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 			return []
 		}),
-		set: (values: string[]) => {
+		set: (values: string[], fix?: Record<string, string>) => {
 			const set = new Set(values.map((value) => value.toLowerCase()))
 			return this.string((name, detail, detailRange, path, context) => {
 				if (!set.has(detail.toLowerCase())) {
@@ -359,6 +359,23 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 						code: "invalid-value",
 						source: this.languageId,
 						message: `'${detail}' is not a valid value for ${name}. Expected '${values.join("' | '")}'.`,
+						data: {
+							fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+								const value = detail.toLowerCase()
+								const newText = fix != undefined && value in fix
+									? fix[value]
+									: findBestMatch(value, values)
+
+								if (!newText) {
+									return null
+								}
+
+								return {
+									title: `Change ${name} to '${newText}'`,
+									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, newText))
+								}
+							},
+						}
 					}]
 				}
 				else {
