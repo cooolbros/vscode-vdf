@@ -51,6 +51,9 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 			}),
 			false
 		),
+		getLinks: (params) => {
+			return []
+		},
 		files: [],
 		colours: {
 			keys: null,

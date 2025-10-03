@@ -1,7 +1,8 @@
+import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
 import { CompletionItemKind, DiagnosticSeverity, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
-import type { DiagnosticCodeActions } from "../../../TextDocumentBase"
+import type { DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
 import { VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import clientscheme from "../clientscheme.json"
 import keys from "../keys.json"
@@ -37,6 +38,25 @@ const distinct = new Set([
 	"xpos",
 	"ypos",
 	"zpos",
+])
+
+const images = new Set([
+	"activeimage",
+	"blueimage",
+	"image_armed",
+	"image_default",
+	"image_name",
+	"image_selected",
+	"image",
+	"inactiveimage",
+	"redimage",
+	...Array.from({ length: 3 }, (_, index) => `teambg_${index + 1}`)
+])
+
+const sounds = new Set([
+	"sound_armed",
+	"sound_depressed",
+	"sound_released"
 ])
 
 export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
@@ -261,22 +281,50 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 			}
 		],
 		getDiagnostics: getDiagnostics,
+		getLinks: ({ documentSymbols, resolve }) => {
+			const links: DocumentLinkData[] = []
+			documentSymbols.forEach((documentSymbol) => {
+				documentSymbol.children?.forAll((documentSymbol) => {
+					const key = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
+
+					if (images.has(key) && documentSymbol.detail?.trim() != "") {
+						links.push({
+							range: documentSymbol.detailRange!,
+							data: {
+								resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`materials/vgui/${documentSymbol.detail}`, ".vmt")))
+							}
+						})
+						return
+					}
+
+					if (sounds.has(key) && documentSymbol.detail?.trim() != "") {
+						links.push({
+							range: documentSymbol.detailRange!,
+							data: {
+								resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`sound/${documentSymbol.detail}`)))
+							}
+						})
+						return
+					}
+
+					if (key == "modelname" && documentSymbol.detail?.trim() != "") {
+						links.push({
+							range: documentSymbol.detailRange!,
+							data: {
+								resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!, ".mdl")))
+							}
+						})
+						return
+					}
+				})
+			})
+
+			return links
+		},
 		files: [
 			{
 				name: "image",
-				parentKeys: [],
-				keys: new Set([
-					"activeimage",
-					"blueimage",
-					"image_armed",
-					"image_default",
-					"image_name",
-					"image_selected",
-					"image",
-					"inactiveimage",
-					"redimage",
-					...Array.from({ length: 3 }, (_, index) => `teambg_${index + 1}`)
-				]),
+				keys: images,
 				folder: "materials/vgui",
 				extension: ".vmt",
 				extensionsPattern: ".vmt",
@@ -286,12 +334,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 			},
 			{
 				name: "sound",
-				parentKeys: [],
-				keys: new Set([
-					"sound_armed",
-					"sound_depressed",
-					"sound_released"
-				]),
+				keys: sounds,
 				folder: "sound",
 				extension: null,
 				extensionsPattern: null,
@@ -299,7 +342,6 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 			},
 			{
 				name: "model",
-				parentKeys: [],
 				keys: new Set(["modelname"]),
 				folder: null,
 				extension: null,

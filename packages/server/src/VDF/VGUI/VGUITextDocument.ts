@@ -57,7 +57,6 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 				})()
 			},
 			keyTransform: VGUITextDocument.keyTransform,
-			writeRoot: workspace?.uri ?? null,
 			dependencies$: defer(() => {
 				return (
 					workspace != null

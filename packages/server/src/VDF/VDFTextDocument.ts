@@ -9,22 +9,9 @@ import { combineLatest, combineLatestWith, concat, connectable, defer, distinctU
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, DocumentLink, InlayHint, TextEdit } from "vscode-languageserver"
+import { Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
-import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type TextDocumentInit } from "../TextDocumentBase"
-
-function ArrayContainsArray<T1, T2>(arr1: T1[], arr2: T2[], comparer: (a: T1, b: T2) => boolean): boolean {
-
-	if (arr2.length == 0) {
-		return true
-	}
-
-	if (arr1.length < arr2.length) {
-		return false
-	}
-
-	return arr1.some((_, index) => arr2.every((v, i) => index + i < arr1.length && comparer(arr1[index + i], v)))
-}
+import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
 export function resolveFileDetail<TDocument extends VDFTextDocument<TDocument>>(detail: string, configuration: VDFTextDocumentSchema<TDocument>["files"][number]) {
 	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
@@ -44,7 +31,6 @@ export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
-	writeRoot: Uri | null
 	dependencies$: Observable<VDFTextDocumentDependencies<TDocument>>
 }
 
@@ -69,11 +55,9 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 		toCompletionItem?: (definition: Definition) => Partial<Omit<CompletionItem, "label">> | undefined
 	}[]
 	getDiagnostics(params: DiagnosticsHandlerParams<TDocument>): DiagnosticCodeActions
+	getLinks(params: DocumentLinksHandlerParams<TDocument>): DocumentLinkData[]
 	files: {
 		name: string
-
-		// Used for "font" links in ClientSchemeSchema
-		parentKeys: string[]
 		keys: Set<string>
 		folder: string | null
 		extension: string | null
@@ -113,6 +97,11 @@ export interface DiagnosticsHandlerParams<TDocument extends VDFTextDocument<TDoc
 	dependencies: VDFTextDocumentDependencies<TDocument>
 	documentSymbols: VDFDocumentSymbol[]
 	definitionReferences: DefinitionReferences
+}
+
+export interface DocumentLinksHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+	documentSymbols: VDFDocumentSymbol[]
+	resolve: (value: string, extension?: `.${string}`) => string
 }
 
 export const enum VGUIAssetType {
@@ -163,7 +152,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	 * #base
 	 */
 	public readonly base$: Observable<string[]>
-	public readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri; resolve: () => Promise<Uri | null> } })[]>
 	public readonly colours$: Observable<(ColorInformation & { stringify(colour: Color): string })[]>
 	public abstract readonly inlayHints$: Observable<InlayHint[]>
 
@@ -867,67 +855,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			shareReplay(1)
 		)
 
-		this.links$ = this.documentSymbols$.pipe(
-			combineLatestWith(configuration.dependencies$),
-			map(([documentSymbols, dependencies]) => {
-				return documentSymbols.reduceRecursive(
-					<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>[],
-					(links, documentSymbol, path) => {
-						if (documentSymbol.children) {
-							return links
-						}
-
-						let key = documentSymbol.key.toLowerCase()
-
-						if (path.length == 0 && key == "#base") {
-							links.push({
-								range: documentSymbol.detailRange!,
-								data: {
-									uri: this.uri,
-									resolve: async () => {
-
-										if (configuration.relativeFolderPath) {
-											const relativePath = posix.resolve(`/${configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
-
-											const target = await firstValueFrom(fileSystem.resolveFile(relativePath))
-
-											if (target) {
-												return target
-											}
-										}
-
-										const dirname = this.uri.dirname()
-										return dirname.with({ path: posix.resolve(dirname.path, documentSymbol.detail!) })
-									}
-								}
-							})
-						}
-
-						key = configuration.keyTransform(key)
-
-						for (const fileConfiguration of dependencies.schema.files) {
-							const { parentKeys, keys } = fileConfiguration
-							if (keys.has(key) && ArrayContainsArray(path, parentKeys, (a, b) => a.key.toLowerCase() == b.toLowerCase()) && documentSymbol.detail != "") {
-								links.push({
-									range: documentSymbol.detailRange!,
-									data: {
-										uri: this.uri,
-										resolve: async () => {
-											const path = resolveFileDetail(documentSymbol.detail!, fileConfiguration)
-											return await firstValueFrom(fileSystem.resolveFile(path)) ?? configuration.writeRoot?.joinPath(path) ?? null
-										}
-									}
-								})
-							}
-						}
-
-						return links
-					}
-				)
-			}),
-			shareReplay({ bufferSize: 1, refCount: true })
-		)
-
 		this.colours$ = this.documentSymbols$.pipe(
 			combineLatestWith(configuration.dependencies$),
 			map(([documentSymbols, dependencies]) => {
@@ -971,5 +898,55 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}),
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
+	}
+
+	public async getLinks(): Promise<DocumentLinkData[]> {
+		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
+			documentSymbols: this.documentSymbols$,
+			dependencies: this.configuration.dependencies$
+		}))
+
+		const { base = [], rest = [] } = Object.groupBy(
+			documentSymbols,
+			(documentSymbol) => {
+				return documentSymbol.key.toLowerCase() == "#base"
+					? "base"
+					: "rest"
+			}
+		)
+
+		return [
+			...base
+				.values()
+				.filter((documentSymbol) => documentSymbol.detail != undefined)
+				.map((documentSymbol) => ({
+					range: documentSymbol.detailRange!,
+					data: {
+						resolve: async () => {
+							if (this.configuration.relativeFolderPath) {
+								const relativePath = posix.resolve(`/${this.configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
+
+								const target = await firstValueFrom(this.fileSystem.resolveFile(relativePath))
+								if (target) {
+									return target
+								}
+							}
+
+							const dirname = this.uri.dirname()
+							return dirname.with({ path: posix.resolve(dirname.path, documentSymbol.detail!) })
+						}
+					}
+				})),
+			...dependencies.schema.getLinks({
+				documentSymbols: rest,
+				resolve: (value, extension) => {
+					value = value.replaceAll(/[/\\]+/g, "/")
+					if (extension != undefined && posix.extname(value) != extension) {
+						value += extension
+					}
+					return posix.resolve(`/${value}`).substring(1)
+				},
+			})
+		]
 	}
 }

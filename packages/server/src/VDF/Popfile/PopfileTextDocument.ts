@@ -3,15 +3,23 @@ import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { combineLatest, combineLatestWith, from, map, of, shareReplay, zip, type Observable } from "rxjs"
+import { combineLatest, combineLatestWith, firstValueFrom, from, map, of, shareReplay, zip, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
-import { type DiagnosticCodeAction, type DiagnosticCodeActions, type TextDocumentInit } from "../../TextDocumentBase"
+import { type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
 import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Fallback, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
 import values from "./values.json"
+
+const sounds = new Set([
+	"DoneWarningSound".toLowerCase(),
+	"FirstSpawnWarningSound".toLowerCase(),
+	"LastSpawnWarningSound".toLowerCase(),
+	"Sound".toLowerCase(),
+	"StartWaveWarningSound".toLowerCase(),
+])
 
 export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
@@ -523,10 +531,40 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				}
 			],
 			getDiagnostics: getDiagnostics,
+			getLinks: ({ documentSymbols, resolve }) => {
+				const links: DocumentLinkData[] = []
+
+				documentSymbols.forEach((documentSymbol) => {
+					documentSymbol.children?.forAll((documentSymbol) => {
+						const key = documentSymbol.key.toLowerCase()
+
+						if (key == "ClassIcon".toLowerCase() && documentSymbol.detail?.trim() != "") {
+							links.push({
+								range: documentSymbol.detailRange!,
+								data: {
+									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(`materials/hud/leaderboard_class_${documentSymbol.detail}.vmt`))
+								}
+							})
+							return
+						}
+
+						if (sounds.has(key) && documentSymbol.detail?.trim() != "") {
+							links.push({
+								range: documentSymbol.detailRange!,
+								data: {
+									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`sound/${documentSymbol.detail}`)))
+								}
+							})
+							return
+						}
+					})
+				})
+
+				return links
+			},
 			files: [
 				{
 					name: "class icon",
-					parentKeys: [],
 					keys: new Set([
 						"ClassIcon".toLowerCase()
 					]),
@@ -550,14 +588,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				},
 				{
 					name: "sound",
-					parentKeys: [],
-					keys: new Set([
-						"DoneWarningSound".toLowerCase(),
-						"FirstSpawnWarningSound".toLowerCase(),
-						"LastSpawnWarningSound".toLowerCase(),
-						"Sound".toLowerCase(),
-						"StartWaveWarningSound".toLowerCase(),
-					]),
+					keys: sounds,
 					folder: "sound",
 					extension: null,
 					extensionsPattern: null,
@@ -618,7 +649,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			relativeFolderPath: "scripts/population",
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,
-			writeRoot: null,
 			dependencies$: combineLatest([
 				zip([workspace.items$, workspace.attributes$, workspace.paints$]),
 				from(workspace.entities(init.uri.basename())),

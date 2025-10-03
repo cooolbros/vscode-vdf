@@ -28,6 +28,8 @@ export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({
 
 export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 
+export type DocumentLinkData = Omit<DocumentLink, "data"> & { data: { resolve: () => Promise<Uri | null> } }
+
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
@@ -45,6 +47,10 @@ export abstract class TextDocumentBase<
 
 	public readonly uri: Uri
 	protected readonly languageId: string
+	public get version() {
+		return this.document.version
+	}
+
 	protected readonly document: TextDocument
 	protected readonly references$: BehaviorSubject<Map<string, References>>
 
@@ -56,7 +62,6 @@ export abstract class TextDocumentBase<
 	public readonly definitionReferences$: Observable<DefinitionReferences>
 	public readonly diagnostics$: Observable<DiagnosticCodeAction[]>
 	public readonly codeLens$: Observable<CodeLens[]>
-	public abstract readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>
 
 	constructor(
 		init: TextDocumentInit,
@@ -246,4 +251,6 @@ export abstract class TextDocumentBase<
 	}
 
 	protected abstract getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): DiagnosticCodeActions
+
+	public abstract getLinks(): Promise<DocumentLinkData[]>
 }

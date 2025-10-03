@@ -1,3 +1,4 @@
+import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
 import { CompletionItemKind } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
@@ -37,10 +38,34 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 			}),
 			false
 		),
+		getLinks: ({ documentSymbols, resolve }) => {
+			return documentSymbols
+				.values()
+				.flatMap((documentSymbol) => {
+					if (!documentSymbol.children) {
+						return []
+					}
+
+					return documentSymbol.children
+						.values()
+						.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "file" && documentSymbol.detail?.trim() != "")
+						.map((documentSymbol) => ({
+							range: documentSymbol.detailRange!,
+							data: {
+								resolve: async () => {
+									const path = resolve(documentSymbol.detail!)
+									return await firstValueFrom(document.fileSystem.resolveFile(path))
+										?? document.workspace?.uri.joinPath(path)
+										?? null
+								}
+							}
+						}))
+				})
+				.toArray()
+		},
 		files: [
 			{
 				name: "file",
-				parentKeys: [],
 				keys: new Set([
 					"file"
 				]),

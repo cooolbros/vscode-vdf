@@ -5,9 +5,9 @@ import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnima
 import { posix } from "path"
 import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
-import { DiagnosticSeverity, DiagnosticTag, TextEdit, type DocumentLink } from "vscode-languageserver"
+import { DiagnosticSeverity, DiagnosticTag, TextEdit } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
-import { TextDocumentBase, type DiagnosticCodeActions, type TextDocumentInit } from "../TextDocumentBase"
+import { TextDocumentBase, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 import { Fonts } from "../VDF/VGUI/clientscheme.json"
 import eventFiles from "./eventFiles.json"
 import type { HUDAnimationsWorkspace } from "./HUDAnimationsWorkspace"
@@ -35,7 +35,6 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 	protected getDiagnostics: (dependencies: HUDAnimationsTextDocumentDependencies, documentSymbols: HUDAnimationsDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 
 	public readonly workspace: HUDAnimationsWorkspace | null
-	public readonly links$: Observable<(Omit<DocumentLink, "data"> & { data: { uri: Uri; resolve: () => Promise<Uri | null> } })[]>
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
 
 	constructor(
@@ -398,32 +397,6 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 			)
 		}
 
-		this.links$ = this.documentSymbols$.pipe(
-			map((documentSymbols) => {
-				return documentSymbols.flatMap((documentSymbol) => {
-					return documentSymbol.children.reduce(
-						(links, statement) => {
-							if (statement.type == HUDAnimationStatementType.PlaySound) {
-								links.push({
-									range: statement.soundRange,
-									data: {
-										uri: this.uri,
-										resolve: async () => {
-											const path = `sound/${statement.sound.replaceAll(/[/\\]+/g, "/")}`
-											return await firstValueFrom(fileSystem.resolveFile(path))
-										}
-									}
-								})
-							}
-							return links
-						},
-						<(Omit<DocumentLink, "data"> & { data: { uri: Uri, resolve: () => Promise<Uri | null> } })[]>[]
-					)
-				})
-			}),
-			shareReplay(1)
-		)
-
 		this.decorations$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {
 				return documentSymbols.reduce(
@@ -451,5 +424,28 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 			}),
 			shareReplay(1)
 		)
+	}
+
+	public async getLinks(): Promise<DocumentLinkData[]> {
+		const documentSymbols = await firstValueFrom(this.documentSymbols$)
+		return documentSymbols.flatMap((documentSymbol) => {
+			return documentSymbol.children.reduce(
+				(links, statement) => {
+					if (statement.type == HUDAnimationStatementType.PlaySound) {
+						links.push({
+							range: statement.soundRange,
+							data: {
+								resolve: async () => {
+									const path = posix.resolve(`/sound/${statement.sound.replaceAll(/[/\\]+/g, "/")}`).substring(1)
+									return await firstValueFrom(this.fileSystem.resolveFile(path))
+								}
+							}
+						})
+					}
+					return links
+				},
+				<DocumentLinkData[]>[]
+			)
+		})
 	}
 }

@@ -1,7 +1,9 @@
+import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItemKind } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
+import type { DocumentLinkData } from "../../../TextDocumentBase"
 import { KeyDistinct, VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
 
@@ -196,13 +198,78 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			}
 		],
 		getDiagnostics: getDiagnostics,
+		getLinks: ({ documentSymbols, resolve }) => {
+			const links: DocumentLinkData[] = []
+
+			documentSymbols.forEach((documentSymbols) => {
+				if (!documentSymbols.children) {
+					return
+				}
+
+				SchemeForEach(documentSymbols.children, {
+					"BitmapFontFiles": (documentSymbol) => {
+						if (documentSymbol.detail != undefined && documentSymbol.detail.trim() != "") {
+							links.push({
+								range: documentSymbol.detailRange!,
+								data: {
+									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!)))
+								}
+							})
+						}
+					},
+					"Borders": (documentSymbol) => {
+						if (documentSymbol.children) {
+							links.push(
+								...documentSymbol
+									.children
+									.values()
+									.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "image" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
+									.map((documentSymbol) => {
+										return {
+											range: documentSymbol.detailRange!,
+											data: {
+												resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`materials/vgui/${documentSymbol.detail!}`, ".vmt")))
+											}
+										}
+									})
+							)
+						}
+					},
+					"CustomFontFiles": (documentSymbol) => {
+						if (documentSymbol.children) {
+							links.push(
+								...documentSymbol
+									.children
+									.values()
+									.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "font" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
+									.map((documentSymbol) => {
+										return {
+											range: documentSymbol.detailRange!,
+											data: {
+												resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!)))
+											}
+										}
+									})
+									.toArray()
+							)
+						}
+						else if (documentSymbol.detail!.trim() != "") {
+							links.push({
+								range: documentSymbol.detailRange!,
+								data: {
+									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!)))
+								}
+							})
+						}
+					}
+				})
+			})
+
+			return links
+		},
 		files: [
 			{
 				name: "font file",
-				parentKeys: [
-					"Scheme".toLowerCase(),
-					"CustomFontFiles".toLowerCase()
-				],
 				keys: new Set([
 					"font",
 				]),
@@ -213,10 +280,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			},
 			{
 				name: "bitmap font file",
-				parentKeys: [
-					"Scheme".toLowerCase(),
-					"BitmapFontFiles".toLowerCase()
-				],
 				keys: new Set([
 					"Buttons".toLowerCase(),
 					"ButtonsSC".toLowerCase(),
@@ -228,7 +291,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			},
 			{
 				name: "image",
-				parentKeys: [],
 				keys: new Set([
 					"image",
 				]),

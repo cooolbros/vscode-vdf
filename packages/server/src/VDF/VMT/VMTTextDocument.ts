@@ -3,18 +3,18 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { map, of, type Observable } from "rxjs"
+import { firstValueFrom, map, of, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { CompletionItemKind, DiagnosticSeverity, InlayHint, InsertTextFormat } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
-import type { DiagnosticCodeActions, TextDocumentInit } from "../../TextDocumentBase"
+import type { DiagnosticCodeActions, DocumentLinkData, TextDocumentInit } from "../../TextDocumentBase"
 import type { WorkspaceBase } from "../../WorkspaceBase"
 import { VDFTextDocument, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import values from "./values.json"
 import type { VMTWorkspace } from "./VMTWorkspace"
 
-const files = [
+const files = new Set([
 	"%tooltexture",
 	"$baseTexture".toLowerCase(),
 	"$baseTexture2".toLowerCase(),
@@ -37,7 +37,7 @@ const files = [
 	"$sheenmapmask",
 	"$texture2",
 	"$underwateroverlay",
-]
+])
 
 export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
@@ -47,7 +47,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 		const next = document.diagnostics.next(new Map([
 			...Object.entries(values).map(([key, value]) => <const>[key, document.diagnostics.set(value.values)]),
-			...files.map((value) => <const>[value, file])
+			...files.values().map((value) => <const>[value, file])
 		]))
 
 		const getDiagnostics = document.diagnostics.header(
@@ -90,10 +90,29 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			},
 			definitionReferences: [],
 			getDiagnostics: getDiagnostics,
+			getLinks: ({ documentSymbols, resolve }) => {
+				const links: DocumentLinkData[] = []
+
+				documentSymbols.forEach((documentSymbol) => {
+					documentSymbol.children?.forAll((documentSymbol) => {
+						const key = documentSymbol.key.toLowerCase()
+
+						if (files.has(key) && documentSymbol.detail?.trim() != "") {
+							links.push({
+								range: documentSymbol.detailRange!,
+								data: {
+									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`materials/${documentSymbol.detail}`, ".vtf")))
+								}
+							})
+						}
+					})
+				})
+
+				return links
+			},
 			files: [
 				{
 					name: "image",
-					parentKeys: [],
 					keys: new Set(files),
 					folder: "materials",
 					extension: ".vtf",
@@ -182,7 +201,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,
-			writeRoot: workspace?.uri ?? null,
 			dependencies$: (workspace?.surfaceProperties$ ?? of(null)).pipe(
 				map((surfaceProperties) => {
 					const schema = VMTTextDocument.Schema(this)

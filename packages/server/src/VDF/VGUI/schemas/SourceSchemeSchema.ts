@@ -2,8 +2,10 @@ import type { VDFRange } from "vdf"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
+import { ClientSchemeSchema } from "./ClientSchemeSchema"
 
 export const SourceSchemeSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+	const schema = ClientSchemeSchema(document)
 	return {
 		keys: {},
 		values: {},
@@ -22,6 +24,7 @@ export const SourceSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 		getDiagnostics: (params) => {
 			return []
 		},
+		getLinks: schema.getLinks,
 		files: [],
 		colours: {
 			keys: null,

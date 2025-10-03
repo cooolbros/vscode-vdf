@@ -1,10 +1,10 @@
-import type { VDFRange } from "vdf"
 import { CompletionItemKind } from "vscode-languageserver"
-import { Collection, type Definition } from "../../../DefinitionReferences"
-import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
+import { type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
+import { HUDAnimationsManifestSchema } from "./HUDAnimationsManifestSchema"
 
 export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+	const schema = HUDAnimationsManifestSchema(document)
 	return {
 		keys: {
 			surfaceproperties_manifest: {
@@ -18,29 +18,13 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 			}
 		},
 		values: {},
-		getDefinitionReferences(params) {
-			const scopes = new Map<symbol, Map<number, VDFRange>>()
-			const definitions = new Collection<Definition>()
-			const references = new Collection<VDFRange>()
-
-			return {
-				scopes: scopes,
-				definitions: definitions,
-				references: references,
-			}
-		},
+		getDefinitionReferences: schema.getDefinitionReferences,
 		definitionReferences: [],
-		getDiagnostics: document.diagnostics.header(
-			document,
-			document.diagnostics.documentSymbols(KeyDistinct.None, {
-				"file": [document.diagnostics.file("file", null, null)]
-			}),
-			false
-		),
+		getDiagnostics: schema.getDiagnostics,
+		getLinks: schema.getLinks,
 		files: [
 			{
 				name: "file",
-				parentKeys: [],
 				keys: new Set([
 					"file"
 				]),

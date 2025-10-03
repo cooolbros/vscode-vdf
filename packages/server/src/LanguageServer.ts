@@ -87,7 +87,7 @@ export abstract class LanguageServer<
 
 	private readonly diagnostic = { id: 0 }
 	private readonly documentDiagnostics: WeakMap<TDocument, Map<number, DiagnosticCodeAction>>
-	private readonly documentsLinks: WeakMap<TDocument, Map<string, (documentLink: DocumentLink) => Promise<Uri | null>>>
+	private readonly documentsLinks: WeakMap<TDocument, { version: number, promise: Promise<{ links: DocumentLink[], data: (() => Promise<Uri | null>)[] }> }>
 
 	private oldName: [number | null, symbol, string] | null = null
 
@@ -460,34 +460,53 @@ export abstract class LanguageServer<
 	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
 
 		await using document = await this.documents.get(params.textDocument.uri)
-		const links = await firstValueFrom(document.links$)
 
-		this.documentsLinks.set(
-			document,
-			new Map(links.map(({ range, data }) => [`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`, data.resolve]))
-		)
+		let documentLinks = this.documentsLinks.get(document)
+		if (documentLinks?.version == document.version) {
+			return (await documentLinks.promise).links
+		}
 
-		return links
+		documentLinks = {
+			version: document.version,
+			promise: Promise.try(async () => {
+
+				const data: (() => Promise<Uri | null>)[] = []
+				const documentLinks: DocumentLink[] = []
+
+				for (const [index, documentLink] of (await document.getLinks()).entries()) {
+					data.push(documentLink.data.resolve)
+
+					// @ts-expect-error
+					documentLink.data = { uri: document.uri, index: index }
+					documentLinks.push(documentLink)
+				}
+
+				return {
+					links: documentLinks,
+					data: data,
+				}
+			})
+		}
+
+		this.documentsLinks.set(document, documentLinks)
+		return (await documentLinks.promise).links
 	}
 
 	private async onDocumentLinkResolve(documentLink: DocumentLink) {
 
-		const { range, data } = documentLink
+		const { data } = documentLink
 
-		const { uri } = z.object({ uri: Uri.schema }).parse(data)
+		const { uri, index } = z.object({ uri: Uri.schema, index: z.number().nonnegative() }).parse(data)
 		await using document = await this.documents.get(uri)
 
-		const resolve = this.documentsLinks
-			?.get(document)
-			?.get(`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`)
-
+		const resolve = (await this.documentsLinks.get(document)?.promise)?.data[index]
 		if (resolve == undefined) {
 			// Document closed
 			// https://github.com/cooolbros/vscode-vdf/issues/10
 			return documentLink
 		}
 
-		documentLink.target = (await resolve(documentLink))?.toString()
+		documentLink.target = (await resolve())?.toString()
 		console.log(documentLink.target)
 		return documentLink
 	}
