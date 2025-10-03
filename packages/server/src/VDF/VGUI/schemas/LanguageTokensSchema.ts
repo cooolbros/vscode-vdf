@@ -23,6 +23,7 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 						key: documentSymbol.key,
 						range: documentSymbol.range,
 						keyRange: documentSymbol.nameRange,
+						text: document.getText(documentSymbol.range),
 						nameRange: undefined,
 						detail: documentSymbol.detail,
 						documentation: documentSymbol.documentation,

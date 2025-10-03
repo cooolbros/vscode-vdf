@@ -79,6 +79,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 												uri: this.uri,
 												key: documentSymbol.eventName,
 												range: documentSymbol.range,
+												text: this.getText(documentSymbol.range),
 												documentation: documentSymbol.documentation,
 												keyRange: documentSymbol.eventNameRange,
 												conditional: documentSymbol.conditional?.value
@@ -145,6 +146,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 									uri: this.uri,
 									key: documentSymbol.eventName,
 									range: documentSymbol.range,
+									text: this.getText(documentSymbol.range),
 									documentation: documentSymbol.documentation,
 									keyRange: documentSymbol.eventNameRange,
 									conditional: documentSymbol.conditional?.value

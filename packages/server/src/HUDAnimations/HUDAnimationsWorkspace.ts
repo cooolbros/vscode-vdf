@@ -127,6 +127,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 												uri: document.uri,
 												key: documentSymbol.eventName,
 												range: documentSymbol.range,
+												text: document.getText(documentSymbol.range),
 												documentation: documentSymbol.documentation,
 												keyRange: documentSymbol.eventNameRange,
 												conditional: documentSymbol.conditional?.value

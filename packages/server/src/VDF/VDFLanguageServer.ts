@@ -8,11 +8,11 @@ import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { Color, CompletionItem, CompletionItemKind, Hover, InlayHint, InlayHintRequest, MarkupKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type HoverParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, InlayHint, InlayHintRequest, MarkupKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
-import { resolveFileDetail, VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
+import { VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	name: "popfile" | "vdf" | "vmt"
@@ -37,7 +37,6 @@ export abstract class VDFLanguageServer<
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,
-				hoverProvider: true,
 				colorProvider: true,
 				inlayHintProvider: true,
 			},
@@ -47,7 +46,6 @@ export abstract class VDFLanguageServer<
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
 		this.documentsColours = new Map()
 
-		this.onTextDocumentRequest(this.connection.onHover, this.onHover)
 		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
 		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
 		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
@@ -268,37 +266,6 @@ export abstract class VDFLanguageServer<
 			default:
 				return null
 		}
-	}
-
-	private async onHover(params: TextDocumentRequestParams<HoverParams>): Promise<Hover | null> {
-		await using document = await this.documents.get(params.textDocument.uri)
-		const documentSymbols = await firstValueFrom(document.documentSymbols$)
-
-		const documentSymbol = documentSymbols.getDocumentSymbolAtPosition(params.position)
-		if (!documentSymbol || !documentSymbol.detailRange || !documentSymbol.detailRange.contains(params.position)) {
-			return null
-		}
-
-		const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
-		const key = document.configuration.keyTransform(documentSymbol.key.toLowerCase())
-
-		const fileSchema = schema.files.find(({ keys }) => keys.has(key))
-		if (!fileSchema) {
-			return null
-		}
-
-		if (fileSchema.asset == VGUIAssetType.Image) {
-			const path = resolveFileDetail(documentSymbol.detail!, fileSchema)
-			const value = await this.VTFToPNGBase64(document.uri, path)
-			if (value) {
-				return {
-					contents: value,
-					range: documentSymbol.detailRange
-				}
-			}
-		}
-
-		return null
 	}
 
 	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {

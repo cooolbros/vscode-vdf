@@ -2,7 +2,7 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
-import { VDFSyntaxError, type IRange } from "vdf"
+import { VDFRange, VDFSyntaxError, type IRange } from "vdf"
 import { CodeAction, CodeLens, DiagnosticSeverity, DocumentLink, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { DefinitionReferences, References } from "./DefinitionReferences"
@@ -46,7 +46,7 @@ export abstract class TextDocumentBase<
 	])
 
 	public readonly uri: Uri
-	protected readonly languageId: string
+	public readonly languageId: string
 	public get version() {
 		return this.document.version
 	}

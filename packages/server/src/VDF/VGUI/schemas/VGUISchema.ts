@@ -201,6 +201,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 						key: documentSymbol.key,
 						range: documentSymbol.range,
 						keyRange: documentSymbol.nameRange,
+						text: document.getText(documentSymbol.range),
 						nameRange: documentSymbol.children.find((i) => i.key.toLowerCase() == "fieldName".toLowerCase() && i.detail != undefined)?.detailRange,
 						detail: documentSymbol.detail,
 						documentation: documentSymbol.documentation,

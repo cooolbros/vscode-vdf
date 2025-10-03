@@ -47,7 +47,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 			platform: platform,
 			servers: new Set(),
 			capabilities: {
-				hoverProvider: true,
 				signatureHelpProvider: {
 					// Squirrel
 					triggerCharacters: ["(", ","]

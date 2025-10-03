@@ -9,17 +9,18 @@ import { Uri } from "common/Uri"
 import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
+import dedent from "dedent"
 import { posix } from "path"
-import { BehaviorSubject, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, catchError, combineLatest, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type { FileType } from "vscode"
-import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
-import { TextDocumentBase, type DiagnosticCodeAction, type TextDocumentInit } from "./TextDocumentBase"
+import { TextDocumentBase, type DiagnosticCodeAction, type DocumentLinkData, type TextDocumentInit } from "./TextDocumentBase"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
@@ -35,6 +36,7 @@ const capabilities = {
 		],
 		resolveProvider: true,
 	},
+	hoverProvider: true,
 	definitionProvider: true,
 	referencesProvider: true,
 	documentSymbolProvider: true,
@@ -258,6 +260,7 @@ export abstract class LanguageServer<
 		this.onTextDocumentRequest(this.connection.onDidSaveTextDocument, this.onDidSaveTextDocument)
 		this.onTextDocumentRequest(this.connection.onCompletion, this.onCompletion)
 		this.connection.onCompletionResolve((item) => this.onCompletionResolve(item))
+		this.onTextDocumentRequest(this.connection.onHover, this.onHover)
 		this.onTextDocumentRequest(this.connection.onDefinition, this.onDefinition)
 		this.onTextDocumentRequest(this.connection.onReferences, this.onReferences)
 		this.onTextDocumentRequest(this.connection.onDocumentSymbol, this.onDocumentSymbol)
@@ -389,33 +392,19 @@ export abstract class LanguageServer<
 		})
 	}
 
-	protected async VTFToPNGBase64(uri: Uri, path: string) {
-		try {
-			await using document = await this.documents.get(uri)
-			return await firstValueFrom(
-				document.fileSystem.resolveFile(path).pipe(
-					switchMap((uri) => {
-						if (uri != null) {
-							return new Observable<Uri | null>((subscriber) => {
-								return this.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
-									onData: (value) => subscriber.next(value),
-									onError: (err) => subscriber.error(err),
-									onComplete: () => subscriber.complete(),
-								})
-							})
-						}
-						else {
-							return of(null)
-						}
-					}),
-					concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.mutate({ uri }) : null),
-				)
+	private async VTFToPNGBase64(uri: Uri) {
+		return await firstValueFrom(
+			new Observable<Uri | null>((subscriber) => {
+				return this.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
+					onData: (value) => subscriber.next(value),
+					onError: (err) => subscriber.error(err),
+					onComplete: () => subscriber.complete(),
+				})
+			}).pipe(
+				concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.mutate({ uri }) : null),
+				catchError(() => of(null))
 			)
-		}
-		catch (error) {
-			console.error(error)
-			return null
-		}
+		)
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
@@ -626,16 +615,64 @@ export abstract class LanguageServer<
 
 		if (result.success) {
 			const { image } = result.data
-			const value = await this.VTFToPNGBase64(image.uri, image.path)
-			if (value) {
-				item.documentation = {
-					kind: MarkupKind.Markdown,
-					value: value
+			await using document = await this.documents.get(image.uri)
+			const uri = await firstValueFrom(document.fileSystem.resolveFile(image.path))
+			if (uri != null) {
+				const value = await this.VTFToPNGBase64(uri)
+				if (value) {
+					item.documentation = {
+						kind: MarkupKind.Markdown,
+						value: value
+					}
 				}
 			}
 		}
 
 		return item
+	}
+
+	private async onHover(params: TextDocumentRequestParams<HoverParams>): Promise<Hover | null> {
+		await using document = await this.documents.get(params.textDocument.uri)
+
+		const { definitionReferences, documentLinks } = await firstValueFrom(combineLatest({
+			definitionReferences: document.definitionReferences$,
+			documentLinks: this.documentsLinks.get(document)!.promise
+		}))
+
+		for (const { scope, type, key, value: ranges } of definitionReferences.references.collection) {
+			for (const range of ranges) {
+				if (range.contains(params.position)) {
+					const definitions = definitionReferences.definitions.get(scope, type, key)
+					if (definitions?.length) {
+						const documentation = definitions.map((definition) => definition.documentation).join("\n\n")
+						const text = definitions.map((definition) => "```" + document.languageId + "\n" + dedent(definition.text) + "\n```").join("\n\n")
+						return {
+							contents: `${documentation}\n\n${text}`,
+							range: range
+						}
+					}
+				}
+			}
+		}
+
+		for (const { range, data } of documentLinks) {
+			if (range.contains(params.position)) {
+				const target = await data.resolve()
+				if (target != null && posix.extname(target.path) == ".vmt") {
+					const value = await this.VTFToPNGBase64(target)
+					if (value) {
+						return {
+							contents: value,
+							range: range
+						}
+					}
+				}
+
+				return null
+			}
+		}
+
+		return null
 	}
 
 	private async onDefinition(params: TextDocumentRequestParams<DefinitionParams>) {
