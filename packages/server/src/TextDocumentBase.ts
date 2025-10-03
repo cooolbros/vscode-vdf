@@ -28,7 +28,7 @@ export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({
 
 export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 
-export type DocumentLinkData = Omit<DocumentLink, "data"> & { data: { resolve: () => Promise<Uri | null> } }
+export type DocumentLinkData = Omit<DocumentLink, "range" | "data"> & { range: VDFRange, data: { resolve: () => Promise<Uri | null> } }
 
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
