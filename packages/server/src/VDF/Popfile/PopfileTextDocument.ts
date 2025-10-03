@@ -476,7 +476,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 								documentSymbol.children,
 								(documentSymbol) => {
 									const key = documentSymbol.key.toLowerCase()
-									if (key == "WaitForAllSpawned".toLowerCase() || key == "	d".toLowerCase()) {
+									if (key == "WaitForAllSpawned".toLowerCase() || key == "WaitForAllDead".toLowerCase()) {
 										return "wavespawn"
 									}
 									else if (!waveSpawnKeys.includes(documentSymbol.key.toLowerCase())) {
