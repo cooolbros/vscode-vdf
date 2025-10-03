@@ -47,7 +47,8 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 		getDiagnostics: document.diagnostics.header(
 			document,
 			document.diagnostics.documentSymbols(KeyDistinct.First, {
-				"Language": [document.diagnostics.string()]
+				"Language": [document.diagnostics.string()],
+				"Tokens": [document.diagnostics.documentSymbols(KeyDistinct.First, {}, () => [])]
 			}),
 			false
 		),
