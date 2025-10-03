@@ -63,10 +63,10 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 
 	const match = (type: symbol, match: (detail: string) => string | null) => {
 		const refine = document.diagnostics.reference(type)
-		return document.diagnostics.string((key, detail, detailRange, path, context) => {
+		return document.diagnostics.string((name, detail, detailRange, path, context) => {
 			let value = match(detail)
 			return value != null
-				? refine(key, value, detailRange, path, context)
+				? refine(name, value, detailRange, path, context)
 				: []
 		})
 	}

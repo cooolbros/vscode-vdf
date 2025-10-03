@@ -129,7 +129,7 @@ export interface Context<TDocument extends VDFTextDocument<TDocument>> {
 	definitionReferences: DefinitionReferences,
 }
 
-export type Validate<TDocument extends VDFTextDocument<TDocument>> = (key: string, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+export type Validate<TDocument extends VDFTextDocument<TDocument>> = (name: string, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
 
 export const enum KeyDistinct {
 	None,
@@ -137,7 +137,7 @@ export const enum KeyDistinct {
 	Last,
 }
 
-export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (key: string, detail: string, detailRange: VDFRange, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (name: string, detail: string, detailRange: VDFRange, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
 
 export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeAction) => DiagnosticCodeActions
 
@@ -312,7 +312,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 		},
 		string: this.string,
-		length: (max: number): Validate<TDocument> => this.string((key, detail, detailRange, path, context) => {
+		length: (max: number): Validate<TDocument> => this.string((name, detail, detailRange, path, context) => {
 			const length = detail.length + "\0".length
 			if (length > max) {
 				return [{
@@ -325,40 +325,40 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 			return []
 		}),
-		integer: this.string((key, detail, detailRange, path, context) => {
+		integer: this.string((name, detail, detailRange, path, context) => {
 			if (/\D/.test(detail)) {
 				return [{
 					range: detailRange,
 					severity: DiagnosticSeverity.Warning,
 					code: "invalid-integer",
 					source: this.languageId,
-					message: `Invalid value for ${key}. Expected integer`,
+					message: `Invalid value for ${name}. Expected integer`,
 				}]
 			}
 			return []
 		}),
-		float: this.string((key, detail, detailRange, path, context) => {
+		float: this.string((name, detail, detailRange, path, context) => {
 			if (!/^\d*\.?\d+$/.test(detail)) {
 				return [{
 					range: detailRange,
 					severity: DiagnosticSeverity.Warning,
 					code: "invalid-float",
 					source: this.languageId,
-					message: `Invalid value for ${key}. Expected float`,
+					message: `Invalid value for ${name}. Expected float`,
 				}]
 			}
 			return []
 		}),
 		set: (values: string[]) => {
 			const set = new Set(values.map((value) => value.toLowerCase()))
-			return this.string((key, detail, detailRange, path, context) => {
+			return this.string((name, detail, detailRange, path, context) => {
 				if (!set.has(detail.toLowerCase())) {
 					return [{
 						range: detailRange,
 						severity: DiagnosticSeverity.Warning,
 						code: "invalid-value",
 						source: this.languageId,
-						message: `'${detail}' is not a valid value for ${key}. Expected '${values.join("' | '")}'.`,
+						message: `'${detail}' is not a valid value for ${name}. Expected '${values.join("' | '")}'.`,
 					}]
 				}
 				else {
@@ -384,7 +384,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		},
 		dynamic: (key: string) => {
 			const id = key.toLowerCase()
-			return this.diagnostics.string((key, detail, detailRange, path, context) => {
+			return this.diagnostics.string((name, detail, detailRange, path, context) => {
 				if (id in context.dependencies.schema.values) {
 					const values = context.dependencies.schema.values[id].values
 					if (!values.some((value) => value.toLowerCase() == detail.toLowerCase())) {
@@ -393,7 +393,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							severity: DiagnosticSeverity.Warning,
 							code: "invalid-value",
 							source: this.languageId,
-							message: `'${detail}' is not a valid value for ${key}. Expected '${values.join("' | '")}'.`,
+							message: `'${detail}' is not a valid value for ${name}. Expected '${values.join("' | '")}'.`,
 						}]
 					}
 				}
@@ -449,7 +449,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 		},
 		file: (name: string, folder: string | null, extension: string | null) => {
-			return this.string((key, detail, detailRange, path, context) => {
+			return this.string((name, detail, detailRange, path, context) => {
 				if (detail == "") {
 					return []
 				}

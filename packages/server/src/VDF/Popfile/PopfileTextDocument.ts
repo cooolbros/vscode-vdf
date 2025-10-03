@@ -123,7 +123,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateDynamicAttributes = documentSymbols(KeyDistinct.Last, dynamicAttributes)
 
-		const validateClassIcon = string((key, detail, detailRange, path, context) => {
+		const validateClassIcon = string((name, detail, detailRange, path, context) => {
 			return [
 				document.fileSystem.resolveFile(`materials/hud/leaderboard_class_${detail}.vmt`).pipe(
 					map((uri) => {
@@ -192,7 +192,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			...dynamicAttributes,
 		})
 
-		const validateSpawner: Validate<PopfileTextDocument> = (key, documentSymbol, path, context) => {
+		const validateSpawner: Validate<PopfileTextDocument> = (name, documentSymbol, path, context) => {
 			switch (documentSymbol.key.toLowerCase()) {
 				case "Mob".toLowerCase():
 					return validateMob("Mob", documentSymbol, path, context)
@@ -212,7 +212,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						severity: DiagnosticSeverity.Warning,
 						code: "unknown-key",
 						source: "popfile",
-						message: `Unknown attribute '${documentSymbol.key}' in ${key} definition.`,
+						message: `Unknown attribute '${documentSymbol.key}' in ${name} definition.`,
 					}]
 			}
 		}
@@ -237,7 +237,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			return (documentSymbol, path, context, unknown): DiagnosticCodeActions => {
 				const key = documentSymbol.key.toLowerCase()
 				if (where.has(key)) {
-					return validateWhere(key, documentSymbol, path, context)
+					return validateWhere("Where", documentSymbol, path, context)
 				}
 				else if (spawners.values().some((value) => value.toLowerCase() == key)) {
 					if (documentSymbol.children == undefined) {
@@ -255,7 +255,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						return [unreachable(documentSymbol.range)]
 					}
 
-					return validateSpawner(key, documentSymbol, path, context)
+					return validateSpawner("" /* unused */, documentSymbol, path, context)
 				}
 				else {
 					return [unknown()]
