@@ -212,7 +212,10 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					)
 				}
 
-				diagnostics.push(...rest.map((documentSymbol) => this.diagnostics.unreachable(documentSymbol.range)))
+				if (!multiple) {
+					diagnostics.push(...rest.map((documentSymbol) => this.diagnostics.unreachable(documentSymbol.range)))
+				}
+
 				return diagnostics
 			}
 		},
