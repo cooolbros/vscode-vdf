@@ -16,8 +16,8 @@ import type { VMTWorkspace } from "./VMTWorkspace"
 
 const files = new Set([
 	"%tooltexture",
-	"$baseTexture".toLowerCase(),
-	"$baseTexture2".toLowerCase(),
+	"$baseTexture",
+	"$baseTexture2",
 	"$blendmodulatetexture",
 	"$bottommaterial",
 	"$bumpmap",
@@ -26,8 +26,8 @@ const files = new Set([
 	"$dudvmap",
 	"$envmapmask",
 	"$fallbackmaterial",
-	"$hdrbaseTexture".toLowerCase(),
-	"$hdrcompressedTexture".toLowerCase(),
+	"$hdrbaseTexture",
+	"$hdrcompressedTexture",
 	"$lightwarptexture",
 	"$normalmap",
 	"$phongexponenttexture",
@@ -45,10 +45,10 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 		const file = document.diagnostics.file("image", "materials", ".vtf")
 
-		const next = document.diagnostics.next(new Map([
-			...Object.entries(values).map(([key, value]) => <const>[key, document.diagnostics.set(value.values)]),
-			...files.values().map((value) => <const>[value, file])
-		]))
+		const next = document.diagnostics.next({
+			...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, document.diagnostics.set(value.values)])),
+			...Object.fromEntries(files.entries().map((value) => <const>[value, file])),
+		})
 
 		const getDiagnostics = document.diagnostics.header(
 			(key, documentSymbol, path, context) => {

@@ -11,17 +11,17 @@ import { VGUITextDocument } from "../VGUITextDocument"
 
 const elements = [
 	"pin_to_sibling",
-	"navUp".toLowerCase(),
-	"navDown".toLowerCase(),
-	"navLeft".toLowerCase(),
-	"navRight".toLowerCase(),
-	"navToRelay".toLowerCase(),
+	"navUp",
+	"navDown",
+	"navLeft",
+	"navRight",
+	"navToRelay",
 ]
 
 const strings = [
 	"button_token",
 	"desc_token",
-	"labelText".toLowerCase(),
+	"labelText",
 	"title",
 	"tooltip",
 ]
@@ -85,14 +85,14 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 	const border = string(document.diagnostics.reference(Symbol.for("border")))
 	const font = string(document.diagnostics.reference(Symbol.for("font")))
 
-	const next = document.diagnostics.next(new Map([
-		...Object.entries(values).map(([key, value]) => <const>[key, set("enumIndex" in value && value.enumIndex ? [...value.values, ...value.values.map((_, index) => index.toString())] : value.values)]),
-		...clientscheme.Colors.map((value) => <const>[value, color]),
-		...clientscheme.Borders.map((value) => <const>[value, border]),
-		...clientscheme.Fonts.map((value) => <const>[value, font]),
-		...elements.map((value) => <const>[value, element]),
-		...strings.map((value) => <const>[value, token]),
-	]))
+	const next = document.diagnostics.next({
+		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, set("enumIndex" in value && value.enumIndex ? [...value.values, ...value.values.map((_, index) => index.toString())] : value.values)])),
+		...Object.fromEntries(clientscheme.Colors.map((value) => <const>[value, color])),
+		...Object.fromEntries(clientscheme.Borders.map((value) => <const>[value, border])),
+		...Object.fromEntries(clientscheme.Fonts.map((value) => <const>[value, font])),
+		...Object.fromEntries(elements.map((value) => <const>[value, element])),
+		...Object.fromEntries(strings.map((value) => <const>[value, token])),
+	})
 
 	const getDiagnostics = document.diagnostics.header(
 		(key, documentSymbol, path, context) => {

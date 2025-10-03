@@ -49,9 +49,9 @@ function SchemeForEach(documentSymbols: VDFDocumentSymbols, callbacks: Partial<S
 
 export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
 
-	const next = document.diagnostics.next(new Map([
-		["color", document.diagnostics.string(document.diagnostics.reference(Symbol.for("color")))]
-	]))
+	const next = document.diagnostics.next({
+		"color": document.diagnostics.string(document.diagnostics.reference(Symbol.for("color")))
+	})
 
 	const getDiagnostics = document.diagnostics.header(
 		document.diagnostics.documentSymbols(

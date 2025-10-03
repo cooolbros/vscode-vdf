@@ -13,7 +13,7 @@
             "1"
         ]
     },
-    "autoresize": {
+    "autoResize": {
         "kind": 13,
         "enumIndex": true,
         "values": [
@@ -30,7 +30,7 @@
             "1"
         ]
     },
-    "controlname": {
+    "ControlName": {
         "kind": 7,
         "values": [
             "AnalogBar",
@@ -256,7 +256,7 @@
             "1"
         ]
     },
-    "paintbackgroundtype": {
+    "PaintBackgroundType": {
         "kind": 13,
         "values": [
             "0",
@@ -302,7 +302,7 @@
             "PIN_LAST"
         ]
     },
-    "pincorner": {
+    "pinCorner": {
         "kind": 13,
         "enumIndex": true,
         "values": [
@@ -324,14 +324,14 @@
             "1"
         ]
     },
-    "scaleimage": {
+    "scaleImage": {
         "kind": 12,
         "values": [
             "0",
             "1"
         ]
     },
-    "textalignment": {
+    "textAlignment": {
         "kind": 13,
         "values": [
             "center",
