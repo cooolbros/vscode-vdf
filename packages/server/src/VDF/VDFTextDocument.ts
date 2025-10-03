@@ -251,7 +251,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 								message: `Unknown key '${documentSymbol.key}'.`,
 							})
 
-							diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, unknown) ?? [])
+							diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, unknown) ?? [unknown()])
 						}
 						else {
 
