@@ -54,7 +54,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 	]))
 
 	const getDiagnostics = document.diagnostics.header(
-		document,
 		document.diagnostics.documentSymbols(
 			document.uri.basename().toLowerCase() == "clientscheme.res" ? KeyDistinct.First : KeyDistinct.None,
 			{

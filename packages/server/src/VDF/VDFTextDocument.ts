@@ -124,7 +124,6 @@ type BaseResult<TDocument extends VDFTextDocument<TDocument>> = (
 )
 
 export interface Context<TDocument extends VDFTextDocument<TDocument>> {
-	document: TDocument,
 	dependencies: VDFTextDocumentDependencies<TDocument>,
 	documentSymbols: VDFDocumentSymbols | undefined,
 	definitionReferences: DefinitionReferences,
@@ -194,7 +193,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 		},
 		any: () => [],
-		header: (document: TDocument, validate: Validate<TDocument>, multiple: boolean): VDFTextDocumentSchema<TDocument>["getDiagnostics"] => {
+		header: (validate: Validate<TDocument>, multiple: boolean): VDFTextDocumentSchema<TDocument>["getDiagnostics"] => {
 			return ({ dependencies, documentSymbols, definitionReferences }) => {
 				const diagnostics: DiagnosticCodeActions = []
 				const [header, ...rest] = documentSymbols
@@ -205,7 +204,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							header,
 							[],
 							{
-								document: document,
 								dependencies: dependencies,
 								documentSymbols: header.children,
 								definitionReferences: definitionReferences,
@@ -272,7 +270,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										relatedInformation: [
 											{
 												location: {
-													uri: context.document.uri.toString(),
+													uri: this.uri.toString(),
 													range: first.nameRange
 												},
 												message: `${first.key} is declared here.`

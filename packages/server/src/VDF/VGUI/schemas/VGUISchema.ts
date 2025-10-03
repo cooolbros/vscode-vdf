@@ -95,7 +95,6 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 	]))
 
 	const getDiagnostics = document.diagnostics.header(
-		document,
 		(key, documentSymbol, path, context) => {
 			const diagnostics: DiagnosticCodeActions = []
 			if (documentSymbol.children == undefined) {

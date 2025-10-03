@@ -32,7 +32,6 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 		},
 		definitionReferences: [],
 		getDiagnostics: document.diagnostics.header(
-			document,
 			document.diagnostics.documentSymbols(KeyDistinct.None, {
 				"file": [document.diagnostics.file("file", null, null)]
 			}),

@@ -51,7 +51,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 		]))
 
 		const getDiagnostics = document.diagnostics.header(
-			document,
 			(key, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (documentSymbol.children == undefined) {

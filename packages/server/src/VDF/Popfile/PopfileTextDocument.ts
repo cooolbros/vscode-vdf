@@ -389,7 +389,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		}
 
 		const getDiagnostics = header(
-			document,
 			documentSymbols(KeyDistinct.Last, {
 				"AddSentryBusterWhenDamageDealtExceeds": [integer],
 				"AddSentryBusterWhenKillCountExceeds": [integer],
