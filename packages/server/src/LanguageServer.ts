@@ -645,7 +645,7 @@ export abstract class LanguageServer<
 					const definitions = definitionReferences.definitions.get(scope, type, key)
 					if (definitions?.length) {
 						const documentation = definitions.map((definition) => definition.documentation).join("\n\n")
-						const text = definitions.map((definition) => "```" + document.languageId + "\n" + dedent(definition.text) + "\n```").join("\n\n")
+						const text = definitions.map((definition) => "```" + document.languageId + "\n" + dedent(definition.text) + "\n```\n").join("\n\n")
 						return {
 							contents: `${documentation}\n\n${text}`,
 							range: range
