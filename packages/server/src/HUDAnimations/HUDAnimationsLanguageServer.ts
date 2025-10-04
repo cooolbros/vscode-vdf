@@ -3,9 +3,8 @@ import { Uri } from "common/Uri"
 import { generateTokens } from "common/generateTokens"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
-import { firstValueFrom, Observable, Subscription } from "rxjs"
+import { firstValueFrom, Subscription } from "rxjs"
 import { VDFPosition } from "vdf"
-import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItem, CompletionItemKind, InsertTextFormat, Range, TextEdit, type Connection, type DocumentFormattingParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
@@ -86,23 +85,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 						w = Promise.resolve(new HUDAnimationsWorkspace({
 							uri: hudRoot,
 							fileSystem: fileSystem,
+							server: this,
 							documents: this.documents,
-							request: this.trpc.servers.vgui.workspace.open.mutate({ uri: hudRoot }),
-							getVDFDocumentSymbols: (path) => new Observable<VDFDocumentSymbols | null>((subscriber) => {
-								return this.trpc.servers.vgui.workspace.documentSymbol.subscribe({ key: hudRoot, path }, {
-									onData: (value) => subscriber.next(value),
-									onError: (err) => subscriber.error(err),
-									onComplete: () => subscriber.complete(),
-								})
-							}),
-							getDefinitions: (path) => new Observable((subscriber) => {
-								return this.trpc.servers.vgui.workspace.definitions.subscribe({ key: hudRoot, path: path }, {
-									onData: (value) => subscriber.next(value),
-									onError: (err) => subscriber.error(err),
-									onComplete: () => subscriber.complete(),
-								})
-							}),
-							setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: hudRoot, references: references })
 						}))
 						this.workspaces.set(key, w)
 					}
@@ -146,23 +130,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 											{ type: "folder", uri: input.uri },
 											{ type: "tf2" }
 										]),
+										server: this,
 										documents: this.documents,
-										request: Promise.resolve(),
-										getVDFDocumentSymbols: (path) => new Observable<VDFDocumentSymbols | null>((subscriber) => {
-											return this.trpc.servers.vgui.workspace.documentSymbol.subscribe({ key: input.uri, path: path }, {
-												onData: (value) => subscriber.next(value),
-												onError: (err) => subscriber.error(err),
-												onComplete: () => subscriber.complete(),
-											})
-										}),
-										getDefinitions: (path) => new Observable((subscriber) => {
-											return this.trpc.servers.vgui.workspace.definitions.subscribe({ key: input.uri, path: path }, {
-												onData: (value) => subscriber.next(value),
-												onError: (err) => subscriber.error(err),
-												onComplete: () => subscriber.complete(),
-											})
-										}),
-										setFileReferences: async (references) => await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({ key: input.uri, references: references })
 									}))
 								)
 							}

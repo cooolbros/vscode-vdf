@@ -93,7 +93,7 @@ export abstract class LanguageServer<
 
 	private oldName: [number | null, symbol, string] | null = null
 
-	protected readonly trpc: {
+	public readonly trpc: {
 		client: TRPCClient<ReturnType<typeof TRPCClientRouter>>
 		servers: {
 			hudanimations: TRPCClient<ReturnType<HUDAnimationsLanguageServer["router"]>>

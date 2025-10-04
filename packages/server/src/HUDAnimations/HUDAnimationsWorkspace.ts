@@ -2,12 +2,13 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concat, concatMap, firstValueFrom, from, ignoreElements, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concat, concatMap, firstValueFrom, from, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
 import eventFiles from "./eventFiles.json"
+import type { HUDAnimationsLanguageServer } from "./HUDAnimationsLanguageServer"
 import { EventType, HUDAnimationsTextDocument } from "./HUDAnimationsTextDocument"
 
 interface HUDAnimationsWorkspaceDocumentDependencies {
@@ -20,8 +21,6 @@ interface HUDAnimationsWorkspaceDocumentDependencies {
 
 export class HUDAnimationsWorkspace extends WorkspaceBase {
 
-	private readonly fileSystem: FileSystemMountPoint
-	private readonly getVDFDocumentSymbols: (path: string) => Observable<VDFDocumentSymbols | null>
 	private readonly getDefinitions: (path: string) => Observable<{ uri: Uri, definitions: Definitions } | null>
 
 	public readonly manifest$: Observable<HUDAnimationsTextDocument[]>
@@ -33,39 +32,50 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 	constructor({
 		uri,
 		fileSystem,
+		server,
 		documents,
-		request,
-		getVDFDocumentSymbols,
-		getDefinitions,
-		setFileReferences,
 	}: {
-		uri: Uri
+		uri: Uri,
 		fileSystem: FileSystemMountPoint,
+		server: HUDAnimationsLanguageServer,
 		documents: RefCountAsyncDisposableFactory<Uri, HUDAnimationsTextDocument>,
-		request: Promise<void>,
-		getVDFDocumentSymbols: (path: string) => Observable<VDFDocumentSymbols | null>,
-		getDefinitions: (path: string) => Observable<{ uri: Uri, definitions: Definitions } | null>,
-		setFileReferences: (references: Map<string /* path */, Map<string /* Uri */, References | null>>) => Promise<void>,
 	}) {
 		super(uri)
-		this.fileSystem = fileSystem
 		this.files = new Map()
 
-		const ready$ = from(request).pipe(ignoreElements())
+		const ready$ = from(server.trpc.servers.vgui.workspace.open.mutate({ uri })).pipe(ignoreElements())
 
-		this.getVDFDocumentSymbols = (path) => concat(ready$, getVDFDocumentSymbols(path))
+		const getVDFDocumentSymbols = (path: string) => concat(
+			ready$,
+			new Observable<VDFDocumentSymbols | null>((subscriber) => {
+				return server.trpc.servers.vgui.workspace.documentSymbol.subscribe({ key: uri, path }, {
+					onData: (value) => subscriber.next(value),
+					onError: (err) => subscriber.error(err),
+					onComplete: () => subscriber.complete(),
+				})
+			})
+		)
 
 		const fileDefinitions = new Map<string, Observable<{ uri: Uri, definitions: Definitions } | null>>()
 		this.getDefinitions = (path: string) => {
 			let definitions = fileDefinitions.get(path)
 			if (!definitions) {
-				definitions = concat(ready$, getDefinitions(path))
+				definitions = concat(
+					ready$,
+					new Observable<{ uri: Uri, definitions: Definitions } | null>((subscriber) => {
+						return server.trpc.servers.vgui.workspace.definitions.subscribe({ key: uri, path: path }, {
+							onData: (value) => subscriber.next(value),
+							onError: (err) => subscriber.error(err),
+							onComplete: () => subscriber.complete(),
+						})
+					})
+				)
 				fileDefinitions.set(path, definitions)
 			}
 			return definitions
 		}
 
-		this.manifest$ = this.getVDFDocumentSymbols("scripts/hudanimations_manifest.txt").pipe(
+		this.manifest$ = getVDFDocumentSymbols("scripts/hudanimations_manifest.txt").pipe(
 			map((documentSymbols) => {
 				if (!documentSymbols) {
 					return []
@@ -231,14 +241,15 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 		this.ready = firstValueFrom(this.manifest$).then(async (manifest) => {
 			const [_, documentsReferences] = await Promise.all([
-				request,
+				lastValueFrom(ready$, { defaultValue: undefined }),
 				Promise.all(manifest.map(async (document) => HUDAnimationsWorkspace.extractWorkspaceReferences(document.uri, (await firstValueFrom(document.definitionReferences$)).references)))
 			])
 
 			const paths = documentsReferences.values().flatMap((map) => map.keys())
 
-			await setFileReferences(
-				new Map(
+			await server.trpc.servers.vgui.workspace.setFilesReferences.mutate({
+				key: uri,
+				references: new Map(
 					paths.map((path) => {
 						return [
 							path,
@@ -252,7 +263,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						]
 					})
 				)
-			)
+			})
 		})
 	}
 

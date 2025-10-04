@@ -9,6 +9,7 @@ import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols
 import { CompletionItemKind } from "vscode-languageserver"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import type { VDFTextDocumentSchema } from "../VDFTextDocument"
+import type { PopfileLanguageServer } from "./PopfileLanguageServer"
 import type { PopfileTextDocument } from "./PopfileTextDocument"
 
 export class PopfileWorkspace extends WorkspaceBase {
@@ -22,8 +23,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 
 	constructor(
 		private readonly fileSystem: FileSystemMountPoint,
-		private readonly getEntities: (uri: Uri) => Promise<Record<string, string>[] | null>,
-		private readonly getClassIconFlags: (uri: Uri) => Observable<{ uri: Uri, flags: number } | null>,
+		private readonly server: PopfileLanguageServer,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 	) {
 		super(new Uri({ scheme: "file", path: "/" }))
@@ -203,7 +203,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 					return null
 				}
 
-				const entities = await this.getEntities(uri).then((entities) => entities && Map.groupBy(entities, (item) => item["classname"]))
+				const entities = await this.server.trpc.client.popfile.bsp.entities.query({ uri }).then((entities) => entities && Map.groupBy(entities, (item) => item["classname"]))
 				if (!entities) {
 					return null
 				}
@@ -283,9 +283,33 @@ export class PopfileWorkspace extends WorkspaceBase {
 		if (!flags$) {
 			flags$ = this.fileSystem.resolveFile(`materials/hud/leaderboard_class_${icon}.vmt`).pipe(
 				switchMap((uri) => {
-					return uri != null
-						? this.getClassIconFlags(uri)
-						: of(null)
+					if (uri == null) {
+						return of(null)
+					}
+
+					return new Observable<Uri | null>((subscriber) => {
+						return this.server.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
+							onData: (value) => subscriber.next(value),
+							onError: (err) => subscriber.error(err),
+							onComplete: () => subscriber.complete(),
+						})
+					}).pipe(
+						switchMap((uri) => {
+							if (uri == null) {
+								return of(null)
+							}
+
+							return new Observable<number>((subscriber) => {
+								return this.server.trpc.client.popfile.classIcon.flags.subscribe({ uri }, {
+									onData: (value) => subscriber.next(value),
+									onError: (err) => subscriber.error(err),
+									onComplete: () => subscriber.complete(),
+								})
+							}).pipe(
+								map((flags) => ({ uri, flags }))
+							)
+						})
+					)
 				}),
 				shareReplay(1)
 			)
