@@ -203,19 +203,22 @@ export class PopfileWorkspace extends WorkspaceBase {
 					return null
 				}
 
-				const entities = await this.server.trpc.client.popfile.bsp.entities.query({ uri }).then((entities) => entities && Map.groupBy(entities, (item) => item["classname"]))
+				const entities = await this.server.trpc.client.popfile.bsp.entities.query({ uri }).then((entities) => entities && Map.groupBy(entities, (item) => item.classname))
 				if (!entities) {
 					return null
 				}
+
+				console.log(`${bsp}:`)
+				console.log(JSON.stringify(Object.fromEntries(entities), null, 4))
 
 				// Where
 				const teamSpawns = [
 					...new Set(
 						entities
 							?.get("info_player_teamspawn")
-							?.toSorted((a, b) => b["TeamNum"]?.localeCompare(a["TeamNum"]) || a["targetname"]?.localeCompare(b["targetname"]))
+							?.toSorted((a, b) => (<string>b["TeamNum"])?.localeCompare(<string>a["TeamNum"]) || a.targetname?.localeCompare(b.targetname!) || 0)
 							.values()
-							.map((entity) => entity["targetname"])
+							.map((entity) => entity.targetname)
 							.filter((targetname) => targetname != undefined)
 					),
 					"Ahead",
@@ -230,8 +233,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 						entities
 							?.get("path_track")
 							?.values()
-							.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity["targetname"]))
-							.map((entity) => entity["targetname"])
+							.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity.targetname))
+							.map((entity) => entity.targetname)
 							.filter((targetname) => targetname != undefined)
 					)
 				].toSorted()
@@ -242,8 +245,9 @@ export class PopfileWorkspace extends WorkspaceBase {
 						entities
 							?.values()
 							?.flatMap((value) => value)
-							.map((entity) => entity["targetname"])
-							.filter((targetname) => targetname != undefined && !targetname.startsWith("//"))
+							.map((entity) => entity.targetname)
+							.filter((targetname) => targetname != undefined)
+							.filter((targetname) => !targetname.startsWith("//"))
 					),
 					"BigNet"
 				].toSorted()

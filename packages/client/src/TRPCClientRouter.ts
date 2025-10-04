@@ -217,7 +217,12 @@ export function TRPCClientRouter(
 							await initBSP(context)
 							const buf = await workspace.fs.readFile(input.uri)
 							const bsp = new BSP(buf)
-							return bsp.entities()
+							return z.array(
+								z.looseObject({
+									classname: z.string(),
+									targetname: z.string().optional(),
+								}).catchall(z.union([z.string(), z.array(z.string())]))
+							).parse(bsp.entities())
 						}
 						catch (error) {
 							console.error(error)
