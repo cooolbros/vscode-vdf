@@ -1,5 +1,5 @@
 import { UnexpectedCharacterError, UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFToken } from "vdf"
-import { AccelInterpolator, AnimateDocumentSymbol, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommandDocumentSymbol, FlickerInterpolator, GainInterpolator, HUDAnimationsEventDocumentSymbol, LinearInterpolator, PlaySoundDocumentSymbol, PulseInterpolator, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetFontDocumentSymbol, SetInputEnabledDocumentSymbol, SetStringDocumentSymbol, SetTextureDocumentSymbol, SetVisibleDocumentSymbol, SplineInterpolator, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
+import { Accel, AnimateDocumentSymbol, Bias, Bounce, DeAccel, FireCommandDocumentSymbol, Flicker, Gain, HUDAnimationsEventDocumentSymbol, Linear, PlaySoundDocumentSymbol, Pulse, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetFontDocumentSymbol, SetInputEnabledDocumentSymbol, SetStringDocumentSymbol, SetTextureDocumentSymbol, SetVisibleDocumentSymbol, Spline, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
 import { HUDAnimationsDocumentSymbols, HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
 export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocumentSymbols {
@@ -96,31 +96,32 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		)
 	}
 
-	function readString(check = true): VDFToken {
+	function string(): VDFToken {
 		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 		}
-		if (check && token.type != VDFTokenType.String) {
+		if (token.type != VDFTokenType.String) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["string"], token.range)
 		}
 		return token
 	}
 
-	function readStringValue(): string {
-		return readString().value
-	}
-
-	function readNumber(): number {
-		const token = readString(false)
-		if (/[^\d.]/.test(token.value)) {
+	function number(): Omit<VDFToken, "value"> & { value: number } {
+		const token = tokeniser.token()
+		if (token == null) {
+			throw new UnexpectedEndOfFileError(["number"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
+		}
+		if (token.type != VDFTokenType.String || /[^\d.]/.test(token.value)) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["number"], token.range)
 		}
-		return parseFloat(token.value)
+		return {
+			...token,
+			value: parseFloat(token.value),
+		}
 	}
 
-	function readBool(): string {
-
+	function bool(): Omit<VDFToken, "value"> & { value: boolean } {
 		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["'0'", "'1'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -130,7 +131,10 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 			throw new UnexpectedTokenError(`'${token.value}'`, ["'0'", "'1'"], token.range)
 		}
 
-		return token.value
+		return {
+			...token,
+			value: token.value == "1",
+		}
 	}
 
 	function parseAnimation(type: string, typeRange: VDFRange): HUDAnimationsStatementDocumentSymbol {
@@ -139,222 +143,250 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 
 		switch (type.toLowerCase()) {
 			case "animate": {
-				const elementToken = readString()
-				const propertyToken = readString()
-				const valueToken = readString()
+				const element = string()
+				const property = string()
+				const value = string()
+				const interpolator = ((): Interpolator => {
+					const interpolator = string()
+					switch (interpolator.value.toLowerCase()) {
+						case "accel": {
+							return new Accel(interpolator.range,)
+						}
+						case "bias": {
+							const bias = string()
+							return new Bias(interpolator.range, bias.value, bias.range)
+						}
+						case "bounce": {
+							return new Bounce(interpolator.range,)
+						}
+						case "deaccel": {
+							return new DeAccel(interpolator.range,)
+						}
+						case "flicker": {
+							const randomnessToken = string()
+							return new Flicker(interpolator.range, randomnessToken.value, randomnessToken.range)
+						}
+						case "gain": {
+							const bias = string()
+							return new Gain(interpolator.range, bias.value, bias.range)
+						}
+						case "linear": {
+							return new Linear(interpolator.range,)
+						}
+						case "pulse": {
+							const frequency = string()
+							return new Pulse(interpolator.range, frequency.value, frequency.range)
+						}
+						case "spline": {
+							return new Spline(interpolator.range,)
+						}
+						default: {
+							throw new UnexpectedTokenError(`'${interpolator.value}'`, ["interpolator"], interpolator.range)
+						}
+					}
+				})()
+				const delay = number()
+				const duration = number()
 				statement = new AnimateDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						property: propertyToken.value,
-						propertyRange: propertyToken.range,
-						value: valueToken.value,
-						valueRange: valueToken.range,
-						interpolator: ((): Interpolator => {
-							const interpolator = tokeniser.token()
-							if (interpolator == null) {
-								throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
-							}
-
-							if (interpolator.type != VDFTokenType.String) {
-								throw new UnexpectedTokenError(`'${interpolator.value}'`, ["string"], interpolator.range)
-							}
-
-							switch (interpolator.value.toLowerCase()) {
-								case "accel": return new AccelInterpolator()
-								case "bias": return new BiasInterpolator(readStringValue())
-								case "bounce": return new BounceInterpolator()
-								case "deaccel": return new DeAccelInterpolator()
-								case "flicker": return new FlickerInterpolator(readStringValue())
-								case "gain": return new GainInterpolator(readStringValue())
-								case "linear": return new LinearInterpolator()
-								case "pulse": return new PulseInterpolator(readStringValue())
-								case "spline": return new SplineInterpolator()
-								default: throw new UnexpectedTokenError(`'${interpolator.value}'`, ["interpolator"], interpolator.range)
-							}
-						})(),
-						delay: readNumber(),
-						duration: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					property.value,
+					property.range,
+					value.value,
+					value.range,
+					interpolator,
+					delay.value,
+					delay.range,
+					duration.value,
+					duration.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
+
 				break
 			}
 			case "runevent": {
-				const eventToken = readString()
+				const event = string()
+				const delay = number()
 				statement = new RunEventDocumentSymbol(
-					{
-						event: eventToken.value,
-						eventRange: eventToken.range,
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					event.value,
+					event.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "stopevent": {
-				const eventToken = readString()
+				const event = string()
+				const delay = number()
 				statement = new StopEventDocumentSymbol(
-					{
-						event: eventToken.value,
-						eventRange: eventToken.range,
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					event.value,
+					event.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "setvisible": {
-				const elementToken = readString()
+				const element = string()
+				const visible = bool()
+				const delay = number()
 				statement = new SetVisibleDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						visible: readBool(),
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					visible.value,
+					visible.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "firecommand": {
+				const delay = number()
+				const command = string()
 				statement = new FireCommandDocumentSymbol(
-					{
-						delay: readNumber(),
-						command: readStringValue(),
-						conditional: tokeniser.conditional(),
-					},
+					delay.value,
+					delay.range,
+					command.value,
+					command.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "runeventchild": {
-				const elementToken = readString()
-				const eventToken = readString()
+				const element = string()
+				const event = string()
+				const delay = number()
 				statement = new RunEventChildDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						event: eventToken.value,
-						eventRange: eventToken.range,
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					event.value,
+					event.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "setinputenabled": {
-				const elementToken = readString()
+				const element = string()
+				const enabled = bool()
+				const delay = number()
 				statement = new SetInputEnabledDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						enabled: readStringValue(),
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					enabled.value,
+					enabled.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "playsound": {
-				const delay = readNumber()
-				const soundToken = readString()
+				const delay = number()
+				const sound = string()
 				statement = new PlaySoundDocumentSymbol(
-					{
-						delay: delay,
-						sound: soundToken.value,
-						soundRange: soundToken.range,
-						conditional: tokeniser.conditional(),
-					},
+					delay.value,
+					delay.range,
+					sound.value,
+					sound.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "stoppanelanimations": {
+				const element = string()
+				const delay = number()
 				statement = new StopPanelAnimationsDocumentSymbol(
-					{
-						element: readStringValue(),
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "stopanimation": {
+				const element = string()
+				const property = string()
+				const delay = number()
 				statement = new StopAnimationDocumentSymbol(
-					{
-						element: readStringValue(),
-						property: readStringValue(),
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					property.value,
+					property.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "setfont": {
-				const elementToken = readString()
-				const propertyToken = readString()
-				const fontToken = readString()
-
+				const element = string()
+				const property = string()
+				const font = string()
+				const delay = number()
 				statement = new SetFontDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						property: propertyToken.value,
-						propertyRange: propertyToken.range,
-						font: fontToken.value,
-						fontRange: fontToken.range,
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					property.value,
+					property.range,
+					font.value,
+					font.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "settexture": {
-				const elementToken = readString()
-				const propertyToken = readString()
-				const valueToken = readString()
-
+				const element = string()
+				const property = string()
+				const value = string()
+				const delay = number()
 				statement = new SetTextureDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						property: propertyToken.value,
-						propertyRange: propertyToken.range,
-						value: valueToken.value,
-						valueRange: valueToken.range,
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					property.value,
+					property.range,
+					value.value,
+					value.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
 			}
 			case "setstring": {
-				const elementToken = readString()
-				const propertyToken = readString()
-				const valueToken = readString()
-
+				const element = string()
+				const property = string()
+				const value = string()
+				const delay = number()
 				statement = new SetStringDocumentSymbol(
-					{
-						element: elementToken.value,
-						elementRange: elementToken.range,
-						property: propertyToken.value,
-						propertyRange: propertyToken.range,
-						value: valueToken.value,
-						valueRange: valueToken.range,
-						delay: readNumber(),
-						conditional: tokeniser.conditional(),
-					},
+					element.value,
+					element.range,
+					property.value,
+					property.range,
+					value.value,
+					value.range,
+					delay.value,
+					delay.range,
+					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
 				break
