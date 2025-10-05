@@ -86,7 +86,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 	const font = string(document.diagnostics.reference(Symbol.for("font")))
 
 	const next = document.diagnostics.next({
-		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, set("enumIndex" in value && value.enumIndex ? [...value.values, ...value.values.map((_, index) => index.toString())] : value.values)])),
+		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, set("enumIndex" in value && value.enumIndex ? [...value.values, ...value.values.map((_, index) => index.toString())] : value.values, "fix" in value ? value.fix : undefined)])),
 		...Object.fromEntries(clientscheme.Colors.map((value) => <const>[value, color])),
 		...Object.fromEntries(clientscheme.Borders.map((value) => <const>[value, border])),
 		...Object.fromEntries(clientscheme.Fonts.map((value) => <const>[value, font])),
