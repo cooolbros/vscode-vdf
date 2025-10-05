@@ -22,19 +22,13 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
-
-				const fileSystem = await this.fileSystems.get([
-					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
-					{ type: "tf2" }
-				])
-
 				let workspace: VMTWorkspace | null
 
 				if (hudRoot != null) {
 					const key = hudRoot.toString()
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new VMTWorkspace(hudRoot, fileSystem, this.documents)
+						w = new VMTWorkspace(hudRoot, await this.fileSystems.get([{ type: "folder", uri: hudRoot }, { type: "tf2" }]), this.documents)
 						this.workspaces.set(key, w)
 					}
 					workspace = w
@@ -43,7 +37,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 					const key = "tf2"
 					let w = this.workspaces.get(key)
 					if (!w) {
-						w = new VMTWorkspace(new Uri({ scheme: "file", path: "/" }), fileSystem, this.documents)
+						w = new VMTWorkspace(new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get([{ type: "tf2" }]), this.documents)
 						this.workspaces.set(key, w)
 					}
 					workspace = w
@@ -52,7 +46,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 				return new VMTTextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem,
+					await this.fileSystems.get([...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []), { type: "tf2" }]),
 					this.documents,
 					workspace,
 				)
