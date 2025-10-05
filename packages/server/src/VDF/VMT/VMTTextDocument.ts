@@ -39,6 +39,8 @@ const files = new Set([
 	"$underwateroverlay",
 ])
 
+const set = new Set(files.values().map((file) => file.toLowerCase()))
+
 export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 	public static readonly Schema = (document: VMTTextDocument): VDFTextDocumentSchema<VMTTextDocument> => {
@@ -96,7 +98,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 					documentSymbol.children?.forAll((documentSymbol) => {
 						const key = documentSymbol.key.toLowerCase()
 
-						if (files.has(key) && documentSymbol.detail?.trim() != "") {
+						if (set.has(key) && documentSymbol.detail?.trim() != "") {
 							links.push({
 								range: documentSymbol.detailRange!,
 								data: {
@@ -146,7 +148,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			files: [
 				{
 					name: "image",
-					keys: new Set(files),
+					keys: set,
 					folder: "materials",
 					extension: ".vtf",
 					extensionsPattern: ".vtf",
