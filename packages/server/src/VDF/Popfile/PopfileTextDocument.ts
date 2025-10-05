@@ -445,10 +445,9 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						key: documentSymbol.key,
 						range: documentSymbol.range,
 						keyRange: documentSymbol.nameRange,
-						text: document.getText(documentSymbol.range),
 						nameRange: undefined,
 						detail: undefined,
-						documentation: documentSymbol.documentation,
+						documentation: document.definitions.documentation(documentSymbol),
 						conditional: documentSymbol.conditional ?? undefined,
 					})
 				}
@@ -464,10 +463,9 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									key: name.detail,
 									range: documentSymbol.range,
 									keyRange: name.detailRange!,
-									text: document.getText(documentSymbol.range),
 									nameRange: undefined,
 									detail: name.detail!,
-									documentation: documentSymbol.documentation,
+									documentation: document.definitions.documentation(documentSymbol),
 									conditional: documentSymbol.conditional ?? undefined,
 								})
 							}

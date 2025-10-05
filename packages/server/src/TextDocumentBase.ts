@@ -1,6 +1,7 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
+import dedent from "dedent"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type IRange } from "vdf"
 import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
@@ -64,6 +65,17 @@ export abstract class TextDocumentBase<
 	public readonly definitionReferences$: Observable<DefinitionReferences>
 	public readonly diagnostics$: Observable<DiagnosticCodeAction[]>
 	public readonly codeLens$: Observable<CodeLens[]>
+
+	public readonly definitions = {
+		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }) => {
+			return [
+				documentation,
+				"```" + this.languageId,
+				dedent(this.getText(range)),
+				"```",
+			].join("\n")
+		}
+	}
 
 	constructor(
 		init: TextDocumentInit,

@@ -9,7 +9,6 @@ import { Uri } from "common/Uri"
 import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import dedent from "dedent"
 import { posix } from "path"
 import { BehaviorSubject, catchError, combineLatest, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
@@ -685,10 +684,8 @@ export abstract class LanguageServer<
 				if (range.contains(params.position)) {
 					const definitions = definitionReferences.definitions.get(scope, type, key)
 					if (definitions?.length) {
-						const documentation = definitions.map((definition) => definition.documentation).join("\n\n")
-						const text = definitions.map((definition) => "```" + document.languageId + "\n" + dedent(definition.text) + "\n```\n").join("\n\n")
 						return {
-							contents: `${documentation}\n\n${text}`,
+							contents: definitions.map((definition) => definition.documentation).join("\n\n"),
 							range: range
 						}
 					}
