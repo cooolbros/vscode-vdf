@@ -8,7 +8,7 @@ import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { Color, CompletionItem, CompletionItemKind, InlayHint, InlayHintRequest, MarkupKind, Range, TextEdit, type ColorPresentationParams, type Connection, type DocumentColorParams, type DocumentFormattingParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CompletionItem, CompletionItemKind, InlayHint, InlayHintRequest, MarkupKind, Range, TextEdit, type Connection, type DocumentFormattingParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
@@ -29,25 +29,19 @@ export abstract class VDFLanguageServer<
 
 	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>
 
-	private readonly documentsColours: Map<string, Map<string, (colour: Color) => string>>
-
 	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
 		super(languageId, name, connection, {
 			platform: VDFLanguageServerConfiguration.platform,
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: {
 				...VDFLanguageServerConfiguration.capabilities,
-				colorProvider: true,
 				inlayHintProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$)
 		})
 
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
-		this.documentsColours = new Map()
 
-		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
-		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
 		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
 			await using document = await this.documents.get(new Uri(params.textDocument.uri))
 			return await firstValueFrom(document.inlayHints$)
@@ -59,12 +53,7 @@ export abstract class VDFLanguageServer<
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
-		const stack = new AsyncDisposableStack()
-		stack.use(await super.onDidOpen(event))
-		stack.defer(() => {
-			this.documentsColours.delete(event.document.uri.toString())
-		})
-		return stack.move()
+		return await super.onDidOpen(event)
 	}
 
 	protected async getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
@@ -266,33 +255,6 @@ export abstract class VDFLanguageServer<
 			default:
 				return null
 		}
-	}
-
-	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {
-
-		await using document = await this.documents.get(params.textDocument.uri)
-		const colours = await firstValueFrom(document.colours$)
-
-		this.documentsColours.set(
-			document.uri.toString(),
-			new Map(colours.map(({ range, stringify }) => [`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`, stringify]))
-		)
-
-		return colours
-	}
-
-	private async onColorPresentation(params: TextDocumentRequestParams<ColorPresentationParams>) {
-		const { color: colour, range } = params
-
-		const stringify = this.documentsColours
-			.get(params.textDocument.uri.toString())
-			?.get(`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`)
-
-		if (stringify == undefined) {
-			return null
-		}
-
-		return [{ label: stringify(colour) }]
 	}
 
 	protected async onDocumentFormatting(document: TDocument, params: TextDocumentRequestParams<DocumentFormattingParams>): Promise<TextEdit[]> {

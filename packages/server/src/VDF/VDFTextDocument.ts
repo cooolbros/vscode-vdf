@@ -9,9 +9,9 @@ import { combineLatest, combineLatestWith, concat, connectable, defer, distinctU
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
+import { Color, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
-import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
+import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
 export function resolveFileDetail<TDocument extends VDFTextDocument<TDocument>>(detail: string, configuration: VDFTextDocumentSchema<TDocument>["files"][number]) {
 	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
@@ -56,6 +56,7 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 	}[]
 	getDiagnostics(params: DiagnosticsHandlerParams<TDocument>): DiagnosticCodeActions
 	getLinks(params: DocumentLinksHandlerParams<TDocument>): DocumentLinkData[]
+	getColours(params: DocumentColoursHandlerParams<TDocument>): ColourInformationStringify[]
 	files: {
 		name: string
 		keys: Set<string>
@@ -102,6 +103,11 @@ export interface DiagnosticsHandlerParams<TDocument extends VDFTextDocument<TDoc
 export interface DocumentLinksHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
 	documentSymbols: VDFDocumentSymbol[]
 	resolve: (value: string, extension?: `.${string}`) => string
+}
+
+export interface DocumentColoursHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+	documentSymbols: VDFDocumentSymbol[]
+	next: (callback: (colours: ColourInformationStringify[], documentSymbol: VDFDocumentSymbol) => void) => ColourInformationStringify[]
 }
 
 export const enum VGUIAssetType {
@@ -151,7 +157,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	 * #base
 	 */
 	public readonly base$: Observable<string[]>
-	public readonly colours$: Observable<(ColorInformation & { stringify(colour: Color): string })[]>
 	public abstract readonly inlayHints$: Observable<InlayHint[]>
 
 	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
@@ -873,50 +878,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			map((base) => base.map((value) => posix.resolve("/", this.configuration.relativeFolderPath ?? "", value).substring(1))),
 			shareReplay(1)
 		)
-
-		this.colours$ = this.documentSymbols$.pipe(
-			combineLatestWith(configuration.dependencies$),
-			map(([documentSymbols, dependencies]) => {
-				return documentSymbols.reduceRecursive(
-					[] as (ColorInformation & { stringify(colour: Color): string })[],
-					(colours, documentSymbol) => {
-
-						if (!documentSymbol.detail) {
-							return colours
-						}
-
-						if (dependencies.schema.colours.keys) {
-							const key = configuration.keyTransform(documentSymbol.key.toLowerCase())
-
-							const include = dependencies.schema.colours.keys.include != null
-								? dependencies.schema.colours.keys.include.has(key)
-								: true
-
-							const exclude = dependencies.schema.colours.keys.exclude != null
-								? dependencies.schema.colours.keys.exclude.has(key)
-								: false
-
-							if (!include || exclude) {
-								return colours
-							}
-						}
-
-						for (const { pattern, parse, stringify } of dependencies.schema.colours.colours) {
-							if (pattern.test(documentSymbol.detail)) {
-								colours.push({
-									range: documentSymbol.detailRange!,
-									color: parse(documentSymbol.detail),
-									stringify: stringify,
-								})
-							}
-						}
-
-						return colours
-					}
-				)
-			}),
-			shareReplay({ bufferSize: 1, refCount: true })
-		)
 	}
 
 	public async getLinks(): Promise<DocumentLinkData[]> {
@@ -967,5 +928,47 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				},
 			})
 		]
+	}
+
+	public async getColours(): Promise<ColourInformationStringify[]> {
+		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
+			documentSymbols: this.documentSymbols$,
+			dependencies: this.configuration.dependencies$
+		}))
+
+		const { base = [], rest = [] } = Object.groupBy(
+			documentSymbols,
+			(documentSymbol) => {
+				return documentSymbol.key.toLowerCase() == "#base"
+					? "base"
+					: "rest"
+			}
+		)
+
+		return dependencies.schema.getColours({
+			documentSymbols: rest,
+			next: (callback) => {
+				return rest.reduce(
+					(colours, documentSymbol) => {
+						if (!documentSymbol.children) {
+							return colours
+						}
+
+						colours.push(
+							...documentSymbol.children.reduceRecursive(
+								<ColourInformationStringify[]>[],
+								(colours, documentSymbol) => {
+									callback(colours, documentSymbol)
+									return colours
+								}
+							)
+						)
+
+						return colours
+					},
+					<ColourInformationStringify[]>[]
+				)
+			},
+		})
 	}
 }

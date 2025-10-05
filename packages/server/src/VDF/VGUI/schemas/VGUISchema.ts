@@ -321,6 +321,24 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 
 			return links
 		},
+		getColours: ({ next }) => {
+			return next((colours, documentSymbol) => {
+				if (documentSymbol.detail != undefined && /^\s*?\d+\s+\d+\s+\d+\s+\d+\s*?$/.test(documentSymbol.detail)) {
+					const colour = documentSymbol.detail.trim().split(/\s+/)
+
+					const red = parseInt(colour[0]) / 255
+					const green = parseInt(colour[1]) / 255
+					const blue = parseInt(colour[2]) / 255
+					const alpha = parseInt(colour[3]) / 255
+
+					colours.push({
+						range: documentSymbol.detailRange!,
+						color: { red, green, blue, alpha },
+						stringify: (colour) => `${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} ${Math.round(colour.alpha * 255)}`,
+					})
+				}
+			})
+		},
 		files: [
 			{
 				name: "image",

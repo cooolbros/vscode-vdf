@@ -3,7 +3,7 @@ import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { CompletionItemKind } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
-import type { DocumentLinkData } from "../../../TextDocumentBase"
+import type { ColourInformationStringify, DocumentLinkData } from "../../../TextDocumentBase"
 import { KeyDistinct, VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
 
@@ -266,6 +266,50 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			})
 
 			return links
+		},
+		getColours: ({ documentSymbols }) => {
+			const colours: ColourInformationStringify[] = []
+
+			const colour = (documentSymbol: VDFDocumentSymbol) => {
+				if (documentSymbol.detail != undefined && /^\s?\d+\s+\d+\s+\d+\s+\d+\s?$/.test(documentSymbol.detail)) {
+					const colour = documentSymbol.detail.trim().split(/\s+/)
+
+					const red = parseInt(colour[0]) / 255
+					const green = parseInt(colour[1]) / 255
+					const blue = parseInt(colour[2]) / 255
+					const alpha = parseInt(colour[3]) / 255
+
+					colours.push({
+						range: documentSymbol.detailRange!,
+						color: { red, green, blue, alpha },
+						stringify: (colour) => `${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} ${Math.round(colour.alpha * 255)}`,
+					})
+				}
+			}
+
+			documentSymbols.forEach((documentSymbols) => {
+				if (!documentSymbols.children) {
+					return
+				}
+
+				SchemeForEach(documentSymbols.children, {
+					Colors: colour,
+					BaseSettings: colour,
+					Borders: (documentSymbol) => {
+						if (!documentSymbol.children) {
+							return
+						}
+
+						documentSymbol.children.forAll((documentSymbol) => {
+							if (documentSymbol.key.toLowerCase() == "color") {
+								colour(documentSymbol)
+							}
+						})
+					}
+				})
+			})
+
+			return colours
 		},
 		files: [
 			{

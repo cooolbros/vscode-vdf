@@ -450,4 +450,8 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 			)
 		})
 	}
+
+	public async getColours() {
+		return []
+	}
 }

@@ -16,11 +16,11 @@ import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type { FileType } from "vscode"
-import { CodeAction, CodeActionKind, CodeLensRefreshRequest, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
-import { TextDocumentBase, type DiagnosticCodeAction, type DocumentLinkData, type TextDocumentInit } from "./TextDocumentBase"
+import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DocumentLinkData, type TextDocumentInit } from "./TextDocumentBase"
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
@@ -47,6 +47,7 @@ const capabilities = {
 	documentLinkProvider: {
 		resolveProvider: true,
 	},
+	colorProvider: true,
 	documentFormattingProvider: true,
 	renameProvider: {
 		prepareProvider: true
@@ -90,6 +91,7 @@ export abstract class LanguageServer<
 	private readonly diagnostic = { id: 0 }
 	private readonly documentDiagnostics: WeakMap<TDocument, Map<number, DiagnosticCodeAction>>
 	private readonly documentsLinks: WeakMap<TDocument, { version: number, promise: Promise<(Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } })[]> }>
+	private readonly documentsColours: Map<string, { version: number, promise: Promise<{ colours: ColourInformationStringify[], map: Map<string, (colour: Color) => string> }> }>
 
 	private oldName: [number | null, symbol, string] | null = null
 
@@ -236,6 +238,7 @@ export abstract class LanguageServer<
 
 		this.documentDiagnostics = new WeakMap()
 		this.documentsLinks = new WeakMap()
+		this.documentsColours = new Map()
 
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server`)
@@ -281,6 +284,8 @@ export abstract class LanguageServer<
 		)
 		this.onTextDocumentRequest(this.connection.onDocumentLinks, this.onDocumentLinks)
 		this.connection.onDocumentLinkResolve((documentLink) => this.onDocumentLinkResolve(documentLink))
+		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
+		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 
@@ -412,6 +417,7 @@ export abstract class LanguageServer<
 			[Symbol.asyncDispose]: async () => {
 				this.documentDiagnostics.delete(event.document)
 				this.documentsLinks.delete(event.document)
+				this.documentsColours.delete(event.document.uri.toString())
 			}
 		}
 	}
@@ -487,6 +493,41 @@ export abstract class LanguageServer<
 		documentLink.target = (await resolve())?.toString()
 		console.log(documentLink.target)
 		return documentLink
+	}
+
+	private async onDocumentColor(params: TextDocumentRequestParams<DocumentColorParams>) {
+
+		await using document = await this.documents.get(params.textDocument.uri)
+
+		let documentColours = this.documentsColours.get(document.uri.toString())
+		if (documentColours?.version == document.version) {
+			return (await documentColours.promise).colours
+		}
+
+		documentColours = {
+			version: document.version,
+			promise: document.getColours().then((colours) => {
+				const map = new Map(colours.values().map(({ range, stringify }) => [`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`, stringify]))
+				return {
+					colours,
+					map,
+				}
+			})
+		}
+
+		this.documentsColours.set(document.uri.toString(), documentColours)
+		return (await documentColours.promise).colours
+	}
+
+	private async onColorPresentation(params: TextDocumentRequestParams<ColorPresentationParams>) {
+		const { color: colour, range } = params
+
+		const stringify = (await this.documentsColours.get(params.textDocument.uri.toString())?.promise)?.map.get(`${range.start.line}.${range.start.character}.${range.end.line}.${range.end.character}`)
+		if (stringify == undefined) {
+			return null
+		}
+
+		return [{ label: stringify(colour) }]
 	}
 
 	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {

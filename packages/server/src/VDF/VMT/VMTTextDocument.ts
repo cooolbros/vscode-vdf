@@ -109,6 +109,40 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 				return links
 			},
+			getColours: ({ next }) => {
+				return next((colours, documentSymbol) => {
+					if (documentSymbol.detail != undefined) {
+						if (/\[\s?[\d.]+\s+[\d.]+\s+[\d.]+\s?\]/.test(documentSymbol.detail)) {
+							const colour = documentSymbol.detail.split(/[\s[\]]+/)
+
+							const red = parseFloat(colour[1])
+							const green = parseFloat(colour[2])
+							const blue = parseFloat(colour[3])
+							const alpha = 1
+
+							colours.push({
+								range: documentSymbol.detailRange!,
+								color: { red, green, blue, alpha },
+								stringify: (colour) => `[ ${colour.red.toFixed(2)} ${colour.green.toFixed(2)} ${colour.blue.toFixed(2)} ]`
+							})
+						}
+						else if (/{\s?\d+\s+\d+\s+\d+\s?}/.test(documentSymbol.detail)) {
+							const colour = documentSymbol.detail.split(/[\s{}]+/)
+
+							const red = parseInt(colour[1]) / 255
+							const green = parseInt(colour[2]) / 255
+							const blue = parseInt(colour[3]) / 255
+							const alpha = 1
+
+							colours.push({
+								range: documentSymbol.detailRange!,
+								color: { red, green, blue, alpha },
+								stringify: (colour) => `{ ${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} }`
+							})
+						}
+					}
+				})
+			},
 			files: [
 				{
 					name: "image",

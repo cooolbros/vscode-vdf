@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type IRange } from "vdf"
-import { CodeAction, CodeLens, DiagnosticSeverity, DocumentLink, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
+import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { DefinitionReferences, References } from "./DefinitionReferences"
 
@@ -29,6 +29,8 @@ export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({
 export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 
 export type DocumentLinkData = Omit<DocumentLink, "range" | "data"> & { range: VDFRange, data: { resolve: () => Promise<Uri | null> } }
+
+export type ColourInformationStringify = (ColorInformation & { stringify(colour: Color): string })
 
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
@@ -253,4 +255,6 @@ export abstract class TextDocumentBase<
 	protected abstract getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): DiagnosticCodeActions
 
 	public abstract getLinks(): Promise<DocumentLinkData[]>
+
+	public abstract getColours(): Promise<ColourInformationStringify[]>
 }

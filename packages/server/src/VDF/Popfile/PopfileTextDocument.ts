@@ -563,6 +563,26 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 				return links
 			},
+
+			getColours: ({ next }) => {
+				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
+				return next((colours, documentSymbol) => {
+					if (documentSymbol.key.toLowerCase() == set_item_tint_rgb && documentSymbol.detail != undefined && /^\d+$/.test(documentSymbol.detail)) {
+						const colour = parseInt(documentSymbol.detail)
+
+						const red = ((colour >> 16) & 255) / 255
+						const green = ((colour >> 8) & 255) / 255
+						const blue = ((colour >> 0) & 255) / 255
+						const alpha = 255
+
+						colours.push({
+							range: documentSymbol.detailRange!,
+							color: { red, green, blue, alpha },
+							stringify: (colour) => (colour.red * 255 << 16 | colour.green * 255 << 8 | colour.blue * 255 << 0).toString(),
+						})
+					}
+				})
+			},
 			files: [
 				{
 					name: "class icon",
