@@ -3,8 +3,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { defer, map, of, shareReplay, switchMap, type Observable } from "rxjs"
-import { InlayHint, TextEdit } from "vscode-languageserver"
+import { defer, map, of, type Observable } from "rxjs"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
@@ -19,8 +18,6 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 
 	public static keyTransform = (key: string) => key.replace(/_(minmode|override|(lo|hi)def)$/, "")
 	public readonly workspace: VGUIWorkspace | null
-
-	public readonly inlayHints$: Observable<InlayHint[]>
 
 	constructor(
 		init: TextDocumentInit,
@@ -106,78 +103,5 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 		})
 
 		this.workspace = workspace
-
-		this.inlayHints$ = this.configuration.dependencies$.pipe(
-			switchMap((dependencies) => {
-				// if (dependencies.schema != VGUISchema) {
-				// 	return of([])
-				// }
-
-				return this.definitionReferences$.pipe(
-					switchMap((definitionReferences) => {
-						return this.documentSymbols$.pipe(
-							map((documentSymbols) => {
-								return {
-									documentSymbols,
-									definitionReferences
-								}
-							})
-						)
-					}),
-					map(({ documentSymbols, definitionReferences }) => {
-						const string = Symbol.for("string")
-						return documentSymbols.reduceRecursive(
-							[] as InlayHint[],
-							(inlayHints, documentSymbol) => {
-								if (documentSymbol.children) {
-									return inlayHints
-								}
-
-								const documentSymbolKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
-								if (documentSymbolKey in dependencies.schema.values) {
-									const valueData = dependencies.schema.values[documentSymbolKey]
-									if (valueData.enumIndex) {
-										const index = parseInt(documentSymbol.detail!)
-										if (!isNaN(index) && index >= 0 && index < valueData.values.length) {
-											inlayHints.push({
-												position: documentSymbol.detailRange!.end,
-												label: valueData.values[index],
-												textEdits: [TextEdit.replace(documentSymbol.detailRange!, valueData.values[index])],
-												paddingLeft: true,
-											})
-										}
-									}
-								}
-
-								const definitionReferencesConfiguration = dependencies
-									.schema
-									.definitionReferences
-									.values()
-									.filter((definitionReference): definitionReference is typeof definitionReference & { reference: NonNullable<typeof definitionReference["reference"]> } => definitionReference.reference != undefined)
-									.find(({ reference: { keys } }) => keys.has(documentSymbolKey))
-
-								if (definitionReferencesConfiguration != undefined && definitionReferencesConfiguration.type == string) {
-									const detail = definitionReferencesConfiguration.reference.toDefinition
-										? definitionReferencesConfiguration.reference.toDefinition(documentSymbol.detail!)
-										: documentSymbol.detail!
-
-									const definitions = definitionReferences.definitions.get(null, definitionReferencesConfiguration.type, detail)
-									if (definitions?.[0].detail) {
-										inlayHints.push({
-											position: documentSymbol.detailRange!.end,
-											label: definitions[0].detail,
-											paddingLeft: true,
-										})
-									}
-								}
-
-								return inlayHints
-							}
-						)
-					})
-				)
-			}),
-			shareReplay({ bufferSize: 1, refCount: true })
-		)
 	}
 }

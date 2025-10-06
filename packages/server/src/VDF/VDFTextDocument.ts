@@ -57,6 +57,7 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 	getDiagnostics(params: DiagnosticsHandlerParams<TDocument>): DiagnosticCodeActions
 	getLinks(params: DocumentLinksHandlerParams<TDocument>): DocumentLinkData[]
 	getColours(params: DocumentColoursHandlerParams<TDocument>): ColourInformationStringify[]
+	getInlayHints(params: DocumentInlayHintsHandlerParams<TDocument>): Promise<InlayHint[]>
 	files: {
 		name: string
 		keys: Set<string>
@@ -110,6 +111,11 @@ export interface DocumentColoursHandlerParams<TDocument extends VDFTextDocument<
 	next: (callback: (colours: ColourInformationStringify[], documentSymbol: VDFDocumentSymbol) => void) => ColourInformationStringify[]
 }
 
+export interface DocumentInlayHintsHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+	dependencies: VDFTextDocumentDependencies<TDocument>
+	documentSymbols: VDFDocumentSymbol[]
+}
+
 export const enum VGUIAssetType {
 	None = 0,
 	Image = 1
@@ -157,7 +163,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	 * #base
 	 */
 	public readonly base$: Observable<string[]>
-	public abstract readonly inlayHints$: Observable<InlayHint[]>
 
 	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
 
@@ -969,6 +974,27 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					<ColourInformationStringify[]>[]
 				)
 			},
+		})
+	}
+
+	public async getInlayHints(): Promise<InlayHint[]> {
+		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
+			documentSymbols: this.documentSymbols$,
+			dependencies: this.configuration.dependencies$
+		}))
+
+		const { base = [], rest = [] } = Object.groupBy(
+			documentSymbols,
+			(documentSymbol) => {
+				return documentSymbol.key.toLowerCase() == "#base"
+					? "base"
+					: "rest"
+			}
+		)
+
+		return dependencies.schema.getInlayHints({
+			dependencies: dependencies,
+			documentSymbols: rest
 		})
 	}
 }

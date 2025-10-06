@@ -65,6 +65,9 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 		getColours: (params) => {
 			return []
 		},
+		getInlayHints: async (params) => {
+			return []
+		},
 		files: [
 			{
 				name: "file",

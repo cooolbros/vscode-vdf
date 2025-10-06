@@ -1,7 +1,7 @@
 import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CompletionItemKind } from "vscode-languageserver"
+import { CompletionItemKind, InlayHint } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { ColourInformationStringify, DocumentLinkData } from "../../../TextDocumentBase"
 import { KeyDistinct, VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
@@ -309,6 +309,47 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			})
 
 			return colours
+		},
+		getInlayHints: async ({ documentSymbols }) => {
+			const inlayHints: InlayHint[] = []
+
+			const font = (documentSymbol: VDFDocumentSymbol) => {
+				if (documentSymbol.children != undefined) {
+					documentSymbol.children.forAll((documentSymbol) => {
+						if (documentSymbol.key.toLowerCase() == "range" && documentSymbol.detail) {
+							const label = [
+								...documentSymbol
+									.detail
+									.matchAll(/\b0x[\da-fA-F]+\b/gi)
+									.map((match) => parseInt(match[0]))
+									.filter((value) => value > 0)
+									.map((value) => value.toString())
+							].join(" ")
+
+							if (label != "") {
+								inlayHints.push({
+									position: documentSymbol.detailRange!.end,
+									label: label,
+									paddingLeft: true,
+								})
+							}
+						}
+					})
+				}
+			}
+
+			documentSymbols.forEach((documentSymbols) => {
+				if (!documentSymbols.children) {
+					return
+				}
+
+				SchemeForEach(documentSymbols.children, {
+					Fonts: font,
+					CustomFontFiles: font,
+				})
+			})
+
+			return inlayHints
 		},
 		files: [
 			{

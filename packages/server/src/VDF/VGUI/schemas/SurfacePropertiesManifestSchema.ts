@@ -23,6 +23,7 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 		getDiagnostics: schema.getDiagnostics,
 		getLinks: schema.getLinks,
 		getColours: schema.getColours,
+		getInlayHints: schema.getInlayHints,
 		files: [
 			{
 				name: "file",

@@ -3,7 +3,7 @@ import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { combineLatest, combineLatestWith, firstValueFrom, from, map, of, shareReplay, zip, type Observable } from "rxjs"
+import { combineLatest, firstValueFrom, from, map, of, zip, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
@@ -561,7 +561,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 				return links
 			},
-
 			getColours: ({ next }) => {
 				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
 				return next((colours, documentSymbol) => {
@@ -580,6 +579,40 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						})
 					}
 				})
+			},
+			getInlayHints: async ({ documentSymbols }) => {
+				const paints = await firstValueFrom(document.workspace.paints$)
+				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
+				return documentSymbols.reduce(
+					(inlayHints, documentSymbol) => {
+						if (!documentSymbol.children) {
+							return inlayHints
+						}
+
+						inlayHints.push(
+							...documentSymbol.children.reduceRecursive(
+								<InlayHint[]>[],
+								(inlayHints, documentSymbol) => {
+									if (documentSymbol.key.toLowerCase() == set_item_tint_rgb && documentSymbol.detail != undefined) {
+										if (paints.has(documentSymbol.detail!)) {
+											inlayHints.push({
+												position: documentSymbol.detailRange!.end,
+												label: paints.get(documentSymbol.detail!)!,
+												kind: InlayHintKind.Type,
+												paddingLeft: true
+											})
+										}
+									}
+
+									return inlayHints
+								}
+							)
+						)
+
+						return inlayHints
+					},
+					<InlayHint[]>[]
+				)
 			},
 			files: [
 				{
@@ -654,7 +687,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	}
 
 	public readonly workspace: PopfileWorkspace
-	public readonly inlayHints$: Observable<InlayHint[]>
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
 
 	constructor(
@@ -726,29 +758,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		})
 
 		this.workspace = workspace
-
-		this.inlayHints$ = this.documentSymbols$.pipe(
-			combineLatestWith(workspace.paints$),
-			map(([documentSymbols, paints]) => {
-				return documentSymbols.reduceRecursive(
-					[] as InlayHint[],
-					(inlayHints, documentSymbol) => {
-						if (documentSymbol.key.toLowerCase() == "set item tint rgb".toLowerCase() && documentSymbol.detailRange) {
-							if (paints.has(documentSymbol.detail!)) {
-								inlayHints.push({
-									position: documentSymbol.detailRange.end,
-									label: paints.get(documentSymbol.detail!)!,
-									kind: InlayHintKind.Type,
-									paddingLeft: true
-								})
-							}
-						}
-						return inlayHints
-					}
-				)
-			}),
-			shareReplay({ bufferSize: 1, refCount: true })
-		)
 
 		this.decorations$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {

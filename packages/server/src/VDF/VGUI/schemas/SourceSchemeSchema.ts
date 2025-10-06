@@ -26,6 +26,7 @@ export const SourceSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 		},
 		getLinks: schema.getLinks,
 		getColours: schema.getColours,
+		getInlayHints: schema.getInlayHints,
 		files: [],
 		colours: {
 			keys: null,

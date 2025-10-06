@@ -1,6 +1,5 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { generateTokens } from "common/generateTokens"
-import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
@@ -8,7 +7,7 @@ import { firstValueFrom, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { CompletionItem, CompletionItemKind, InlayHint, InlayHintRequest, MarkupKind, Range, TextEdit, type Connection, type DocumentFormattingParams, type InlayHintParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CompletionItem, CompletionItemKind, MarkupKind, Range, TextEdit, type Connection, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
@@ -33,19 +32,11 @@ export abstract class VDFLanguageServer<
 		super(languageId, name, connection, {
 			platform: VDFLanguageServerConfiguration.platform,
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
-			capabilities: {
-				...VDFLanguageServerConfiguration.capabilities,
-				inlayHintProvider: true,
-			},
+			capabilities: VDFLanguageServerConfiguration.capabilities,
 			createDocument: async (init, documentConfiguration$) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$)
 		})
 
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
-
-		this.connection.onRequest(InlayHintRequest.method, async (params: InlayHintParams): Promise<InlayHint[]> => {
-			await using document = await this.documents.get(new Uri(params.textDocument.uri))
-			return await firstValueFrom(document.inlayHints$)
-		})
 	}
 
 	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {

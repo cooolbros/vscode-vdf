@@ -59,6 +59,13 @@ const sounds = new Set([
 	"sound_released"
 ])
 
+const enumIndexKeys = new Map([
+	["autoresize", "autoResize"],
+	["pin_corner_to_sibling", "pin_corner_to_sibling"],
+	["pin_to_sibling_corner", "pin_to_sibling_corner"],
+	["pincorner", "pinCorner"],
+])
+
 export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
 
 	const match = (type: symbol, match: (detail: string) => string | null) => {
@@ -337,6 +344,62 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 					})
 				}
 			})
+		},
+		getInlayHints: async ({ dependencies, documentSymbols }) => {
+			const definitionReferences = await firstValueFrom(document.definitionReferences$)
+			return documentSymbols.reduce(
+				(inlayHints, documentSymbol) => {
+					if (!documentSymbol.children) {
+						return inlayHints
+					}
+
+					inlayHints.push(
+						...documentSymbol.children.reduceRecursive(
+							<InlayHint[]>[],
+							(inlayHints, documentSymbol) => {
+								if (documentSymbol.detail == undefined) {
+									return inlayHints
+								}
+
+								const key = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
+
+								const name = enumIndexKeys.get(key)
+								if (name != undefined) {
+									const data = dependencies.schema.values[name]
+									if (data.enumIndex) {
+										const index = parseInt(documentSymbol.detail)
+										if (!isNaN(index) && index >= 0 && index < data.values.length) {
+											inlayHints.push({
+												position: documentSymbol.detailRange!.end,
+												label: data.values[index],
+												textEdits: [TextEdit.replace(documentSymbol.detailRange!, data.values[index])],
+												paddingLeft: true,
+											})
+										}
+									}
+									return inlayHints
+								}
+
+								if (strings.find((string) => string.toLowerCase() == key) != undefined && documentSymbol.detail[0] == "#") {
+									const definitions = definitionReferences.definitions.get(null, Symbol.for("string"), documentSymbol.detail.substring(1))
+									if (definitions?.[0].detail) {
+										inlayHints.push({
+											position: documentSymbol.detailRange!.end,
+											label: definitions[0].detail,
+											paddingLeft: true,
+										})
+									}
+								}
+
+								return inlayHints
+							}
+						)
+					)
+
+					return inlayHints
+				},
+				<InlayHint[]>[]
+			)
 		},
 		files: [
 			{

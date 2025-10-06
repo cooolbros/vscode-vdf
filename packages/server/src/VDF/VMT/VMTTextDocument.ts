@@ -5,7 +5,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { firstValueFrom, map, of, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
-import { CompletionItemKind, DiagnosticSeverity, InlayHint, InsertTextFormat } from "vscode-languageserver"
+import { CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
 import type { DiagnosticCodeActions, DocumentLinkData, TextDocumentInit } from "../../TextDocumentBase"
 import type { WorkspaceBase } from "../../WorkspaceBase"
@@ -145,6 +145,9 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 					}
 				})
 			},
+			getInlayHints: async (params) => {
+				return []
+			},
 			files: [
 				{
 					name: "image",
@@ -223,8 +226,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 	public readonly workspace: WorkspaceBase | null
 
-	public readonly inlayHints$: Observable<InlayHint[]>
-
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
@@ -260,7 +261,5 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 		})
 
 		this.workspace = workspace
-
-		this.inlayHints$ = of([])
 	}
 }

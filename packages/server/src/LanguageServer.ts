@@ -15,7 +15,7 @@ import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type { FileType } from "vscode"
-import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, InlayHint, InlayHintRequest, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type InlayHintParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
@@ -47,6 +47,7 @@ const capabilities = {
 		resolveProvider: true,
 	},
 	colorProvider: true,
+	inlayHintProvider: true,
 	documentFormattingProvider: true,
 	renameProvider: {
 		prepareProvider: true
@@ -91,6 +92,7 @@ export abstract class LanguageServer<
 	private readonly documentDiagnostics: WeakMap<TDocument, Map<number, DiagnosticCodeAction>>
 	private readonly documentsLinks: WeakMap<TDocument, { version: number, promise: Promise<(Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } })[]> }>
 	private readonly documentsColours: Map<string, { version: number, promise: Promise<{ colours: ColourInformationStringify[], map: Map<string, (colour: Color) => string> }> }>
+	private readonly documentsInlayHints: WeakMap<TDocument, { version: number, promise: Promise<InlayHint[]> }>
 
 	private oldName: [number | null, symbol, string] | null = null
 
@@ -238,6 +240,7 @@ export abstract class LanguageServer<
 		this.documentDiagnostics = new WeakMap()
 		this.documentsLinks = new WeakMap()
 		this.documentsColours = new Map()
+		this.documentsInlayHints = new WeakMap()
 
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server`)
@@ -285,6 +288,7 @@ export abstract class LanguageServer<
 		this.connection.onDocumentLinkResolve((documentLink) => this.onDocumentLinkResolve(documentLink))
 		this.onTextDocumentRequest(this.connection.onDocumentColor, this.onDocumentColor)
 		this.onTextDocumentRequest(this.connection.onColorPresentation, this.onColorPresentation)
+		this.onTextDocumentRequest((handler: GenericRequestHandler<InlayHint[] | null, void>) => this.connection.onRequest(InlayHintRequest.method, handler), this.onInlayHint)
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
 
@@ -417,6 +421,7 @@ export abstract class LanguageServer<
 				this.documentDiagnostics.delete(event.document)
 				this.documentsLinks.delete(event.document)
 				this.documentsColours.delete(event.document.uri.toString())
+				this.documentsInlayHints.delete(event.document)
 			}
 		}
 	}
@@ -527,6 +532,24 @@ export abstract class LanguageServer<
 		}
 
 		return [{ label: stringify(colour) }]
+	}
+
+	private async onInlayHint(params: TextDocumentRequestParams<InlayHintParams>) {
+
+		await using document = await this.documents.get(params.textDocument.uri)
+
+		let documentInlayHints = this.documentsInlayHints.get(document)
+		if (documentInlayHints?.version == document.version) {
+			return await documentInlayHints.promise
+		}
+
+		documentInlayHints = {
+			version: document.version,
+			promise: document.getInlayHints()
+		}
+
+		this.documentsInlayHints.set(document, documentInlayHints)
+		return await documentInlayHints.promise
 	}
 
 	private async onCompletion(params: TextDocumentRequestParams<CompletionParams>) {

@@ -57,6 +57,9 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 		getColours: (params) => {
 			return []
 		},
+		getInlayHints: async (params) => {
+			return []
+		},
 		files: [],
 		colours: {
 			keys: null,

@@ -5,7 +5,7 @@ import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnima
 import { posix } from "path"
 import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
-import { DiagnosticSeverity, DiagnosticTag, TextEdit } from "vscode-languageserver"
+import { DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 import { Fonts } from "../VDF/VGUI/clientscheme.json"
@@ -450,6 +450,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 	}
 
 	public async getColours() {
+		return []
+	}
+
+	public async getInlayHints(): Promise<InlayHint[]> {
 		return []
 	}
 }
