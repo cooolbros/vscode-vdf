@@ -200,31 +200,28 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()
 
-			for (const documentSymbol of documentSymbols) {
-				if (documentSymbol.children != undefined) {
-					definitions.set(null, element, documentSymbol.key, {
-						uri: document.uri,
-						key: documentSymbol.key,
-						range: documentSymbol.range,
-						keyRange: documentSymbol.nameRange,
-						nameRange: documentSymbol.children.find((i) => i.key.toLowerCase() == "fieldName".toLowerCase() && i.detail != undefined)?.detailRange,
-						detail: documentSymbol.detail,
-						documentation: document.definitions.documentation(documentSymbol),
-						conditional: documentSymbol.conditional ?? undefined,
-					})
-
-					documentSymbol.children.forAll((documentSymbol) => {
-						if (documentSymbol.detail != undefined) {
-							const referenceKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
-							for (const { type, reference } of this.definitionReferences) {
-								if (reference?.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
-									references.set(null, type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
-								}
-							}
+			documentSymbols.forAll((documentSymbol) => {
+				if (documentSymbol.detail != undefined) {
+					const referenceKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
+					for (const { type, reference } of this.definitionReferences) {
+						if (reference?.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
+							references.set(null, type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
 						}
-					})
+					}
+					return
 				}
-			}
+
+				definitions.set(null, element, documentSymbol.key, {
+					uri: document.uri,
+					key: documentSymbol.key,
+					range: documentSymbol.range,
+					keyRange: documentSymbol.nameRange,
+					nameRange: documentSymbol.children!.find((i) => i.key.toLowerCase() == "fieldName".toLowerCase() && i.detail != undefined)?.detailRange,
+					detail: documentSymbol.detail,
+					documentation: document.definitions.documentation(documentSymbol),
+					conditional: documentSymbol.conditional ?? undefined,
+				})
+			})
 
 			return {
 				scopes: scopes,
