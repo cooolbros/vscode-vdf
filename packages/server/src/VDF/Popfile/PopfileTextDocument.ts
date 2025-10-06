@@ -314,7 +314,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateWaitForAll = string(reference(
 			Symbol.for("wavespawn"),
-			(key, detail, detailRange, path, context, definitions) => {
+			(key, detail, detailRange, documentSymbol, path, context, definitions) => {
 				const diagnostics: DiagnosticCodeActions = []
 
 				// WaveSchedule.children == undefined
