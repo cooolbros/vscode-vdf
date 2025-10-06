@@ -1,6 +1,6 @@
 import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
-import { CompletionItemKind, DiagnosticSeverity, TextEdit } from "vscode-languageserver"
+import { CompletionItemKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
 import { VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
