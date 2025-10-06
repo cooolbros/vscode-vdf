@@ -149,7 +149,7 @@ export const enum KeyDistinct {
 	Last,
 }
 
-export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (name: string, detail: string, detailRange: VDFRange, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (name: string, detail: string, detailRange: VDFRange, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
 
 export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeAction) => DiagnosticCodeActions
 
@@ -179,7 +179,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				})
 			}
 			else {
-				diagnostics.push(...refine?.(key, documentSymbol.detail, documentSymbol.detailRange!, path, context) ?? [])
+				diagnostics.push(...refine?.(key, documentSymbol.detail, documentSymbol.detailRange!, documentSymbol, path, context) ?? [])
 			}
 
 			return diagnostics
@@ -414,7 +414,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		},
 		dynamic: (key: string) => {
 			const id = key.toLowerCase()
-			return this.diagnostics.string((name, detail, detailRange, path, context) => {
+			return this.diagnostics.string((name, detail, detailRange, documentSymbol, path, context) => {
 				if (id in context.dependencies.schema.values) {
 					const values = context.dependencies.schema.values[id].values
 					if (!values.some((value) => value.toLowerCase() == detail.toLowerCase())) {
@@ -431,7 +431,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			})
 		},
 		reference: (type: symbol, refine?: (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions): RefineString<TDocument> => {
-			return (key, detail, detailRange, path, context) => {
+			return (key, detail, detailRange, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 
 				const scope = context.definitionReferences.scopes.get(type)?.entries().find(([scope, range]) => range.contains(detailRange))?.[0] ?? null
@@ -472,7 +472,26 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 				}
 				else {
-					diagnostics.push(...refine?.(key, detail, detailRange, path, context, definitions) ?? [])
+					if (definitions.some((definition) => Uri.equals(definition.uri, this.uri) && definition.range.contains(detailRange))) {
+						diagnostics.push({
+							range: detailRange,
+							severity: DiagnosticSeverity.Warning,
+							code: "self-reference",
+							source: this.languageId,
+							message: `${key} '${detail}' references itself.`,
+							data: {
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: `Remove ${key}`,
+										isPreferred: true,
+										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+									}
+								},
+							}
+						})
+					}
+
+					diagnostics.push(...refine?.(key, detail, detailRange, documentSymbol, path, context, definitions) ?? [])
 				}
 
 				return diagnostics
