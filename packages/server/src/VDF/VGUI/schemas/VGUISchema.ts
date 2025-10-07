@@ -353,7 +353,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 					inlayHints.push(
 						...documentSymbol.children.reduceRecursive(
 							<InlayHint[]>[],
-							(inlayHints, documentSymbol) => {
+							(inlayHints, documentSymbol, path) => {
 								if (documentSymbol.detail == undefined) {
 									return inlayHints
 								}
@@ -385,6 +385,37 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 											label: definitions[0].detail,
 											paddingLeft: true,
 										})
+									}
+								}
+
+								if ((key == "wide" || key == "tall") && /^o\d?\.?\d+$/.test(documentSymbol.detail)) {
+									const detail = path.at(-1)?.children?.find(
+										key == "wide"
+											? (documentSymbol) => documentSymbol.key.toLowerCase() == "tall"
+											: (documentSymbol) => documentSymbol.key.toLowerCase() == "wide"
+									)?.detail
+
+									if (detail != undefined) {
+										if (/^p\d?\.?\d+$/.test(detail)) {
+											const label = parseFloat(detail.substring(1)) * parseFloat(documentSymbol.detail!.substring(1))
+											if (!isNaN(label)) {
+												inlayHints.push({
+													position: documentSymbol.detailRange!.end,
+													label: `p${Number.isInteger(label) ? label : label.toFixed(2)}`,
+													paddingLeft: true,
+												})
+											}
+										}
+										else if (/^\d+$/.test(detail)) {
+											const label = parseFloat(detail) * parseFloat(documentSymbol.detail!.substring(1))
+											if (!isNaN(label)) {
+												inlayHints.push({
+													position: documentSymbol.detailRange!.end,
+													label: `${Number.isInteger(label) ? label : label.toFixed(2)}`,
+													paddingLeft: true,
+												})
+											}
+										}
 									}
 								}
 
