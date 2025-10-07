@@ -433,6 +433,9 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		reference: (type: symbol, refine?: (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions): RefineString<TDocument> => {
 			return (key, detail, detailRange, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
+				if (detail == "") {
+					return diagnostics
+				}
 
 				const scope = context.definitionReferences.scopes.get(type)?.entries().find(([scope, range]) => range.contains(detailRange))?.[0] ?? null
 				const definitions = context.definitionReferences.definitions.get(scope, type, detail)
@@ -499,11 +502,10 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		},
 		file: (name: string, folder: string | null, extension: string | null) => {
 			return this.string((name, detail, detailRange, path, context) => {
-				if (detail == "") {
-					return []
-				}
-
 				const diagnostics: DiagnosticCodeActions = []
+				if (detail == "") {
+					return diagnostics
+				}
 
 				const value = detail.replaceAll(/[/\\]+/g, "/")
 
