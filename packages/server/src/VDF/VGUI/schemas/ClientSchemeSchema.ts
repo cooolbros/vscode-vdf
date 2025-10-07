@@ -49,23 +49,21 @@ function SchemeForEach(documentSymbols: VDFDocumentSymbols, callbacks: Partial<S
 
 export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
 
+	const documentSymbols = document.diagnostics.documentSymbols(document.uri.basename().toLowerCase() == "clientscheme.res" ? KeyDistinct.First : KeyDistinct.None)
+
 	const next = document.diagnostics.next({
 		"color": document.diagnostics.string(document.diagnostics.reference(Symbol.for("color")))
 	})
 
 	const getDiagnostics = document.diagnostics.header(
-		document.diagnostics.documentSymbols(
-			document.uri.basename().toLowerCase() == "clientscheme.res" ? KeyDistinct.First : KeyDistinct.None,
-			{
-				"Colors": [next],
-				"BaseSettings": [next],
-				"BitmapFontFiles": [next],
-				"Fonts": [next],
-				"Borders": [next],
-				"CustomFontFiles": [next],
-			},
-			(documentSymbol, path, context, unknown) => [unknown()],
-		),
+		documentSymbols({
+			"Colors": [next],
+			"BaseSettings": [next],
+			"BitmapFontFiles": [next],
+			"Fonts": [next],
+			"Borders": [next],
+			"CustomFontFiles": [next],
+		}, (documentSymbol, path, context, unknown) => [unknown()]),
 		false
 	)
 

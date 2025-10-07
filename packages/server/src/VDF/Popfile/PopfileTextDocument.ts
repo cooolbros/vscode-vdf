@@ -24,17 +24,19 @@ const sounds = new Set([
 export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 	public static readonly Schema = (document: PopfileTextDocument): VDFTextDocumentSchema<PopfileTextDocument> => {
-		const { unreachable, any, header, documentSymbols, string, length, integer, float, set, dynamic, reference } = document.diagnostics
+		const { unreachable, any, header, string, length, integer, float, set, dynamic, reference } = document.diagnostics
 
-		const validateMob = documentSymbols(KeyDistinct.Last, {
+		const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.Last, (key, parent) => `Unknown attribute '${key}' in ${parent} definition.`)
+
+		const validateMob = documentSymbols({
 			"Count": [integer],
 		}, (documentSymbol, path, context, unknown) => validateSpawner("Mob", documentSymbol, path, context))
 
-		const validateRandomChoice = documentSymbols(KeyDistinct.Last, {}, (documentSymbol, path, context) => validateSpawner("RandomChoice", documentSymbol, path, context))
+		const validateRandomChoice = documentSymbols({}, (documentSymbol, path, context) => validateSpawner("RandomChoice", documentSymbol, path, context))
 
-		const validateSentryGun = documentSymbols(KeyDistinct.Last, { "Level": [set(["1", "2", "3"])] })
+		const validateSentryGun = documentSymbols({ "Level": [set(["1", "2", "3"])] })
 
-		const validateSquadDocumentSymbols = documentSymbols(KeyDistinct.Last, {
+		const validateSquadDocumentSymbols = documentSymbols({
 			"FormationSize": [float],
 			"ShouldPreserveSquad": [set(["0", "1"])]
 		}, (documentSymbol, path, context) => validateSpawner("Squad", documentSymbol, path, context))
@@ -65,7 +67,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			return diagnostics
 		}
 
-		const validateEvent = documentSymbols(KeyDistinct.Last, {
+		const validateEvent = documentSymbols({
 			"Action": [string()],
 			"Delay": [float],
 			// https://github.com/cooolbros/vscode-vdf/issues/29
@@ -73,7 +75,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"Target": [string()],
 		})
 
-		const validateTank = documentSymbols(KeyDistinct.Last, {
+		const validateTank = documentSymbols({
 			"Health": [integer],
 			"Name": [string()],
 			"OnBombDroppedOutput": [validateEvent],
@@ -86,7 +88,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		const validateItem = dynamic("Item")
 
 		const validateItemAttributes = (): Validate<PopfileTextDocument> => {
-			const validate = documentSymbols(KeyDistinct.Last, { "ItemName": [dynamic("ItemName")] }, () => [])
+			const validate = documentSymbols({ "ItemName": [dynamic("ItemName")] }, () => [])
 			return (key, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				diagnostics.push(...validate(key, documentSymbol, path, context))
@@ -111,7 +113,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		const dynamicAttributes: Record<string, [Validate<PopfileTextDocument>] | [Validate<PopfileTextDocument>, KeyDistinct]> = {
 			"Attributes": [set(values.attributes.values), KeyDistinct.None],
 			"BehaviorModifiers": [set(["Mobber", "Push"])],
-			"CharacterAttributes": [documentSymbols(KeyDistinct.Last, {}, () => [])],
+			"CharacterAttributes": [documentSymbols({}, () => [])],
 			"Item": [validateItem, KeyDistinct.None],
 			"ItemAttributes": [validateItemAttributes(), KeyDistinct.None],
 			"MaxVisionRange": [float, KeyDistinct.Last],
@@ -121,7 +123,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"WeaponRestrictions": [set(["MeleeOnly", "PrimaryOnly", "SecondaryOnly"]), KeyDistinct.Last],
 		}
 
-		const validateDynamicAttributes = documentSymbols(KeyDistinct.Last, dynamicAttributes)
+		const validateDynamicAttributes = documentSymbols(dynamicAttributes)
 
 		const validateClassIcon = string((name, detail, detailRange, path, context) => {
 			return [
@@ -178,12 +180,12 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			]
 		})
 
-		const validateTFBot = documentSymbols(KeyDistinct.Last, {
+		const validateTFBot = documentSymbols({
 			"AutoJumpMax": [float],
 			"AutoJumpMin": [float],
 			"Class": [set(values.class.values), KeyDistinct.Last],
 			"ClassIcon": [validateClassIcon, KeyDistinct.Last],
-			"EventChangeAttributes": [documentSymbols(KeyDistinct.Last, { "Default": [(key, documentSymbol, path, context) => validateTFBot(key, documentSymbol, path, context)] }, (documentSymbol, path, context, unknown) => validateDynamicAttributes(documentSymbol.key, documentSymbol, path, context))],
+			"EventChangeAttributes": [documentSymbols({ "Default": [(key, documentSymbol, path, context) => validateTFBot(key, documentSymbol, path, context)] }, (documentSymbol, path, context, unknown) => validateDynamicAttributes(documentSymbol.key, documentSymbol, path, context))],
 			"Health": [integer, KeyDistinct.Last],
 			"Name": [string(), KeyDistinct.Last],
 			"Scale": [float, KeyDistinct.Last],
@@ -263,7 +265,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			}
 		}
 
-		const validateMission = documentSymbols(KeyDistinct.Last, {
+		const validateMission = documentSymbols({
 			"BeginAtWave": [integer],
 			"CooldownTime": [float],
 			"DesiredCount": [integer],
@@ -343,7 +345,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateSound = document.diagnostics.file("sound", "sound", null)
 
-		const validateWaveSpawnDocumentSymbols = documentSymbols(KeyDistinct.Last, {
+		const validateWaveSpawnDocumentSymbols = documentSymbols({
 			"DoneOutput": [validateEvent],
 			"DoneWarningSound": [validateSound],
 			"FirstSpawnOutput": [validateEvent],
@@ -389,7 +391,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		}
 
 		const getDiagnostics = header(
-			documentSymbols(KeyDistinct.Last, {
+			documentSymbols({
 				"AddSentryBusterWhenDamageDealtExceeds": [integer],
 				"AddSentryBusterWhenKillCountExceeds": [integer],
 				"Advanced": [set(["1"])],
@@ -402,8 +404,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				"RandomPlacement": [any],
 				"RespawnWaveTime": [integer],
 				"StartingCurrency": [integer],
-				"Templates": [documentSymbols(KeyDistinct.Last, {}, (documentSymbol, path, context, unknown) => validateTFBot("template", documentSymbol, path, context)), KeyDistinct.First],
-				"Wave": [documentSymbols(KeyDistinct.Last, {
+				"Templates": [documentSymbols({}, (documentSymbol, path, context, unknown) => validateTFBot("template", documentSymbol, path, context)), KeyDistinct.First],
+				"Wave": [documentSymbols({
 					"Checkpoint": [set(["Yes"])],
 					"Description": [string()],
 					"DoneOutput": [validateEvent],

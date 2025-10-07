@@ -5,6 +5,7 @@ import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
 
 export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+	const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.First)
 	return {
 		keys: {},
 		values: {},
@@ -45,9 +46,9 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 			}
 		],
 		getDiagnostics: document.diagnostics.header(
-			document.diagnostics.documentSymbols(KeyDistinct.First, {
+			documentSymbols({
 				"Language": [document.diagnostics.string()],
-				"Tokens": [document.diagnostics.documentSymbols(KeyDistinct.First, {}, () => [])]
+				"Tokens": [documentSymbols({}, () => [])]
 			}),
 			false
 		),

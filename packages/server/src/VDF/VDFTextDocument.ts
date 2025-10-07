@@ -229,99 +229,101 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		documentSymbols: (distinct: KeyDistinct, schema: Record<string, [Validate<TDocument>] | [Validate<TDocument>, KeyDistinct]>, fallback?: Fallback<TDocument>): Validate<TDocument> => {
-			const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
-			return (key, documentSymbol, path, context) => {
-				const diagnostics: DiagnosticCodeActions = []
-				if (documentSymbol.children == undefined) {
-					diagnostics.push({
-						range: documentSymbol.detailRange!,
-						severity: DiagnosticSeverity.Warning,
-						code: "invalid-type",
-						source: this.languageId,
-						message: `Invalid ${key} type.`,
-					})
-				}
-				else {
+		documentSymbols: (distinct: KeyDistinct, message: (key: string, parent: string) => string = (key) => `Unknown key '${key}'.`) => {
+			return (schema: Record<string, [Validate<TDocument>] | [Validate<TDocument>, KeyDistinct]>, fallback?: Fallback<TDocument>): Validate<TDocument> => {
+				const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
+				return (name, documentSymbol, path, context) => {
+					const diagnostics: DiagnosticCodeActions = []
 					const parent = documentSymbol
-					parent.children!.forEach((documentSymbol) => {
-						if (documentSymbol.conditional != null && documentSymbol.conditional.length > "[$]".length) {
-							const conditional = documentSymbol.conditional.toLowerCase()
-							if (TextDocumentBase.conditionals.values().map((c) => c.toLowerCase()).find((c) => c == conditional) == undefined) {
-								return
+					if (parent.children == undefined) {
+						diagnostics.push({
+							range: documentSymbol.detailRange!,
+							severity: DiagnosticSeverity.Warning,
+							code: "invalid-type",
+							source: this.languageId,
+							message: `Invalid ${name} type.`,
+						})
+					}
+					else {
+						parent.children.forEach((documentSymbol) => {
+							if (documentSymbol.conditional != null && documentSymbol.conditional.length > "[$]".length) {
+								const conditional = documentSymbol.conditional.toLowerCase()
+								if (TextDocumentBase.conditionals.values().map((c) => c.toLowerCase()).find((c) => c == conditional) == undefined) {
+									return
+								}
 							}
-						}
 
-						const data = map.get(documentSymbol.key.toLowerCase())
-						if (data == undefined) {
-							const unknown = (): DiagnosticCodeAction => ({
-								range: documentSymbol.nameRange,
-								severity: DiagnosticSeverity.Warning,
-								code: "unknown-key",
-								source: this.languageId,
-								message: `Unknown key '${documentSymbol.key}'.`,
-							})
+							const data = map.get(documentSymbol.key.toLowerCase())
+							if (data == undefined) {
+								const unknown = (): DiagnosticCodeAction => ({
+									range: documentSymbol.nameRange,
+									severity: DiagnosticSeverity.Warning,
+									code: "unknown-key",
+									source: this.languageId,
+									message: message(documentSymbol.key, name),
+								})
 
-							diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, unknown) ?? [unknown()])
-						}
-						else {
+								diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, unknown) ?? [unknown()])
+							}
+							else {
 
-							// Distinct Keys
-							if (data.distinct != undefined && data.distinct != KeyDistinct.None) {
-								const find = data.distinct == KeyDistinct.First
-									? Array.prototype.find
-									: Array.prototype.findLast
+								// Distinct Keys
+								if (data.distinct != undefined && data.distinct != KeyDistinct.None) {
+									const find = data.distinct == KeyDistinct.First
+										? Array.prototype.find
+										: Array.prototype.findLast
 
-								const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
-								if (first != documentSymbol) {
+									const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+									if (first != documentSymbol) {
+										diagnostics.push({
+											range: documentSymbol.nameRange,
+											severity: DiagnosticSeverity.Warning,
+											code: "duplicate-key",
+											source: this.languageId,
+											message: `Duplicate key '${first.key}'`,
+											relatedInformation: [
+												{
+													location: {
+														uri: this.uri.toString(),
+														range: first.nameRange
+													},
+													message: `${first.key} is declared here.`
+												}
+											],
+											data: {
+												fix: ({ createDocumentWorkspaceEdit }) => {
+													return {
+														title: `Remove duplicate ${documentSymbol.key}`,
+														edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+													}
+												}
+											}
+										})
+									}
+								}
+
+								if (documentSymbol.key != data.key) {
 									diagnostics.push({
 										range: documentSymbol.nameRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "duplicate-key",
-										source: this.languageId,
-										message: `Duplicate key '${first.key}'`,
-										relatedInformation: [
-											{
-												location: {
-													uri: this.uri.toString(),
-													range: first.nameRange
-												},
-												message: `${first.key} is declared here.`
-											}
-										],
+										severity: DiagnosticSeverity.Hint,
+										message: data.key,
 										data: {
 											fix: ({ createDocumentWorkspaceEdit }) => {
 												return {
-													title: `Remove duplicate ${documentSymbol.key}`,
-													edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+													title: `Replace "${documentSymbol.key}" with "${data.key}"`,
+													edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, data.key))
 												}
 											}
 										}
 									})
 								}
-							}
 
-							if (documentSymbol.key != data.key) {
-								diagnostics.push({
-									range: documentSymbol.nameRange,
-									severity: DiagnosticSeverity.Hint,
-									message: data.key,
-									data: {
-										fix: ({ createDocumentWorkspaceEdit }) => {
-											return {
-												title: `Replace "${documentSymbol.key}" with "${data.key}"`,
-												edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, data.key))
-											}
-										}
-									}
-								})
+								diagnostics.push(...data.validate(data.key, documentSymbol, [...path, parent], context))
 							}
-
-							diagnostics.push(...data.validate(data.key, documentSymbol, [...path, parent], context))
-						}
-					})
+						})
+					}
+					return diagnostics
 				}
-				return diagnostics
 			}
 		},
 		string: this.string,
