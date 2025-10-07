@@ -5,7 +5,7 @@ import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanim
 import { BehaviorSubject, combineLatest, concat, concatMap, firstValueFrom, from, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
 import eventFiles from "./eventFiles.json"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimationsLanguageServer"
@@ -211,16 +211,16 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 					}
 				}
 
-				const definitionReferences = new DefinitionReferences(
-					new Map(),
-					new Definitions({
+				const definitionReferences = {
+					scopes: new Map(),
+					definitions: new Definitions({
 						collection: definitions,
 						globals: [
 							clientScheme,
 							...elements.map(({ elements: { definitions } }) => definitions),
 						]
 					}),
-					new References(
+					references: new References(
 						this.uri,
 						undefined,
 						[],
@@ -228,7 +228,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 							files.map((file) => <const>[file.document.uri.toString(), new References(file.document.uri, file.references, [])])
 						))
 					)
-				)
+				} satisfies DefinitionReferences
 
 				return {
 					definitionReferences: definitionReferences,

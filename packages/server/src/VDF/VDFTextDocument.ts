@@ -10,7 +10,7 @@ import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { Color, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
-import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
 export function resolveFileDetail<TDocument extends VDFTextDocument<TDocument>>(detail: string, configuration: VDFTextDocumentSchema<TDocument>["files"][number]) {

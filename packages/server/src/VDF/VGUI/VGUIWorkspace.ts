@@ -5,7 +5,7 @@ import { Uri } from "common/Uri"
 import { posix } from "path"
 import { BehaviorSubject, combineLatest, concatMap, defer, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../../DefinitionReferences"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import { VGUITextDocument } from "./VGUITextDocument"
 
@@ -177,14 +177,14 @@ export class VGUIWorkspace extends WorkspaceBase {
 					}
 				}
 
-				return new DefinitionReferences(
-					new Map(),
-					new Definitions({
+				return {
+					scopes: new Map(),
+					definitions: new Definitions({
 						collection: definitions,
 						globals: [],
 					}),
-					new References(this.uri, undefined, dependencies.map(({ references }) => references))
-				)
+					references: new References(this.uri, undefined, dependencies.map(({ references }) => references))
+				} satisfies DefinitionReferences
 			}),
 			shareReplay(1)
 		)

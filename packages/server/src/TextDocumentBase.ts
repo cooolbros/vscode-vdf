@@ -6,7 +6,7 @@ import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, 
 import { VDFRange, VDFSyntaxError, type IRange } from "vdf"
 import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
-import { DefinitionReferences, References } from "./DefinitionReferences"
+import { References, type DefinitionReferences } from "./DefinitionReferences"
 
 export interface TextDocumentInit {
 	uri: Uri

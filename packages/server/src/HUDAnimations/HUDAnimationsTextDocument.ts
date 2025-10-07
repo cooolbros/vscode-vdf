@@ -6,7 +6,7 @@ import { posix } from "path"
 import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import { DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
-import { Collection, DefinitionReferences, Definitions, References, type Definition } from "../DefinitionReferences"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 import { Fonts } from "../VDF/VGUI/clientscheme.json"
 import eventFiles from "./eventFiles.json"
@@ -114,17 +114,17 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 												return {
 													dependencies: {},
 													documentSymbols: documentSymbols,
-													definitionReferences: new DefinitionReferences(
-														new Map(),
-														new Definitions({
+													definitionReferences: {
+														scopes: new Map(),
+														definitions: new Definitions({
 															collection: definitions,
 															globals: [
 																...elements.map(({ definitions }) => definitions),
 																clientScheme
 															]
 														}),
-														new References(this.uri, references, [], this.references$)
-													)
+														references: new References(this.uri, references, [], this.references$)
+													} satisfies DefinitionReferences
 												}
 											})
 										)
@@ -160,11 +160,11 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 							return {
 								dependencies: {},
 								documentSymbols: documentSymbols,
-								definitionReferences: new DefinitionReferences(
-									new Map(),
-									new Definitions({ collection: definitions }),
-									new References(this.uri, references, [], this.references$)
-								)
+								definitionReferences: {
+									scopes: new Map(),
+									definitions: new Definitions({ collection: definitions }),
+									references: new References(this.uri, references, [], this.references$)
+								} satisfies DefinitionReferences
 							}
 						})
 					)

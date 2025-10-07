@@ -231,15 +231,8 @@ export class References {
 	}
 }
 
-export class DefinitionReferences {
-
-	public readonly scopes: Map<symbol, Map<number, VDFRange>>
-	public readonly definitions: Definitions
-	public readonly references: References
-
-	constructor(scopes: Map<symbol, Map<number, VDFRange>>, definitions: Definitions, references: References) {
-		this.scopes = scopes
-		this.definitions = definitions
-		this.references = references
-	}
+export interface DefinitionReferences {
+	readonly scopes: Map<symbol, Map<number, VDFRange>>
+	readonly definitions: Definitions
+	readonly references: References
 }
