@@ -15,6 +15,6 @@
         "vdf": "workspace:^",
         "vdf-documentsymbols": "workspace:^",
         "vdf-format": "workspace:^",
-        "vscode-languageserver": "*"
+        "vscode-languageserver": "catalog:"
     }
 }

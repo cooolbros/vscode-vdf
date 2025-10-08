@@ -4,9 +4,14 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  vscode-languageclient: ^9.0.1
-  vscode-languageserver: ^9.0.1
+catalogs:
+  default:
+    vscode-languageclient:
+      specifier: ^9.0.1
+      version: 9.0.1
+    vscode-languageserver:
+      specifier: ^9.0.1
+      version: 9.0.1
 
 importers:
 
@@ -139,7 +144,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageclient:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
 
   apps/extension/browser/servers:
@@ -151,7 +156,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
 
   apps/extension/desktop/client:
@@ -175,7 +180,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/vpk
       vscode-languageclient:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
 
   apps/extension/desktop/servers:
@@ -187,7 +192,7 @@ importers:
         specifier: workspace:^
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
 
   apps/vtf-editor:
@@ -255,7 +260,7 @@ importers:
         specifier: workspace:^
         version: link:../vdf-documentsymbols
       vscode-languageclient:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
       vtf-png:
         specifier: workspace:^
@@ -289,7 +294,7 @@ importers:
         specifier: workspace:^
         version: link:../vdf
       vscode-languageserver:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
 
   packages/hudanimations-format:
@@ -343,7 +348,7 @@ importers:
         specifier: workspace:^
         version: link:../vdf-format
       vscode-languageserver:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
     publishDirectory: src
 
@@ -377,7 +382,7 @@ importers:
         specifier: workspace:^
         version: link:../vdf
       vscode-languageserver:
-        specifier: ^9.0.1
+        specifier: 'catalog:'
         version: 9.0.1
 
   packages/vdf-format:

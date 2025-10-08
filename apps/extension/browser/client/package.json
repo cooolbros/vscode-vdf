@@ -8,6 +8,6 @@
         "client": "workspace:^",
         "common": "workspace:^",
         "tsconfig": "workspace:^",
-        "vscode-languageclient": "*"
+        "vscode-languageclient": "catalog:"
     }
 }

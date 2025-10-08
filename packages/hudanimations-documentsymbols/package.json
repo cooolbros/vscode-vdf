@@ -4,6 +4,6 @@
     "devDependencies": {
         "tsconfig": "workspace:^",
         "vdf": "workspace:^",
-        "vscode-languageserver": "*"
+        "vscode-languageserver": "catalog:"
     }
 }

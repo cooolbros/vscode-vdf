@@ -3,3 +3,8 @@ packages:
   - 'apps/extension/browser/*'
   - 'apps/extension/desktop/*'
   - 'packages/*'
+
+catalog:
+  vscode-languageclient: ^9.0.1
+  vscode-languageserver: ^9.0.1
+

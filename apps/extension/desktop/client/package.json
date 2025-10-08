@@ -11,6 +11,6 @@
         "tsconfig": "workspace:^",
         "vdf": "workspace:^",
         "vpk": "workspace:^",
-        "vscode-languageclient": "*"
+        "vscode-languageclient": "catalog:"
     }
 }

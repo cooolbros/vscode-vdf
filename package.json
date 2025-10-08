@@ -520,12 +520,6 @@
         "webpack-cli": "^6.0.1",
         "zod": "^4.1.5"
     },
-    "pnpm": {
-        "overrides": {
-            "vscode-languageclient": "^9.0.1",
-            "vscode-languageserver": "^9.0.1"
-        }
-    },
     "vsce": {
         "dependencies": false
     },
