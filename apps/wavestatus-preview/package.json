@@ -13,7 +13,8 @@
         "client": "workspace:^",
         "common": "workspace:^",
         "svelte": "catalog:",
-        "tsconfig": "workspace:^"
+        "tsconfig": "workspace:^",
+        "vite": "catalog:"
     },
     "type": "module"
 }

@@ -9,5 +9,6 @@ catalog:
   '@tsconfig/svelte': ^5.0.4
   '@types/vscode-webview': ^1.57.5
   svelte: ^5.39.10
+  vite: ^6.3.6
   vscode-languageclient: ^9.0.1
   vscode-languageserver: ^9.0.1

@@ -10,6 +10,7 @@
         "@types/vscode-webview": "catalog:",
         "client": "workspace:^",
         "svelte": "catalog:",
+        "vite": "catalog:",
         "vtf-canvas": "workspace:^"
     },
     "type": "module"
