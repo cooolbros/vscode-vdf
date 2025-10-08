@@ -333,6 +333,10 @@
                 "kind": 7
             },
             {
+                "label": "InitWaveOutput",
+                "kind": 7
+            },
+            {
                 "label": "WaveSpawn",
                 "kind": 7,
                 "multiple": true
