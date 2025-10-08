@@ -6,12 +6,13 @@
         "build": "vite build"
     },
     "devDependencies": {
-        "@sveltejs/vite-plugin-svelte": "^5.0.1",
-        "@tsconfig/svelte": "^5.0.4",
-        "@types/vscode-webview": "^1.57.5",
+        "@sveltejs/vite-plugin-svelte": "catalog:",
+        "@tsconfig/svelte": "catalog:",
+        "@types/vscode-webview": "catalog:",
         "@vscode/codicons": "^0.0.36",
         "client": "workspace:^",
         "common": "workspace:^",
+        "svelte": "catalog:",
         "tsconfig": "workspace:^"
     },
     "type": "module"
