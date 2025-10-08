@@ -6,10 +6,7 @@ export default {
 	target: "node",
 	devtool: "source-map",
 	entry: {
-		extension: [
-			import.meta.resolve("disposablestack/auto"),
-			posix.join(import.meta.dirname, "src/extension.ts")
-		]
+		extension: posix.join(import.meta.dirname, "src/extension.ts")
 	},
 	experiments: {
 		asyncWebAssembly: true,
