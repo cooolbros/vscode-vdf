@@ -185,12 +185,20 @@ export class PopfileWorkspace extends WorkspaceBase {
 	}
 
 	public async entities(basename: string) {
+		if (posix.extname(basename) != ".pop") {
+			return null
+		}
+
 		const maps = await this.fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })
 		const bsp = maps
 			.values()
 			.filter(([, type]) => type == 1)
-			.find(([name]) => basename.startsWith(posix.parse(name).name))
-			?.[0]
+			.map(([name]) => posix.parse(name).name)
+			.filter((name) => basename.startsWith(name))
+			.toArray()
+			.toSorted((a, b) => basename.substring(a.length).length - basename.substring(b.length).length)[0]
+
+		console.log(`${basename} => ${bsp != undefined ? `${bsp}.bsp` : null}`)
 
 		if (!bsp) {
 			return null
