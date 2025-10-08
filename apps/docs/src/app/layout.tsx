@@ -59,12 +59,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 			</Head>
 			<body>
 				<Layout
+					banner={banner}
+					copyPageButton={false}
+					docsRepositoryBase="https://github.com/cooolbros/vscode-vdf/tree/main/apps/docs"
+					editLink="Edit this page"
 					footer={footer}
 					navbar={navbar}
 					pageMap={await getPageMap()}
-					banner={banner}
-					docsRepositoryBase="https://github.com/cooolbros/vscode-vdf/tree/main/apps/docs"
-					editLink="Edit this page"
 				>
 					{children}
 				</Layout>
