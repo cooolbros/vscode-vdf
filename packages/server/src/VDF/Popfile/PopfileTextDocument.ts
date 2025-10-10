@@ -7,7 +7,7 @@ import { combineLatest, firstValueFrom, from, map, of, zip, type Observable } fr
 import type { VDFRange } from "vdf"
 import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
-import { type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
+import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
 import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Fallback, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
@@ -26,7 +26,27 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	public static readonly Schema = (document: PopfileTextDocument): VDFTextDocumentSchema<PopfileTextDocument> => {
 		const { unreachable, any, header, string, length, integer, float, set, dynamic, reference } = document.diagnostics
 
-		const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.Last, (key, parent) => `Unknown attribute '${key}' in ${parent} definition.`)
+		const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.Last, (key, parent, documentSymbol, context) => ({
+			message: `Unknown attribute '${key}' in ${parent} definition.`,
+			data: {
+				fix: ({ createDocumentWorkspaceEdit }) => {
+					const conditional = context.documentSymbols?.findRecursive((documentSymbol) => {
+						return documentSymbol.conditional != null && !TextDocumentBase.conditionals.values().some((conditional) => {
+							return conditional.toLowerCase() == documentSymbol.conditional?.toLowerCase()
+						})
+					})?.conditional
+
+					if (!conditional) {
+						return null
+					}
+
+					return {
+						title: `Add ${conditional}`,
+						edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detailRange ?? documentSymbol.nameRange).end, ` ${conditional}`))
+					}
+				},
+			}
+		}))
 
 		const validateMob = documentSymbols({
 			"Count": [integer],
