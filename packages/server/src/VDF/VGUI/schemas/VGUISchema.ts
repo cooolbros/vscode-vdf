@@ -436,7 +436,6 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 				folder: "materials/vgui",
 				extension: ".vmt",
 				extensionsPattern: ".vmt",
-				resolveBaseName: (value, withExtension) => withExtension(".vmt"),
 				toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
 				asset: VGUIAssetType.Image
 			},
@@ -446,7 +445,6 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 				folder: "sound",
 				extension: null,
 				extensionsPattern: null,
-				resolveBaseName: (value, withExtension) => value,
 			},
 			{
 				name: "model",
@@ -454,7 +452,6 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 				folder: null,
 				extension: null,
 				extensionsPattern: ".mdl",
-				resolveBaseName: (value, withExtension) => withExtension(".mdl"),
 			}
 		],
 		colours: {

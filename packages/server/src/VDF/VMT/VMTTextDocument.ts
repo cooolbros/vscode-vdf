@@ -155,7 +155,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 					folder: "materials",
 					extension: ".vtf",
 					extensionsPattern: ".vtf",
-					resolveBaseName: (value, withExtension) => withExtension(".vtf"),
 					toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
 				}
 			],

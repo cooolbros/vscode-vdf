@@ -358,7 +358,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				folder: null,
 				extension: null,
 				extensionsPattern: ".*tf",
-				resolveBaseName: (value, withExtension) => value,
 			},
 			{
 				name: "bitmap font file",
@@ -369,7 +368,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				folder: null,
 				extension: null,
 				extensionsPattern: null,
-				resolveBaseName: (value, withExtension) => value,
 			},
 			{
 				name: "image",
@@ -379,7 +377,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				folder: "materials/vgui",
 				extension: null,
 				extensionsPattern: ".vmt",
-				resolveBaseName: (value, withExtension) => withExtension(".vmt"),
 				asset: VGUIAssetType.Image
 			},
 		],

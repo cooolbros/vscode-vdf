@@ -645,7 +645,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					folder: "materials/hud",
 					extension: ".vmt",
 					extensionsPattern: ".vmt",
-					resolveBaseName: (value, withExtension) => `leaderboard_class_${withExtension(".vmt")}`,
 					toCompletionItem: (name, type, withoutExtension) => {
 						if (type == 1 && name.startsWith("leaderboard_class_")) {
 							const insertText = withoutExtension().substring("leaderboard_class_".length)
@@ -666,7 +665,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					folder: "sound",
 					extension: null,
 					extensionsPattern: null,
-					resolveBaseName: (value, withExtension) => value,
 				}
 			],
 			colours: {

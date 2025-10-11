@@ -33,7 +33,6 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 				folder: null,
 				extension: null,
 				extensionsPattern: ".txt",
-				resolveBaseName: (value, withExtension) => value,
 			},
 		],
 		colours: {

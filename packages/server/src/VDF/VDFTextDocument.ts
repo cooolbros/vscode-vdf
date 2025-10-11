@@ -50,7 +50,6 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 		folder: string | null
 		extension: string | null
 		extensionsPattern: `.${string}` | null
-		resolveBaseName: (value: string, withExtension: (extension: `.${string}`) => string) => string,
 		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
 		asset?: VGUIAssetType
 	}[]

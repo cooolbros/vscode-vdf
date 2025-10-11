@@ -78,7 +78,6 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 				folder: null,
 				extension: null,
 				extensionsPattern: null,
-				resolveBaseName: (value, withExtension) => value,
 			},
 		],
 		colours: {
