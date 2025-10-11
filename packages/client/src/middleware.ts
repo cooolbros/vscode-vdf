@@ -1,14 +1,12 @@
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
-import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { commands, CompletionList, EventEmitter, Hover, Position, Range, SignatureHelp, Uri, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, CompletionList, DocumentSymbol, EventEmitter, Hover, Position, Range, SignatureHelp, Uri, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import type { Middleware } from "vscode-languageclient"
 
 function createEmbeddedLanguageMiddleware(
 	context: ExtensionContext,
 	languageId: string,
 	extension: `.${string}`,
-	getVirtualRanges: (text: string) => Range[]
+	getVirtualRanges: (document: TextDocument) => Promise<Range[]>
 ): Middleware {
 	const documentContents = new Map<string, string>()
 	const eventEmitter = new EventEmitter<Uri>()
@@ -27,7 +25,7 @@ function createEmbeddedLanguageMiddleware(
 
 	async function middleware<T>({ document, position, next, embedded }: { document: TextDocument, position: Position, next: () => Promise<T>, embedded: (uri: Uri) => Promise<T> }) {
 		const text = document.getText()
-		const ranges = getVirtualRanges(text)
+		const ranges = await getVirtualRanges(document)
 		if (!ranges.length || !ranges.some((range) => range.contains(position))) {
 			return await next()
 		}
@@ -105,8 +103,11 @@ export function createMiddleware(context: ExtensionContext): Partial<Record<VSCo
 			context,
 			"squirrel",
 			".nut",
-			(text) => {
-				const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) })
+			async (document) => {
+				const documentSymbols = await commands.executeCommand<DocumentSymbol[] | undefined>("vscode.executeDocumentSymbolProvider", document.uri)
+				if (!documentSymbols) {
+					return []
+				}
 
 				const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.name.toLowerCase() != "#base")?.children
 				if (!waveSchedule) {
@@ -119,31 +120,30 @@ export function createMiddleware(context: ExtensionContext): Partial<Record<VSCo
 					"StartWaveOutput".toLowerCase(),
 				])
 
-				function event(documentSymbol: VDFDocumentSymbol) {
+				function event(documentSymbol: DocumentSymbol) {
 					if (!documentSymbol.children) {
 						return []
 					}
 
-					const action = documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Action".toLowerCase())?.detail?.toLowerCase()
+					const action = documentSymbol.children.findLast((documentSymbol) => documentSymbol.name.toLowerCase() == "Action".toLowerCase())?.detail?.toLowerCase()
 					if (action != "RunScriptCode".toLowerCase()) {
 						return []
 					}
 
-					const param = documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Param".toLowerCase())
-					if (!param?.detailRange) {
+					const param = documentSymbol.children.findLast((documentSymbol) => documentSymbol.name.toLowerCase() == "Param".toLowerCase())
+					if (!param) {
 						return []
 					}
 
-					const range = param.detailRange
-					return [new Range(new Position(range.start.line, range.start.character), new Position(range.end.line, range.end.character))]
+					return [param.range]
 				}
 
-				function collect(documentSymbol: VDFDocumentSymbol): Range[] {
+				function collect(documentSymbol: DocumentSymbol): Range[] {
 					if (!documentSymbol.children) {
 						return []
 					}
 
-					switch (documentSymbol.key.toLowerCase()) {
+					switch (documentSymbol.name.toLowerCase()) {
 						case "Mob".toLowerCase():
 						case "RandomChoice".toLowerCase():
 						case "SentryGun".toLowerCase():
@@ -154,7 +154,7 @@ export function createMiddleware(context: ExtensionContext): Partial<Record<VSCo
 						case "Tank".toLowerCase():
 							return documentSymbol
 								.children
-								.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "OnBombDroppedOutput".toLowerCase() || documentSymbol.key.toLowerCase() == "OnKilledOutput".toLowerCase())
+								.filter((documentSymbol) => documentSymbol.name.toLowerCase() == "OnBombDroppedOutput".toLowerCase() || documentSymbol.name.toLowerCase() == "OnKilledOutput".toLowerCase())
 								.flatMap(event)
 						default:
 							return []
@@ -164,11 +164,11 @@ export function createMiddleware(context: ExtensionContext): Partial<Record<VSCo
 				return [
 					...waveSchedule
 						.values()
-						.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Mission".toLowerCase())
+						.filter((documentSymbol) => documentSymbol.name.toLowerCase() == "Mission".toLowerCase())
 						.flatMap((documentSymbol) => documentSymbol.children?.flatMap(collect) ?? []),
 					...waveSchedule
 						.values()
-						.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase())
+						.filter((documentSymbol) => documentSymbol.name.toLowerCase() == "Wave".toLowerCase())
 						.flatMap((documentSymbol) => {
 							if (!documentSymbol.children) {
 								return []
@@ -178,7 +178,7 @@ export function createMiddleware(context: ExtensionContext): Partial<Record<VSCo
 								.children
 								.values()
 								.flatMap((documentSymbol) => {
-									const key = documentSymbol.key.toLowerCase()
+									const key = documentSymbol.name.toLowerCase()
 									if (key == "WaveSpawn".toLowerCase()) {
 										return documentSymbol.children?.flatMap(collect) ?? []
 									}
