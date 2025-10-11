@@ -667,29 +667,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					extensionsPattern: null,
 				}
 			],
-			colours: {
-				keys: {
-					include: new Set(["set item tint rgb"]),
-					exclude: null
-				},
-				colours: [
-					{
-						pattern: /\d+/,
-						parse(value) {
-							const colour = parseInt(value)
-							return {
-								red: ((colour >> 16) & 255) / 255,
-								green: ((colour >> 8) & 255) / 255,
-								blue: ((colour >> 0) & 255) / 255,
-								alpha: 255
-							}
-						},
-						stringify(colour) {
-							return (colour.red * 255 << 16 | colour.green * 255 << 8 | colour.blue * 255 << 0).toString()
-						}
-					}
-				],
-			},
 			completion: {
 				root: [
 					{
@@ -740,34 +717,30 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 								...attributes.values,
 								...entities?.values
 							},
-							colours: {
-								...schema.colours,
-								completion: {
-									presets: paints
+							completion: {
+								...schema.completion,
+								values: {
+									...entities?.completion.values,
+									"set item tint rgb": paints
 										.entries()
-										.map(([value, name]): CompletionItem => {
-											const colour = parseInt(value)
+										.map(([key, name]) => {
+
+											const colour = parseInt(key)
 											const r = (colour >> 16) & 255
 											const g = (colour >> 8) & 255
 											const b = (colour >> 0) & 255
 											return {
-												label: value,
+												label: name,
 												labelDetails: {
-													description: name
+													description: key
 												},
 												kind: CompletionItemKind.Color,
 												documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
 												filterText: name,
-												insertText: value,
-											}
+												insertText: key,
+											} satisfies CompletionItem
 										})
 										.toArray()
-								}
-							},
-							completion: {
-								...schema.completion,
-								values: {
-									...entities?.completion.values
 								}
 							}
 						} satisfies VDFTextDocumentSchema<PopfileTextDocument>,

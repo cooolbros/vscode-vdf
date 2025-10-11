@@ -273,14 +273,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 					},
 					completion: {
 						values: {
-							startingpathtracknode: {
-								kind: CompletionItemKind.Enum,
-								values: pathTracks
-							},
-							target: {
-								kind: CompletionItemKind.Enum,
-								values: targets
-							},
+							startingpathtracknode: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+							target: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
 						}
 					}
 				}

@@ -380,29 +380,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				asset: VGUIAssetType.Image
 			},
 		],
-		colours: {
-			keys: {
-				include: null,
-				exclude: new Set(["inset"])
-			},
-			colours: [
-				{
-					pattern: /^\s?\d+\s+\d+\s+\d+\s+\d+\s?$/,
-					parse(value) {
-						const colour = value.trim().split(/\s+/)
-						return {
-							red: parseInt(colour[0]) / 255,
-							green: parseInt(colour[1]) / 255,
-							blue: parseInt(colour[2]) / 255,
-							alpha: parseInt(colour[3]) / 255
-						}
-					},
-					stringify(colour) {
-						return `${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} ${Math.round(colour.alpha * 255)}`
-					},
-				}
-			]
-		},
 		completion: {
 			root: [],
 			typeKey: null,

@@ -126,7 +126,7 @@ export abstract class VDFLanguageServer<
 			const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
 
 			// Static
-			const valueData = schema.values[key] ?? schema.completion.values?.[key]
+			const valueData = schema.values[key]
 			if (valueData != undefined) {
 				return valueData
 					.values
@@ -185,20 +185,10 @@ export abstract class VDFLanguageServer<
 				})
 			}
 
-			// Colours
-			if (schema.colours.completion && schema.colours.keys) {
-
-				const include = schema.colours.keys.include != null
-					? schema.colours.keys.include.has(key)
-					: true
-
-				const exclude = schema.colours.keys.exclude != null
-					? schema.colours.keys.exclude.has(key)
-					: false
-
-				if (include && !exclude) {
-					return schema.colours.completion.presets
-				}
+			// Misc.
+			const items = schema.completion.values?.[key]
+			if (items != undefined) {
+				return items
 			}
 
 			return null

@@ -9,7 +9,7 @@ import { combineLatest, combineLatestWith, concat, connectable, defer, distinctU
 import { VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { Color, CompletionItem, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
+import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
@@ -53,25 +53,11 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
 		asset?: VGUIAssetType
 	}[]
-	colours: {
-		keys: {
-			include: Set<string> | null
-			exclude: Set<string> | null
-		} | null
-		colours: {
-			pattern: RegExp
-			parse(value: string): Color
-			stringify(colour: Color): string
-		}[],
-		completion?: {
-			presets: CompletionItem[]
-		}
-	}
 	completion: {
 		root: CompletionItem[]
 		typeKey: string | null
 		defaultType: string | null
-		values?: Record<string, { kind: CompletionItemKind, values: string[] }>
+		values?: Record<string, CompletionItem[]>
 	}
 }
 

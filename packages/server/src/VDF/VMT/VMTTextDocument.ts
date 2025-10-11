@@ -158,41 +158,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 					toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
 				}
 			],
-			colours: {
-				keys: null,
-				colours: [
-					{
-						pattern: /\[\s?[\d.]+\s+[\d.]+\s+[\d.]+\s?\]/,
-						parse(value) {
-							const colour = value.split(/[\s[\]]+/)
-							return {
-								red: parseFloat(colour[1]),
-								green: parseFloat(colour[2]),
-								blue: parseFloat(colour[3]),
-								alpha: 1
-							}
-						},
-						stringify(colour) {
-							return `[ ${colour.red.toFixed(2)} ${colour.green.toFixed(2)} ${colour.blue.toFixed(2)} ]`
-						},
-					},
-					{
-						pattern: /{\s?\d+\s+\d+\s+\d+\s?}/,
-						parse(value) {
-							const colour = value.split(/[\s{}]+/)
-							return {
-								red: parseInt(colour[1]) / 255,
-								green: parseInt(colour[2]) / 255,
-								blue: parseInt(colour[3]) / 255,
-								alpha: 1
-							}
-						},
-						stringify(colour) {
-							return `{ ${colour.red * 255} ${colour.green * 255} ${colour.blue * 255} }`
-						},
-					}
-				]
-			},
 			completion: {
 				root: [
 					{

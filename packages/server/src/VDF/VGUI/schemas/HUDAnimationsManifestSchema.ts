@@ -80,10 +80,6 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 				extensionsPattern: null,
 			},
 		],
-		colours: {
-			keys: null,
-			colours: []
-		},
 		completion: {
 			root: [
 				{
