@@ -13,20 +13,6 @@ import { Color, CompletionItem, CompletionItemKind, DiagnosticSeverity, Diagnost
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
-export function resolveFileDetail<TDocument extends VDFTextDocument<TDocument>>(detail: string, configuration: VDFTextDocumentSchema<TDocument>["files"][number]) {
-	const [basename, ...rest] = detail.replaceAll(/[/\\]+/g, "/").split("/").reverse()
-
-	return posix.resolve(
-		`/${configuration.folder ?? ""}`,
-		rest.reverse().join("/"),
-		configuration.resolveBaseName(basename, (extension) => {
-			return posix.extname(basename) == ""
-				? basename + extension
-				: basename
-		})
-	).substring(1)
-}
-
 export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument>> {
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions

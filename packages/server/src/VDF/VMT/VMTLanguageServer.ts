@@ -2,11 +2,11 @@ import type { TRPCCombinedDataTransformer, initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
+import { posix } from "path"
 import { combineLatest, of, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { resolveFileDetail } from "../VDFTextDocument"
 import { VMTTextDocument } from "./VMTTextDocument"
 import { VMTWorkspace } from "./VMTWorkspace"
 
@@ -80,12 +80,17 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 												return of(null)
 											}
 
-											const baseTexture = header.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase())?.detail
+											let baseTexture = header.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase())?.detail
 											if (!baseTexture) {
 												return of(null)
 											}
 
-											const path = resolveFileDetail(baseTexture, dependencies.schema.files.find(({ keys }) => keys.has("$baseTexture".toLowerCase()))!)
+											baseTexture = baseTexture.replaceAll(/[/\\]+/g, "/")
+											if (posix.extname(baseTexture) != ".vtf") {
+												baseTexture += ".vtf"
+											}
+
+											const path = posix.resolve(`/materials/${baseTexture}`).substring(1)
 											return document.fileSystem.resolveFile(path)
 										})
 									)
