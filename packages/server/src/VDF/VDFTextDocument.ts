@@ -137,26 +137,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
 
-	private readonly string = (refine?: RefineString<TDocument>): Validate<TDocument> => {
-		return (key, documentSymbol, path, context) => {
-			const diagnostics: DiagnosticCodeActions = []
-			if (documentSymbol.detail == undefined) {
-				diagnostics.push({
-					range: documentSymbol.childrenRange!,
-					severity: DiagnosticSeverity.Warning,
-					code: "invalid-type",
-					source: this.languageId,
-					message: `Invalid ${key} type.`,
-				})
-			}
-			else {
-				diagnostics.push(...refine?.(key, documentSymbol.detail, documentSymbol.detailRange!, documentSymbol, path, context) ?? [])
-			}
-
-			return diagnostics
-		}
-	}
-
 	public readonly diagnostics = {
 		unreachable: (range: VDFRange, fix?: NonNullable<DiagnosticCodeAction["data"]>["fix"]): DiagnosticCodeAction => {
 			return {
@@ -297,21 +277,41 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}
 			}
 		},
-		string: this.string,
-		length: (max: number): Validate<TDocument> => this.string((name, detail, detailRange, path, context) => {
-			const length = detail.length + "\0".length
-			if (length > max) {
-				return [{
-					range: detailRange,
-					severity: DiagnosticSeverity.Warning,
-					code: "invalid-length",
-					source: this.languageId,
-					message: `Value exceeds maximum buffer size (max: ${max}, size: ${length}).`,
-				}]
+		string: (refine?: RefineString<TDocument>): Validate<TDocument> => {
+			return (key, documentSymbol, path, context) => {
+				const diagnostics: DiagnosticCodeActions = []
+				if (documentSymbol.detail == undefined) {
+					diagnostics.push({
+						range: documentSymbol.childrenRange!,
+						severity: DiagnosticSeverity.Warning,
+						code: "invalid-type",
+						source: this.languageId,
+						message: `Invalid ${key} type.`,
+					})
+				}
+				else {
+					diagnostics.push(...refine?.(key, documentSymbol.detail, documentSymbol.detailRange!, documentSymbol, path, context) ?? [])
+				}
+
+				return diagnostics
 			}
-			return []
-		}),
-		integer: this.string((name, detail, detailRange, path, context) => {
+		},
+		length: (max: number): RefineString<TDocument> => {
+			return (name, detail, detailRange, path, context) => {
+				const length = detail.length + "\0".length
+				if (length > max) {
+					return [{
+						range: detailRange,
+						severity: DiagnosticSeverity.Warning,
+						code: "invalid-length",
+						source: this.languageId,
+						message: `Value exceeds maximum buffer size (max: ${max}, size: ${length}).`,
+					}]
+				}
+				return []
+			}
+		},
+		integer: ((name, detail, detailRange, path, context) => {
 			if (/\D/.test(detail)) {
 				return [{
 					range: detailRange,
@@ -322,8 +322,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}]
 			}
 			return []
-		}),
-		float: this.string((name, detail, detailRange, path, context) => {
+		}) satisfies RefineString<TDocument>,
+		float: ((name, detail, detailRange, path, context) => {
 			if (!/^\d*\.?\d+$/.test(detail)) {
 				return [{
 					range: detailRange,
@@ -334,10 +334,10 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}]
 			}
 			return []
-		}),
-		set: (values: string[], fix?: Record<string, string>) => {
+		}) satisfies RefineString<TDocument>,
+		set: (values: string[], fix?: Record<string, string>): RefineString<TDocument> => {
 			const set = new Set(values.map((value) => value.toLowerCase()))
-			return this.string((name, detail, detailRange, path, context) => {
+			return (name, detail, detailRange, path, context) => {
 				if (!set.has(detail.toLowerCase())) {
 					return [{
 						range: detailRange,
@@ -383,11 +383,11 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 					return []
 				}
-			})
+			}
 		},
-		dynamic: (key: string) => {
+		dynamic: (key: string): RefineString<TDocument> => {
 			const id = key.toLowerCase()
-			return this.diagnostics.string((name, detail, detailRange, documentSymbol, path, context) => {
+			return (name, detail, detailRange, documentSymbol, path, context) => {
 				if (id in context.dependencies.schema.values) {
 					const values = context.dependencies.schema.values[id].values
 					if (!values.some((value) => value.toLowerCase() == detail.toLowerCase())) {
@@ -401,7 +401,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					}
 				}
 				return []
-			})
+			}
 		},
 		reference: (type: symbol, refine?: (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions): RefineString<TDocument> => {
 			return (key, detail, detailRange, documentSymbol, path, context) => {
@@ -473,8 +473,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		file: (name: string, folder: string | null, extension: string | null) => {
-			return this.string((name, detail, detailRange, path, context) => {
+		file: (name: string, folder: string | null, extension: string | null): RefineString<TDocument> => {
+			return (name, detail, detailRange, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (detail == "") {
 					return diagnostics
@@ -525,7 +525,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				)
 
 				return diagnostics
-			})
+			}
 		},
 		next: (schema: Record<string, Validate<TDocument>>): Validate<TDocument> => {
 			const map = new Map(Object.entries(schema).map(([key, validate]) => <const>[key.toLowerCase(), { key, validate }]))

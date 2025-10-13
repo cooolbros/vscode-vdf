@@ -6,7 +6,16 @@ import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
 
 export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
-	const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.None)
+
+	const { header, documentSymbols, string, file } = document.diagnostics
+
+	const getDiagnostics = header(
+		documentSymbols(KeyDistinct.None)({
+			"file": [string(file("file", null, null))]
+		}),
+		false
+	)
+
 	return {
 		keys: {
 			hudanimations_manifest: {
@@ -32,12 +41,7 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 			}
 		},
 		definitionReferences: [],
-		getDiagnostics: document.diagnostics.header(
-			documentSymbols({
-				"file": [document.diagnostics.file("file", null, null)]
-			}),
-			false
-		),
+		getDiagnostics: getDiagnostics,
 		getLinks: ({ documentSymbols, resolve }) => {
 			return documentSymbols
 				.values()
