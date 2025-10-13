@@ -527,12 +527,12 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		next: (schema: Record<string, Validate<TDocument>>): Validate<TDocument> => {
+		next: (schema: Record<string, RefineString<TDocument>>): Validate<TDocument> => {
 			const map = new Map(Object.entries(schema).map(([key, validate]) => <const>[key.toLowerCase(), { key, validate }]))
 			return (key, documentSymbol, path, context) => {
 				const data = map.get(key)
-				return data != undefined
-					? data.validate(data.key, documentSymbol, path, context)
+				return data != undefined && documentSymbol.detail != undefined
+					? data.validate(data.key, documentSymbol.detail, documentSymbol.detailRange!, documentSymbol, path, context)
 					: []
 			}
 		}

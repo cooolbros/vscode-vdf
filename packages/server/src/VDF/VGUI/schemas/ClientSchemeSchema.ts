@@ -1,10 +1,10 @@
 import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CompletionItemKind, InlayHint } from "vscode-languageserver"
+import { CompletionItemKind, DiagnosticSeverity, InlayHint } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
-import type { ColourInformationStringify, DocumentLinkData } from "../../../TextDocumentBase"
-import { KeyDistinct, VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
+import type { ColourInformationStringify, DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
+import { KeyDistinct, VGUIAssetType, type RefineString, type Validate, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
 
 type SchemeAction = (documentSymbol: VDFDocumentSymbol) => void
@@ -49,14 +49,50 @@ function SchemeForEach(documentSymbols: VDFDocumentSymbols, callbacks: Partial<S
 
 export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
 
-	const documentSymbols = document.diagnostics.documentSymbols(document.uri.basename().toLowerCase() == "clientscheme.res" ? KeyDistinct.First : KeyDistinct.None)
+	const { header, documentSymbols, string, reference } = document.diagnostics
 
-	const next = document.diagnostics.next({
-		"color": document.diagnostics.string(document.diagnostics.reference(Symbol.for("color")))
-	})
+	const distinct = document.uri.basename().toLowerCase() == "clientscheme.res"
+		? KeyDistinct.First
+		: KeyDistinct.None
 
-	const getDiagnostics = document.diagnostics.header(
-		documentSymbols({
+	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocument> => {
+		const refine = reference(type)
+		return (name, detail, detailRange, documentSymbol, path, context) => {
+			let value = match(detail)
+			return value != null
+				? refine(name, value, detailRange, documentSymbol, path, context)
+				: []
+		}
+	}
+
+	const color = string(match(
+		Symbol.for("color"),
+		(detail) => !/\d+\s+\d+\s+\d+\s+\d+/.test(detail) ? detail : null
+	))
+
+	const next: Validate<VGUITextDocument> = (name, documentSymbol, path, context) => {
+		const diagnostics: DiagnosticCodeActions = []
+		if (!documentSymbol.children) {
+			diagnostics.push({
+				range: documentSymbol.childrenRange!,
+				severity: DiagnosticSeverity.Warning,
+				code: "invalid-type",
+				source: "vgui",
+				message: `Invalid ${name} type.`,
+			})
+		}
+		else {
+			documentSymbol.children.forAll((documentSymbol, path) => {
+				if (documentSymbol.key.toLowerCase() == "color") {
+					diagnostics.push(...color("color", documentSymbol, path, context))
+				}
+			}, path)
+		}
+		return diagnostics
+	}
+
+	const getDiagnostics = header(
+		documentSymbols(distinct)({
 			"Colors": [next],
 			"BaseSettings": [next],
 			"BitmapFontFiles": [next],

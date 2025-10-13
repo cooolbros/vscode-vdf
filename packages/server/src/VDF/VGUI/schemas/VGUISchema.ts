@@ -3,7 +3,7 @@ import type { VDFRange } from "vdf"
 import { CompletionItemKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
-import { VGUIAssetType, type VDFTextDocumentSchema } from "../../VDFTextDocument"
+import { VGUIAssetType, type RefineString, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import clientscheme from "../clientscheme.json"
 import keys from "../keys.json"
 import values from "../values.json"
@@ -68,19 +68,19 @@ const enumIndexKeys = new Map([
 
 export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
 
-	const match = (type: symbol, match: (detail: string) => string | null) => {
+	const { set, reference } = document.diagnostics
+
+	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocument> => {
 		const refine = document.diagnostics.reference(type)
-		return document.diagnostics.string((name, detail, detailRange, documentSymbol, path, context) => {
+		return (name, detail, detailRange, documentSymbol, path, context) => {
 			let value = match(detail)
 			return value != null
 				? refine(name, value, detailRange, documentSymbol, path, context)
 				: []
-		})
+		}
 	}
 
-	const { string, set, reference } = document.diagnostics
-
-	const element = string(reference(Symbol.for("element")))
+	const element = reference(Symbol.for("element"))
 
 	const token = match(Symbol.for("string"), (detail) => detail[0] == "#" ? detail.substring("#".length) : null)
 
@@ -89,8 +89,8 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 		(detail) => !/\d+\s+\d+\s+\d+\s+\d+/.test(detail) ? detail : null
 	)
 
-	const border = string(document.diagnostics.reference(Symbol.for("border")))
-	const font = string(document.diagnostics.reference(Symbol.for("font")))
+	const border = reference(Symbol.for("border"))
+	const font = reference(Symbol.for("font"))
 
 	const next = document.diagnostics.next({
 		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, set("enumIndex" in value && value.enumIndex ? [...value.values, ...value.values.map((_, index) => index.toString())] : value.values, "fix" in value ? value.fix : undefined)])),
