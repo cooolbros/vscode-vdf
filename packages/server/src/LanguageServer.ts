@@ -702,6 +702,17 @@ export abstract class LanguageServer<
 			documentLinks: this.documentsLinks.get(document)!.promise
 		}))
 
+		for (const { value: definitions } of definitionReferences.definitions) {
+			for (const definition of definitions) {
+				if (definition.keyRange.contains(params.position) || definition.nameRange?.contains(params.position)) {
+					return {
+						contents: definitions.map((definition) => definition.documentation).join("\n\n"),
+						range: [definition.keyRange, definition.nameRange].find((range) => range?.contains(params.position))!
+					}
+				}
+			}
+		}
+
 		for (const { scope, type, key, value: ranges } of definitionReferences.references.collection) {
 			for (const range of ranges) {
 				if (range.contains(params.position)) {
