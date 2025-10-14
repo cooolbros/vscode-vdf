@@ -715,6 +715,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										definitionReferences: {
 											scopes: value.scopes,
 											definitions: new Definitions({
+												version: [this.version, ...base.flatMap(({ definitions }) => definitions.version)],
 												collection: definitions,
 												globals: globals.map(({ definitions }) => definitions)
 											}),

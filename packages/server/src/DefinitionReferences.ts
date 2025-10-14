@@ -90,13 +90,16 @@ export type Definition = Readonly<z.infer<typeof definitionSchema>>
 export class Definitions {
 
 	public static readonly schema = z.object({
+		version: z.array(z.number()),
 		collection: Collection.createSchema(definitionSchema)
-	}).transform((arg) => new Definitions({ collection: arg.collection }))
+	}).transform((arg) => new Definitions({ version: arg.version, collection: arg.collection }))
 
+	public readonly version: number[]
 	private readonly collection: Collection<Definition>
 	private readonly globals: Definitions[]
 
-	constructor({ collection = new Collection(), globals = [] }: { collection?: Collection<Definition>, globals?: Definitions[] } = {}) {
+	constructor({ version, collection = new Collection(), globals = [] }: { version: number[], collection?: Collection<Definition>, globals?: Definitions[] }) {
+		this.version = version
 		this.collection = collection
 		this.globals = globals
 	}
@@ -140,6 +143,7 @@ export class Definitions {
 
 	public toJSON() {
 		return {
+			version: this.version,
 			collection: this.collection.toJSON()
 		}
 	}

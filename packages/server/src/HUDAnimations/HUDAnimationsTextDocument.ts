@@ -117,6 +117,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 													definitionReferences: {
 														scopes: new Map(),
 														definitions: new Definitions({
+															version: [this.version],
 															collection: definitions,
 															globals: [
 																...elements.map(({ definitions }) => definitions),
@@ -162,7 +163,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 								documentSymbols: documentSymbols,
 								definitionReferences: {
 									scopes: new Map(),
-									definitions: new Definitions({ collection: definitions }),
+									definitions: new Definitions({ version: [this.version], collection: definitions }),
 									references: new References(this.uri, references, [], this.references$)
 								} satisfies DefinitionReferences
 							}

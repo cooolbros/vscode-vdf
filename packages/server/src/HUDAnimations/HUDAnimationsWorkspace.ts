@@ -111,8 +111,13 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			shareReplay(1)
 		)
 
-		this.clientScheme$ = this.getDefinitions("resource/clientscheme.res").pipe(
-			map((document) => document!.definitions),
+		this.clientScheme$ = new Observable<Definitions>((subscriber) => {
+			return server.trpc.servers.vgui.workspace.clientScheme.subscribe({ key: uri }, {
+				onData: (value) => subscriber.next(value),
+				onError: (err) => subscriber.error(err),
+				onComplete: () => subscriber.complete(),
+			})
+		}).pipe(
 			shareReplay(1)
 		)
 
@@ -214,6 +219,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 				const definitionReferences = {
 					scopes: new Map(),
 					definitions: new Definitions({
+						version: files.map((file) => file.document.version),
 						collection: definitions,
 						globals: [
 							clientScheme,
@@ -285,6 +291,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						return {
 							uris: documents.map((document) => document.uri),
 							definitions: new Definitions({
+								version: documents.flatMap((document) => document.definitions.version),
 								collection: documents.reduce(
 									(collection, document) => {
 										for (const { key, value } of document.definitions) {

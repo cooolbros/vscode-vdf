@@ -1,7 +1,7 @@
 import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { Uri } from "common/Uri"
-import { Observable, shareReplay } from "rxjs"
+import { map, Observable, shareReplay } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
@@ -115,6 +115,26 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 							}
 
 							return observableToAsyncIterable<VDFDocumentSymbols | null>(workspace.getVDFDocumentSymbols(input.path), signal!)
+						}),
+					clientScheme: t
+						.procedure
+						.input(
+							z.object({
+								key: Uri.schema,
+							})
+						)
+						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key.toString())
+							if (!workspace) {
+								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
+							}
+
+							return observableToAsyncIterable<Definitions>(
+								workspace.clientScheme$.pipe(
+									map((definitionReferences) => definitionReferences.definitions)
+								),
+								signal!
+							)
 						}),
 					definitions: t
 						.procedure

@@ -133,8 +133,11 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 					return await documents.get(uri)
 				}),
-				switchMap((document) => {
-					return document.definitionReferences$
+				switchMap((document) => document.definitionReferences$),
+				distinctUntilChanged((previous, current) => {
+					return true
+						&& previous.definitions.version.length == current.definitions.version.length
+						&& previous.definitions.version.every((value, index) => value == current.definitions.version[index])
 				}),
 				shareReplay(1)
 			)
@@ -180,6 +183,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 				return {
 					scopes: new Map(),
 					definitions: new Definitions({
+						version: dependencies.flatMap(({ definitions }) => definitions.version),
 						collection: definitions,
 						globals: [],
 					}),

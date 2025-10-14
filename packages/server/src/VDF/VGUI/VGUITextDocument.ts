@@ -3,7 +3,9 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { defer, map, of, type Observable } from "rxjs"
+import { defer, map, of, shareReplay, startWith, type Observable } from "rxjs"
+import type { VDFRange } from "vdf"
+import { Collection, Definitions, References, type DefinitionReferences } from "../../DefinitionReferences"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
@@ -61,42 +63,55 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
 				).pipe(
 					map((type) => {
-						if (type != VGUIFileType.None || workspace == null) {
-							let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocument>
-							switch (type) {
-								case VGUIFileType.None:
-									schema = VGUISchema
-									break
-								case VGUIFileType.ClientScheme:
-									schema = ClientSchemeSchema
-									break
-								case VGUIFileType.SourceScheme:
-									schema = SourceSchemeSchema
-									break
-								case VGUIFileType.LanguageTokens:
-									schema = LanguageTokensSchema
-									break
-								case VGUIFileType.HUDAnimationsManifest:
-									schema = HUDAnimationsManifestSchema
-									break
-								case VGUIFileType.SurfacePropertiesManifest:
-									schema = SurfacePropertiesManifestSchema
-									break
-								default:
-									throw new Error("unreachable")
-							}
+						let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocument>
+						let globals$: Observable<DefinitionReferences[]>
 
-							return {
-								schema: schema(this),
-								globals$: of([])
-							} satisfies VDFTextDocumentDependencies<VGUITextDocument>
+						switch (type) {
+							case VGUIFileType.None:
+								schema = VGUISchema
+								globals$ = workspace?.globals$ ?? of([])
+								break
+							case VGUIFileType.ClientScheme:
+								schema = ClientSchemeSchema
+								if (workspace && workspace.relative(this.uri).toLowerCase() != "resource/clientscheme.res") {
+									globals$ = workspace.clientScheme$.pipe(
+										startWith({
+											scopes: new Map(),
+											definitions: new Definitions({ version: [] }),
+											references: new References(this.uri, new Collection<VDFRange>(), [])
+										} satisfies DefinitionReferences),
+										map((definitionReferences) => [definitionReferences]),
+										shareReplay(1)
+									)
+								}
+								else {
+									globals$ = of([])
+								}
+								break
+							case VGUIFileType.SourceScheme:
+								schema = SourceSchemeSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.LanguageTokens:
+								schema = LanguageTokensSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.HUDAnimationsManifest:
+								schema = HUDAnimationsManifestSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.SurfacePropertiesManifest:
+								schema = SurfacePropertiesManifestSchema
+								globals$ = of([])
+								break
+							default:
+								throw new Error("unreachable")
 						}
-						else {
-							return {
-								schema: VGUISchema(this),
-								globals$: workspace.globals$,
-							} satisfies VDFTextDocumentDependencies<VGUITextDocument>
-						}
+
+						return {
+							schema: schema(this),
+							globals$: globals$,
+						} satisfies VDFTextDocumentDependencies<VGUITextDocument>
 					})
 				)
 			}),
