@@ -143,29 +143,30 @@ export abstract class VDFLanguageServer<
 			}
 
 			// Dynamic
-			const definitionReferencesConfiguration = schema
+			const definitionType = schema
 				.definitionReferences
-				.values()
-				.filter((definitionReference): definitionReference is typeof definitionReference & { reference: NonNullable<typeof definitionReference["reference"]> } => definitionReference.reference != undefined)
-				.find(({ reference: { keys } }) => keys.has(key))
+				.entries()
+				.find(([type, reference]) => reference.keys.has(key))
+				?.[0]
 
-			if (definitionReferencesConfiguration != undefined) {
+			if (definitionType != undefined) {
 				const definitionReferences = await firstValueFrom(document.definitionReferences$)
-				return definitionReferences.definitions.ofType(definitionReferences.scopes.get(definitionReferencesConfiguration.type)?.entries().find(([scope, range]) => range.contains(position))?.[0] ?? null, definitionReferencesConfiguration.type)
+				return definitionReferences.definitions.ofType(definitionReferences.scopes.get(definitionType)?.entries().find(([scope, range]) => range.contains(position))?.[0] ?? null, definitionType)
 					.values()
 					.filter((value) => value.length)
 					.filter((value) => text ? value[0].key.toLowerCase().startsWith(text.toLowerCase()) : true)
-					.map((value) => ({
-						label: value[0].key,
-						kind: CompletionItemKind.Variable,
-						documentation: value[0].documentation && {
-							kind: MarkupKind.Markdown,
-							value: value[0].documentation
-						},
-						...(definitionReferencesConfiguration.toCompletionItem && {
-							...definitionReferencesConfiguration.toCompletionItem(value[0])
-						})
-					} satisfies CompletionItem))
+					.map((value) => {
+						const { kind = CompletionItemKind.Variable, ...rest } = value[0].completionItem ?? {}
+						return {
+							label: value[0].key,
+							kind: kind,
+							documentation: value[0].documentation && {
+								kind: MarkupKind.Markdown,
+								value: value[0].documentation
+							},
+							...rest,
+						} satisfies CompletionItem
+					})
 					.toArray()
 			}
 
@@ -275,7 +276,7 @@ export abstract class VDFLanguageServer<
 			}
 		}
 
-		const toReference = (await firstValueFrom(document.configuration.dependencies$)).schema.definitionReferences.find((i) => i.type == type)?.toReference
+		const toReference = (await firstValueFrom(document.configuration.dependencies$)).schema.definitionReferences.get(type)?.toReference
 
 		const referenceText = toReference
 			? toReference(newName)

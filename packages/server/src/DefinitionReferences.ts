@@ -1,6 +1,7 @@
 import { Uri } from "common/Uri"
 import { BehaviorSubject } from "rxjs"
 import { VDFRange } from "vdf"
+import { CompletionItem, MarkupKind, type CompletionItemKind } from "vscode-languageserver"
 import { z } from "zod"
 
 export class Collection<T> {
@@ -83,7 +84,24 @@ export const definitionSchema = z.object({
 	detail: z.string().optional(),
 	documentation: z.string().optional(),
 	conditional: z.templateLiteral(["[", z.string(), "]"]).optional(),
+	completionItem: z.object({
+		labelDetails: z.object({
+			detail: z.string().optional(),
+			description: z.string().optional()
+		}).optional(),
+		kind: z.number().min(1).max(25).transform((arg) => <CompletionItemKind>arg).optional(),
+		documentation: z.union([
+			z.string(),
+			z.object({
+				kind: z.enum([MarkupKind.PlainText, MarkupKind.Markdown]),
+				value: z.string()
+			})
+		]).optional(),
+		insertText: z.string().optional()
+	}).optional(),
 })
+
+CompletionItem
 
 export type Definition = Readonly<z.infer<typeof definitionSchema>>
 

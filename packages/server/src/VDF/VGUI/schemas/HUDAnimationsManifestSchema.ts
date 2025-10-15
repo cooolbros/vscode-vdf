@@ -40,7 +40,7 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 				references: references,
 			}
 		},
-		definitionReferences: [],
+		definitionReferences: new Map(),
 		getDiagnostics: getDiagnostics,
 		getLinks: ({ documentSymbols, resolve }) => {
 			return documentSymbols

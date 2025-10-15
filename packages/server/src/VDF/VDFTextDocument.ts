@@ -29,17 +29,7 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 	keys: Record<string, { reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
 	getDefinitionReferences(params: DefinitionReferencesHandlerParams<TDocument>): { scopes: Map<symbol, Map<number, VDFRange>>, definitions: Collection<Definition>, references: Collection<VDFRange> }
-	definitionReferences: {
-		type: symbol
-		scope?: string
-		reference?: {
-			keys: Set<string>
-			match: ((string: string) => boolean) | null
-			toDefinition?: (string: string) => string
-		},
-		toReference?: (value: string) => string
-		toCompletionItem?: (definition: Definition) => Partial<Omit<CompletionItem, "label">> | undefined
-	}[]
+	definitionReferences: Map<symbol, { keys: Set<string>, toReference?: ((name: string) => string) }>
 	getDiagnostics(params: DiagnosticsHandlerParams<TDocument>): DiagnosticCodeActions
 	getLinks(params: DocumentLinksHandlerParams<TDocument>): DocumentLinkData[]
 	getColours(params: DocumentColoursHandlerParams<TDocument>): ColourInformationStringify[]

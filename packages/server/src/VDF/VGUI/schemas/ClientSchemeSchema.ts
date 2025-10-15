@@ -1,7 +1,7 @@
 import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import { CompletionItemKind, DiagnosticSeverity, InlayHint } from "vscode-languageserver"
+import { CompletionItemKind, DiagnosticSeverity, InlayHint, MarkupKind } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { ColourInformationStringify, DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
 import { KeyDistinct, VGUIAssetType, type RefineString, type Validate, type VDFTextDocumentSchema } from "../../VDFTextDocument"
@@ -126,7 +126,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()
 
-			function SchemeDefinitionMatcher(type: symbol, children: boolean) {
+			function SchemeDefinitionMatcher(type: symbol, children: boolean, completionItem: (documentSymbol: VDFDocumentSymbol) => Definition["completionItem"]) {
 				return (documentSymbol: VDFDocumentSymbol) => {
 					if ((documentSymbol.children != undefined) == children) {
 						definitions.set(null, type, documentSymbol.key, {
@@ -138,14 +138,30 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 							detail: documentSymbol.detail,
 							documentation: document.definitions.documentation(documentSymbol),
 							conditional: documentSymbol.conditional ?? undefined,
+							completionItem: completionItem(documentSymbol)
 						})
 					}
 				}
 			}
 
-			const color = SchemeDefinitionMatcher(Symbol.for("color"), false)
-			const font = SchemeDefinitionMatcher(Symbol.for("font"), true)
-			const border = SchemeDefinitionMatcher(Symbol.for("border"), true)
+			function colorDocumentation(documentSymbol: VDFDocumentSymbol) {
+				const [r, g, b, a] = documentSymbol.detail!.split(/\s+/).map((value) => parseFloat(value))
+				const colour = [r, g, b].every((value) => !isNaN(value))
+					? "\n\n" + `rgb${!isNaN(a) ? "a" : ""}(${r}, ${g}, ${b}${!isNaN(a) ? `, ${a / 255}` : ""})`
+					: ""
+
+				return {
+					kind: CompletionItemKind.Color,
+					documentation: {
+						kind: MarkupKind.Markdown,
+						value: document.definitions.documentation(documentSymbol) + colour
+					}
+				}
+			}
+
+			const color = SchemeDefinitionMatcher(Symbol.for("color"), false, colorDocumentation)
+			const font = SchemeDefinitionMatcher(Symbol.for("font"), true, () => ({ kind: CompletionItemKind.Text }))
+			const border = SchemeDefinitionMatcher(Symbol.for("border"), true, () => ({ kind: CompletionItemKind.Snippet }))
 
 			SchemeForEach(documentSymbols, {
 				Colors: (documentSymbol) => color(documentSymbol),
@@ -172,64 +188,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				references: references,
 			}
 		},
-		definitionReferences: [
-			{
-				type: Symbol.for("color"),
-				reference: {
-					keys: new Set("color"),
-					match: null
-				},
-				toCompletionItem: (definition) => {
-					if (!definition.detail) {
-						return undefined
-					}
-
-					try {
-						const [r, g, b] = definition.detail.split(/\s+/).map(parseFloat)
-						return { kind: CompletionItemKind.Color, documentation: `rgb(${r},${g},${b})` }
-					}
-					catch (_) {
-						return undefined
-					}
-				},
-			},
-			{
-				type: Symbol.for("color"),
-				reference: {
-					keys: new Set("color"),
-					match: null
-				},
-				toCompletionItem: (definition) => {
-					if (!definition.detail) {
-						return undefined
-					}
-
-					try {
-						const [r, g, b] = definition.detail.split(/\s+/).map(parseFloat)
-						return { kind: CompletionItemKind.Color, documentation: `rgb(${r},${g},${b})` }
-					}
-					catch (_) {
-						return undefined
-					}
-				},
-			},
-			{
-				type: Symbol.for("border"),
-				reference: {
-					keys: new Set(),
-					match: null
-				},
-				toCompletionItem: () => ({ kind: CompletionItemKind.Snippet })
-			},
-			{
-				type: Symbol.for("font"),
-				reference: {
-					keys: new Set(),
-					match: null
-				},
-				toCompletionItem: () => ({ kind: CompletionItemKind.Snippet })
-			}
-		],
+		definitionReferences: new Map(),
 		getDiagnostics: getDiagnostics,
 		getLinks: ({ documentSymbols, resolve }) => {
 			const links: DocumentLinkData[] = []

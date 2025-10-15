@@ -1,6 +1,6 @@
 import { firstValueFrom } from "rxjs"
 import type { VDFRange } from "vdf"
-import { CompletionItemKind, DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
+import { DiagnosticSeverity, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
 import { VGUIAssetType, type RefineString, type VDFTextDocumentSchema } from "../../VDFTextDocument"
@@ -64,6 +64,14 @@ const enumIndexKeys = new Map([
 	["pin_corner_to_sibling", "pin_corner_to_sibling"],
 	["pin_to_sibling_corner", "pin_to_sibling_corner"],
 	["pincorner", "pinCorner"],
+])
+
+const definitionReferences = new Map([
+	[Symbol.for("element"), { keys: new Set(elements) }],
+	[Symbol.for("color"), { keys: new Set(clientscheme.Colors), match: (value: string) => !/\d+\s+\d+\s+\d+\s+\d+/.test(value) /* Exclude colour literals */ }],
+	[Symbol.for("border"), { keys: new Set(clientscheme.Borders) }],
+	[Symbol.for("font"), { keys: new Set(clientscheme.Fonts) }],
+	[Symbol.for("string"), { keys: new Set(strings.map((string) => string.toLowerCase())), match: (value: string) => value[0] == "#", toDefinition: (value: string) => value.substring(1), toReference: (name: string) => `#${name}` }],
 ])
 
 export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
@@ -203,7 +211,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 			documentSymbols.forAll((documentSymbol) => {
 				if (documentSymbol.detail != undefined) {
 					const referenceKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
-					for (const { type, reference } of this.definitionReferences) {
+					for (const [type, reference] of definitionReferences) {
 						if (reference?.keys.has(referenceKey) && (reference.match != null ? reference.match(documentSymbol.detail) : true)) {
 							references.set(null, type, reference.toDefinition ? reference.toDefinition(documentSymbol.detail) : documentSymbol.detail, documentSymbol.detailRange!)
 						}
@@ -229,60 +237,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 				references: references,
 			}
 		},
-		definitionReferences: [
-			{
-				type: Symbol.for("element"),
-				reference: {
-					keys: new Set(elements),
-					match: null
-				}
-			},
-			{
-				type: Symbol.for("color"),
-				reference: {
-					keys: new Set(clientscheme.Colors),
-					match: (string) => !/\d+\s+\d+\s+\d+\s+\d+/.test(string) // Exclude colour literals
-				},
-				toCompletionItem: (definition) => {
-					if (!definition.detail) {
-						return undefined
-					}
-
-					try {
-						const [r, g, b] = definition.detail.split(/\s+/).map(parseFloat)
-						return { kind: CompletionItemKind.Color, documentation: `rgb(${r},${g},${b})` }
-					}
-					catch (error) {
-						console.error(error)
-						return undefined
-					}
-				},
-			},
-			{
-				type: Symbol.for("border"),
-				reference: {
-					keys: new Set(clientscheme.Borders),
-					match: null
-				}
-			},
-			{
-				type: Symbol.for("font"),
-				reference: {
-					keys: new Set(clientscheme.Fonts),
-					match: null
-				}
-			},
-			{
-				type: Symbol.for("string"),
-				reference: {
-					keys: new Set(strings),
-					match: (string) => /^#/.test(string),
-					toDefinition: (string) => string.substring("#".length)
-				},
-				toReference: (value) => `#${value}`,
-				toCompletionItem: (definition) => ({ kind: CompletionItemKind.Text, labelDetails: { description: definition.detail }, insertText: `#${definition.key}` })
-			}
-		],
+		definitionReferences: definitionReferences,
 		getDiagnostics: getDiagnostics,
 		getLinks: ({ documentSymbols, resolve }) => {
 			const links: DocumentLinkData[] = []

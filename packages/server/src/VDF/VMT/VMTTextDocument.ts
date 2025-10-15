@@ -89,7 +89,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 					references: references,
 				}
 			},
-			definitionReferences: [],
+			definitionReferences: new Map(),
 			getDiagnostics: getDiagnostics,
 			getLinks: ({ documentSymbols, resolve }) => {
 				const links: DocumentLinkData[] = []

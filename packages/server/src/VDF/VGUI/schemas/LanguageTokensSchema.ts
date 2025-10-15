@@ -1,5 +1,5 @@
 import type { VDFRange } from "vdf"
-import { CompletionItemKind, } from "vscode-languageserver"
+import { CompletionItemKind } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
 import type { VGUITextDocument } from "../VGUITextDocument"
@@ -38,6 +38,13 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 						detail: documentSymbol.detail,
 						documentation: document.definitions.documentation(documentSymbol),
 						conditional: documentSymbol.conditional ?? undefined,
+						completionItem: {
+							labelDetails: {
+								description: documentSymbol.detail
+							},
+							kind: CompletionItemKind.Text,
+							insertText: `#${documentSymbol.key}`
+						}
 					})
 				}
 			}
@@ -48,13 +55,9 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 				references: references,
 			}
 		},
-		definitionReferences: [
-			{
-				type: Symbol.for("string"),
-				toReference: (value) => `#${value}`,
-				toCompletionItem: (definition) => ({ kind: CompletionItemKind.Text, insertText: `#${definition.key}` })
-			}
-		],
+		definitionReferences: new Map([
+			[Symbol.for("string"), { keys: new Set(), toReference: (name) => `#${name}` }],
+		]),
 		getDiagnostics: getDiagnostics,
 		getLinks: (params) => {
 			return []

@@ -527,13 +527,11 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 
 			return definitions
 				.values()
-				.map((definitions) => definitions[0])
-				.filter((definition): definition is typeof definition & { detail: string } => definition != undefined && f(definition.key) && definition.detail != undefined)
-				.map((definition) => {
+				.filter((definition) => definition.length != 0 && f(definition[0].key))
+				.map((definitions) => {
 					return {
-						label: definition.key,
-						kind: CompletionItemKind.Color,
-						// documentation: definition.documentation
+						label: definitions[0].key,
+						...definitions[0].completionItem,
 					} satisfies CompletionItem
 				}).toArray()
 		}

@@ -531,26 +531,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					references: references,
 				}
 			},
-			definitionReferences: [
-				{
-					type: Symbol.for("template"),
-					reference: {
-						keys: new Set(["Template".toLowerCase()]),
-						match: null
-					}
-				},
-				{
-					type: Symbol.for("wavespawn"),
-					scope: "Wave".toLowerCase(),
-					reference: {
-						keys: new Set([
-							"WaitForAllSpawned".toLowerCase(),
-							"WaitForAllDead".toLowerCase()
-						]),
-						match: null
-					}
-				}
-			],
+			definitionReferences: new Map([
+				[Symbol.for("template"), { keys: new Set(["Template".toLowerCase()]) }],
+				[Symbol.for("wavespawn"), { keys: new Set(["WaitForAllSpawned".toLowerCase(), "WaitForAllDead".toLowerCase()]) }],
+			]),
 			getDiagnostics: getDiagnostics,
 			getLinks: ({ documentSymbols, resolve }) => {
 				const links: DocumentLinkData[] = []

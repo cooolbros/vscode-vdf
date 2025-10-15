@@ -20,7 +20,7 @@ export const SourceSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				references: references,
 			}
 		},
-		definitionReferences: [],
+		definitionReferences: new Map(),
 		getDiagnostics: (params) => {
 			return []
 		},
