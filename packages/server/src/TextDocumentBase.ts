@@ -69,7 +69,7 @@ export abstract class TextDocumentBase<
 	public readonly definitions = {
 		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }) => {
 			return [
-				documentation?.replaceAll("\n", "\n\n"),
+				...(documentation != undefined ? [documentation.replaceAll("\n", "\n\n")] : []),
 				"```" + this.languageId,
 				dedent(this.getText(range)),
 				"```",
