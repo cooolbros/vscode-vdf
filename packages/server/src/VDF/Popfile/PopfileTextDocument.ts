@@ -622,12 +622,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			},
 			files: [
 				{
-					name: "class icon",
 					keys: new Set([
 						"ClassIcon".toLowerCase()
 					]),
 					folder: "materials/hud",
-					extension: ".vmt",
 					extensionsPattern: ".vmt",
 					toCompletionItem: (name, type, withoutExtension) => {
 						if (type == 1 && name.startsWith("leaderboard_class_")) {
@@ -644,10 +642,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					asset: VGUIAssetType.Image
 				},
 				{
-					name: "sound",
 					keys: sounds,
 					folder: "sound",
-					extension: null,
 					extensionsPattern: null,
 				}
 			],

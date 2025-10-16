@@ -26,12 +26,10 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 		getInlayHints: schema.getInlayHints,
 		files: [
 			{
-				name: "file",
 				keys: new Set([
 					"file"
 				]),
 				folder: null,
-				extension: null,
 				extensionsPattern: ".txt",
 			},
 		],

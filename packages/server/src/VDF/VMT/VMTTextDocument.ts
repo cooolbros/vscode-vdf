@@ -150,10 +150,8 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			},
 			files: [
 				{
-					name: "image",
 					keys: set,
 					folder: "materials",
-					extension: ".vtf",
 					extensionsPattern: ".vtf",
 					toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
 				}

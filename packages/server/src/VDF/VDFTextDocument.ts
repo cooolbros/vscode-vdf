@@ -35,10 +35,8 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 	getColours(params: DocumentColoursHandlerParams<TDocument>): ColourInformationStringify[]
 	getInlayHints(params: DocumentInlayHintsHandlerParams<TDocument>): Promise<InlayHint[]>
 	files: {
-		name: string
 		keys: Set<string>
 		folder: string | null
-		extension: string | null
 		extensionsPattern: `.${string}` | null
 		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
 		asset?: VGUIAssetType

@@ -75,12 +75,10 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 		},
 		files: [
 			{
-				name: "file",
 				keys: new Set([
 					"file"
 				]),
 				folder: null,
-				extension: null,
 				extensionsPattern: null,
 			},
 		],

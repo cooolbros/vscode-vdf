@@ -346,31 +346,25 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 		},
 		files: [
 			{
-				name: "font file",
 				keys: new Set([
 					"font",
 				]),
 				folder: null,
-				extension: null,
 				extensionsPattern: ".*tf",
 			},
 			{
-				name: "bitmap font file",
 				keys: new Set([
 					"Buttons".toLowerCase(),
 					"ButtonsSC".toLowerCase(),
 				]),
 				folder: null,
-				extension: null,
 				extensionsPattern: null,
 			},
 			{
-				name: "image",
 				keys: new Set([
 					"image",
 				]),
 				folder: "materials/vgui",
-				extension: null,
 				extensionsPattern: ".vmt",
 				asset: VGUIAssetType.Image
 			},
