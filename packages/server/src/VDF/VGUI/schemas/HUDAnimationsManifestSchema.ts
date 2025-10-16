@@ -73,15 +73,6 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 		getInlayHints: async (params) => {
 			return []
 		},
-		files: [
-			{
-				keys: new Set([
-					"file"
-				]),
-				folder: null,
-				extensionsPattern: null,
-			},
-		],
 		completion: {
 			root: [
 				{
@@ -90,7 +81,16 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 				}
 			],
 			typeKey: null,
-			defaultType: null
+			defaultType: null,
+			files: [
+				{
+					keys: new Set([
+						"file"
+					]),
+					folder: null,
+					extensionsPattern: null,
+				},
+			],
 		}
 	}
 }

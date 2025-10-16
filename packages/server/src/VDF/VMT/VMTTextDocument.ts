@@ -148,14 +148,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 			getInlayHints: async (params) => {
 				return []
 			},
-			files: [
-				{
-					keys: set,
-					folder: "materials",
-					extensionsPattern: ".vtf",
-					toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
-				}
-			],
 			completion: {
 				root: [
 					{
@@ -181,7 +173,15 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 					}
 				],
 				typeKey: null,
-				defaultType: null
+				defaultType: null,
+				files: [
+					{
+						keys: set,
+						folder: "materials",
+						extensionsPattern: ".vtf",
+						toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
+					}
+				],
 			}
 		}
 	}

@@ -620,33 +620,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					<InlayHint[]>[]
 				)
 			},
-			files: [
-				{
-					keys: new Set([
-						"ClassIcon".toLowerCase()
-					]),
-					folder: "materials/hud",
-					extensionsPattern: ".vmt",
-					toCompletionItem: (name, type, withoutExtension) => {
-						if (type == 1 && name.startsWith("leaderboard_class_")) {
-							const insertText = withoutExtension().substring("leaderboard_class_".length)
-							return {
-								label: name.substring("leaderboard_class_".length),
-								insertText: insertText,
-							}
-						}
-						else {
-							return null
-						}
-					},
-					asset: VGUIAssetType.Image
-				},
-				{
-					keys: sounds,
-					folder: "sound",
-					extensionsPattern: null,
-				}
-			],
 			completion: {
 				root: [
 					{
@@ -659,6 +632,33 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				],
 				typeKey: null,
 				defaultType: null,
+				files: [
+					{
+						keys: new Set([
+							"ClassIcon".toLowerCase()
+						]),
+						folder: "materials/hud",
+						extensionsPattern: ".vmt",
+						toCompletionItem: (name, type, withoutExtension) => {
+							if (type == 1 && name.startsWith("leaderboard_class_")) {
+								const insertText = withoutExtension().substring("leaderboard_class_".length)
+								return {
+									label: name.substring("leaderboard_class_".length),
+									insertText: insertText,
+								}
+							}
+							else {
+								return null
+							}
+						},
+						asset: VGUIAssetType.Image
+					},
+					{
+						keys: sounds,
+						folder: "sound",
+						extensionsPattern: null,
+					}
+				],
 			}
 		}
 	}

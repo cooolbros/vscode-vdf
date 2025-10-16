@@ -344,35 +344,35 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 
 			return inlayHints
 		},
-		files: [
-			{
-				keys: new Set([
-					"font",
-				]),
-				folder: null,
-				extensionsPattern: ".*tf",
-			},
-			{
-				keys: new Set([
-					"Buttons".toLowerCase(),
-					"ButtonsSC".toLowerCase(),
-				]),
-				folder: null,
-				extensionsPattern: null,
-			},
-			{
-				keys: new Set([
-					"image",
-				]),
-				folder: "materials/vgui",
-				extensionsPattern: ".vmt",
-				asset: VGUIAssetType.Image
-			},
-		],
 		completion: {
 			root: [],
 			typeKey: null,
-			defaultType: null
+			defaultType: null,
+			files: [
+				{
+					keys: new Set([
+						"font",
+					]),
+					folder: null,
+					extensionsPattern: ".*tf",
+				},
+				{
+					keys: new Set([
+						"Buttons".toLowerCase(),
+						"ButtonsSC".toLowerCase(),
+					]),
+					folder: null,
+					extensionsPattern: null,
+				},
+				{
+					keys: new Set([
+						"image",
+					]),
+					folder: "materials/vgui",
+					extensionsPattern: ".vmt",
+					asset: VGUIAssetType.Image
+				},
+			],
 		}
 	}
 }

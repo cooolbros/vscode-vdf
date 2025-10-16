@@ -384,29 +384,29 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 				<InlayHint[]>[]
 			)
 		},
-		files: [
-			{
-				keys: images,
-				folder: "materials/vgui",
-				extensionsPattern: ".vmt",
-				toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
-				asset: VGUIAssetType.Image
-			},
-			{
-				keys: sounds,
-				folder: "sound",
-				extensionsPattern: null,
-			},
-			{
-				keys: new Set(["modelname"]),
-				folder: null,
-				extensionsPattern: ".mdl",
-			}
-		],
 		completion: {
 			root: [],
 			typeKey: "ControlName".toLowerCase(),
-			defaultType: "Panel".toLowerCase()
+			defaultType: "Panel".toLowerCase(),
+			files: [
+				{
+					keys: images,
+					folder: "materials/vgui",
+					extensionsPattern: ".vmt",
+					toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
+					asset: VGUIAssetType.Image
+				},
+				{
+					keys: sounds,
+					folder: "sound",
+					extensionsPattern: null,
+				},
+				{
+					keys: new Set(["modelname"]),
+					folder: null,
+					extensionsPattern: ".mdl",
+				}
+			],
 		}
 	}
 }

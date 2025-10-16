@@ -68,11 +68,11 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 		getInlayHints: async (params) => {
 			return []
 		},
-		files: [],
 		completion: {
 			root: [],
 			typeKey: null,
-			defaultType: null
+			defaultType: null,
+			files: [],
 		}
 	}
 }

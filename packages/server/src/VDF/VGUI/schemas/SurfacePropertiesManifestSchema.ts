@@ -24,15 +24,6 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 		getLinks: schema.getLinks,
 		getColours: schema.getColours,
 		getInlayHints: schema.getInlayHints,
-		files: [
-			{
-				keys: new Set([
-					"file"
-				]),
-				folder: null,
-				extensionsPattern: ".txt",
-			},
-		],
 		completion: {
 			root: [
 				{
@@ -41,7 +32,16 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 				}
 			],
 			typeKey: null,
-			defaultType: null
+			defaultType: null,
+			files: [
+				{
+					keys: new Set([
+						"file"
+					]),
+					folder: null,
+					extensionsPattern: ".txt",
+				},
+			],
 		}
 	}
 }

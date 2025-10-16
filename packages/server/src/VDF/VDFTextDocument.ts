@@ -34,17 +34,17 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 	getLinks(params: DocumentLinksHandlerParams<TDocument>): DocumentLinkData[]
 	getColours(params: DocumentColoursHandlerParams<TDocument>): ColourInformationStringify[]
 	getInlayHints(params: DocumentInlayHintsHandlerParams<TDocument>): Promise<InlayHint[]>
-	files: {
-		keys: Set<string>
-		folder: string | null
-		extensionsPattern: `.${string}` | null
-		toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
-		asset?: VGUIAssetType
-	}[]
 	completion: {
 		root: CompletionItem[]
 		typeKey: string | null
 		defaultType: string | null
+		files: {
+			keys: Set<string>
+			folder: string | null
+			extensionsPattern: `.${string}` | null
+			toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
+			asset?: VGUIAssetType
+		}[]
 		values?: Record<string, CompletionItem[]>
 	}
 }
