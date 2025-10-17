@@ -1,5 +1,22 @@
 # Change Log
 
+## [5.7.0]
+ - Add documentation comments support for definitions
+ - Add cyclic #base diagnostic
+ - Fix formatter not quoting tokens that start with control characters
+ - Fix #base definitions not being correctly removed
+ - Update minimum VSCode to `^1.105.0`
+ - VGUI
+   - Add inlay hints for `o` wide/tall
+   - Add definition provider for clientscheme definitions in clientscheme files
+   - Add links for clientscheme CustomFontFiles string fonts
+   - Add inlay hints for clientscheme CustomFontFiles range values
+ - Popfile
+   - Add unknown keys diagnostics
+   - Fix using incorrect BSP version for some custom maps
+   - Add `InitWaveOutput` to `Wave` autocompletion
+   - [Wave Status Preview] Fix Squad/RandomChoice Tank background
+
 ## [5.6.0]
  - Fix VPK reading on Linux
  - [Popfile] Add command to list ClassIcons in Popfile (`Popfile: List Class Icons`) ([#64](https://github.com/cooolbros/vscode-vdf/issues/64))
