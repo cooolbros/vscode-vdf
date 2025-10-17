@@ -206,7 +206,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 
 		if (!this.maps.has(bsp)) {
 			this.maps.set(bsp, Promise.try(async () => {
-				const uri = await firstValueFrom(this.fileSystem.resolveFile(`maps/${bsp}`))
+				const uri = await firstValueFrom(this.fileSystem.resolveFile(`maps/${bsp}.bsp`))
 				if (!uri) {
 					return null
 				}
