@@ -1,12 +1,12 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
-import { usingAsync } from "common/operators/usingAsync"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { combineLatestWith, firstValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
-import type { VDFDocumentSymbols } from "vdf-documentsymbols"
+import { firstValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import type { VDFRange } from "vdf"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { CompletionItemKind } from "vscode-languageserver"
+import { CompletionItem, CompletionItemKind } from "vscode-languageserver"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import type { VDFTextDocumentSchema } from "../VDFTextDocument"
 import type { PopfileLanguageServer } from "./PopfileLanguageServer"
@@ -14,9 +14,13 @@ import type { PopfileTextDocument } from "./PopfileTextDocument"
 
 export class PopfileWorkspace extends WorkspaceBase {
 
-	public readonly items$: Observable<Pick<VDFTextDocumentSchema<PopfileTextDocument>, "keys" | "values">>
-	public readonly attributes$: Observable<Pick<VDFTextDocumentSchema<PopfileTextDocument>, "keys" | "values">>
-	public readonly paints$: Observable<Map<string, string>>
+	public readonly paints: Promise<Map<string, string>>
+	public readonly dependencies: Promise<{
+		schema: {
+			keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"],
+		},
+		globals$: Observable<DefinitionReferences[]>
+	}>
 
 	private readonly maps: Map<string, Promise<{ values: VDFTextDocumentSchema<PopfileTextDocument>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocument>["completion"]["values"] } } | null>>
 	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
@@ -28,157 +32,203 @@ export class PopfileWorkspace extends WorkspaceBase {
 	) {
 		super(new Uri({ scheme: "file", path: "/" }))
 
-		const items_game$ = this.fileSystem.resolveFile("scripts/items/items_game.txt").pipe(
-			switchMap((uri) => usingAsync(async () => await documents.get(uri!))),
-			switchMap((document) => document.documentSymbols$),
-			map((documentSymbols) => documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")?.children),
-			map((items_game) => {
-				if (!items_game) {
-					throw new Error("items_game")
-				}
+		const items_game = Promise.try(async () => {
+			const uri = await firstValueFrom(this.fileSystem.resolveFile("scripts/items/items_game.txt"))
+			const document = await documents.get(uri!)
+			const documentSymbols = await firstValueFrom(document.documentSymbols$)
+			const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")?.children
+			if (!items_game) {
+				throw new Error("items_game")
+			}
 
-				return items_game
-			}),
-			shareReplay(1)
-		)
+			return { document: document, documentSymbols: items_game }
+		})
 
-		function names(items_game: VDFDocumentSymbols, key: string) {
-			return items_game
-				?.find((documentSymbol) => documentSymbol.key == key)
-				?.children
-				?.values()
+		const tf_english = Promise.try(async () => {
+			const uri = await firstValueFrom(this.fileSystem.resolveFile("resource/tf_english.txt"))
+			await using document = await documents.get(uri!)
+			const documentSymbols = getVDFDocumentSymbols(document.text$.value, { multilineStrings: true })
+
+			const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
+			if (!lang) {
+				throw new Error("lang")
+			}
+
+			const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
+			if (!tokens) {
+				throw new Error("Tokens")
+			}
+
+			return new Map(
+				tokens
+					.filter((documentSymbol) => documentSymbol.detail != undefined)
+					.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
+			)
+		})
+
+		const items = Promise.all([items_game, tf_english]).then(([items_game, tf_english]) => {
+			const items = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "items")?.children
+			if (!items) {
+				throw new Error("items")
+			}
+
+			const collection = new Collection<Definition>()
+
+			const definitions = items
+				.values()
+				.drop(1 /* "default" */)
+				.map((documentSymbol) => {
+					const name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "name")!
+
+					const item_name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "item_name")?.detail?.substring("#".length)
+					const itemName = item_name != undefined ? tf_english.get(item_name) : undefined
+
+					const image_inventory = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "image_inventory")?.detail
+					const data = image_inventory != undefined
+						? { image: { uri: items_game.document.uri, path: posix.join("materials", `${image_inventory}.vmt`) } }
+						: undefined
+
+					return {
+						uri: items_game.document.uri,
+						key: name.detail!,
+						range: documentSymbol.range,
+						keyRange: documentSymbol.nameRange,
+						nameRange: undefined,
+						detail: undefined,
+						documentation: undefined,
+						conditional: documentSymbol.conditional ?? undefined,
+						completionItem: {
+							labelDetails: {
+								description: itemName,
+							},
+							filterText: itemName,
+							data: data
+						}
+					} satisfies Definition
+				})
+				.filter((item) => item != null)
+
+			for (const definition of definitions) {
+				collection.set(null, Symbol.for("item"), definition.key, definition)
+			}
+
+			return {
+				scopes: new Map(),
+				definitions: new Definitions({ version: [items_game.document.version], collection }),
+				references: new References(items_game.document.uri, new Collection<VDFRange>(), [])
+			} satisfies DefinitionReferences
+		})
+
+		const attributes = items_game.then(async (items_game) => {
+			const attributes = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "attributes")?.children
+			if (!attributes) {
+				throw new Error("attributes")
+			}
+
+			const completionItems = attributes
+				.values()
 				.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
-				.filter((name) => name != undefined)
-		}
+				.filter((attribute) => attribute != undefined)
+				.map((attribute) => ({ label: attribute, kind: CompletionItemKind.Constant }))
+				.toArray()
 
-		const tf_english$ = this.fileSystem.resolveFile("resource/tf_english.txt").pipe(
-			switchMap((uri) => usingAsync(async () => await documents.get(uri!))),
-			switchMap((document) => document.text$),
-			map((text) => getVDFDocumentSymbols(text, { multilineStrings: true })),
-			map((documentSymbols) => {
-				const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
-				if (!lang) {
-					throw new Error("lang")
-				}
-
-				const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
-				if (!tokens) {
-					throw new Error("Tokens")
-				}
-
-				return new Map(
-					tokens
-						.filter((documentSymbol) => documentSymbol.detail != undefined)
-						.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
-				)
-			}),
-			shareReplay(1)
-		)
-
-		this.items$ = items_game$.pipe(
-			map((documentSymbols) => {
-				const items = names(documentSymbols, "items")?.drop(1).toArray()
-				if (!items) {
-					throw new Error("items")
-				}
-
-				return {
-					keys: {},
-					values: {
-						item: {
-							kind: CompletionItemKind.Constant,
-							values: items
-						},
-						itemname: {
-							kind: CompletionItemKind.Constant,
-							values: items
-						},
+			return {
+				keys: {
+					[`${"CharacterAttributes".toLowerCase()}`]: { values: completionItems },
+					[`${"ItemAttributes".toLowerCase()}`]: {
+						values: [
+							{
+								label: "ItemName",
+								kind: CompletionItemKind.Field
+							},
+							...completionItems
+						]
 					}
 				}
-			}),
-			shareReplay(1)
-		)
+			}
+		})
 
-		this.attributes$ = items_game$.pipe(
-			map((documentSymbols) => {
-				const attributes = names(documentSymbols, "attributes")?.map((attribute) => ({ label: attribute, kind: CompletionItemKind.Field })).toArray()
-				if (!attributes) {
-					throw new Error("attributes")
-				}
+		this.paints = Promise.all([items_game, tf_english]).then(([items_game, tf_english]) => {
+			const items = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key == "items")?.children
+			if (!items) {
+				throw new Error("items")
+			}
 
-				return {
-					keys: {
-						characterattributes: {
-							values: attributes
-						},
-						itemattributes: {
-							values: [
-								{
-									label: "ItemName",
-									kind: CompletionItemKind.Field
-								},
-								...attributes
-							]
-						}
-					},
-					values: {}
-				}
-			}),
-			shareReplay(1)
-		)
+			const paints: Record<string, string> = {}
 
-		this.paints$ = items_game$.pipe(
-			combineLatestWith(tf_english$),
-			map(([documentSymbols, tokens]) => {
-				const items = documentSymbols?.find((documentSymbol) => documentSymbol.key == "items")?.children
-				if (!items) {
-					throw new Error("items")
-				}
+			for (const documentSymbol of items) {
+				const prefab = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "prefab")?.detail?.toLowerCase()
+				if (prefab == "valve paint_can" || prefab == "valve paint_can_team_color") {
+					const item_name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "item_name")?.detail?.substring("#".length)
+					const attributes = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "attributes")?.children
+					if (!item_name || !attributes) {
+						continue
+					}
 
-				const paints: Record<string, string> = {}
-
-				for (const documentSymbol of items) {
-					const prefab = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "prefab")?.detail?.toLowerCase()
-					if (prefab == "valve paint_can" || prefab == "valve paint_can_team_color") {
-						const item_name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "item_name")?.detail?.substring("#".length)
-						const attributes = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "attributes")?.children
-						if (!item_name || !attributes) {
-							continue
-						}
-
-						switch (prefab) {
-							case "valve paint_can":
-								const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
-								if (rgb) {
-									const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
-									if (value) {
-										paints[value] = tokens.get(item_name)!
-									}
+					switch (prefab) {
+						case "valve paint_can":
+							const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
+							if (rgb) {
+								const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
+								if (value) {
+									paints[value] = tf_english.get(item_name)!
 								}
-								break
-							case "valve paint_can_team_color": {
-								const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
-								const rgb2 = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB 2".toLowerCase())?.children
-								if (rgb && rgb2) {
-									const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
-									const value2 = rgb2.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
-									if (value && value2) {
-										paints[value] = `${tokens.get(item_name)!} (Red)`
-										paints[value2] = `${tokens.get(item_name)!} (Blu)`
-									}
-								}
-								break
 							}
-							default:
-								continue
+							break
+						case "valve paint_can_team_color": {
+							const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
+							const rgb2 = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB 2".toLowerCase())?.children
+							if (rgb && rgb2) {
+								const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
+								const value2 = rgb2.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
+								if (value && value2) {
+									paints[value] = `${tf_english.get(item_name)!} (Red)`
+									paints[value2] = `${tf_english.get(item_name)!} (Blu)`
+								}
+							}
+							break
 						}
+						default:
+							continue
 					}
 				}
+			}
 
-				return new Map(Object.entries(paints).sort((a, b) => a[0].localeCompare(b[0])))
-			}),
-			shareReplay(1)
-		)
+			return new Map(Object.entries(paints).sort((a, b) => a[0].localeCompare(b[0])))
+		})
+
+		this.dependencies = Promise.all([items, attributes, this.paints]).then(([items, attributes, paints]) => {
+			return {
+				schema: {
+					keys: {
+						...attributes.keys,
+					},
+					values: {
+						[`${"set item tint RGB".toLowerCase()}`]: paints
+							.entries()
+							.map(([key, name]) => {
+
+								const colour = parseInt(key)
+								const r = (colour >> 16) & 255
+								const g = (colour >> 8) & 255
+								const b = (colour >> 0) & 255
+								return {
+									label: name,
+									labelDetails: {
+										description: key
+									},
+									kind: CompletionItemKind.Color,
+									documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
+									filterText: name,
+									insertText: key,
+								} satisfies CompletionItem
+							})
+							.toArray()
+					}
+				},
+				globals$: of([items])
+			}
+		})
 
 		this.maps = new Map()
 		this.classIcons = new Map()
@@ -273,8 +323,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 					},
 					completion: {
 						values: {
-							startingpathtracknode: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
-							target: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+							[`${"StartingPathTrackNode".toLowerCase()}`]: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+							[`${"Target".toLowerCase()}`]: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
 						}
 					}
 				}

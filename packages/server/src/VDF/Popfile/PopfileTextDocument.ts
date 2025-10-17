@@ -3,9 +3,9 @@ import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { combineLatest, firstValueFrom, from, map, of, zip, type Observable } from "rxjs"
+import { combineLatest, defer, firstValueFrom, from, map, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
-import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
+import { CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
 import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Fallback, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
@@ -105,10 +105,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"StartingPathTrackNode": [string()],
 		})
 
-		const validateItem = dynamic("Item")
+		const validateItem = string(reference(Symbol.for("item")))
 
 		const validateItemAttributes = (): Validate<PopfileTextDocument> => {
-			const validate = documentSymbols({ "ItemName": [string(dynamic("ItemName"))] }, () => [])
+			const validate = documentSymbols({ "ItemName": [validateItem] }, () => [])
 			return (key, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				diagnostics.push(...validate(key, documentSymbol, path, context))
@@ -134,7 +134,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"Attributes": [string(set(values.attributes.values)), KeyDistinct.None],
 			"BehaviorModifiers": [string(set(["Mobber", "Push"]))],
 			"CharacterAttributes": [documentSymbols({}, () => [])],
-			"Item": [string(validateItem), KeyDistinct.None],
+			"Item": [validateItem, KeyDistinct.None],
 			"ItemAttributes": [validateItemAttributes(), KeyDistinct.None],
 			"MaxVisionRange": [string(float), KeyDistinct.Last],
 			"Skill": [string(set(values.skill.values)), KeyDistinct.Last],
@@ -445,6 +445,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			getDefinitionReferences({ document, documentSymbols }) {
 				const wavespawn = Symbol.for("wavespawn")
 				const template = Symbol.for("template")
+				const item = Symbol.for("item")
 
 				const scopes = new Map<symbol, Map<number, VDFRange>>([
 					[
@@ -519,6 +520,9 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									if (documentSymbol.key.toLowerCase() == "Template".toLowerCase() && documentSymbol.detail != undefined) {
 										references.set(null, template, documentSymbol.detail!, documentSymbol.detailRange!)
 									}
+									else if ((documentSymbol.key.toLowerCase() == "Item".toLowerCase() || documentSymbol.key.toLowerCase() == "ItemName".toLowerCase()) && documentSymbol.detail != undefined) {
+										references.set(null, item, documentSymbol.detail!, documentSymbol.detailRange!)
+									}
 								})
 							}
 						}
@@ -534,6 +538,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			definitionReferences: new Map([
 				[Symbol.for("template"), { keys: new Set(["Template".toLowerCase()]) }],
 				[Symbol.for("wavespawn"), { keys: new Set(["WaitForAllSpawned".toLowerCase(), "WaitForAllDead".toLowerCase()]) }],
+				[Symbol.for("item"), { keys: new Set(["Item".toLowerCase(), "ItemName".toLowerCase()]) }],
 			]),
 			getDiagnostics: getDiagnostics,
 			getLinks: ({ documentSymbols, resolve }) => {
@@ -587,7 +592,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				})
 			},
 			getInlayHints: async ({ documentSymbols }) => {
-				const paints = await firstValueFrom(document.workspace.paints$)
+				const paints = await document.workspace.paints
 				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
 				return documentSymbols.reduce(
 					(inlayHints, documentSymbol) => {
@@ -678,53 +683,30 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,
 			dependencies$: combineLatest([
-				zip([workspace.items$, workspace.attributes$, workspace.paints$]),
+				defer(async () => PopfileTextDocument.Schema(this)),
+				from(workspace.dependencies),
 				from(workspace.entities(init.uri.basename())),
 			]).pipe(
-				map(([[items, attributes, paints], entities]) => {
-					const schema = PopfileTextDocument.Schema(this)
+				map(([schema, workspace, entities]) => {
 					return {
 						schema: {
 							...schema,
 							keys: {
 								...schema.keys,
-								...items.keys,
-								...attributes.keys
+								...workspace.schema.keys,
 							},
 							values: {
 								...schema.values,
-								...items.values,
-								...attributes.values,
 								...entities?.values
 							},
 							completion: {
 								...schema.completion,
 								values: {
 									...entities?.completion.values,
-									"set item tint rgb": paints
-										.entries()
-										.map(([key, name]) => {
-
-											const colour = parseInt(key)
-											const r = (colour >> 16) & 255
-											const g = (colour >> 8) & 255
-											const b = (colour >> 0) & 255
-											return {
-												label: name,
-												labelDetails: {
-													description: key
-												},
-												kind: CompletionItemKind.Color,
-												documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
-												filterText: name,
-												insertText: key,
-											} satisfies CompletionItem
-										})
-										.toArray()
 								}
 							}
 						} satisfies VDFTextDocumentSchema<PopfileTextDocument>,
-						globals$: of([])
+						globals$: workspace.globals$
 					}
 				})
 			)

@@ -97,7 +97,9 @@ export const definitionSchema = z.object({
 				value: z.string()
 			})
 		]).optional(),
-		insertText: z.string().optional()
+		filterText: z.string().optional(),
+		insertText: z.string().optional(),
+		data: z.any().optional(),
 	}).optional(),
 })
 
