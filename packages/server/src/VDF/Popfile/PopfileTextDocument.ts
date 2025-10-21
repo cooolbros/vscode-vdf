@@ -51,7 +51,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 						return {
 							title: `Add ${conditional}`,
-							edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detailRange ?? documentSymbol.nameRange).end, ` ${conditional}`))
+							edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detail != undefined ? documentSymbol.range : documentSymbol.nameRange).end, ` ${conditional}`))
 						}
 					},
 				}
