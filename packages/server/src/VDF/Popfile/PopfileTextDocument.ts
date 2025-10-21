@@ -26,27 +26,37 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	public static readonly Schema = (document: PopfileTextDocument): VDFTextDocumentSchema<PopfileTextDocument> => {
 		const { unreachable, any, header, string, length, integer, float, set, dynamic, reference } = document.diagnostics
 
-		const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.Last, (key, parent, documentSymbol, context) => ({
-			message: `Unknown attribute '${key}' in ${parent} definition.`,
-			data: {
-				fix: ({ createDocumentWorkspaceEdit }) => {
-					const conditional = context.documentSymbols?.findRecursive((documentSymbol) => {
-						return documentSymbol.conditional != null && !TextDocumentBase.conditionals.values().some((conditional) => {
-							return conditional.toLowerCase() == documentSymbol.conditional?.toLowerCase()
-						})
-					})?.conditional
-
-					if (!conditional) {
-						return null
-					}
-
-					return {
-						title: `Add ${conditional}`,
-						edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detailRange ?? documentSymbol.nameRange).end, ` ${conditional}`))
-					}
-				},
+		const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.Last, (key, parent, documentSymbol, context) => {
+			if (!context.documentConfiguration.popfile.diagnostics.strict) {
+				return []
 			}
-		}))
+
+			return [{
+				range: documentSymbol.nameRange,
+				severity: DiagnosticSeverity.Warning,
+				code: "unknown-key",
+				source: "popfile",
+				message: `Unknown attribute '${key}' in ${parent} definition.`,
+				data: {
+					fix: ({ createDocumentWorkspaceEdit }) => {
+						const conditional = context.documentSymbols?.findRecursive((documentSymbol) => {
+							return documentSymbol.conditional != null && !TextDocumentBase.conditionals.values().some((conditional) => {
+								return conditional.toLowerCase() == documentSymbol.conditional?.toLowerCase()
+							})
+						})?.conditional
+
+						if (!conditional) {
+							return null
+						}
+
+						return {
+							title: `Add ${conditional}`,
+							edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detailRange ?? documentSymbol.nameRange).end, ` ${conditional}`))
+						}
+					},
+				}
+			}]
+		})
 
 		const validateMob = documentSymbols({
 			"Count": [string(integer)],
@@ -280,7 +290,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 					return validateSpawner("" /* unused */, documentSymbol, path, context)
 				}
 				else {
-					return [unknown()]
+					return unknown()
 				}
 			}
 		}

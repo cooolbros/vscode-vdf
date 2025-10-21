@@ -56,6 +56,7 @@ export interface DefinitionReferencesHandlerParams<TDocument extends VDFTextDocu
 
 export interface DiagnosticsHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
 	dependencies: VDFTextDocumentDependencies<TDocument>
+	documentConfiguration: VSCodeVDFConfiguration
 	documentSymbols: VDFDocumentSymbol[]
 	definitionReferences: DefinitionReferences
 }
@@ -96,6 +97,7 @@ type BaseResult<TDocument extends VDFTextDocument<TDocument>> = (
 
 export interface Context<TDocument extends VDFTextDocument<TDocument>> {
 	dependencies: VDFTextDocumentDependencies<TDocument>,
+	documentConfiguration: VSCodeVDFConfiguration,
 	documentSymbols: VDFDocumentSymbols | undefined,
 	definitionReferences: DefinitionReferences,
 }
@@ -110,13 +112,13 @@ export const enum KeyDistinct {
 
 export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (name: string, detail: string, detailRange: VDFRange, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
 
-export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeAction) => DiagnosticCodeActions
+export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeActions) => DiagnosticCodeActions
 
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
 
 	public readonly configuration: VDFTextDocumentConfiguration<TDocument>
 
-	protected getDiagnostics: (dependencies: VDFTextDocumentDependencies<TDocument>, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
+	protected getDiagnostics: (dependencies: VDFTextDocumentDependencies<TDocument>, configuration: VSCodeVDFConfiguration, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 
 	/**
 	 * #base
@@ -143,7 +145,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		},
 		any: () => [],
 		header: (validate: Validate<TDocument>, multiple: boolean): VDFTextDocumentSchema<TDocument>["getDiagnostics"] => {
-			return ({ dependencies, documentSymbols, definitionReferences }) => {
+			return ({ dependencies, documentConfiguration, documentSymbols, definitionReferences }) => {
 				const diagnostics: DiagnosticCodeActions = []
 				const [header, ...rest] = documentSymbols
 				if (header != undefined) {
@@ -154,6 +156,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							[],
 							{
 								dependencies: dependencies,
+								documentConfiguration: documentConfiguration,
 								documentSymbols: header.children,
 								definitionReferences: definitionReferences,
 							}
@@ -168,7 +171,10 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		documentSymbols: (distinct: KeyDistinct, message: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDocument>) => Pick<DiagnosticCodeAction, "message" | "data"> = (key) => ({ message: `Unknown key '${key}'.` })) => {
+		documentSymbols: (distinct: KeyDistinct, unknown: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDocument>) => DiagnosticCodeActions = (key, parent, documentSymbol) => [{ range: documentSymbol.nameRange, severity: DiagnosticSeverity.Warning, code: "unknown-key", source: this.languageId, message: `Unknown key '${key}'.` }]) => {
+			/*
+				message: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDocument>) => Pick<DiagnosticCodeAction, "message" | "data"> = (key) => ({ message: `Unknown key '${key}'.` })
+			*/
 			return (schema: Record<string, [Validate<TDocument>] | [Validate<TDocument>, KeyDistinct]>, fallback?: Fallback<TDocument>): Validate<TDocument> => {
 				const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
 				return (name, documentSymbol, path, context) => {
@@ -194,15 +200,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 							const data = map.get(documentSymbol.key.toLowerCase())
 							if (data == undefined) {
-								const unknown = (): DiagnosticCodeAction => ({
-									range: documentSymbol.nameRange,
-									severity: DiagnosticSeverity.Warning,
-									code: "unknown-key",
-									source: this.languageId,
-									...message(documentSymbol.key, name, documentSymbol, context),
-								})
-
-								diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, unknown) ?? [unknown()])
+								diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, () => unknown(documentSymbol.key, name, documentSymbol, context)) ?? unknown(documentSymbol.key, name, documentSymbol, context))
 							}
 							else {
 
@@ -539,11 +537,12 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			},
 			defaultDocumentSymbols: new VDFDocumentSymbols(),
 			definitionReferences$: defer(() => this.documentSymbols$).pipe(
-				combineLatestWith(configuration.dependencies$),
-				map(([documentSymbols, dependencies]) => {
+				combineLatestWith(configuration.dependencies$, defer(() => this.documentConfiguration$)),
+				map(([documentSymbols, dependencies, documentConfiguration]) => {
 					const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
 					return {
 						dependencies: dependencies,
+						documentConfiguration: documentConfiguration,
 						documentSymbols: documentSymbols,
 						base: documentSymbols
 							.values()
@@ -699,6 +698,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 									return {
 										dependencies: value.dependencies,
+										documentConfiguration: value.documentConfiguration,
 										documentSymbols: value.documentSymbols,
 										definitionReferences: {
 											scopes: value.scopes,
@@ -726,7 +726,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 		this.configuration = configuration
 
-		this.getDiagnostics = (dependencies, documentSymbols, definitionReferences) => {
+		this.getDiagnostics = (dependencies, documentConfiguration, documentSymbols, definitionReferences) => {
 			const diagnostics: DiagnosticCodeActions = []
 
 			const { base = [], rest = [] } = Object.groupBy(
@@ -846,6 +846,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			diagnostics.push(
 				...dependencies.schema.getDiagnostics({
 					dependencies: dependencies,
+					documentConfiguration: documentConfiguration,
 					documentSymbols: rest,
 					definitionReferences: definitionReferences,
 				})

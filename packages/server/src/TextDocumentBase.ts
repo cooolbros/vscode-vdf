@@ -20,6 +20,7 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 	defaultDocumentSymbols: TDocumentSymbols
 	definitionReferences$: Observable<{
 		dependencies: TDependencies,
+		documentConfiguration: VSCodeVDFConfiguration,
 		documentSymbols: TDocumentSymbols,
 		definitionReferences: DefinitionReferences
 	}>
@@ -163,8 +164,8 @@ export abstract class TextDocumentBase<
 			switchMap((result) => {
 				if (result.success) {
 					return data$.pipe(
-						map(({ dependencies, documentSymbols, definitionReferences }) => {
-							return this.getDiagnostics(dependencies, documentSymbols, definitionReferences)
+						map(({ dependencies, documentConfiguration, documentSymbols, definitionReferences }) => {
+							return this.getDiagnostics(dependencies, documentConfiguration, documentSymbols, definitionReferences)
 						}),
 						switchMap((diagnostics) => {
 							if (!diagnostics.length) {
@@ -264,7 +265,7 @@ export abstract class TextDocumentBase<
 		await this.fileSystem[Symbol.asyncDispose]()
 	}
 
-	protected abstract getDiagnostics(dependencies: TDependencies, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): DiagnosticCodeActions
+	protected abstract getDiagnostics(dependencies: TDependencies, documentConfiguration: VSCodeVDFConfiguration, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): DiagnosticCodeActions
 
 	public abstract getLinks(): Promise<DocumentLinkData[]>
 

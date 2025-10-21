@@ -32,7 +32,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 	public static readonly fontProperties = new Set(Fonts.map((i) => i.toLowerCase()))
 
-	protected getDiagnostics: (dependencies: HUDAnimationsTextDocumentDependencies, documentSymbols: HUDAnimationsDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
+	protected getDiagnostics: (dependencies: HUDAnimationsTextDocumentDependencies, documentConfiguration: VSCodeVDFConfiguration, documentSymbols: HUDAnimationsDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 
 	public readonly workspace: HUDAnimationsWorkspace | null
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
@@ -49,12 +49,14 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 			definitionReferences$: defer(() => {
 				if (workspace != null) {
 					return workspace.manifest$.pipe(
-						switchMap((documents) => {
+						combineLatestWith(defer(() => this.documentConfiguration$)),
+						switchMap(([documents, documentConfiguration]) => {
 							if (documents.includes(this)) {
 								return workspace.definitionReferences$.pipe(
 									map(({ documentSymbols, definitionReferences }) => {
 										return {
 											dependencies: {},
+											documentConfiguration: documentConfiguration,
 											documentSymbols: documentSymbols.get(this)!,
 											definitionReferences: definitionReferences,
 										}
@@ -113,6 +115,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 											map((elements) => {
 												return {
 													dependencies: {},
+													documentConfiguration: documentConfiguration,
 													documentSymbols: documentSymbols,
 													definitionReferences: {
 														scopes: new Map(),
@@ -136,8 +139,12 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 					)
 				}
 				else {
-					return this.documentSymbols$.pipe(
-						map((documentSymbols) => {
+					return combineLatest({
+						documentConfiguration: this.documentConfiguration$,
+						documentSymbols: this.documentSymbols$
+					}).pipe(
+
+						map(({ documentConfiguration, documentSymbols }) => {
 							const definitions = new Collection<Definition>()
 							const references = new Collection<VDFRange>()
 
@@ -160,6 +167,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 							return {
 								dependencies: {},
+								documentConfiguration: documentConfiguration,
 								documentSymbols: documentSymbols,
 								definitionReferences: {
 									scopes: new Map(),
@@ -175,7 +183,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 		this.workspace = workspace
 
-		this.getDiagnostics = (dependencies, documentSymbols, definitionReferences) => {
+		this.getDiagnostics = (dependencies, documentConfiguration, documentSymbols, definitionReferences) => {
 			return documentSymbols.reduce(
 				(diagnostics, documentSymbol) => {
 					const key = documentSymbol.eventName.toLowerCase()

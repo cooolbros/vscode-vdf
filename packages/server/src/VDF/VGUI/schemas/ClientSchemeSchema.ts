@@ -99,7 +99,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			"Fonts": [next],
 			"Borders": [next],
 			"CustomFontFiles": [next],
-		}, (documentSymbol, path, context, unknown) => [unknown()]),
+		}, (documentSymbol, path, context, unknown) => unknown()),
 		false
 	)
 

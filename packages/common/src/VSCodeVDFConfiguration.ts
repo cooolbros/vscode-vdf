@@ -25,6 +25,9 @@ export const VSCodeVDFConfigurationSchema = z.object({
 		})
 	}),
 	popfile: VDFLanguageConfigurationSchema.extend({
+		diagnostics: z.object({
+			strict: z.boolean()
+		}),
 		waveStatusPreview: z.object({
 			background: z.object({
 				colour: z.string(),

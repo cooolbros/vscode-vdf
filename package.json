@@ -236,6 +236,11 @@
             {
                 "title": "Popfile",
                 "properties": {
+                    "vscode-vdf.popfile.diagnostics.strict": {
+                        "type": "boolean",
+                        "description": "Whether to strictly allow only known keys.",
+                        "default": true
+                    },
                     "vscode-vdf.popfile.format.insertNewlineBeforeObjects": {
                         "type": "boolean",
                         "description": "Whether to insert a newline before objects when formatting.",
