@@ -172,9 +172,6 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 		},
 		documentSymbols: (distinct: KeyDistinct, unknown: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDocument>) => DiagnosticCodeActions = (key, parent, documentSymbol) => [{ range: documentSymbol.nameRange, severity: DiagnosticSeverity.Warning, code: "unknown-key", source: this.languageId, message: `Unknown key '${key}'.` }]) => {
-			/*
-				message: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDocument>) => Pick<DiagnosticCodeAction, "message" | "data"> = (key) => ({ message: `Unknown key '${key}'.` })
-			*/
 			return (schema: Record<string, [Validate<TDocument>] | [Validate<TDocument>, KeyDistinct]>, fallback?: Fallback<TDocument>): Validate<TDocument> => {
 				const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
 				return (name, documentSymbol, path, context) => {
