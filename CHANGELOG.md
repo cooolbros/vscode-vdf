@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.7.1]
+ - Add setting to disable strict Popfile diagnostics (`vscode-vdf.popfile.diagnostics.strict`)
+ - Fix Popfile Add unknown conditional code action insert position for double quoted values
+
 ## [5.7.0]
  - Add documentation comments support for definitions
  - Add cyclic #base diagnostic
