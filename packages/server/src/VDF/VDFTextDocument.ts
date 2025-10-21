@@ -197,7 +197,10 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 
 							const data = map.get(documentSymbol.key.toLowerCase())
 							if (data == undefined) {
-								diagnostics.push(...fallback?.(documentSymbol, [...path, parent], context, () => unknown(documentSymbol.key, name, documentSymbol, context)) ?? unknown(documentSymbol.key, name, documentSymbol, context))
+								diagnostics.push(
+									...fallback?.(documentSymbol, [...path, parent], context, () => unknown(documentSymbol.key, name, documentSymbol, context))
+									?? unknown(documentSymbol.key, name, documentSymbol, context)
+								)
 							}
 							else {
 
