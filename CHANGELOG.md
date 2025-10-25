@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.7.2]
+ - Fix extension activation failing in VSCode Web
+ - Fix `Popfile: List Class Icons` command in VSCode Web
+
 ## [5.7.1]
  - Add setting to disable strict Popfile diagnostics (`vscode-vdf.popfile.diagnostics.strict`)
  - Fix Popfile Add unknown conditional code action insert position for double quoted values
