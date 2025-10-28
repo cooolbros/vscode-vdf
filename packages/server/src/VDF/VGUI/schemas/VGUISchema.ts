@@ -243,9 +243,13 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 			const links: DocumentLinkData[] = []
 			documentSymbols.forEach((documentSymbol) => {
 				documentSymbol.children?.forAll((documentSymbol) => {
+					if (documentSymbol.detail == undefined) {
+						return
+					}
+
 					const key = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
 
-					if (images.has(key) && documentSymbol.detail?.trim() != "") {
+					if (images.has(key) && documentSymbol.detail.trim() != "") {
 						links.push({
 							range: documentSymbol.detailRange!,
 							data: {
@@ -255,7 +259,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 						return
 					}
 
-					if (sounds.has(key) && documentSymbol.detail?.trim() != "") {
+					if (sounds.has(key) && documentSymbol.detail.trim() != "") {
 						links.push({
 							range: documentSymbol.detailRange!,
 							data: {
@@ -265,7 +269,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 						return
 					}
 
-					if (key == "modelname" && documentSymbol.detail?.trim() != "") {
+					if (key == "modelname" && documentSymbol.detail.trim() != "") {
 						links.push({
 							range: documentSymbol.detailRange!,
 							data: {
