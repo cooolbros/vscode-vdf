@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.7.3]
+ - [Popfile] Fix false positive syntax error for multiline values
+
 ## [5.7.2]
  - Fix extension activation failing in VSCode Web
  - Fix `Popfile: List Class Icons` command in VSCode Web
