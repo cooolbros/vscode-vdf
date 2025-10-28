@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.7.4]
+ - [VGUI] Fix crashed caused by invalid document links
+
 ## [5.7.3]
  - [Popfile] Fix false positive syntax error for multiline values
 
