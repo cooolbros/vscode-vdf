@@ -83,19 +83,21 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 						}
 					}
 
-					tokeniser.allowMultilineString = false
-
 					switch (valueToken.type) {
 						case VDFTokenType.String: {
-							if (newline) {
+							if (newline && !tokeniser.allowMultilineString) {
 								throw new UnexpectedTokenError(`'\\n'`, ["'{'", "value"], new VDFRange(keyRange.start, valueToken.exteriorRange.end))
 							}
+							tokeniser.allowMultilineString = false
+
 							value = valueToken.value
 							valueRange = valueToken.range
 							conditional = tokeniser.conditional()
 							break
 						}
 						case VDFTokenType.OpeningBrace: {
+							tokeniser.allowMultilineString = false
+
 							const start = new VDFPosition(tokeniser.line, tokeniser.character)
 							value = parseObject(true)
 							const end = new VDFPosition(tokeniser.line, tokeniser.character - 1)
