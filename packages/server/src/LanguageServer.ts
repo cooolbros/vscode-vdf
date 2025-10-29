@@ -17,6 +17,7 @@ import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type { FileType } from "vscode"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, InlayHint, InlayHintRequest, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type InlayHintParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
+import { version } from "../../../package.json"
 import { Definitions, References } from "./DefinitionReferences"
 import type { HUDAnimationsLanguageServer } from "./HUDAnimations/HUDAnimationsLanguageServer"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DocumentLinkData, type TextDocumentInit } from "./TextDocumentBase"
@@ -243,7 +244,7 @@ export abstract class LanguageServer<
 		this.documentsInlayHints = new WeakMap()
 
 		this.connection.onInitialize(async (params) => {
-			this.connection.console.log(`${name} Language Server`)
+			this.connection.console.log(`${name} Language Server v${version}`)
 			this.connection.console.log(languageServerConfiguration.platform)
 			return {
 				serverInfo: {
