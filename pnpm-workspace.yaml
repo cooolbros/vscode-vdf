@@ -12,3 +12,10 @@ catalog:
   vite: ^6.3.6
   vscode-languageclient: ^9.0.1
   vscode-languageserver: ^9.0.1
+
+onlyBuiltDependencies:
+  - '@playwright/browser-chromium'
+  - '@vscode/vsce-sign'
+  - esbuild
+  - keytar
+  - sharp
