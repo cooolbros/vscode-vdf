@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.7.5]
+ - Improve logging
+
 ## [5.7.4]
  - [VGUI] Fix crashed caused by invalid document links
 
