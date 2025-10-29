@@ -5,6 +5,7 @@
         "build": "webpack"
     },
     "devDependencies": {
+        "common": "workspace:*",
         "server": "workspace:^",
         "tsconfig": "workspace:^",
         "vscode-languageserver": "catalog:"

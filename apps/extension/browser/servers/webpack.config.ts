@@ -7,7 +7,7 @@ export default {
 	mode: "production",
 	target: "webworker",
 	devtool: "source-map",
-	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, posix.join(import.meta.dirname, `src/${name}`)])),
+	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, [import.meta.resolve("common/stackTraceLimit"), posix.join(import.meta.dirname, `src/${name}`)]])),
 	output: {
 		path: posix.join(import.meta.dirname, "dist"),
 		libraryTarget: "var",
