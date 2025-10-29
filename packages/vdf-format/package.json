@@ -2,7 +2,7 @@
     "name": "vdf-format",
     "main": "./src/index.ts",
     "devDependencies": {
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^"
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*"
     }
 }

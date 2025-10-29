@@ -5,16 +5,16 @@
     },
     "devDependencies": {
         "@types/string-similarity": "^4.0.2",
-        "client": "workspace:^",
-        "common": "workspace:^",
+        "client": "workspace:*",
+        "common": "workspace:*",
         "dedent": "^1.7.0",
-        "hudanimations-documentsymbols": "workspace:^",
-        "hudanimations-format": "workspace:^",
+        "hudanimations-documentsymbols": "workspace:*",
+        "hudanimations-format": "workspace:*",
         "string-similarity": "^4.0.4",
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^",
-        "vdf-documentsymbols": "workspace:^",
-        "vdf-format": "workspace:^",
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*",
+        "vdf-documentsymbols": "workspace:*",
+        "vdf-format": "workspace:*",
         "vscode-languageserver": "catalog:"
     }
 }

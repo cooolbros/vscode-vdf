@@ -5,9 +5,9 @@
         "build": "webpack"
     },
     "devDependencies": {
-        "client": "workspace:^",
-        "common": "workspace:^",
-        "tsconfig": "workspace:^",
+        "client": "workspace:*",
+        "common": "workspace:*",
+        "tsconfig": "workspace:*",
         "vscode-languageclient": "catalog:"
     }
 }

@@ -90,10 +90,10 @@ importers:
         specifier: ^0.41.0
         version: 0.41.0(bun-types@1.2.6)
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vdf
       vpk:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vpk
 
   apps/docs:
@@ -129,25 +129,25 @@ importers:
         specifier: ^0.14.0
         version: 0.14.0(shiki@3.13.0)
       syntaxes:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/syntaxes/dist
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3))
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/tsconfig
 
   apps/extension/browser/client:
     devDependencies:
       client:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/client/src
       common:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/common
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/tsconfig
       vscode-languageclient:
         specifier: 'catalog:'
@@ -159,10 +159,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../packages/common
       server:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/server/src
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
         specifier: 'catalog:'
@@ -174,19 +174,19 @@ importers:
         specifier: ^22.9.0
         version: 22.9.0
       client:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/client/src
       common:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/common
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/vdf
       vpk:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/vpk
       vscode-languageclient:
         specifier: 'catalog:'
@@ -198,10 +198,10 @@ importers:
         specifier: workspace:*
         version: link:../../../../packages/common
       server:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/server/src
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
         specifier: 'catalog:'
@@ -216,7 +216,7 @@ importers:
         specifier: 'catalog:'
         version: 1.57.5
       client:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/client/src
       svelte:
         specifier: 'catalog:'
@@ -225,7 +225,7 @@ importers:
         specifier: 'catalog:'
         version: 6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
       vtf-canvas:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/vtf-canvas
 
   apps/wavestatus-preview:
@@ -243,16 +243,16 @@ importers:
         specifier: ^0.0.36
         version: 0.0.36
       client:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/client/src
       common:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/common
       svelte:
         specifier: 'catalog:'
         version: 5.39.10
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/tsconfig
       vite:
         specifier: 'catalog:'
@@ -263,28 +263,28 @@ importers:
   packages/client:
     devDependencies:
       bsp:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../bsp
       common:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../common
       minimatch:
         specifier: ^10.0.1
         version: 10.0.1
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
       vdf-documentsymbols:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf-documentsymbols
       vscode-languageclient:
         specifier: 'catalog:'
         version: 9.0.1
       vtf-png:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vtf-png
     publishDirectory: src
 
@@ -294,13 +294,13 @@ importers:
         specifier: ^5.1.1
         version: 5.1.1
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
       vdf-documentsymbols:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf-documentsymbols
       vscode-uri:
         specifier: ^3.0.8
@@ -309,10 +309,10 @@ importers:
   packages/hudanimations-documentsymbols:
     devDependencies:
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
       vscode-languageserver:
         specifier: 'catalog:'
@@ -321,16 +321,16 @@ importers:
   packages/hudanimations-format:
     devDependencies:
       hudanimations-documentsymbols:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../hudanimations-documentsymbols
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
       vdf-format:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf-format
 
   packages/server:
@@ -339,34 +339,34 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2
       client:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../client/src
       common:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../common
       dedent:
         specifier: ^1.7.0
         version: 1.7.0
       hudanimations-documentsymbols:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../hudanimations-documentsymbols
       hudanimations-format:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../hudanimations-format
       string-similarity:
         specifier: ^4.0.4
         version: 4.0.4
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
       vdf-documentsymbols:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf-documentsymbols
       vdf-format:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf-format
       vscode-languageserver:
         specifier: 'catalog:'
@@ -379,10 +379,10 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       server:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../server/src
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
     publishDirectory: dist
 
@@ -391,16 +391,16 @@ importers:
   packages/vdf:
     devDependencies:
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
 
   packages/vdf-documentsymbols:
     devDependencies:
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
       vscode-languageserver:
         specifier: 'catalog:'
@@ -409,16 +409,16 @@ importers:
   packages/vdf-format:
     devDependencies:
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
       vdf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vdf
 
   packages/vpk:
     devDependencies:
       tsconfig:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../tsconfig
 
   packages/vtf: {}
@@ -426,13 +426,13 @@ importers:
   packages/vtf-canvas:
     devDependencies:
       vtf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vtf
 
   packages/vtf-png:
     devDependencies:
       vtf:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../vtf
 
 packages:

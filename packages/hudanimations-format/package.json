@@ -2,9 +2,9 @@
     "name": "hudanimations-format",
     "main": "./src/index.ts",
     "devDependencies": {
-        "hudanimations-documentsymbols": "workspace:^",
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^",
-        "vdf-format": "workspace:^"
+        "hudanimations-documentsymbols": "workspace:*",
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*",
+        "vdf-format": "workspace:*"
     }
 }

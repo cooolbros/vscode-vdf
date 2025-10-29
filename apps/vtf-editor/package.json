@@ -8,10 +8,10 @@
     "devDependencies": {
         "@tsconfig/svelte": "catalog:",
         "@types/vscode-webview": "catalog:",
-        "client": "workspace:^",
+        "client": "workspace:*",
         "svelte": "catalog:",
         "vite": "catalog:",
-        "vtf-canvas": "workspace:^"
+        "vtf-canvas": "workspace:*"
     },
     "type": "module"
 }

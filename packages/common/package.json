@@ -5,9 +5,9 @@
     },
     "devDependencies": {
         "devalue": "^5.1.1",
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^",
-        "vdf-documentsymbols": "workspace:^",
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*",
+        "vdf-documentsymbols": "workspace:*",
         "vscode-uri": "^3.0.8"
     },
     "type": "module"

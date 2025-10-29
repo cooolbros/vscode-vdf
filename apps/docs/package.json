@@ -16,9 +16,9 @@
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "rehype-pretty-code": "^0.14.0",
-        "syntaxes": "workspace:^",
+        "syntaxes": "workspace:*",
         "tailwindcss": "^3.4.17",
-        "tsconfig": "workspace:^"
+        "tsconfig": "workspace:*"
     },
     "type": "module"
 }

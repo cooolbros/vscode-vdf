@@ -2,6 +2,6 @@
     "name": "vdf",
     "main": "./src/index.ts",
     "devDependencies": {
-        "tsconfig": "workspace:^"
+        "tsconfig": "workspace:*"
     }
 }

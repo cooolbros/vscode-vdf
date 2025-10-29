@@ -6,8 +6,8 @@
     },
     "devDependencies": {
         "common": "workspace:*",
-        "server": "workspace:^",
-        "tsconfig": "workspace:^",
+        "server": "workspace:*",
+        "tsconfig": "workspace:*",
         "vscode-languageserver": "catalog:"
     }
 }

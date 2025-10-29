@@ -6,11 +6,11 @@
     },
     "devDependencies": {
         "@types/node": "^22.9.0",
-        "client": "workspace:^",
-        "common": "workspace:^",
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^",
-        "vpk": "workspace:^",
+        "client": "workspace:*",
+        "common": "workspace:*",
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*",
+        "vpk": "workspace:*",
         "vscode-languageclient": "catalog:"
     }
 }

@@ -4,13 +4,13 @@
         "directory": "src"
     },
     "devDependencies": {
-        "bsp": "workspace:^",
-        "common": "workspace:^",
+        "bsp": "workspace:*",
+        "common": "workspace:*",
         "minimatch": "^10.0.1",
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^",
-        "vdf-documentsymbols": "workspace:^",
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*",
+        "vdf-documentsymbols": "workspace:*",
         "vscode-languageclient": "catalog:",
-        "vtf-png": "workspace:^"
+        "vtf-png": "workspace:*"
     }
 }

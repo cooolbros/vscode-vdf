@@ -10,6 +10,6 @@
         "build": "wasm-pack build --release --target web"
     },
     "devDependencies": {
-        "vtf": "workspace:^"
+        "vtf": "workspace:*"
     }
 }

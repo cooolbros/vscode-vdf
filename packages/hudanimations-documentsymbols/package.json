@@ -2,8 +2,8 @@
     "name": "hudanimations-documentsymbols",
     "main": "./src/index.ts",
     "devDependencies": {
-        "tsconfig": "workspace:^",
-        "vdf": "workspace:^",
+        "tsconfig": "workspace:*",
+        "vdf": "workspace:*",
         "vscode-languageserver": "catalog:"
     }
 }
