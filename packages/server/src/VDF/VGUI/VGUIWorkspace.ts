@@ -195,37 +195,39 @@ export class VGUIWorkspace extends WorkspaceBase {
 		this.documentSymbols = new Map()
 		this.fileReferences = new Map()
 
-		Promise.try(async () => {
-			const [clientSchemeFiles, sourceSchemeFiles, languageTokenFiles] = await Promise.all([
-				firstValueFrom(this.clientSchemeFiles$),
-				firstValueFrom(this.sourceSchemeFiles$),
-				firstValueFrom(this.languageTokensFiles$),
-			])
+		Promise.allSettled([
+			Promise.try(async () => {
+				const [clientSchemeFiles, sourceSchemeFiles, languageTokenFiles] = await Promise.all([
+					firstValueFrom(this.clientSchemeFiles$),
+					firstValueFrom(this.sourceSchemeFiles$),
+					firstValueFrom(this.languageTokensFiles$),
+				])
 
-			const options = { recursive: true, pattern: "**/*.res" }
+				const options = { recursive: true, pattern: "**/*.res" }
 
-			const readDirectory = async function*(folder: string) {
-				const entries = await fileSystem.readDirectory(folder, options)
-				yield* entries.values().map(([path, type]) => <const>[posix.join(folder, path), type])
-			}
-
-			const entries = async function*() {
-				yield* readDirectory("resource/ui")
-				yield* readDirectory("scripts")
-			}
-
-			for await (const [path, type] of entries()) {
-				if (type == 2 || clientSchemeFiles.has(path) || sourceSchemeFiles.has(path) || languageTokenFiles.has(path)) {
-					continue
+				const readDirectory = async function*(folder: string) {
+					const entries = await fileSystem.readDirectory(folder, options)
+					yield* entries.values().map(([path, type]) => <const>[posix.join(folder, path), type])
 				}
 
-				const uri = await firstValueFrom(fileSystem.resolveFile(path))
-				if (uri) {
-					await using document = await documents.get(uri)
-					await firstValueFrom(document.definitionReferences$)
+				const entries = async function*() {
+					yield* readDirectory("resource/ui")
+					yield* readDirectory("scripts")
 				}
-			}
-		})
+
+				for await (const [path, type] of entries()) {
+					if (type == 2 || clientSchemeFiles.has(path) || sourceSchemeFiles.has(path) || languageTokenFiles.has(path)) {
+						continue
+					}
+
+					const uri = await firstValueFrom(fileSystem.resolveFile(path))
+					if (uri) {
+						await using document = await documents.get(uri)
+						await firstValueFrom(document.definitionReferences$)
+					}
+				}
+			})
+		])
 	}
 
 	public fileType(uri: Uri) {
