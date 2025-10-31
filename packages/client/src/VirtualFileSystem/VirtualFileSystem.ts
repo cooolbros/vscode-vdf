@@ -10,9 +10,9 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 	const observables = new Map<string, Observable<Uri | null>>()
 	return {
 		resolveFile: (path) => {
-			let observable = observables.get(path)
-			if (!observable) {
-				observable = defer(() => {
+			let observable$ = observables.get(path)
+			if (!observable$) {
+				observable$ = defer(() => {
 					return fileSystems.length != 0
 						? combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path)))
 						: of([])
@@ -22,9 +22,9 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 					finalize(() => observables.delete(path)),
 					shareReplay({ bufferSize: 1, refCount: true })
 				)
-				observables.set(path, observable)
+				observables.set(path, observable$)
 			}
-			return observable
+			return observable$
 		},
 		readDirectory: async (path, options) => {
 			const results = await Promise.allSettled(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))
@@ -32,8 +32,7 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 			return results
 				.values()
 				.filter((result) => result.status == "fulfilled")
-				.map((result) => result.value)
-				.flatMap((value) => value)
+				.flatMap((result) => result.value)
 				.reduce((a, b) => {
 					if (!a.some(([n]) => n == b[0])) {
 						a.push(b)
