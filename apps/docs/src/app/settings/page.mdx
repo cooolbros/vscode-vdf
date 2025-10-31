@@ -46,7 +46,11 @@ Controls when to update file diagnostics
 
 `vscode-vdf.vtf.formats.exclude`
 
-List of VTF formats to skip showing a warning for when opening a VTF file with a format that is currently not supported.
+List of VTF formats to skip showing a notification for when opening a VTF file with a format that is currently not supported.
+
+This setting is modified by VSCode VDF when clicking `Don't ask again` in the `Unsupported VTF format` notification:
+
+![Unsupported VTF format notification](./unsupported_vtf_format_notification.png)
 
 Possible List Values:
  - `RGBA8888`
@@ -78,6 +82,26 @@ Possible List Values:
  - `UVLX8888`
 
 *Default:* `[]`
+
+> [!NOTE]
+>
+> The currently supported VTF image formats include
+>
+> `RGBA8888`\
+> `ABGR8888`\
+> `RGB888`\
+> `BGR888`\
+> `I8`\
+> `A8`\
+> `RGB888BlueScreen`\
+> `BGR888BlueScreen`\
+> `ARGB8888`\
+> `BGRA8888`\
+> `DXT1`\
+> `DXT3`\
+> `DXT5`
+>
+> Including any of these formats in `vscode-vdf.vtf.formats.exclude` will have no effect
 
 ## HUD Animations `hudanimations`
 
@@ -222,9 +246,13 @@ Enable/disable VScript language support.
 
 ### waveStatusPreview
 
+Settings for configuring the style of the [Wave Status Preview](/features/popfile#wave-status-preview)
+
 #### background
 
 ##### colour
+
+`vscode-vdf.popfile.waveStatusPreview.background.colour`
 
 Background colour for Wave Status Preview.
 
@@ -234,19 +262,33 @@ Background colour for Wave Status Preview.
 
 Show/Hide sky for Wave Status Preview.
 
+`vscode-vdf.popfile.waveStatusPreview.background.sky`
+
 *Default:* `true`
 
 #### font
 
 ##### bold
 
-Bold font for Wave Status Preview. Must be installed
+`vscode-vdf.popfile.waveStatusPreview.font.bold`
+
+Bold font for Wave Status Preview.
+
+> [!WARNING]
+>
+> Must be installed if *not* `TF2 Build` or `TF2 Secondary`.
 
 *Default:* `TF2 Build`
 
 ##### regular
 
-Regular font for Wave Status Preview. Must be installed
+`vscode-vdf.popfile.waveStatusPreview.font.regular`
+
+Regular font for Wave Status Preview.
+
+> [!WARNING]
+>
+> Must be installed if *not* `TF2 Build` or `TF2 Secondary`.
 
 *Default:* `TF2 Secondary`
 
