@@ -705,7 +705,7 @@ export abstract class LanguageServer<
 
 		for (const { value: definitions } of definitionReferences.definitions) {
 			for (const definition of definitions) {
-				if (definition.keyRange.contains(params.position) || definition.nameRange?.contains(params.position)) {
+				if (Uri.equals(definition.uri, params.textDocument.uri) && (definition.keyRange.contains(params.position) || definition.nameRange?.contains(params.position))) {
 					return {
 						contents: definitions.map((definition) => definition.documentation).join("\n\n"),
 						range: [definition.keyRange, definition.nameRange].find((range) => range?.contains(params.position))!
