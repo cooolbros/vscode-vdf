@@ -76,7 +76,7 @@ const definitionReferences = new Map([
 
 export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
 
-	const { set, reference } = document.diagnostics
+	const { set, reference, file } = document.diagnostics
 
 	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocument> => {
 		const refine = document.diagnostics.reference(type)
@@ -100,6 +100,8 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 	const border = reference(Symbol.for("border"))
 	const font = reference(Symbol.for("font"))
 
+	const image = file("image", "materials/vgui", ".vmt")
+
 	const next = document.diagnostics.next({
 		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, set("enumIndex" in value && value.enumIndex ? [...value.values, ...value.values.map((_, index) => index.toString())] : value.values, "fix" in value ? value.fix : undefined)])),
 		...Object.fromEntries(clientscheme.Colors.map((value) => <const>[value, color])),
@@ -107,6 +109,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 		...Object.fromEntries(clientscheme.Fonts.map((value) => <const>[value, font])),
 		...Object.fromEntries(elements.map((value) => <const>[value, element])),
 		...Object.fromEntries(strings.map((value) => <const>[value, token])),
+		...Object.fromEntries(images.values().map((value) => <const>[value, image]))
 	})
 
 	const getDiagnostics = document.diagnostics.header(

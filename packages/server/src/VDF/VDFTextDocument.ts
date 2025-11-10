@@ -460,7 +460,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 		},
 		file: (name: string, folder: string | null, extension: string | null): RefineString<TDocument> => {
-			return (name, detail, detailRange, path, context) => {
+			return (_name, detail, detailRange, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (detail == "") {
 					return diagnostics
