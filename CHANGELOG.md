@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.7.7]
+ - [Popfile] Fix Support label not expanding image width in Wave Status Preview
+
 ## [5.7.6]
  - Fix definition hovers showing definitions from #base files
  - [VGUI] Fix image related diagnostics
