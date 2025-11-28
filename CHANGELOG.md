@@ -1,5 +1,12 @@
 # Change Log
 
+## [5.7.6]
+ - Fix definition hovers showing definitions from #base files
+ - [VGUI] Fix image related diagnostics
+ - [VGUI] Improve workspace error handling
+ - [Popfile] Use `Wave 666` label for Popfiles with `EventPopfile` `Halloween` in Wave Status Preview
+ - [Popfile] Add `language` option for Wave Status Preview
+
 ## [5.7.5]
  - Improve logging
 
