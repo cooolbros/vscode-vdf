@@ -1168,9 +1168,9 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
 name = "texpresso"
-version = "2.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8277e703c934b9693d0773d5749faacc6366b3d81d012da556a4cfd4ab87f336"
+checksum = "8550677e2259d675a7841cb1403db35f330cc9e58674c8c5caa12dd12c51dc71"
 dependencies = [
  "libm",
 ]
