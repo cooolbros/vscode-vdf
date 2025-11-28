@@ -100,6 +100,13 @@
 			font("resource/tf2build.ttf", "TF2 Build"),
 			font("resource/tf2secondary.ttf", "TF2 Secondary"),
 		]),
+		tokens: new Observable<{ TF_PVE_WaveCount: string; TF_MVM_Support: string }>((subscriber) => {
+			return trpc.tokens.subscribe(undefined, {
+				onData: (value) => subscriber.next(value),
+				onError: (err) => subscriber.error(err),
+				onComplete: () => subscriber.complete(),
+			})
+		}),
 		configuration: new Observable<VSCodeVDFConfiguration["popfile"]["waveStatusPreview"]>((subscriber) => {
 			return trpc.configuration.subscribe(undefined, {
 				onData: (value) => subscriber.next(value),
@@ -146,6 +153,7 @@
 			tournament_panel_blu,
 			tournament_panel_brown,
 			tournament_panel_tan,
+			tokens,
 			configuration,
 			data: { waveStatus, icons },
 		}) => {
@@ -257,7 +265,7 @@
 				context.textBaseline = "middle"
 				context.letterSpacing = "2px"
 				const waveNumberText = waveStatus.eventPopfile == "Halloween" ? "666" : `${index + 1} / ${waves.length}`
-				const waveCountLabelText = `Wave ${waveNumberText}`
+				const waveCountLabelText = tokens.TF_PVE_WaveCount.replace("%s1", waveNumberText)
 				const waveCountLabelWidth = context.measureText(waveCountLabelText)
 				context.fillText(waveCountLabelText, canvas.width / 2, labelY)
 				context.letterSpacing = "0px"
@@ -393,7 +401,7 @@
 					context.textAlign = "left"
 					context.textBaseline = "middle"
 					// + 12 * SCALE + 30
-					context.fillText("Support", x, y + 6 * SCALE + 32 * SCALE + 20 * SCALE)
+					context.fillText(tokens.TF_MVM_Support, x, y + 6 * SCALE + 32 * SCALE + 20 * SCALE)
 
 					for (const icon of wave.icons.support) {
 						EnemyCountPanel(icon, x, y + 32 * SCALE, false)

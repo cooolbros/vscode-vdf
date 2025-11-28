@@ -9,8 +9,9 @@ import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, concatMap, filter, firstValueFrom, map, Observable, of, share, startWith, switchMap, type ObservedValueOf } from "rxjs"
+import { catchError, concatMap, filter, firstValueFrom, map, Observable, of, share, shareReplay, startWith, switchMap, type ObservedValueOf } from "rxjs"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import vscode, { commands, DocumentSymbol, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
@@ -480,22 +481,25 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			)
 		}
 
+		const configuration$ = new Observable<ConfigurationChangeEvent>((subscriber) => {
+			const disposable = workspace.onDidChangeConfiguration((event) => {
+				subscriber.next(event)
+			})
+			return () => disposable.dispose()
+		}).pipe(
+			filter((event) => event.affectsConfiguration("vscode-vdf.popfile.waveStatusPreview")),
+			map(() => null),
+			startWith(null),
+			map(() => VSCodeVDFConfigurationSchema.shape.popfile.shape.waveStatusPreview.parse(workspace.getConfiguration("vscode-vdf.popfile.waveStatusPreview"))),
+			shareReplay({ bufferSize: 1, refCount: true })
+		)
+
 		const router = t.router({
 			configuration: t
 				.procedure
 				.subscription(({ signal }) => {
 					return observableToAsyncIterable<VSCodeVDFConfiguration["popfile"]["waveStatusPreview"]>(
-						new Observable<ConfigurationChangeEvent>((subscriber) => {
-							const disposable = workspace.onDidChangeConfiguration((event) => {
-								subscriber.next(event)
-							})
-							return () => disposable.dispose()
-						}).pipe(
-							filter((event) => event.affectsConfiguration("vscode-vdf.popfile.waveStatusPreview")),
-							map(() => null),
-							startWith(null),
-							map(() => VSCodeVDFConfigurationSchema.shape.popfile.shape.waveStatusPreview.parse(workspace.getConfiguration("vscode-vdf.popfile.waveStatusPreview"))),
-						),
+						configuration$,
 						signal!
 					)
 				}),
@@ -556,6 +560,48 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 						signal!
 					)
 				}),
+			tokens: t.procedure.subscription(({ signal }) => {
+				const tokens = (map: Map<string, string>) => ({
+					TF_PVE_WaveCount: map.get("TF_PVE_WaveCount")!,
+					TF_MVM_Support: map.get("TF_MVM_Support")!,
+				})
+
+				return observableToAsyncIterable<ReturnType<typeof tokens>>(
+					configuration$.pipe(
+						switchMap((configuration) => {
+							const files: Record<string, string> = {
+								// "korean": "koreana",
+								"simplified_chinese": "schinese",
+								"traditional_chinese": "tchinese",
+								"latam_spanish": "latam"
+							}
+							return fileSystem.resolveFile(`resource/tf_${files[configuration.language] ?? configuration.language}.txt`)
+						}),
+						concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri!))),
+						map((text) => {
+							const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
+
+							const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
+							if (!lang) {
+								throw new Error("lang")
+							}
+
+							const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
+							if (!tokens) {
+								throw new Error("Tokens")
+							}
+
+							return new Map(
+								tokens
+									.filter((documentSymbol) => documentSymbol.detail != undefined)
+									.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
+							)
+						}),
+						map(tokens)
+					),
+					signal!
+				)
+			}),
 			waveStatus: t
 				.procedure
 				.subscription(({ signal }) => observableToAsyncIterable<ObservedValueOf<typeof waveStatus$>>(waveStatus$, signal!)),
