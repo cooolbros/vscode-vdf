@@ -183,7 +183,7 @@
 
 			context.beginPath()
 			context.font = `400 ${11 * SCALE}px/1 '${configuration.font.bold}'`
-			const supportText = context.measureText("Support")
+			const supportText = context.measureText(tokens.TF_MVM_Support)
 
 			// Expand width for Support label
 			for (const wave of waves.values().filter((wave) => wave.icons.support.length > 0)) {
