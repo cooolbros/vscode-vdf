@@ -256,7 +256,8 @@
 				context.textAlign = "center"
 				context.textBaseline = "middle"
 				context.letterSpacing = "2px"
-				const waveCountLabelText = `Wave ${index + 1} / ${waves.length}`
+				const waveNumberText = waveStatus.eventPopfile == "Halloween" ? "666" : `${index + 1} / ${waves.length}`
+				const waveCountLabelText = `Wave ${waveNumberText}`
 				const waveCountLabelWidth = context.measureText(waveCountLabelText)
 				context.fillText(waveCountLabelText, canvas.width / 2, labelY)
 				context.letterSpacing = "0px"

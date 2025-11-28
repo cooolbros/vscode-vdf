@@ -38,6 +38,9 @@ async function getWaveStatus(popfile: Popfile) {
 	const TANK_PATH = "materials/hud/leaderboard_class_tank.vmt"
 
 	const starting = parseInt(popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "StartingCurrency".toLowerCase())?.detail ?? "") || 0
+	const eventPopfile = popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "EventPopfile".toLowerCase())?.detail?.toLowerCase() == "Halloween".toLowerCase()
+		? <const>"Halloween"
+		: null
 	const templates = await popfile.templates()
 
 	function attribute(documentSymbols: VDFDocumentSymbol[] | undefined, key: string): boolean {
@@ -346,6 +349,7 @@ async function getWaveStatus(popfile: Popfile) {
 
 	return {
 		starting,
+		eventPopfile,
 		waves,
 	}
 }
