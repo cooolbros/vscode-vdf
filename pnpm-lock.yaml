@@ -61,7 +61,7 @@ importers:
         version: 9.5.4(typescript@5.9.3)(webpack@5.102.1)
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@24.7.0)(typescript@5.9.3)
+        version: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)
       turbo:
         specifier: ^2.5.0
         version: 2.5.0
@@ -111,8 +111,8 @@ importers:
         specifier: ^4.6.0
         version: 4.6.0(@types/react@18.3.12)(next@15.5.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(nextra@4.6.0(acorn@8.15.0)(next@15.5.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.9.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       pagefind:
-        specifier: ^1.3.0
-        version: 1.3.0
+        specifier: ^1.4.0
+        version: 1.4.0
       postcss:
         specifier: ^8.5.1
         version: 8.5.1
@@ -133,7 +133,7 @@ importers:
         version: link:../../packages/syntaxes/dist
       tailwindcss:
         specifier: ^3.4.17
-        version: 3.4.17(ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3))
+        version: 3.4.17(ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3))
       tsconfig:
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -223,7 +223,7 @@ importers:
         version: 5.39.10
       vite:
         specifier: 'catalog:'
-        version: 6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
+        version: 6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
       vtf-canvas:
         specifier: workspace:*
         version: link:../../packages/vtf-canvas
@@ -232,7 +232,7 @@ importers:
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: 'catalog:'
-        version: 5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
+        version: 5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
       '@tsconfig/svelte':
         specifier: 'catalog:'
         version: 5.0.4
@@ -256,7 +256,7 @@ importers:
         version: link:../../packages/tsconfig
       vite:
         specifier: 'catalog:'
-        version: 6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
+        version: 6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
 
   packages/bsp: {}
 
@@ -1063,28 +1063,33 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@pagefind/darwin-arm64@1.3.0':
-    resolution: {integrity: sha512-365BEGl6ChOsauRjyVpBjXybflXAOvoMROw3TucAROHIcdBvXk9/2AmEvGFU0r75+vdQI4LJdJdpH4Y6Yqaj4A==}
+  '@pagefind/darwin-arm64@1.4.0':
+    resolution: {integrity: sha512-2vMqkbv3lbx1Awea90gTaBsvpzgRs7MuSgKDxW0m9oV1GPZCZbZBJg/qL83GIUEN2BFlY46dtUZi54pwH+/pTQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@pagefind/darwin-x64@1.3.0':
-    resolution: {integrity: sha512-zlGHA23uuXmS8z3XxEGmbHpWDxXfPZ47QS06tGUq0HDcZjXjXHeLG+cboOy828QIV5FXsm9MjfkP5e4ZNbOkow==}
+  '@pagefind/darwin-x64@1.4.0':
+    resolution: {integrity: sha512-e7JPIS6L9/cJfow+/IAqknsGqEPjJnVXGjpGm25bnq+NPdoD3c/7fAwr1OXkG4Ocjx6ZGSCijXEV4ryMcH2E3A==}
     cpu: [x64]
     os: [darwin]
 
-  '@pagefind/linux-arm64@1.3.0':
-    resolution: {integrity: sha512-8lsxNAiBRUk72JvetSBXs4WRpYrQrVJXjlRRnOL6UCdBN9Nlsz0t7hWstRk36+JqHpGWOKYiuHLzGYqYAqoOnQ==}
+  '@pagefind/freebsd-x64@1.4.0':
+    resolution: {integrity: sha512-WcJVypXSZ+9HpiqZjFXMUobfFfZZ6NzIYtkhQ9eOhZrQpeY5uQFqNWLCk7w9RkMUwBv1HAMDW3YJQl/8OqsV0Q==}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@pagefind/linux-arm64@1.4.0':
+    resolution: {integrity: sha512-PIt8dkqt4W06KGmQjONw7EZbhDF+uXI7i0XtRLN1vjCUxM9vGPdtJc2mUyVPevjomrGz5M86M8bqTr6cgDp1Uw==}
     cpu: [arm64]
     os: [linux]
 
-  '@pagefind/linux-x64@1.3.0':
-    resolution: {integrity: sha512-hAvqdPJv7A20Ucb6FQGE6jhjqy+vZ6pf+s2tFMNtMBG+fzcdc91uTw7aP/1Vo5plD0dAOHwdxfkyw0ugal4kcQ==}
+  '@pagefind/linux-x64@1.4.0':
+    resolution: {integrity: sha512-z4oddcWwQ0UHrTHR8psLnVlz6USGJ/eOlDPTDYZ4cI8TK8PgwRUPQZp9D2iJPNIPcS6Qx/E4TebjuGJOyK8Mmg==}
     cpu: [x64]
     os: [linux]
 
-  '@pagefind/windows-x64@1.3.0':
-    resolution: {integrity: sha512-BR1bIRWOMqkf8IoU576YDhij1Wd/Zf2kX/kCI0b2qzCKC8wcc2GQJaaRMCpzvCCrmliO4vtJ6RITp/AnoYUUmQ==}
+  '@pagefind/windows-x64@1.4.0':
+    resolution: {integrity: sha512-NkT+YAdgS2FPCn8mIA9bQhiBs+xmniMGq1LFPDhcFn0+2yIUEiIG06t7bsZlhdjknEQRTSdT7YitP6fC5qwP0g==}
     cpu: [x64]
     os: [win32]
 
@@ -1537,11 +1542,11 @@ packages:
   '@types/node@22.9.0':
     resolution: {integrity: sha512-vuyHg81vvWA1Z1ELfvLko2c8f34gyA0zaic0+Rllc5lbCnbSyuvb2Oxpm6TAUAC/2xZN3QGqxBNggD1nNR2AfQ==}
 
+  '@types/node@24.10.1':
+    resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
+
   '@types/node@24.7.0':
     resolution: {integrity: sha512-IbKooQVqUBrlzWTi79E8Fw78l8k1RNtlDDNWsFZs7XonuQSJ8oNYfEeclhprUldXISRMLzBpILuKgPlIxm+/Yw==}
-
-  '@types/node@24.8.1':
-    resolution: {integrity: sha512-alv65KGRadQVfVcG69MuB4IzdYVpRwMG/mq8KWOaoOdyY617P5ivaDiMCGOFDWD2sAn5Q0mR3mRtUOgm99hL9Q==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -2138,8 +2143,8 @@ packages:
     engines: {node: '>=4'}
     hasBin: true
 
-  csstype@3.1.3:
-    resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   cytoscape-cose-bilkent@4.1.0:
     resolution: {integrity: sha512-wgQlVIUJF13Quxiv5e1gstZ08rnZj2XaLHGoFMYXz7SkNfCDOOteKBE6SYRfA9WxxI/iBc3ajfDoc6hb/MRAHQ==}
@@ -3174,6 +3179,7 @@ packages:
   keygrip@1.1.0:
     resolution: {integrity: sha512-iYSchDJ+liQ8iwbSI2QqsQOvqv58eJCEanyJPJi+Khyu8smkcKSFUCbPwzFcL7YVtZ6eONjqRX/38caJ7QjRAQ==}
     engines: {node: '>= 0.6'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   keytar@7.9.0:
     resolution: {integrity: sha512-VPD8mtVtm5JNtA2AErl6Chp06JBfy7diFQ7TQQhdpWOl6MrCRB+eRbvAZUsbGQS9kiMq0coJsy0W0vHpDCkWsQ==}
@@ -3329,6 +3335,7 @@ packages:
 
   mathjax-full@3.2.2:
     resolution: {integrity: sha512-+LfG9Fik+OuI8SLwsiR02IVdjcnRCy5MufYLi0C3TdMT56L/pjB0alMVGgoWJF8pN9Rc7FESycZB9BMNWIid5w==}
+    deprecated: Version 4 replaces this package with the scoped package @mathjax/src
 
   mdast-util-find-and-replace@3.0.2:
     resolution: {integrity: sha512-Tmd1Vg/m3Xz43afeNxDIhWRtFZgM2VLyaf4vSTYwudTyeuTneoL3qtWMA5jeLyz/O1vDJmmV4QuScFCA2tBPwg==}
@@ -3772,8 +3779,8 @@ packages:
   package-manager-detector@1.4.0:
     resolution: {integrity: sha512-rRZ+pR1Usc+ND9M2NkmCvE/LYJS+8ORVV9X0KuNSY/gFsp7RBHJM/ADh9LYq4Vvfq6QkKrW6/weuh8SMEtN5gw==}
 
-  pagefind@1.3.0:
-    resolution: {integrity: sha512-8KPLGT5g9s+olKMRTU9LFekLizkVIu9tes90O1/aigJ0T5LmyPqTzGJrETnSw3meSYg58YH7JTzhTTW/3z6VAw==}
+  pagefind@1.4.0:
+    resolution: {integrity: sha512-z2kY1mQlL4J8q5EIsQkLzQjilovKzfNVhX8De6oyE6uHpfFtyBaqUpcl/XzJC/4fjD8vBDyh1zolimIcVrCn9g==}
     hasBin: true
 
   pako@0.2.9:
@@ -4692,6 +4699,9 @@ packages:
   undici-types@7.14.0:
     resolution: {integrity: sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==}
 
+  undici-types@7.16.0:
+    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
   undici@6.20.1:
     resolution: {integrity: sha512-AjQF1QsmqfJys+LXfGTNum+qw4S88CojRInG/6t31W/1fk6G59s92bnAvGz5Cmur+kQv2SURXEvvudLmbrE8QA==}
     engines: {node: '>=18.17'}
@@ -5554,19 +5564,22 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.18.0
 
-  '@pagefind/darwin-arm64@1.3.0':
+  '@pagefind/darwin-arm64@1.4.0':
     optional: true
 
-  '@pagefind/darwin-x64@1.3.0':
+  '@pagefind/darwin-x64@1.4.0':
     optional: true
 
-  '@pagefind/linux-arm64@1.3.0':
+  '@pagefind/freebsd-x64@1.4.0':
     optional: true
 
-  '@pagefind/linux-x64@1.3.0':
+  '@pagefind/linux-arm64@1.4.0':
     optional: true
 
-  '@pagefind/windows-x64@1.3.0':
+  '@pagefind/linux-x64@1.4.0':
+    optional: true
+
+  '@pagefind/windows-x64@1.4.0':
     optional: true
 
   '@pkgjs/parseargs@0.11.0':
@@ -5807,25 +5820,25 @@ snapshots:
     dependencies:
       acorn: 8.15.0
 
-  '@sveltejs/vite-plugin-svelte-inspector@4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)))(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))':
+  '@sveltejs/vite-plugin-svelte-inspector@4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)))(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
+      '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
       debug: 4.4.1
       svelte: 5.39.10
-      vite: 6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
+      vite: 6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
     transitivePeerDependencies:
       - supports-color
 
-  '@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))':
+  '@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte-inspector': 4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)))(svelte@5.39.10)(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
+      '@sveltejs/vite-plugin-svelte-inspector': 4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)))(svelte@5.39.10)(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
       debug: 4.4.1
       deepmerge: 4.3.1
       kleur: 4.1.5
       magic-string: 0.30.17
       svelte: 5.39.10
-      vite: 6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
-      vitefu: 1.1.1(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
+      vite: 6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
+      vitefu: 1.1.1(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -6075,14 +6088,13 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
+  '@types/node@24.10.1':
+    dependencies:
+      undici-types: 7.16.0
+
   '@types/node@24.7.0':
     dependencies:
       undici-types: 7.14.0
-
-  '@types/node@24.8.1':
-    dependencies:
-      undici-types: 7.14.0
-    optional: true
 
   '@types/normalize-package-data@2.4.4': {}
 
@@ -6094,7 +6106,7 @@ snapshots:
   '@types/react@18.3.12':
     dependencies:
       '@types/prop-types': 15.7.15
-      csstype: 3.1.3
+      csstype: 3.2.3
     optional: true
 
   '@types/sarif@2.1.7': {}
@@ -6114,7 +6126,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 24.8.1
+      '@types/node': 22.9.0
     optional: true
 
   '@typescript/vfs@1.6.1(typescript@5.9.3)':
@@ -6528,7 +6540,7 @@ snapshots:
 
   bun-types@1.2.6:
     dependencies:
-      '@types/node': 24.8.1
+      '@types/node': 22.9.0
       '@types/ws': 8.5.14
     optional: true
 
@@ -6720,7 +6732,7 @@ snapshots:
 
   cssesc@3.0.0: {}
 
-  csstype@3.1.3:
+  csstype@3.2.3:
     optional: true
 
   cytoscape-cose-bilkent@4.1.0(cytoscape@3.33.1):
@@ -8745,13 +8757,14 @@ snapshots:
 
   package-manager-detector@1.4.0: {}
 
-  pagefind@1.3.0:
+  pagefind@1.4.0:
     optionalDependencies:
-      '@pagefind/darwin-arm64': 1.3.0
-      '@pagefind/darwin-x64': 1.3.0
-      '@pagefind/linux-arm64': 1.3.0
-      '@pagefind/linux-x64': 1.3.0
-      '@pagefind/windows-x64': 1.3.0
+      '@pagefind/darwin-arm64': 1.4.0
+      '@pagefind/darwin-x64': 1.4.0
+      '@pagefind/freebsd-x64': 1.4.0
+      '@pagefind/linux-arm64': 1.4.0
+      '@pagefind/linux-x64': 1.4.0
+      '@pagefind/windows-x64': 1.4.0
 
   pako@0.2.9: {}
 
@@ -8900,13 +8913,13 @@ snapshots:
       camelcase-css: 2.0.1
       postcss: 8.5.1
 
-  postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3)):
+  postcss-load-config@4.0.2(postcss@8.5.1)(ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3)):
     dependencies:
       lilconfig: 3.1.3
       yaml: 2.7.0
     optionalDependencies:
       postcss: 8.5.1
-      ts-node: 10.9.2(@types/node@24.7.0)(typescript@5.9.3)
+      ts-node: 10.9.2(@types/node@24.10.1)(typescript@5.9.3)
 
   postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.1)(yaml@2.7.0):
     dependencies:
@@ -9640,7 +9653,7 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
 
-  tailwindcss@3.4.17(ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3)):
+  tailwindcss@3.4.17(ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -9659,7 +9672,7 @@ snapshots:
       postcss: 8.5.1
       postcss-import: 15.1.0(postcss@8.5.1)
       postcss-js: 4.0.1(postcss@8.5.1)
-      postcss-load-config: 4.0.2(postcss@8.5.1)(ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3))
+      postcss-load-config: 4.0.2(postcss@8.5.1)(ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3))
       postcss-nested: 6.2.0(postcss@8.5.1)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.10
@@ -9791,14 +9804,14 @@ snapshots:
       '@ts-morph/common': 0.28.0
       code-block-writer: 13.0.3
 
-  ts-node@10.9.2(@types/node@24.7.0)(typescript@5.9.3):
+  ts-node@10.9.2(@types/node@24.10.1)(typescript@5.9.3):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       '@tsconfig/node10': 1.0.11
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
-      '@types/node': 24.7.0
+      '@types/node': 24.10.1
       acorn: 8.15.0
       acorn-walk: 8.3.4
       arg: 4.1.3
@@ -9886,6 +9899,8 @@ snapshots:
   undici-types@6.19.8: {}
 
   undici-types@7.14.0: {}
+
+  undici-types@7.16.0: {}
 
   undici@6.20.1: {}
 
@@ -10016,7 +10031,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
 
-  vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0):
+  vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0):
     dependencies:
       esbuild: 0.25.10
       fdir: 6.5.0(picomatch@4.0.3)
@@ -10025,15 +10040,15 @@ snapshots:
       rollup: 4.52.4
       tinyglobby: 0.2.15
     optionalDependencies:
-      '@types/node': 24.7.0
+      '@types/node': 24.10.1
       fsevents: 2.3.3
       jiti: 1.21.7
       terser: 5.44.0
       yaml: 2.7.0
 
-  vitefu@1.1.1(vite@6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)):
+  vitefu@1.1.1(vite@6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)):
     optionalDependencies:
-      vite: 6.3.6(@types/node@24.7.0)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
+      vite: 6.3.6(@types/node@24.10.1)(jiti@1.21.7)(terser@5.44.0)(yaml@2.7.0)
 
   vscode-jsonrpc@8.2.0: {}
 
