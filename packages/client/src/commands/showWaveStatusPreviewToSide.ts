@@ -331,8 +331,6 @@ async function getWaveStatus(popfile: Popfile) {
 				}
 			}
 
-
-
 			const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
 
 			return {
