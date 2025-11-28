@@ -4,6 +4,7 @@ use std::{
 };
 
 use bincode::{
+    de::Decoder,
     error::{AllowedEnumVariants, DecodeError},
     impl_borrow_decode, Decode,
 };
@@ -67,9 +68,9 @@ impl Display for VTFSignature {
     }
 }
 
-impl Decode for VTFSignature {
-    fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        match &<[u8; 4] as bincode::Decode>::decode(decoder)? {
+impl<Context> Decode<Context> for VTFSignature {
+    fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
+        match &<[u8; 4] as Decode<Context>>::decode(decoder)? {
             b"VTF\0" => Ok(VTFSignature),
             _ => Err(DecodeError::Other("VTF\0")),
         }
@@ -112,9 +113,9 @@ pub enum VTFImageFormat {
     UVLX8888,
 }
 
-impl Decode for VTFImageFormat {
-    fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        let variant_value = <i32 as bincode::Decode>::decode(decoder)?;
+impl<Context> Decode<Context> for VTFImageFormat {
+    fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
+        let variant_value = <i32 as Decode<Context>>::decode(decoder)?;
         match variant_value {
             -1 => Ok(VTFImageFormat::None),
             0 => Ok(VTFImageFormat::RGBA8888),

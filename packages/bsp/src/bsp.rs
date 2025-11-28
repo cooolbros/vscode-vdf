@@ -6,6 +6,7 @@ use std::{
 
 use bincode::{
     Decode, Encode,
+    de::Decoder,
     error::{DecodeError, EncodeError},
     impl_borrow_decode,
 };
@@ -43,9 +44,9 @@ impl Display for BSPSignature {
     }
 }
 
-impl Decode for BSPSignature {
-    fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        match &<[u8; 4] as bincode::Decode>::decode(decoder)? {
+impl<Context> Decode<Context> for BSPSignature {
+    fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
+        match &<[u8; 4] as Decode<Context>>::decode(decoder)? {
             b"VBSP" => Ok(BSPSignature),
             _ => Err(DecodeError::Other("VBSP")),
         }
@@ -82,9 +83,9 @@ impl Display for LZMASignature {
     }
 }
 
-impl Decode for LZMASignature {
-    fn decode<D: bincode::de::Decoder>(decoder: &mut D) -> Result<Self, DecodeError> {
-        match &<[u8; 4] as bincode::Decode>::decode(decoder)? {
+impl<Context> Decode<Context> for LZMASignature {
+    fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
+        match &<[u8; 4] as Decode<Context>>::decode(decoder)? {
             b"LZMA" => Ok(LZMASignature),
             _ => Err(DecodeError::Other("LZMA")),
         }

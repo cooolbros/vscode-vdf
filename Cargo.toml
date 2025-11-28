@@ -6,5 +6,6 @@ resolver = "2"
 opt-level = 3
 
 [workspace.dependencies]
+bincode = { version = "2.0.1", features = ["derive", "serde"] }
 thiserror = "2.0.17"
 wasm-bindgen = "0.2.95"
