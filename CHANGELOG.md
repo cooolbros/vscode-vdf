@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.7.8]
+ - Add support for VTF image format `BGRX8888`
+ - Ignore `vscode-vdf.teamFortress2Folder` if empty
+
 ## [5.7.7]
  - [Popfile] Fix Support label not expanding image width in Wave Status Preview
 
