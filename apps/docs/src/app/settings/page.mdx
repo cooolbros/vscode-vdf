@@ -1,4 +1,4 @@
-import { Table } from "nextra/components"
+import { Table, Tabs } from "nextra/components"
 
 # VSCode VDF Settings
 
@@ -23,6 +23,34 @@ Controls the behaviour of suggesting autocompletion file items.
 `vscode-vdf.teamFortress2Folder`
 
 Path to `Team Fortress 2` folder
+
+> [!NOTE]
+>
+> VSCode VDF will automatically attempt to locate your `Team Fortress 2` folder via Steam based on your operating system by checking:
+> <Tabs items={["Windows", "Linux"]}>
+> <Tabs.Tab>
+> 	The registry key:
+>
+> 	 - `HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam` (x86)
+> 	 - `HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam` (x64)
+>
+> 	`InstallPath`
+> 	<br />
+> </Tabs.Tab>
+> <Tabs.Tab>
+> 	The directories:
+> 	1. `$HOME/.local/share/Steam`
+> 	2. `$HOME/.steam/steam`
+> 	3. `$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam`
+> </Tabs.Tab>
+> </Tabs>
+>
+
+> [!CAUTION]
+>
+> If Team Fortress 2 installation is not found, you will be prompted to select the path to your `Team Fortress 2` folder
+>
+> If you do not have Team Fortress 2 installed, click `Don't show again` or set `teamFortress2Folder` to `""`
 
 *Default:* `C:/Program Files (x86)/Steam/steamapps/common/Team Fortress 2`
 

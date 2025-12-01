@@ -32,6 +32,12 @@ const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageC
 export function activate(context: ExtensionContext): void {
 
 	const teamFortress2FolderSchema = z.string().transform((arg) => {
+
+		// https://github.com/cooolbros/vscode-vdf/issues/105
+		if (arg.trim() == "") {
+			return ""
+		}
+
 		// Convert Windows drive letter to lower case to be consistent with VSCode Uris
 		const path = arg.trim().replace(/[a-z]{1}:/i, (substring) => substring.toLowerCase()).replaceAll('\\', '/')
 		return new Uri({
@@ -45,7 +51,7 @@ export function activate(context: ExtensionContext): void {
 
 	async function check(setting: string) {
 		const result = teamFortress2FolderSchema.safeParse(setting)
-		if (!result.success) {
+		if (!result.success || result.data == "") {
 			return null
 		}
 
@@ -66,7 +72,7 @@ export function activate(context: ExtensionContext): void {
 			const configuration = workspace.getConfiguration("vscode-vdf")
 			let setting = configuration.get<string>("teamFortress2Folder")!
 
-			let uri = await check(setting)
+			const uri = await check(setting)
 			if (uri != null) {
 				return uri
 			}
@@ -175,8 +181,12 @@ export function activate(context: ExtensionContext): void {
 				}
 			}
 
+			if (setting.trim() == "") {
+				return null
+			}
+
 			while (true) {
-				const result = await window.showErrorMessage(`Team Fortress 2 installation not found at "${setting}". Please select path to Team Fortress 2 folder`, "Select Folder", "Ignore")
+				const result = await window.showErrorMessage(`Team Fortress 2 installation not found at "${setting}". Please select path to Team Fortress 2 folder`, "Select Folder", "Ignore", "Don't show again")
 				switch (result) {
 					case "Select Folder": {
 						const result = await window.showOpenDialog({
@@ -199,6 +209,11 @@ export function activate(context: ExtensionContext): void {
 						break
 					}
 					case "Ignore":
+						return null
+					case "Don't show again": {
+						configuration.update("teamFortress2Folder", "")
+						return null
+					}
 					case undefined: {
 						return null
 					}
@@ -211,7 +226,7 @@ export function activate(context: ExtensionContext): void {
 					const setting = workspace.getConfiguration("vscode-vdf").get<string>("teamFortress2Folder")!
 					const uri = await check(setting)
 					subscriber.next(uri)
-					if (uri == null) {
+					if (uri == null && setting.trim() != "") {
 						window.showWarningMessage(`Team Fortress 2 installation not found at "${setting}".`)
 					}
 				}
