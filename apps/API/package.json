@@ -10,7 +10,7 @@
     },
     "devDependencies": {
         "dotenv-cli": "^8.0.0",
-        "drizzle-orm": "^0.41.0",
+        "drizzle-orm": "^0.44.7",
         "vdf": "workspace:*",
         "vpk": "workspace:*"
     }
