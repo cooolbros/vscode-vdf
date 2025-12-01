@@ -176,7 +176,7 @@ impl VTFImageFormat {
             VTFImageFormat::DXT1 => Ok(texpresso::Format::Bc1.compressed_size(width, height)),
             VTFImageFormat::DXT3 => Ok(texpresso::Format::Bc2.compressed_size(width, height)),
             VTFImageFormat::DXT5 => Ok(texpresso::Format::Bc3.compressed_size(width, height)),
-            VTFImageFormat::BGRX8888 => Err(VTFImageFormat::BGRX8888),
+            VTFImageFormat::BGRX8888 => Ok(width * height * 4),
             VTFImageFormat::BGR565 => Err(VTFImageFormat::BGR565),
             VTFImageFormat::BGRX5551 => Err(VTFImageFormat::BGRX5551),
             VTFImageFormat::BGRA4444 => Err(VTFImageFormat::BGRA4444),
@@ -461,6 +461,16 @@ impl VTF {
             }
             VTFImageFormat::DXT5 => {
                 texpresso::Format::Bc3.decompress(buf, mipmap.width as usize, mipmap.height as usize, &mut rgba);
+            }
+            VTFImageFormat::BGRX8888 => {
+                let mut i = 0;
+                for chunk in buf.chunks_exact(4) {
+                    rgba[i] = chunk[2];
+                    rgba[i + 1] = chunk[1];
+                    rgba[i + 2] = chunk[0];
+                    rgba[i + 3] = 255;
+                    i += 4;
+                }
             }
             _variant => unreachable!(),
         };
