@@ -187,6 +187,10 @@ export function activate(context: ExtensionContext): void {
 				}
 			}
 
+			if (result.type == "empty") {
+				return result
+			}
+
 			while (true) {
 				const result = await window.showErrorMessage(`Team Fortress 2 installation not found at "${setting}". Please select path to Team Fortress 2 folder`, "Select Folder", "Ignore", "Don't show again")
 				switch (result) {
