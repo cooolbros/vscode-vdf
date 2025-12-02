@@ -1,7 +1,7 @@
 # Change Log
 
 ## [5.7.10]
- - Fix alert when `vscode-vdf.teamFortress2Folder` if empty
+ - Fix alert when `vscode-vdf.teamFortress2Folder` is empty
 
 ## [5.7.9]
  - Fix Language Status Item warning when `vscode-vdf.teamFortress2Folder` is empty
