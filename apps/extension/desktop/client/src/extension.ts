@@ -19,9 +19,9 @@ import { createMiddleware } from "client/middleware"
 import { Uri } from "common/Uri"
 import { homedir } from "os"
 import { join, posix, win32 } from "path"
-import { concat, defer, distinctUntilChanged, map, Observable, shareReplay } from "rxjs"
+import { concat, concatMap, defer, distinctUntilChanged, filter, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
-import { commands, ConfigurationTarget, Disposable, FileSystemError, FileType, languages, LanguageStatusSeverity, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, ConfigurationTarget, Disposable, FileSystemError, FileType, languages, LanguageStatusSeverity, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { z } from "zod"
 import { FileSystemMountPointFactory } from "./FileSystemMountPointFactory"
@@ -31,50 +31,55 @@ const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageC
 
 export function activate(context: ExtensionContext): void {
 
-	const teamFortress2FolderSchema = z.string().transform((arg) => {
+	type TeamFortress2FolderResult = (
+		| { type: "success", uri: Uri }
+		| { type: "empty" }
+		| { type: "error", setting: string }
+	)
+
+	const teamFortress2FolderSchema = z.string().transform(async (arg): Promise<TeamFortress2FolderResult> => {
+		const value = arg.trim()
 
 		// https://github.com/cooolbros/vscode-vdf/issues/105
-		if (arg.trim() == "") {
-			return ""
+		if (value == "") {
+			return { type: "empty" }
 		}
 
 		// Convert Windows drive letter to lower case to be consistent with VSCode Uris
-		const path = arg.trim().replace(/[a-z]{1}:/i, (substring) => substring.toLowerCase()).replaceAll('\\', '/')
-		return new Uri({
+		const path = value.replace(/[a-z]{1}:/i, (substring) => substring.toLowerCase()).replaceAll('\\', '/')
+
+		const uri = new Uri({
 			scheme: "file",
 			authority: "",
 			path: path,
 			query: "",
 			fragment: ""
 		})
+
+		return await exists(uri)
+			? { type: "success", uri: uri }
+			: { type: "error", setting: arg }
 	})
 
-	async function check(setting: string) {
-		const result = teamFortress2FolderSchema.safeParse(setting)
-		if (!result.success || result.data == "") {
-			return null
-		}
-
-		const uri = result.data
-
-		const exists = await Promise.all([
+	async function exists(uri: Uri) {
+		return (await Promise.all([
 			workspace.fs.stat(uri).then((stat) => stat.type == FileType.Directory, () => false),
 			workspace.fs.stat(uri.joinPath("tf/gameinfo.txt")).then((stat) => stat.type == FileType.File, () => false),
-		])
-
-		return exists.every((value) => value)
-			? uri
-			: null
+		])).every((value) => value)
 	}
 
-	const teamFortress2Folder$ = concat(
-		defer(async () => {
+	const teamFortress2FolderConfiguration$ = concat(
+		defer(async (): Promise<TeamFortress2FolderResult> => {
 			const configuration = workspace.getConfiguration("vscode-vdf")
 			let setting = configuration.get<string>("teamFortress2Folder")!
 
-			const uri = await check(setting)
-			if (uri != null) {
-				return uri
+			const result = await teamFortress2FolderSchema.parseAsync(setting)
+			if (result.type == "success") {
+				return result
+			}
+
+			function update(uri: Uri) {
+				configuration.update("teamFortress2Folder", uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase()).replaceAll(/[\\]+/g, "/"), ConfigurationTarget.Global)
 			}
 
 			const decoder = new TextDecoder("utf-8")
@@ -86,7 +91,7 @@ export function activate(context: ExtensionContext): void {
 				}))
 			})
 
-			async function steam(installPath: string) {
+			async function steam(installPath: string): Promise<Uri | null> {
 				try {
 					const buf = await workspace.fs.readFile(new Uri({ scheme: "file", path: posix.join(installPath, "steamapps/libraryfolders.vdf") }))
 					const text = decoder.decode(buf)
@@ -98,9 +103,9 @@ export function activate(context: ExtensionContext): void {
 					}
 
 					const uri = new Uri({ scheme: "file", path: posix.join(path.replaceAll(/[\\]+/g, "/"), "steamapps/common/Team Fortress 2") })
-					if (await workspace.fs.stat(uri).then(() => true, () => false)) {
-						return uri
-					}
+					return await exists(uri)
+						? uri
+						: null
 				}
 				catch (error) {
 					if (!(error instanceof FileSystemError) || error.code != "FileNotFound") {
@@ -109,10 +114,6 @@ export function activate(context: ExtensionContext): void {
 
 					return null
 				}
-			}
-
-			function update(uri: Uri) {
-				configuration.update("teamFortress2Folder", uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase()).replaceAll(/[\\]+/g, "/"), ConfigurationTarget.Global)
 			}
 
 			switch (process.platform) {
@@ -148,16 +149,21 @@ export function activate(context: ExtensionContext): void {
 						return result
 					}
 
-					const key = win32.join("HKEY_LOCAL_MACHINE\\SOFTWARE", process.arch == "x64" ? "Wow6432Node" : "", "Valve\\Steam")
-					const result = parseRegistryResult(decoder.decode(execSync(`REG QUERY ${key} /v InstallPath`)))
-
-					const installPath = result.get(key)?.get("InstallPath")
-					if (installPath) {
-						const result = await steam(`/${installPath.replaceAll("\\", "/")}`)
-						if (result != null) {
-							update(result)
-							return result
+					try {
+						const key = win32.join("HKEY_LOCAL_MACHINE\\SOFTWARE", process.arch == "x64" ? "Wow6432Node" : "", "Valve\\Steam")
+						const result = parseRegistryResult(decoder.decode(execSync(`REG QUERY ${key} /v InstallPath`)))
+						const installPath = result.get(key)?.get("InstallPath")
+						if (installPath) {
+							const uri = await steam(`/${installPath.replaceAll("\\", "/")}`)
+							if (uri != null) {
+								update(uri)
+								return { type: "success", uri: uri }
+							}
 						}
+					}
+					catch (err) {
+						// ERROR: The system was unable to find the specified registry key or value.
+						console.error(err)
 					}
 					break
 				}
@@ -170,10 +176,10 @@ export function activate(context: ExtensionContext): void {
 					]
 
 					for (const path of paths) {
-						const result = await steam(path)
-						if (result != null) {
-							update(result)
-							return result
+						const uri = await steam(path)
+						if (uri != null) {
+							update(uri)
+							return { type: "success", uri: uri }
 						}
 					}
 
@@ -181,61 +187,64 @@ export function activate(context: ExtensionContext): void {
 				}
 			}
 
-			if (setting.trim() == "") {
-				return null
-			}
-
 			while (true) {
 				const result = await window.showErrorMessage(`Team Fortress 2 installation not found at "${setting}". Please select path to Team Fortress 2 folder`, "Select Folder", "Ignore", "Don't show again")
 				switch (result) {
 					case "Select Folder": {
-						const result = await window.showOpenDialog({
+						const uris = await window.showOpenDialog({
 							canSelectFiles: false,
 							canSelectFolders: true,
 							canSelectMany: false,
 						})
 
-						if (result && result.length) {
-							const path = result[0].fsPath.replaceAll("\\", "/")
-							const uri = await check(path)
-							if (uri != null) {
-								update(uri)
-								return uri
+						if (uris != undefined && uris.length > 0) {
+							setting = uris[0].fsPath
+							const result = await teamFortress2FolderSchema.parseAsync(setting)
+							if (result.type == "success") {
+								update(result.uri)
+								return result
 							}
-
-							setting = path
 						}
-
 						break
 					}
 					case "Ignore":
-						return null
-					case "Don't show again": {
+						return { type: "empty" }
+					case "Don't show again":
 						configuration.update("teamFortress2Folder", "")
-						return null
-					}
-					case undefined: {
-						return null
-					}
+						return { type: "empty" }
+					case undefined:
+						return { type: "error", setting: setting }
 				}
 			}
 		}),
-		new Observable<Uri | null>((subscriber) => {
+		new Observable<ConfigurationChangeEvent>((subscriber) => {
 			const disposable = workspace.onDidChangeConfiguration(async (event) => {
-				if (event.affectsConfiguration("vscode-vdf.teamFortress2Folder")) {
-					const setting = workspace.getConfiguration("vscode-vdf").get<string>("teamFortress2Folder")!
-					const uri = await check(setting)
-					subscriber.next(uri)
-					if (uri == null && setting.trim() != "") {
-						window.showWarningMessage(`Team Fortress 2 installation not found at "${setting}".`)
-					}
-				}
+				subscriber.next(event)
 			})
 
 			return () => disposable.dispose()
-		})
+		}).pipe(
+			filter((event) => event.affectsConfiguration("vscode-vdf.teamFortress2Folder")),
+			map(() => workspace.getConfiguration("vscode-vdf").get<string>("teamFortress2Folder")!),
+			concatMap(async (setting) => {
+				const result = await teamFortress2FolderSchema.parseAsync(setting)
+				if (result.type == "error") {
+					window.showWarningMessage(`Team Fortress 2 installation not found at "${setting}".`)
+				}
+				return result
+			})
+		)
 	).pipe(
-		map((uri) => uri ?? new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })),
+		shareReplay({ bufferSize: 1, refCount: true })
+	)
+
+	const teamFortress2Folder$ = teamFortress2FolderConfiguration$.pipe(
+		map((result) => {
+			if (result.type == "success") {
+				return result.uri
+			}
+			return new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
+		}),
 		distinctUntilChanged((a, b) => Uri.equals(a, b)),
 		shareReplay(1)
 	)
@@ -289,23 +298,23 @@ export function activate(context: ExtensionContext): void {
 		context.subscriptions.push(languageStatusItem)
 		languageStatusItem.busy = true
 
-		const subscription = teamFortress2Folder$.subscribe((teamFortress2Folder) => {
-			switch (teamFortress2Folder.scheme) {
-				case "file":
-					languageStatusItem.text = `$(folder-active) ${teamFortress2Folder.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
+		const subscription = teamFortress2FolderConfiguration$.subscribe((result) => {
+			switch (result.type) {
+				case "success":
+					languageStatusItem.text = `$(folder-active) ${result.uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
 					languageStatusItem.severity = LanguageStatusSeverity.Information
 					languageStatusItem.command = undefined
 					break
-				case RemoteResourceFileSystemProvider.scheme:
+				case "empty":
+					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
+					languageStatusItem.severity = LanguageStatusSeverity.Information
+					languageStatusItem.command = undefined
+					break
+				case "error":
 					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
 					languageStatusItem.severity = LanguageStatusSeverity.Warning
-					languageStatusItem.command = {
-						title: "Select Team Fortress 2 folder",
-						command: "vscode-vdf.selectTeamFortress2Folder"
-					}
+					languageStatusItem.command = { title: "Select Team Fortress 2 folder", command: "vscode-vdf.selectTeamFortress2Folder" }
 					break
-				default:
-					throw new Error()
 			}
 
 			languageStatusItem.busy = false
