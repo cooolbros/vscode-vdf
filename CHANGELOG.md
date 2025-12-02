@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.7.9]
+ - Fix Language Status Item warning when `vscode-vdf.teamFortress2Folder` is empty
+
 ## [5.7.8]
  - Add support for VTF image format `BGRX8888`
  - Ignore `vscode-vdf.teamFortress2Folder` if empty
