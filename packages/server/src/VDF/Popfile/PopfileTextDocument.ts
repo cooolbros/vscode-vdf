@@ -436,7 +436,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				"StartingCurrency": [string(integer)],
 				"Templates": [documentSymbols({}, (documentSymbol, path, context, unknown) => validateTFBot("template", documentSymbol, path, context)), KeyDistinct.First],
 				"Wave": [documentSymbols({
-					"Checkpoint": [string(set(["Yes"]))],
+					"Checkpoint": [string(set(["Yes"]))] /* Unreachable code detected. */,
 					"Description": [string()],
 					"DoneOutput": [validateEvent],
 					"InitWaveOutput": [validateEvent],
