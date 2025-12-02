@@ -12,5 +12,5 @@ lzma-rs = "0.3.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_with = "3.16.1"
 thiserror = { workspace = true }
-tsify = "0.4.5"
+tsify = "0.5.6"
 wasm-bindgen = { workspace = true }
