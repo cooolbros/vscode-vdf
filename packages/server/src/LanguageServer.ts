@@ -861,7 +861,7 @@ export abstract class LanguageServer<
 			...codes
 				.values()
 				.map((code) => diagnostics.values().filter((diagnostic) => diagnostic.code == code).toArray())
-				.filter((diagnostics) => diagnostics.length > 1)
+				.filter((diagnostics) => diagnostics.length > 1 && diagnostics.every((diagnostic) => diagnostic.data != undefined))
 				.map((diagnostics) => {
 					const codeActions = diagnostics
 						.values()
