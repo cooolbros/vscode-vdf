@@ -5,10 +5,11 @@ import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { combineLatest, defer, firstValueFrom, from, map, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
+import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
-import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Fallback, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
 import values from "./values.json"
@@ -26,6 +27,25 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 	public static readonly Schema = (document: PopfileTextDocument): VDFTextDocumentSchema<PopfileTextDocument> => {
 		const { unreachable, any, header, string, length, integer, float, set, dynamic, reference } = document.diagnostics
 
+		const createUnknownAttributeCodeAction = (documentSymbol: VDFDocumentSymbol, context: Context<PopfileTextDocument>): DiagnosticCodeAction["data"] => ({
+			fix: ({ createDocumentWorkspaceEdit }) => {
+				const conditional = context.documentSymbols?.findRecursive((documentSymbol) => {
+					return documentSymbol.conditional != null && !TextDocumentBase.conditionals.values().some((conditional) => {
+						return conditional.toLowerCase() == documentSymbol.conditional?.toLowerCase()
+					})
+				})?.conditional
+
+				if (!conditional) {
+					return null
+				}
+
+				return {
+					title: `Add ${conditional}`,
+					edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detail != undefined ? documentSymbol.range : documentSymbol.nameRange).end, ` ${conditional}`))
+				}
+			}
+		})
+
 		const documentSymbols = document.diagnostics.documentSymbols(KeyDistinct.Last, (key, parent, documentSymbol, context) => {
 			if (!context.documentConfiguration.popfile.diagnostics.strict) {
 				return []
@@ -37,24 +57,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				code: "unknown-key",
 				source: "popfile",
 				message: `Unknown attribute '${key}' in ${parent} definition.`,
-				data: {
-					fix: ({ createDocumentWorkspaceEdit }) => {
-						const conditional = context.documentSymbols?.findRecursive((documentSymbol) => {
-							return documentSymbol.conditional != null && !TextDocumentBase.conditionals.values().some((conditional) => {
-								return conditional.toLowerCase() == documentSymbol.conditional?.toLowerCase()
-							})
-						})?.conditional
-
-						if (!conditional) {
-							return null
-						}
-
-						return {
-							title: `Add ${conditional}`,
-							edit: createDocumentWorkspaceEdit(TextEdit.insert((documentSymbol.detail != undefined ? documentSymbol.range : documentSymbol.nameRange).end, ` ${conditional}`))
-						}
-					},
-				}
+				data: createUnknownAttributeCodeAction(documentSymbol, context)
 			}]
 		})
 
@@ -245,6 +248,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						code: "unknown-key",
 						source: "popfile",
 						message: `Unknown attribute '${documentSymbol.key}' in ${name} definition.`,
+						data: createUnknownAttributeCodeAction(documentSymbol, context)
 					}]
 			}
 		}
