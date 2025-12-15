@@ -303,8 +303,8 @@ importers:
         specifier: workspace:*
         version: link:../vdf-documentsymbols
       vscode-uri:
-        specifier: ^3.0.8
-        version: 3.0.8
+        specifier: ^3.1.0
+        version: 3.1.0
 
   packages/hudanimations-documentsymbols:
     devDependencies:
