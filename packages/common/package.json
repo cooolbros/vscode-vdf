@@ -4,7 +4,7 @@
         "./*": "./src/*.ts"
     },
     "devDependencies": {
-        "devalue": "^5.1.1",
+        "devalue": "^5.6.1",
         "tsconfig": "workspace:*",
         "vdf": "workspace:*",
         "vdf-documentsymbols": "workspace:*",
