@@ -2,6 +2,15 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+      nextra:
+        patterns:
+          - nextra
+          - nextra-theme-docs
     ignore:
       - dependency-name: "@types/vscode"
     schedule:
