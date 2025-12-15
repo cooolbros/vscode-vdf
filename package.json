@@ -571,7 +571,7 @@
         "@trpc/client": "^11.3.1",
         "@trpc/server": "^11.3.1",
         "@types/path-browserify": "^1.0.2",
-        "@types/vscode": "^1.105.0",
+        "@types/vscode": "^1.107.0",
         "@vscode/test-web": "^0.0.76",
         "@vscode/vsce": "^3.7.1",
         "path-browserify": "^1.0.1",
