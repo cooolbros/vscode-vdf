@@ -26,7 +26,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
 
 	constructor(
-		private readonly fileSystem: FileSystemMountPoint,
+		public readonly fileSystem: FileSystemMountPoint,
 		private readonly server: PopfileLanguageServer,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 	) {

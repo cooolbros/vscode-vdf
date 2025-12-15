@@ -160,7 +160,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateClassIcon = string((name, detail, detailRange, path, context) => {
 			return [
-				document.fileSystem.resolveFile(`materials/hud/leaderboard_class_${detail}.vmt`).pipe(
+				document.workspace.fileSystem.resolveFile(`materials/hud/leaderboard_class_${detail}.vmt`).pipe(
 					map((uri) => {
 						if (uri != null) {
 							return null
