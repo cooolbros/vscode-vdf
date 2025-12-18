@@ -6,7 +6,7 @@
     "devDependencies": {
         "bsp": "workspace:*",
         "common": "workspace:*",
-        "minimatch": "^10.0.1",
+        "minimatch": "^10.1.1",
         "tsconfig": "workspace:*",
         "vdf": "workspace:*",
         "vdf-documentsymbols": "workspace:*",
