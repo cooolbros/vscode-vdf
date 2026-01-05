@@ -126,7 +126,7 @@ export abstract class VDFLanguageServer<
 			const schema = (await firstValueFrom(document.configuration.dependencies$)).schema
 
 			// Static
-			const valueData = schema.values[key]
+			const valueData = schema.values[Object.keys(schema.values).find((k) => k.toLowerCase() == key.toLowerCase()) ?? ""]
 			if (valueData != undefined) {
 				return valueData
 					.values
