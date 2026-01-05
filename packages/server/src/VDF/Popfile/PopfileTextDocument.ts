@@ -223,7 +223,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"Name": [string(), KeyDistinct.Last],
 			"Scale": [string(float), KeyDistinct.Last],
 			"TeleportWhere": [string(dynamic("Where")), KeyDistinct.None],
-			"Template": [string(reference(Symbol.for("template")))],
+			"Template": [string(reference(Symbol.for("template"))), KeyDistinct.First],
 			...dynamicAttributes,
 		})
 
