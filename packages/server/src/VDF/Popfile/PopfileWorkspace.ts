@@ -19,6 +19,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 		schema: {
 			keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"],
 		},
+		completion: Pick<VDFTextDocumentSchema<PopfileTextDocument>["completion"], "values">,
 		globals$: Observable<DefinitionReferences[]>
 	}>
 
@@ -203,6 +204,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 					keys: {
 						...attributes.keys,
 					},
+				},
+				completion: {
 					values: {
 						[`${"set item tint RGB".toLowerCase()}`]: paints
 							.entries()

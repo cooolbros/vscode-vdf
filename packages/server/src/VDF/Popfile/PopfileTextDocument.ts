@@ -716,6 +716,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							completion: {
 								...schema.completion,
 								values: {
+									...workspace.completion.values,
 									...entities?.completion.values,
 								}
 							}
