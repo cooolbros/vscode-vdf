@@ -105,15 +105,17 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 		await using document = await this.documents.get(params.textDocument.uri)
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
-		const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key != "#base")
-		if (waveSchedule) {
-			codeLens.unshift({
-				range: waveSchedule.nameRange,
-				command: {
-					title: "$(output-view-icon) Wave Status Preview",
-					command: "vscode-vdf.showWaveStatusPreviewToSide"
-				}
-			})
+		if (params.textDocument.uri.basename().startsWith("mvm_")) {
+			const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key != "#base")
+			if (waveSchedule?.children) {
+				codeLens.unshift({
+					range: waveSchedule.nameRange,
+					command: {
+						title: "$(output-view-icon) Wave Status Preview",
+						command: "vscode-vdf.showWaveStatusPreviewToSide"
+					}
+				})
+			}
 		}
 
 		return codeLens
