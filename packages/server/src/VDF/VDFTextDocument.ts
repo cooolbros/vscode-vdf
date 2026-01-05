@@ -469,8 +469,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				const value = detail.replaceAll(/[/\\]+/g, "/")
 
 				const newPath = folder != null
-					? posix.relative(`/${folder}`, posix.resolve(`/${folder}`, detail))
-					: posix.resolve(`/${detail}`).substring(1)
+					? posix.relative(`/${folder}`, posix.resolve(`/${folder}/${value}`))
+					: posix.resolve(`/${value}`).substring(1)
 
 				if (value != newPath) {
 					diagnostics.push({
@@ -490,7 +490,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 					})
 				}
 
-				const file = posix.resolve(`/${folder ?? ""}/${extension != undefined && posix.extname(detail) == "" ? `${detail}${extension}` : detail}`).substring(1)
+				const file = posix.resolve(`/${folder ?? ""}/${extension != undefined && posix.extname(value) == "" ? `${value}${extension}` : value}`).substring(1)
 
 				diagnostics.push(
 					this.fileSystem.resolveFile(file).pipe(
