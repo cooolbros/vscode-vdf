@@ -5,7 +5,7 @@ import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { combineLatest, defer, firstValueFrom, from, map, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
@@ -120,14 +120,164 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateItem = string(reference(Symbol.for("item")))
 
+		const collectTemplateAttributes = (detail: string, context: Context<PopfileTextDocument>, seen: Set<string>): { TFClass?: string, items: string[] } => {
+
+			const definitions = context.definitionReferences.definitions.get(null, Symbol.for("template"), detail)
+			if (!definitions || !definitions.length) {
+				return { TFClass: undefined, items: [] }
+			}
+
+			let { template, TFClass, items } = definitions[0].data as { template?: string, TFClass?: string, items: string[] }
+			if (template != undefined && !seen.has(template.toLowerCase())) {
+				seen.add(template.toLowerCase())
+				const result = collectTemplateAttributes(template, context, seen)
+				TFClass ??= result.TFClass
+				items.push(...result.items)
+			}
+
+			return {
+				TFClass,
+				items
+			}
+		}
+
+		const validateItemName = string(reference(Symbol.for("item"), (name, detail, detailRange, documentSymbol, path, context, definitions) => {
+			const parent = path.at(-3)
+			if (!parent) {
+				return []
+			}
+
+			let TFBot: VDFDocumentSymbols | undefined
+			let defaultAttributes: VDFDocumentSymbols | undefined
+			let currentAttributes: VDFDocumentSymbols | undefined
+
+			if (parent.key.toLowerCase() == "EventChangeAttributes".toLowerCase()) {
+				TFBot = path.at(-4 /* * => EventChangeAttributes => * => ItemAttributes */)?.children
+				defaultAttributes = parent.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Default".toLowerCase())?.children
+				currentAttributes = path.at(-2)!.children
+			}
+			else {
+				TFBot = path.at(-2 /* TFBot => ItemAttributes */)?.children
+				defaultAttributes = undefined
+				currentAttributes = undefined
+			}
+
+			if (!TFBot) {
+				return []
+			}
+
+			const items: string[] = []
+			const botItems: string[] = []
+			const templateItems: string[] = []
+
+			let TFBotClass = TFBot.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Class".toLowerCase())?.detail
+			const template = TFBot.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())
+
+			for (const documentSymbol of TFBot) {
+				if (documentSymbol == template) {
+					if (template.detail == undefined) {
+						continue
+					}
+
+					const { TFClass, items } = collectTemplateAttributes(template.detail, context, new Set([template.detail.toLowerCase()]))
+					TFBotClass ??= TFClass
+					templateItems.push(...items)
+				}
+				else if (documentSymbol.key.toLowerCase() == "Item".toLowerCase() && documentSymbol.detail != undefined) {
+					botItems.push(documentSymbol.detail)
+				}
+			}
+
+			// Use case sensitive class name for diagnostic message instead of case insensitive user defined key
+			let canonicalClassName = undefined
+
+			if (TFBotClass != undefined) {
+				switch (TFBotClass.toLowerCase()) {
+					// Offense
+					case "Scout".toLowerCase():
+						canonicalClassName = "Scout"
+						items.push("TF_WEAPON_SCATTERGUN", "TF_WEAPON_PISTOL_SCOUT", "TF_WEAPON_BAT")
+						break
+					case "Soldier".toLowerCase():
+						canonicalClassName = "Soldier"
+						items.push("TF_WEAPON_ROCKETLAUNCHER", "TF_WEAPON_SHOTGUN_SOLDIER", "TF_WEAPON_SHOVEL")
+						break
+					case "Pyro".toLowerCase():
+						canonicalClassName = "Pyro"
+						items.push("TF_WEAPON_FLAMETHROWER", "TF_WEAPON_SHOTGUN_PYRO", "TF_WEAPON_FIREAXE")
+						break
+					// Defense
+					case "Demoman".toLowerCase():
+						canonicalClassName = "Demoman"
+						items.push("TF_WEAPON_GRENADELAUNCHER", "TF_WEAPON_PIPEBOMBLAUNCHER", "TF_WEAPON_BOTTLE")
+						break
+					case "Heavy".toLowerCase():
+					case "Heavyweapons".toLowerCase():
+						canonicalClassName = "Heavyweapons"
+						items.push("TF_WEAPON_MINIGUN", "TF_WEAPON_SHOTGUN_HWG", "TF_WEAPON_FISTS")
+						break
+					case "Engineer".toLowerCase():
+						canonicalClassName = "Engineer"
+						items.push("TF_WEAPON_SHOTGUN_PRIMARY", "TF_WEAPON_PISTOL", "TF_WEAPON_WRENCH", "TF_WEAPON_PDA_ENGINEER_BUILD", "TF_WEAPON_PDA_ENGINEER_DESTROY")
+						break
+					// Support
+					case "Medic".toLowerCase():
+						canonicalClassName = "Medic"
+						items.push("TF_WEAPON_SYRINGEGUN_MEDIC", "TF_WEAPON_MEDIGUN", "TF_WEAPON_BONESAW")
+						break
+					case "Sniper".toLowerCase():
+						canonicalClassName = "Sniper"
+						items.push("TF_WEAPON_SNIPERRIFLE", "TF_WEAPON_SMG", "TF_WEAPON_CLUB")
+						break
+					case "Spy".toLowerCase():
+						canonicalClassName = "Spy"
+						items.push("TF_WEAPON_REVOLVER", "TF_WEAPON_BUILDER_SPY", "TF_WEAPON_KNIFE", "TF_WEAPON_PDA_SPY", "TF_WEAPON_INVIS")
+						break
+				}
+			}
+
+			if (defaultAttributes != undefined) {
+				const defaultItems = defaultAttributes
+					.values()
+					.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Item".toLowerCase() && documentSymbol.detail != undefined)
+					.map((documentSymbol) => documentSymbol.detail!)
+					.toArray()
+				botItems.push(...defaultItems)
+			}
+
+			if (currentAttributes != undefined && currentAttributes != defaultAttributes) {
+				const currentItems = currentAttributes
+					.values()
+					.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Item".toLowerCase() && documentSymbol.detail != undefined)
+					.map((documentSymbol) => documentSymbol.detail!)
+					.toArray()
+				botItems.push(...currentItems)
+			}
+
+			items.push(...botItems)
+			items.push(...templateItems)
+
+			if (!items.values().some((item) => item.toLowerCase() == detail.toLowerCase())) {
+				return [{
+					range: detailRange,
+					severity: DiagnosticSeverity.Warning,
+					code: "invalid-item",
+					source: "popfile",
+					message: `TFBot ${canonicalClassName != undefined ? `${canonicalClassName} ` : ""}does not own item "${detail}".${items.length > 0 ? ` Expected ${[...items].map((item) => `"${item}"`).join(" | ")}.` : ""}`,
+				}]
+			}
+
+			return []
+		}))
+
 		const validateItemAttributes = (): Validate<PopfileTextDocument> => {
-			const validate = documentSymbols({ "ItemName": [validateItem] }, () => [])
+			const validate = documentSymbols({ "ItemName": [validateItemName] }, () => [])
 			return (key, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				diagnostics.push(...validate(key, documentSymbol, path, context))
 
 				if (documentSymbol.children) {
-					const itemName = documentSymbol.children.find((i) => i.key.toLowerCase() == "ItemName".toLowerCase() && i.detail != undefined)
+					const itemName = documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ItemName".toLowerCase() && documentSymbol.detail != undefined)?.detail
 					if (itemName == undefined) {
 						diagnostics.push({
 							range: documentSymbol.nameRange,
@@ -218,7 +368,45 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"AutoJumpMin": [string(float)],
 			"Class": [string(set(values.class.values)), KeyDistinct.Last],
 			"ClassIcon": [validateClassIcon, KeyDistinct.Last],
-			"EventChangeAttributes": [documentSymbols({ "Default": [(key, documentSymbol, path, context) => validateTFBot(key, documentSymbol, path, context)] }, (documentSymbol, path, context, unknown) => validateDynamicAttributes(documentSymbol.key, documentSymbol, path, context))],
+			"EventChangeAttributes": [document.diagnostics.documentSymbols(KeyDistinct.First, () => [])({
+				"Default": [(key, documentSymbol, path, context) => validateTFBot(key, documentSymbol, path, context)]
+			}, (documentSymbol, path, context, unknown) => {
+				const diagnostics: DiagnosticCodeActions = []
+
+				const key = documentSymbol.key.toLowerCase()
+				const eventChangeAttributes = path.at(-1)!.children!
+				const first = eventChangeAttributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == key)!
+
+				if (first != documentSymbol) {
+					diagnostics.push({
+						range: documentSymbol.nameRange,
+						severity: DiagnosticSeverity.Warning,
+						code: "duplicate-key",
+						source: document.languageId,
+						message: `Duplicate key '${first.key}'`,
+						relatedInformation: [
+							{
+								location: {
+									uri: document.uri.toString(),
+									range: first.nameRange
+								},
+								message: `${first.key} is declared here.`
+							}
+						],
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: `Remove duplicate ${documentSymbol.key}`,
+									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+								}
+							}
+						}
+					})
+				}
+
+				diagnostics.push(...validateDynamicAttributes(documentSymbol.key, documentSymbol, path, context))
+				return diagnostics
+			})],
 			"Health": [string(integer), KeyDistinct.Last],
 			"Name": [string(), KeyDistinct.Last],
 			"Scale": [string(float), KeyDistinct.Last],
@@ -476,7 +664,19 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				const references = new Collection<VDFRange>()
 
 				const templates = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Templates".toLowerCase())?.children ?? []
-				for (const documentSymbol of templates.values().filter((documentSymbol) => documentSymbol.children != undefined)) {
+				const seen = new Set<string>()
+				for (const documentSymbol of templates) {
+					const key = documentSymbol.key.toLowerCase()
+					if (seen.has(key)) {
+						continue
+					}
+					seen.add(key)
+
+					const templateTemplate = documentSymbol.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())
+					if (templateTemplate?.detail) {
+						references.set(null, template, templateTemplate.detail!, templateTemplate.detailRange!)
+					}
+
 					definitions.set(null, template, documentSymbol.key, {
 						uri: document.uri,
 						key: documentSymbol.key,
@@ -486,6 +686,15 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						detail: undefined,
 						documentation: document.definitions.documentation(documentSymbol),
 						conditional: documentSymbol.conditional ?? undefined,
+						data: {
+							template: templateTemplate?.detail,
+							TFClass: documentSymbol.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Class".toLowerCase())?.detail,
+							items: documentSymbol.children!
+								.values()
+								.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Item".toLowerCase() && documentSymbol.detail != undefined)
+								.map((documentSymbol) => documentSymbol.detail!)
+								.toArray()
+						}
 					})
 				}
 

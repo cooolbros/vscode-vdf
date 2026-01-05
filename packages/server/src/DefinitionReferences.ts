@@ -101,6 +101,7 @@ export const definitionSchema = z.object({
 		insertText: z.string().optional(),
 		data: z.any().optional(),
 	}).optional(),
+	data: z.any().optional(),
 })
 
 CompletionItem
