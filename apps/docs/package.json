@@ -6,7 +6,7 @@
         "postbuild": "pagefind --site .next/server/app --output-path dist/_pagefind"
     },
     "devDependencies": {
-        "autoprefixer": "^10.4.22",
+        "autoprefixer": "^10.4.23",
         "next": "^15.5.6",
         "nextra": "^4.6.1",
         "nextra-theme-docs": "^4.6.1",
