@@ -15,6 +15,7 @@ import type { PopfileTextDocument } from "./PopfileTextDocument"
 export class PopfileWorkspace extends WorkspaceBase {
 
 	public readonly paints: Promise<Map<string, string>>
+	public readonly effects: Promise<Map<string, string>>
 	public readonly dependencies: Promise<{
 		schema: {
 			keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"],
@@ -251,7 +252,17 @@ export class PopfileWorkspace extends WorkspaceBase {
 			return new Map(Object.entries(paints).sort((a, b) => a[0].localeCompare(b[0])))
 		})
 
-		this.dependencies = Promise.all([items, attributes, game_sounds, this.paints]).then(([items, attributes, game_sounds, paints]) => {
+		this.effects = tf_english.then((tf_english) => {
+			const attrib_particle = "Attrib_Particle".toLowerCase()
+			return new Map(
+				tf_english
+					.entries()
+					.filter(([key]) => key.toLowerCase().startsWith(attrib_particle))
+					.map(([key, value]) => [key.substring(attrib_particle.length), value])
+			)
+		})
+
+		this.dependencies = Promise.all([items, attributes, game_sounds, this.paints, this.effects]).then(([items, attributes, game_sounds, paints, effects]) => {
 			const paintItems = paints
 				.entries()
 				.map(([key, name]) => {
@@ -267,6 +278,21 @@ export class PopfileWorkspace extends WorkspaceBase {
 						},
 						kind: CompletionItemKind.Color,
 						documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
+						filterText: name,
+						insertText: key,
+					} satisfies CompletionItem
+				})
+				.toArray()
+
+			const effectsItems = effects
+				.entries()
+				.map(([key, name]) => {
+					return {
+						label: name,
+						labelDetails: {
+							description: key
+						},
+						kind: CompletionItemKind.Event,
 						filterText: name,
 						insertText: key,
 					} satisfies CompletionItem
@@ -290,6 +316,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 					values: {
 						[`${"set item tint RGB".toLowerCase()}`]: paintItems,
 						[`${"set item tint RGB 2".toLowerCase()}`]: paintItems,
+						[`${"attach particle effect".toLowerCase()}`]: effectsItems,
+						[`${"attach particle effect static".toLowerCase()}`]: effectsItems,
 					}
 				},
 				globals$: of([items, game_sounds])

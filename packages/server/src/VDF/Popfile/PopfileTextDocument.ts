@@ -17,6 +17,9 @@ import values from "./values.json"
 const set_item_tint_rgb = "set item tint RGB".toLowerCase()
 const set_item_tint_rgb_2 = "set item tint RGB 2".toLowerCase()
 
+const attach_particle_effect = "attach particle effect"
+const attach_particle_effect_static = "attach particle effect static"
+
 const sounds = new Set([
 	"DoneWarningSound".toLowerCase(),
 	"FirstSpawnWarningSound".toLowerCase(),
@@ -932,7 +935,11 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				})
 			},
 			getInlayHints: async ({ documentSymbols }) => {
-				const paints = await document.workspace.paints
+				const [paints, effects] = await Promise.all([
+					document.workspace.paints,
+					document.workspace.effects
+				])
+
 				return documentSymbols.reduce(
 					(inlayHints, documentSymbol) => {
 						if (!documentSymbol.children) {
@@ -949,6 +956,17 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 											inlayHints.push({
 												position: documentSymbol.detailRange!.end,
 												label: paints.get(documentSymbol.detail!)!,
+												kind: InlayHintKind.Type,
+												paddingLeft: true
+											})
+										}
+									}
+
+									if ((key == attach_particle_effect || key == attach_particle_effect_static) && documentSymbol.detail != undefined) {
+										if (effects.has(documentSymbol.detail!)) {
+											inlayHints.push({
+												position: documentSymbol.detailRange!.end,
+												label: effects.get(documentSymbol.detail!)!,
 												kind: InlayHintKind.Type,
 												paddingLeft: true
 											})
