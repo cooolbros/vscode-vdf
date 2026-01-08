@@ -1,5 +1,21 @@
 # Change Log
 
+## [5.8.0]
+ - Fix not suggesting enum values
+ - Fix false positive file not found diagnostic when using `\` separators
+ - Fix crash caused by "Fix all issues of kind" code action
+ - Popfile
+   - Add inlay hints and autocompletion for `"attach particle effect"` ([#85](https://github.com/cooolbros/vscode-vdf/issues/85))
+   - Add colour picker for `"set item tint RGB 2"`
+   - Add ItemName unowned Item diagnostic and code action ([#84](https://github.com/cooolbros/vscode-vdf/issues/84))
+   - Only show Wave Status Preview codelens in mission popfiles
+   - Fix false positive diagnostic and add autocompletion for sound scripts ([#67](https://github.com/cooolbros/vscode-vdf/issues/67))
+   - Fix false positive file not found diagnostic when using sound chars
+   - Fix Items not having documentation
+   - Fix incorrect duplicate Templates block diagnostic
+   - Fix Add conditional to unknown key code action not working inside spawner blocks
+   - Fix not suggesting paints
+
 ## [5.7.10]
  - Fix alert when `vscode-vdf.teamFortress2Folder` is empty
 
