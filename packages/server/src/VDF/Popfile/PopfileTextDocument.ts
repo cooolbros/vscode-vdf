@@ -6,10 +6,10 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { combineLatest, defer, firstValueFrom, from, map, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
-import { CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, TextEdit } from "vscode-languageserver"
+import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, MarkupKind, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
-import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type RefineString, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
 import values from "./values.json"
@@ -21,6 +21,33 @@ const sounds = new Set([
 	"Sound".toLowerCase(),
 	"StartWaveWarningSound".toLowerCase(),
 ])
+
+const soundChars = new Set([
+	"*" /* CHAR_STREAM */,
+	"?" /* CHAR_USERVOX */,
+	"!" /* CHAR_SENTENCE */,
+	"#" /* CHAR_DRYMIX */,
+	">" /* CHAR_DOPPLER */,
+	"<" /* CHAR_DIRECTIONAL */,
+	"^" /* CHAR_DISTVARIANT */,
+	"@" /* CHAR_OMNI */,
+	")" /* CHAR_SPATIALSTEREO */,
+	"}" /* CHAR_FAST_PITCH */,
+])
+
+const removeSoundChars = (value: string): { chars: string, value: string } => {
+	let i = 0
+	while (i < value.length) {
+		if (!soundChars.has(value[i])) {
+			break
+		}
+		i += 1
+	}
+
+	const chars = value.slice(0, i)
+	value = value.slice(i)
+	return { chars, value }
+}
 
 export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
@@ -565,7 +592,34 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			}
 		))
 
-		const validateSound = document.diagnostics.file("sound", "sound", null)
+		const validateSoundFile = document.diagnostics.file("sound", "sound", null)
+
+		const validateSound: RefineString<PopfileTextDocument> = (name, detail, detailRange, documentSymbol, path, context) => {
+			const { chars, value } = removeSoundChars(detail)
+			const definitions = context.definitionReferences.definitions.get(null, Symbol.for("sound"), value)
+			if (definitions?.length) {
+				const name = definitions[0].key
+				if (value != name) {
+					return [{
+						range: detailRange,
+						severity: DiagnosticSeverity.Hint,
+						message: name,
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: `Replace "${detail}" with "${name}"`,
+									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, `${chars}${name}`))
+								}
+							}
+						}
+					}]
+				}
+				return []
+			}
+			else {
+				return validateSoundFile(name, value, detailRange, documentSymbol, path, context)
+			}
+		}
 
 		const validateWaveSpawnDocumentSymbols = documentSymbols({
 			"DoneOutput": [validateEvent],
@@ -644,7 +698,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		return {
 			keys: keys,
 			values: values,
-			getDefinitionReferences({ document, documentSymbols }) {
+			getDefinitionReferences({ dependencies, document, documentSymbols }) {
 				const wavespawn = Symbol.for("wavespawn")
 				const template = Symbol.for("template")
 				const item = Symbol.for("item")
@@ -723,6 +777,9 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									if (key == "WaitForAllSpawned".toLowerCase() || key == "WaitForAllDead".toLowerCase()) {
 										return "wavespawn"
 									}
+									else if (sounds.has(key)) {
+										return "sound"
+									}
 									else if (!waveSpawnKeys.includes(documentSymbol.key.toLowerCase())) {
 										return "spawner"
 									}
@@ -748,6 +805,16 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									}
 								})
 							}
+
+							for (const sound of values.get("sound") ?? []) {
+								if (sound.detail) {
+									const { value } = removeSoundChars(sound.detail)
+									const lower = value.toLowerCase()
+									if (dependencies.schema.values["game_sounds\0"].values.some((sound) => sound.toLowerCase() == lower)) {
+										references.set(null, Symbol.for("sound"), value, sound.detailRange!)
+									}
+								}
+							}
 						}
 					})
 				}
@@ -764,7 +831,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				[Symbol.for("item"), { keys: new Set(["Item".toLowerCase(), "ItemName".toLowerCase()]) }],
 			]),
 			getDiagnostics: getDiagnostics,
-			getLinks: ({ documentSymbols, resolve }) => {
+			getLinks: ({ documentSymbols, definitionReferences, resolve }) => {
 				const links: DocumentLinkData[] = []
 
 				documentSymbols.forEach((documentSymbol) => {
@@ -781,13 +848,20 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							return
 						}
 
-						if (sounds.has(key) && documentSymbol.detail?.trim() != "") {
-							links.push({
-								range: documentSymbol.detailRange!,
-								data: {
-									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`sound/${documentSymbol.detail}`)))
+						if (sounds.has(key) && documentSymbol.detail != undefined) {
+							const value = documentSymbol.detail.trim()
+							if (value.length) {
+								const { value: sound } = removeSoundChars(documentSymbol.detail.trim())
+								const definitions = definitionReferences.definitions.get(null, Symbol.for("sound"), sound)
+								if (!definitions || !definitions.length) {
+									links.push({
+										range: documentSymbol.detailRange!,
+										data: {
+											resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`sound/${removeSoundChars(documentSymbol.detail!).value}`)))
+										}
+									})
 								}
-							})
+							}
 							return
 						}
 					})
@@ -880,13 +954,35 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							}
 						},
 						asset: VGUIAssetType.Image
-					},
-					{
-						keys: sounds,
-						folder: "sound",
-						extensionsPattern: null,
 					}
 				],
+				values: {
+					...Object.fromEntries(sounds.values().map((value) => [value, async ({ text, files }) => {
+						const [soundFiles, soundScripts] = await Promise.all([
+							files("sound", { value: text ?? null, extensionsPattern: null }),
+							firstValueFrom(document.definitionReferences$).then((definitionReferences) =>
+								definitionReferences.definitions.ofType(null, Symbol.for("sound"))
+									.values()
+									.filter((value) => value.length)
+									.filter((value) => text ? value[0].key.toLowerCase().startsWith(text.toLowerCase()) : true)
+									.map((value) => {
+										const { kind = CompletionItemKind.Variable, ...rest } = value[0].completionItem ?? {}
+										return {
+											label: value[0].key,
+											kind: kind,
+											documentation: value[0].documentation && {
+												kind: MarkupKind.Markdown,
+												value: value[0].documentation
+											},
+											...rest,
+										} satisfies CompletionItem
+									})
+							),
+						])
+
+						return [...soundFiles, ...soundScripts,]
+					}]))
+				}
 			}
 		}
 	}
@@ -920,11 +1016,13 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							},
 							values: {
 								...schema.values,
+								...workspace.schema.values,
 								...entities?.values
 							},
 							completion: {
 								...schema.completion,
 								values: {
+									...schema.completion.values,
 									...workspace.completion.values,
 									...entities?.completion.values,
 								}

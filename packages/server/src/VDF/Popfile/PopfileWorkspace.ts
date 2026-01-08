@@ -18,6 +18,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 	public readonly dependencies: Promise<{
 		schema: {
 			keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"],
+			values: VDFTextDocumentSchema<PopfileTextDocument>["values"],
 		},
 		completion: Pick<VDFTextDocumentSchema<PopfileTextDocument>["completion"], "values">,
 		globals$: Observable<DefinitionReferences[]>
@@ -149,6 +150,58 @@ export class PopfileWorkspace extends WorkspaceBase {
 			}
 		})
 
+		const game_sounds = Promise.try(async () => {
+			const uri = await firstValueFrom(this.fileSystem.resolveFile("scripts/game_sounds_manifest.txt"))
+			await using document = await documents.get(uri!)
+			const documentSymbols = await firstValueFrom(document.documentSymbols$)
+			const game_sounds_manifest = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "game_sounds_manifest")?.children
+			if (!game_sounds_manifest) {
+				throw new Error("game_sounds_manifest")
+			}
+
+			const files = game_sounds_manifest
+				.values()
+				.map((documentSymbol) => documentSymbol.detail)
+				.filter((detail) => detail != undefined)
+
+			const collection = new Collection<Definition>()
+
+			const results = await Promise.all(files.map(async (file) => {
+				const uri = await firstValueFrom(this.fileSystem.resolveFile(file))
+				if (!uri) {
+					return []
+				}
+
+				await using document = await documents.get(uri)
+				const documentSymbols = await firstValueFrom(document.documentSymbols$)
+
+				return documentSymbols.map((documentSymbol) => {
+					return {
+						uri: uri,
+						key: documentSymbol.key,
+						range: documentSymbol.range,
+						keyRange: documentSymbol.nameRange,
+						nameRange: undefined,
+						detail: undefined,
+						documentation: document.definitions.documentation(documentSymbol, "vdf"),
+						conditional: documentSymbol.conditional ?? undefined,
+					} satisfies Definition
+				})
+			}))
+
+			for (const result of results) {
+				for (const definition of result) {
+					collection.set(null, Symbol.for("sound"), definition.key, definition)
+				}
+			}
+
+			return {
+				scopes: new Map(),
+				definitions: new Definitions({ version: [document.version], collection }),
+				references: new References(document.uri, new Collection<VDFRange>(), [])
+			} satisfies DefinitionReferences
+		})
+
 		this.paints = Promise.all([items_game, tf_english]).then(([items_game, tf_english]) => {
 			const items = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key == "items")?.children
 			if (!items) {
@@ -198,12 +251,19 @@ export class PopfileWorkspace extends WorkspaceBase {
 			return new Map(Object.entries(paints).sort((a, b) => a[0].localeCompare(b[0])))
 		})
 
-		this.dependencies = Promise.all([items, attributes, this.paints]).then(([items, attributes, paints]) => {
+		this.dependencies = Promise.all([items, attributes, game_sounds, this.paints]).then(([items, attributes, game_sounds, paints]) => {
 			return {
 				schema: {
 					keys: {
 						...attributes.keys,
 					},
+					values: {
+						"game_sounds\0": {
+							kind: 0,
+							enumIndex: false,
+							values: game_sounds.definitions.ofType(null, Symbol.for("sound")).keys().toArray()
+						}
+					}
 				},
 				completion: {
 					values: {
@@ -229,7 +289,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 							.toArray()
 					}
 				},
-				globals$: of([items])
+				globals$: of([items, game_sounds])
 			}
 		})
 

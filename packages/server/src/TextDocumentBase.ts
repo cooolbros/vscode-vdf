@@ -68,10 +68,10 @@ export abstract class TextDocumentBase<
 	public readonly codeLens$: Observable<CodeLens[]>
 
 	public readonly definitions = {
-		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }) => {
+		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }, languageId = this.languageId) => {
 			return [
 				...(documentation != undefined ? [documentation.replaceAll("\n", "\n\n")] : []),
-				"```" + this.languageId,
+				"```" + languageId,
 				dedent(this.getText(range)),
 				"```",
 			].join("\n")

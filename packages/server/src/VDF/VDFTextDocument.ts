@@ -11,6 +11,7 @@ import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
+import type { CompletionFiles } from "../LanguageServer"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
 export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument>> {
@@ -45,11 +46,12 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 			toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
 			asset?: VGUIAssetType
 		}[]
-		values?: Record<string, CompletionItem[]>
+		values?: Record<string, CompletionItem[] | ((args: { text?: string, files: CompletionFiles }) => Promise<CompletionItem[]>)>
 	}
 }
 
 export interface DefinitionReferencesHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+	dependencies: VDFTextDocumentDependencies<TDocument>
 	document: VDFTextDocument<TDocument>
 	documentSymbols: VDFDocumentSymbols
 }
@@ -63,6 +65,7 @@ export interface DiagnosticsHandlerParams<TDocument extends VDFTextDocument<TDoc
 
 export interface DocumentLinksHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
 	documentSymbols: VDFDocumentSymbol[]
+	definitionReferences: DefinitionReferences
 	resolve: (value: string, extension?: `.${string}`) => string
 }
 
@@ -550,6 +553,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							.map((documentSymbol) => posix.resolve("/", configuration.relativeFolderPath ?? "", documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")).substring(1))
 							.toArray(),
 						...dependencies.schema.getDefinitionReferences({
+							dependencies,
 							document: this,
 							documentSymbols: header ?? new VDFDocumentSymbols()
 						})
@@ -870,9 +874,10 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 	}
 
 	public async getLinks(): Promise<DocumentLinkData[]> {
-		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
+		const { documentSymbols, dependencies, definitionReferences } = await firstValueFrom(combineLatest({
 			documentSymbols: this.documentSymbols$,
-			dependencies: this.configuration.dependencies$
+			dependencies: this.configuration.dependencies$,
+			definitionReferences: this.definitionReferences$
 		}))
 
 		const { base = [], rest = [] } = Object.groupBy(
@@ -908,6 +913,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				})),
 			...dependencies.schema.getLinks({
 				documentSymbols: rest,
+				definitionReferences: definitionReferences,
 				resolve: (value, extension) => {
 					value = value.replaceAll(/[/\\]+/g, "/")
 					if (extension != undefined && posix.extname(value) != extension) {

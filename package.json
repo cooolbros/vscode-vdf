@@ -482,6 +482,7 @@
                 ],
                 "filenames": [
                     "chapterbackgrounds.txt",
+                    "game_sounds.txt",
                     "gameinfo.txt",
                     "hudanimations_manifest.txt",
                     "items_game.txt",
