@@ -14,6 +14,9 @@ import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
 import values from "./values.json"
 
+const set_item_tint_rgb = "set item tint RGB".toLowerCase()
+const set_item_tint_rgb_2 = "set item tint RGB 2".toLowerCase()
+
 const sounds = new Set([
 	"DoneWarningSound".toLowerCase(),
 	"FirstSpawnWarningSound".toLowerCase(),
@@ -910,8 +913,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 				return links
 			},
 			getColours: ({ next }) => {
-				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
-				const set_item_tint_rgb_2 = "set item tint RGB 2".toLowerCase()
 				return next((colours, documentSymbol) => {
 					const key = documentSymbol.key.toLowerCase()
 					if ((key == set_item_tint_rgb || key == set_item_tint_rgb_2) && documentSymbol.detail != undefined && /^\d+$/.test(documentSymbol.detail)) {
@@ -932,8 +933,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			},
 			getInlayHints: async ({ documentSymbols }) => {
 				const paints = await document.workspace.paints
-				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
-				const set_item_tint_rgb_2 = "set item tint RGB 2".toLowerCase()
 				return documentSymbols.reduce(
 					(inlayHints, documentSymbol) => {
 						if (!documentSymbol.children) {
