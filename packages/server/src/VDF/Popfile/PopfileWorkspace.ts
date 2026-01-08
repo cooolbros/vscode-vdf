@@ -252,6 +252,27 @@ export class PopfileWorkspace extends WorkspaceBase {
 		})
 
 		this.dependencies = Promise.all([items, attributes, game_sounds, this.paints]).then(([items, attributes, game_sounds, paints]) => {
+			const paintItems = paints
+				.entries()
+				.map(([key, name]) => {
+
+					const colour = parseInt(key)
+					const r = (colour >> 16) & 255
+					const g = (colour >> 8) & 255
+					const b = (colour >> 0) & 255
+					return {
+						label: name,
+						labelDetails: {
+							description: key
+						},
+						kind: CompletionItemKind.Color,
+						documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
+						filterText: name,
+						insertText: key,
+					} satisfies CompletionItem
+				})
+				.toArray()
+
 			return {
 				schema: {
 					keys: {
@@ -267,26 +288,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 				},
 				completion: {
 					values: {
-						[`${"set item tint RGB".toLowerCase()}`]: paints
-							.entries()
-							.map(([key, name]) => {
-
-								const colour = parseInt(key)
-								const r = (colour >> 16) & 255
-								const g = (colour >> 8) & 255
-								const b = (colour >> 0) & 255
-								return {
-									label: name,
-									labelDetails: {
-										description: key
-									},
-									kind: CompletionItemKind.Color,
-									documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
-									filterText: name,
-									insertText: key,
-								} satisfies CompletionItem
-							})
-							.toArray()
+						[`${"set item tint RGB".toLowerCase()}`]: paintItems,
+						[`${"set item tint RGB 2".toLowerCase()}`]: paintItems,
 					}
 				},
 				globals$: of([items, game_sounds])

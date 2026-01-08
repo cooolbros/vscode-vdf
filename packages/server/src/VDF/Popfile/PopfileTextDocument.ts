@@ -911,8 +911,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			},
 			getColours: ({ next }) => {
 				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
+				const set_item_tint_rgb_2 = "set item tint RGB 2".toLowerCase()
 				return next((colours, documentSymbol) => {
-					if (documentSymbol.key.toLowerCase() == set_item_tint_rgb && documentSymbol.detail != undefined && /^\d+$/.test(documentSymbol.detail)) {
+					const key = documentSymbol.key.toLowerCase()
+					if ((key == set_item_tint_rgb || key == set_item_tint_rgb_2) && documentSymbol.detail != undefined && /^\d+$/.test(documentSymbol.detail)) {
 						const colour = parseInt(documentSymbol.detail)
 
 						const red = ((colour >> 16) & 255) / 255
@@ -931,6 +933,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			getInlayHints: async ({ documentSymbols }) => {
 				const paints = await document.workspace.paints
 				const set_item_tint_rgb = "set item tint RGB".toLowerCase()
+				const set_item_tint_rgb_2 = "set item tint RGB 2".toLowerCase()
 				return documentSymbols.reduce(
 					(inlayHints, documentSymbol) => {
 						if (!documentSymbol.children) {
@@ -941,7 +944,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							...documentSymbol.children.reduceRecursive(
 								<InlayHint[]>[],
 								(inlayHints, documentSymbol) => {
-									if (documentSymbol.key.toLowerCase() == set_item_tint_rgb && documentSymbol.detail != undefined) {
+									const key = documentSymbol.key.toLowerCase()
+									if ((key == set_item_tint_rgb || key == set_item_tint_rgb_2) && documentSymbol.detail != undefined) {
 										if (paints.has(documentSymbol.detail!)) {
 											inlayHints.push({
 												position: documentSymbol.detailRange!.end,
