@@ -115,6 +115,8 @@ export const enum KeyDistinct {
 
 export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (name: string, detail: string, detailRange: VDFRange, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
 
+export type RefineReference<TDocument extends VDFTextDocument<TDocument>> = (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions
+
 export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeActions) => DiagnosticCodeActions
 
 export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
@@ -392,7 +394,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return []
 			}
 		},
-		reference: (type: symbol, refine?: (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions): RefineString<TDocument> => {
+		reference: (type: symbol, refine?: RefineReference<TDocument>): RefineString<TDocument> => {
 			return (key, detail, detailRange, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (detail == "") {

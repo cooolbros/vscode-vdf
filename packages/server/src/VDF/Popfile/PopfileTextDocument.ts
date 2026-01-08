@@ -9,7 +9,7 @@ import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, MarkupKind, TextEdit } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
-import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type RefineString, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type RefineReference, type RefineString, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
 import values from "./values.json"
@@ -145,7 +145,27 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"StartingPathTrackNode": [string()],
 		})
 
-		const validateItem = string(reference(Symbol.for("item")))
+		const validateItemKey: RefineReference<PopfileTextDocument> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
+			const key = definitions[0].key
+			if (detail != key) {
+				return [{
+					range: detailRange,
+					severity: DiagnosticSeverity.Hint,
+					message: key,
+					data: {
+						fix: ({ createDocumentWorkspaceEdit }) => {
+							return {
+								title: `Replace "${detail}" with "${key}"`,
+								edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, key))
+							}
+						}
+					}
+				}]
+			}
+			return []
+		}
+
+		const validateItem = string(reference(Symbol.for("item"), validateItemKey))
 
 		const collectTemplateAttributes = (detail: string, context: Context<PopfileTextDocument>, seen: Set<string>): { TFClass?: string, items: string[] } => {
 
@@ -168,7 +188,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			}
 		}
 
-		const validateItemName = string(reference(Symbol.for("item"), (name, detail, detailRange, documentSymbol, path, context, definitions) => {
+		const validateItemNameOwner: RefineString<PopfileTextDocument> = (name, detail, detailRange, documentSymbol, path, context) => {
 			const parent = path.at(-3)
 			if (!parent) {
 				return []
@@ -285,17 +305,37 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			items.push(...templateItems)
 
 			if (!items.values().some((item) => item.toLowerCase() == detail.toLowerCase())) {
+				const position = path.at(-1)!.nameRange.start
+				const before = document.getText({
+					start: { line: position.line, character: 0 },
+					end: { line: position.line, character: position.character }
+				})
+				const newText = `Item		${/\s/.test(detail) ? `"${detail}"` : detail}\n${before}`
+
 				return [{
 					range: detailRange,
 					severity: DiagnosticSeverity.Warning,
 					code: "invalid-item",
 					source: "popfile",
 					message: `TFBot ${canonicalClassName != undefined ? `${canonicalClassName} ` : ""}does not own item "${detail}".${items.length > 0 ? ` Expected ${[...items].map((item) => `"${item}"`).join(" | ")}.` : ""}`,
+					data: {
+						fix: ({ createDocumentWorkspaceEdit }) => {
+							return {
+								title: `Add item "${detail}"`,
+								edit: createDocumentWorkspaceEdit(TextEdit.insert(position, newText))
+							}
+						},
+					}
 				}]
 			}
 
 			return []
-		}))
+		}
+
+		const validateItemName = string(reference(Symbol.for("item"), (name, detail, detailRange, documentSymbol, path, context, definitions) => [
+			...validateItemNameOwner(name, detail, detailRange, documentSymbol, path, context),
+			...validateItemKey(name, detail, detailRange, documentSymbol, path, context, definitions)
+		]))
 
 		const validateItemAttributes = (): Validate<PopfileTextDocument> => {
 			const validate = documentSymbols({ "ItemName": [validateItemName] }, () => [])
