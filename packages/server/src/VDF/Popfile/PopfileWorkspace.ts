@@ -97,7 +97,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 						keyRange: documentSymbol.nameRange,
 						nameRange: undefined,
 						detail: undefined,
-						documentation: undefined,
+						documentation: items_game.document.definitions.documentation(documentSymbol, "vdf"),
 						conditional: documentSymbol.conditional ?? undefined,
 						completionItem: {
 							labelDetails: {
