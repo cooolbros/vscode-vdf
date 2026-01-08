@@ -10,8 +10,8 @@ catalogs:
       specifier: ^6.2.1
       version: 6.2.1
     '@tsconfig/svelte':
-      specifier: ^5.0.4
-      version: 5.0.4
+      specifier: ^5.0.6
+      version: 5.0.6
     '@types/vscode-webview':
       specifier: ^1.57.5
       version: 1.57.5
@@ -211,7 +211,7 @@ importers:
     devDependencies:
       '@tsconfig/svelte':
         specifier: 'catalog:'
-        version: 5.0.4
+        version: 5.0.6
       '@types/vscode-webview':
         specifier: 'catalog:'
         version: 1.57.5
@@ -235,7 +235,7 @@ importers:
         version: 6.2.1(svelte@5.45.2)(vite@7.2.7(@types/node@25.0.3)(jiti@1.21.7)(terser@5.44.0)(yaml@2.8.2))
       '@tsconfig/svelte':
         specifier: 'catalog:'
-        version: 5.0.4
+        version: 5.0.6
       '@types/vscode-webview':
         specifier: 'catalog:'
         version: 1.57.5
@@ -1408,8 +1408,8 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
-  '@tsconfig/svelte@5.0.4':
-    resolution: {integrity: sha512-BV9NplVgLmSi4mwKzD8BD/NQ8erOY/nUE/GpgWe2ckx+wIQF5RyRirn/QsSSCPeulVpc3RA/iJt6DpfTIZps0Q==}
+  '@tsconfig/svelte@5.0.6':
+    resolution: {integrity: sha512-yGxYL0I9eETH1/DR9qVJey4DAsCdeau4a9wYPKuXfEhm8lFO8wg+LLYJjIpAm6Fw7HSlhepPhYPDop75485yWQ==}
 
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
@@ -5873,7 +5873,7 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
-  '@tsconfig/svelte@5.0.4': {}
+  '@tsconfig/svelte@5.0.6': {}
 
   '@types/d3-array@3.2.2': {}
 
