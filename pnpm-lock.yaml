@@ -240,8 +240,8 @@ importers:
         specifier: 'catalog:'
         version: 1.57.5
       '@vscode/codicons':
-        specifier: ^0.0.36
-        version: 0.0.36
+        specifier: ^0.0.44
+        version: 0.0.44
       client:
         specifier: workspace:*
         version: link:../../packages/client/src
@@ -1598,8 +1598,8 @@ packages:
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
 
-  '@vscode/codicons@0.0.36':
-    resolution: {integrity: sha512-wsNOvNMMJ2BY8rC2N2MNBG7yOowV3ov8KlvUE/AiVUlHKTfWsw3OgAOQduX7h0Un6GssKD3aoTVH+TF3DSQwKQ==}
+  '@vscode/codicons@0.0.44':
+    resolution: {integrity: sha512-F7qPRumUK3EHjNdopfICLGRf3iNPoZQt+McTHAn4AlOWPB3W2kL4H0S7uqEqbyZ6rCxaeDjpAn3MCUnwTu/VJQ==}
 
   '@vscode/test-web@0.0.78':
     resolution: {integrity: sha512-gj+Y6fT3vhUu2nAJhY+yxj27QU04it7oZdqDwO5uLWi8yzD8B7ZAWby52ODePJrRPMUndNIvleQZr7v3BowkSA==}
@@ -6068,7 +6068,7 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
-  '@vscode/codicons@0.0.36': {}
+  '@vscode/codicons@0.0.44': {}
 
   '@vscode/test-web@0.0.78':
     dependencies:

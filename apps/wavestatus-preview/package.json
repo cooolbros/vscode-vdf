@@ -9,7 +9,7 @@
         "@sveltejs/vite-plugin-svelte": "catalog:",
         "@tsconfig/svelte": "catalog:",
         "@types/vscode-webview": "catalog:",
-        "@vscode/codicons": "^0.0.36",
+        "@vscode/codicons": "^0.0.44",
         "client": "workspace:*",
         "common": "workspace:*",
         "svelte": "catalog:",
