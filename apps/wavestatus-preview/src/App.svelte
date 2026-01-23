@@ -542,15 +542,15 @@
 	contextMenu$.subscribe(async (message) => {
 		switch (message.command) {
 			case "vscode-vdf.waveStatusPreviewSaveImageAs":
-				await saveAs()
+				await saveImageAs()
 				break
 			case "vscode-vdf.waveStatusPreviewCopyImage":
-				await navigator.clipboard.write([new ClipboardItem({ "image/png": await save() })])
+				await copyImage()
 				break
 		}
 	})
 
-	async function saveAs() {
+	async function saveImageAs() {
 		const uriPromise = trpc.showSaveDialog.query()
 		const [uri, buf] = await Promise.all([
 			uriPromise,
@@ -560,6 +560,12 @@
 			// @ts-ignore
 			await trpc.save.mutate({ uri: uri, buf: buf })
 		}
+	}
+
+	async function copyImage() {
+		focus()
+		const blob = await save()
+		await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
 	}
 
 	async function save() {
@@ -581,7 +587,7 @@
 		<button class="settings" onclick={() => trpc.openSettings.query()}>
 			<i class="codicon codicon-settings-gear"></i>
 		</button>
-		<button class="floating-click-widget" onclick={saveAs}>Save</button>
+		<button class="floating-click-widget" onclick={saveImageAs}>Save</button>
 	</div>
 </main>
 
