@@ -11,15 +11,15 @@ pub enum Token {
     OpeningBrace,
     ClosingBrace,
     String(String),
-    EOF,
+    Eof,
 }
 
 impl Iterator for Tokeniser<'_> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.chars.by_ref().skip_while(|char| WHITESPACE.contains(char)).next()? {
-            '\0' => Some(Token::EOF),
+        match self.chars.by_ref().find(|char| !WHITESPACE.contains(char))? {
+            '\0' => Some(Token::Eof),
             '{' => Some(Token::OpeningBrace),
             '}' => Some(Token::ClosingBrace),
             '"' => Some(Token::String(self.chars.by_ref().take_while(|char| *char != '"').collect::<String>())),

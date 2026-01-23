@@ -50,7 +50,7 @@ impl Entities {
                         _ => Err(SyntaxError)?,
                     };
                 },
-                Some(Token::EOF) => break,
+                Some(Token::Eof) => break,
                 None => break,
                 _ => Err(SyntaxError)?,
             };

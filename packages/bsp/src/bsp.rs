@@ -111,7 +111,7 @@ pub enum BSPError {
     EncodeError(#[from] EncodeError),
 
     #[error(transparent)]
-    LZMA(#[from] lzma_rs::error::Error),
+    Lzma(#[from] lzma_rs::error::Error),
 }
 
 impl From<BSPError> for JsValue {
