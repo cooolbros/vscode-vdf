@@ -3,10 +3,9 @@ import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { Observable } from "rxjs"
-import { VDFPosition, VDFRange } from "vdf"
 import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
@@ -43,10 +42,11 @@ export class Client<T extends BaseLanguageClient> {
 		this.router = TRPCClientRouter(
 			initTRPC.create({
 				transformer: devalueTransformer({
-					reducers: {},
+					reducers: {
+						Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
+					},
 					revivers: {
-						VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
-						VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
+						Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
 					}
 				}),
 				isDev: true,

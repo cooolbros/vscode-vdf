@@ -1,5 +1,6 @@
-import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
+import type { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
+import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { BSP } from "bsp"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -25,7 +26,7 @@ const UTF8Decoder = new TextDecoder("utf-8")
 const UTF16LEDecoder = new TextDecoder("utf-16le")
 
 export function TRPCClientRouter(
-	t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>,
+	t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>,
 	context: ExtensionContext,
 	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,

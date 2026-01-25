@@ -1,4 +1,5 @@
-import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
+import type { initTRPC } from "@trpc/server"
+import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { Uri } from "common/Uri"
 import { generateTokens } from "common/generateTokens"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
@@ -108,7 +109,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations",
 		this.workspaces = new Map()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

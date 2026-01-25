@@ -1,4 +1,5 @@
-import type { initTRPC, TRPCCombinedDataTransformer } from "@trpc/server"
+import type { initTRPC } from "@trpc/server"
+import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { generateTokens } from "common/generateTokens"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
@@ -39,7 +40,7 @@ export abstract class VDFLanguageServer<
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
 		return super.router(t)
 	}
 

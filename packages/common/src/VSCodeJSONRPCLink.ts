@@ -1,13 +1,13 @@
 import { TRPCClientError, type TRPCLink } from "@trpc/client"
-import type { AnyTRPCRouter, TRPCCombinedDataTransformer } from "@trpc/server"
+import type { AnyTRPCRouter } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
-import { transformResult, type TRPCResponse } from '@trpc/server/unstable-core-do-not-import'
+import { transformResult, type DataTransformer, type TRPCResponse } from '@trpc/server/unstable-core-do-not-import'
 import { finalize, Subject } from "rxjs"
 import { z } from "zod"
 
 export interface VSCodeJSONRPCLinkOptions {
 	client: { name: string }
-	transformer: TRPCCombinedDataTransformer
+	transformer: DataTransformer
 	onNotification: (type: string, handler: (param: unknown) => void) => void
 }
 
@@ -35,7 +35,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 
 		switch (notification.kind) {
 			case "N":
-				subject.next(opts.transformer.output.deserialize(notification.value))
+				subject.next(opts.transformer.deserialize(notification.value))
 				break
 			case "E":
 				subject.error(TRPCClientError.from(notification.error))
@@ -52,14 +52,14 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 			return ({ op }) => {
 				return observable((observer) => {
 					op.id = id++
-					op.input = opts.transformer.input.serialize(op.input)
+					op.input = opts.transformer.serialize(op.input)
 					switch (op.type) {
 						case "query":
 						case "mutation":
 							sendRequest("vscode-vdf/trpc", op).then((json) => {
 								const transformed = transformResult(
 									json as TRPCResponse,
-									opts.transformer.output,
+									opts.transformer,
 								)
 
 								if (!transformed.ok) {

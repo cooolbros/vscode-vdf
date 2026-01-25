@@ -1,5 +1,6 @@
-import type { TRPCCombinedDataTransformer, initTRPC } from "@trpc/server"
+import type { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
+import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
@@ -55,7 +56,7 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 		this.workspaces = new Map()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

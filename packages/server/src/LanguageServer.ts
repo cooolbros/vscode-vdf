@@ -1,5 +1,6 @@
 import { createTRPCClient, type CreateTRPCClientOptions, type TRPCClient } from "@trpc/client"
-import { initTRPC, type AnyTRPCRouter, type TRPCCombinedDataTransformer } from "@trpc/server"
+import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
+import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
@@ -297,6 +298,8 @@ export abstract class LanguageServer<
 			reducers: {
 				Definitions: (value: unknown) => value instanceof Definitions && value.toJSON(),
 				References: (value: unknown) => value instanceof References && value.toJSON(),
+				Symbol: (value: unknown) => typeof value == "symbol" ? Symbol.keyFor(value) : undefined,
+				Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
 				VDFDocumentSymbol: (value: unknown) => value instanceof VDFDocumentSymbol ? value.toJSON() : undefined,
 				VDFDocumentSymbols: (value: unknown) => value instanceof VDFDocumentSymbols ? value.toJSON() : undefined,
 				VDFPosition: (value: unknown) => value instanceof VDFPosition ? value.toJSON() : undefined,
@@ -305,6 +308,8 @@ export abstract class LanguageServer<
 			revivers: {
 				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
 				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
+				Symbol: (value: ReturnType<Symbol["toString"]>) => Symbol.for(value),
+				Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
 				VDFDocumentSymbol: (value: ReturnType<VDFDocumentSymbol["toJSON"]>) => VDFDocumentSymbol.schema.parse(value),
 				VDFDocumentSymbols: (value: ReturnType<VDFDocumentSymbols["toJSON"]>) => VDFDocumentSymbols.schema.parse(value),
 				VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
@@ -355,7 +360,7 @@ export abstract class LanguageServer<
 		this.connection.listen()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: TRPCCombinedDataTransformer }>>) {
+	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
 		return t.router({
 			textDocument: {
 				rename: t

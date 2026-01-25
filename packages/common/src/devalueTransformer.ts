@@ -1,52 +1,14 @@
+import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import * as devalue from "devalue"
-import { Uri } from "./Uri"
 
 export interface Options {
 	reducers: Record<string, (value: unknown) => any>
 	revivers: Record<string, (value: any) => any>
 }
 
-const common = {
-	reducers: {
-		Symbol: (value: unknown) => typeof value == "symbol" ? Symbol.keyFor(value) : undefined,
-		Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
-	},
-	revivers: {
-		Symbol: (value: ReturnType<Symbol["toString"]>) => Symbol.for(value),
-		Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
-	}
-}
-
-export function devalueTransformer({ reducers, revivers }: Options) {
-
-	const inputReducers = {
-		...common.reducers,
-		...reducers,
-	}
-
-	const inputRevivers = {
-		...common.revivers,
-		...revivers
-	}
-
-	const outputReducers = {
-		...common.reducers,
-		...reducers,
-	}
-
-	const outputRevivers = {
-		...common.revivers,
-		...revivers,
-	}
-
+export function devalueTransformer({ reducers, revivers }: Options): DataTransformer {
 	return {
-		input: {
-			serialize: (object: any) => devalue.stringify(object, inputReducers),
-			deserialize: (object: any) => devalue.parse(object, inputRevivers)
-		},
-		output: {
-			serialize: (object: any) => devalue.stringify(object, outputReducers),
-			deserialize: (object: any) => devalue.parse(object, outputRevivers)
-		}
+		serialize: (object: any) => devalue.stringify(object, reducers),
+		deserialize: (object: any) => devalue.parse(object, revivers)
 	}
 }
