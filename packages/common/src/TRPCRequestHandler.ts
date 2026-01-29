@@ -77,7 +77,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 							ctx: op.context,
 						})
 						console.dir(error)
-						return { error: error }
+						return { error: transformer.output.serialize(error) }
 					})
 			case "subscription":
 				const client = opts.schema.parse(op.context.client)
