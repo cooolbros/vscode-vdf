@@ -105,6 +105,18 @@
                 "command": "vscode-vdf.VDFToJSON"
             },
             {
+                "category": "VTF",
+                "title": "Copy image",
+                "command": "vscode-vdf.VTFEditorCopyImage",
+                "when": "webviewId == 'vscode-vdf.VTFEditor'"
+            },
+            {
+                "category": "VTF",
+                "title": "Save image as...",
+                "command": "vscode-vdf.VTFEditorSaveImageAs",
+                "when": "webviewId == 'vscode-vdf.VTFEditor'"
+            },
+            {
                 "category": "Popfile",
                 "title": "Copy image",
                 "command": "vscode-vdf.waveStatusPreviewCopyImage",
@@ -536,6 +548,16 @@
                 }
             ],
             "webview/context": [
+                {
+                    "command": "vscode-vdf.VTFEditorSaveImageAs",
+                    "group": "navigation@1",
+                    "when": "webviewId == 'vscode-vdf.VTFEditor' && webviewSection == 'canvas'"
+                },
+                {
+                    "command": "vscode-vdf.VTFEditorCopyImage",
+                    "group": "navigation@2",
+                    "when": "webviewId == 'vscode-vdf.VTFEditor' && webviewSection == 'canvas'"
+                },
                 {
                     "command": "vscode-vdf.waveStatusPreviewSaveImageAs",
                     "group": "navigation@1",

@@ -9,6 +9,7 @@
         "@tsconfig/svelte": "catalog:",
         "@types/vscode-webview": "catalog:",
         "client": "workspace:*",
+        "common": "workspace:*",
         "svelte": "catalog:",
         "vite": "catalog:",
         "vtf-canvas": "workspace:*"

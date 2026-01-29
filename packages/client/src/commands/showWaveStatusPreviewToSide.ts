@@ -5,7 +5,6 @@ import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
-import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
@@ -16,6 +15,8 @@ import vscode, { commands, DocumentSymbol, ViewColumn, window, workspace, type C
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import { Popfile } from "../Popfile"
+import { TRPCImageRouter } from "../TRPCImageRouter"
+import { TRPCWebViewRequestHandler } from "../TRPCWebViewRequestHandler"
 import { initBSP } from "../wasm/bsp"
 import { initVTFPNG } from "../wasm/vtf"
 
@@ -358,8 +359,8 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 	const webviewPanels = new Map<string, WebviewPanel>()
 
 	function send(command: string) {
-		return (args: any) => {
-			const webviewPanel = webviewPanels.get(args.id)
+		return (arg: any) => {
+			const webviewPanel = webviewPanels.get(arg.id)
 			if (webviewPanel) {
 				webviewPanel.reveal()
 				webviewPanel.webview.postMessage({ type: "context_menu", command: command })
@@ -378,15 +379,8 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			return
 		}
 
-		const fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
-
 		const id = document.uri.toString()
 		const name = posix.parse(new Uri(document.uri).basename()).name
-
-		const t = initTRPC.create({
-			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
-			isDev: true
-		})
 
 		await Promise.all([
 			initBSP(context),
@@ -408,6 +402,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			webviewPanels.delete(id)
 		})
 
+		const fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
 		stack.use(fileSystem)
 
 		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
@@ -492,189 +487,133 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
-		const router = t.router({
-			configuration: t
-				.procedure
-				.subscription(({ signal }) => {
-					return observableToAsyncIterable<VSCodeVDFConfiguration["popfile"]["waveStatusPreview"]>(
-						configuration$,
-						signal!
+		const t = initTRPC.create({
+			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
+			isDev: true
+		})
+
+		const router = t.mergeRouters(
+			TRPCImageRouter(t),
+			t.router({
+				configuration: t
+					.procedure
+					.subscription(({ signal }) => {
+						return observableToAsyncIterable<VSCodeVDFConfiguration["popfile"]["waveStatusPreview"]>(
+							configuration$,
+							signal!
+						)
+					}),
+				skyname: t
+					.procedure
+					.subscription(async ({ signal }) => {
+						const basename = new Uri(document.uri).basename()
+						const maps = await fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })
+						const map = maps
+							.values()
+							.filter(([, type]) => type == 1)
+							.find(([name]) => basename.startsWith(posix.parse(name).name))
+							?.[0]
+
+						if (!map) {
+							return observableToAsyncIterable<null>(of(null), signal!)
+						}
+
+						const uri = await firstValueFrom(fileSystem.resolveFile(`maps/${map}`))
+						if (!uri) {
+							return observableToAsyncIterable<null>(of(null), signal!)
+						}
+
+						const buf = await workspace.fs.readFile(uri)
+						const bsp = new BSP(buf)
+						const entities = bsp.entities()
+
+						const skyname = entities[0]["skyname"]
+
+						// bk
+						// ft
+						// lf
+						// rt
+						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>> | null>(vtf(`materials/skybox/${skyname}ft.vmt`), signal!)
+					}),
+				png: t
+					.procedure
+					.input(
+						z.object({
+							path: z.string(),
+						})
 					)
-				}),
-			skyname: t
-				.procedure
-				.subscription(async ({ signal }) => {
-					const basename = new Uri(document.uri).basename()
-					const maps = await fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })
-					const map = maps
-						.values()
-						.filter(([, type]) => type == 1)
-						.find(([name]) => basename.startsWith(posix.parse(name).name))
-						?.[0]
-
-					if (!map) {
-						return observableToAsyncIterable<null>(of(null), signal!)
-					}
-
-					const uri = await firstValueFrom(fileSystem.resolveFile(`maps/${map}`))
-					if (!uri) {
-						return observableToAsyncIterable<null>(of(null), signal!)
-					}
-
-					const buf = await workspace.fs.readFile(uri)
-					const bsp = new BSP(buf)
-					const entities = bsp.entities()
-
-					const skyname = entities[0]["skyname"]
-
-					// bk
-					// ft
-					// lf
-					// rt
-					return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>> | null>(vtf(`materials/skybox/${skyname}ft.vmt`), signal!)
-				}),
-			png: t
-				.procedure
-				.input(
-					z.object({
-						path: z.string(),
+					.subscription(({ input, signal }) => {
+						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>>>(vtf(input.path), signal!)
+					}),
+				font: t
+					.procedure
+					.input(
+						z.object({
+							path: z.string(),
+						})
+					)
+					.subscription(({ input, signal }) => {
+						return observableToAsyncIterable<Uint8Array | null>(
+							fileSystem.resolveFile(input.path).pipe(
+								concatMap(async (uri) => uri && new Uint8Array(await workspace.fs.readFile(uri)))
+							),
+							signal!
+						)
+					}),
+				tokens: t.procedure.subscription(({ signal }) => {
+					const tokens = (map: Map<string, string>) => ({
+						TF_PVE_WaveCount: map.get("TF_PVE_WaveCount")!,
+						TF_MVM_Support: map.get("TF_MVM_Support")!,
 					})
-				)
-				.subscription(({ input, signal }) => {
-					return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>>>(vtf(input.path), signal!)
-				}),
-			font: t
-				.procedure
-				.input(
-					z.object({
-						path: z.string(),
-					})
-				)
-				.subscription(({ input, signal }) => {
-					return observableToAsyncIterable<Uint8Array | null>(
-						fileSystem.resolveFile(input.path).pipe(
-							concatMap(async (uri) => uri && new Uint8Array(await workspace.fs.readFile(uri)))
+
+					return observableToAsyncIterable<ReturnType<typeof tokens>>(
+						configuration$.pipe(
+							switchMap((configuration) => {
+								const files: Record<string, string> = {
+									// "korean": "koreana",
+									"simplified_chinese": "schinese",
+									"traditional_chinese": "tchinese",
+									"latam_spanish": "latam"
+								}
+								return fileSystem.resolveFile(`resource/tf_${files[configuration.language] ?? configuration.language}.txt`)
+							}),
+							concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri!))),
+							map((text) => {
+								const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
+
+								const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
+								if (!lang) {
+									throw new Error("lang")
+								}
+
+								const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
+								if (!tokens) {
+									throw new Error("Tokens")
+								}
+
+								return new Map(
+									tokens
+										.filter((documentSymbol) => documentSymbol.detail != undefined)
+										.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
+								)
+							}),
+							map(tokens)
 						),
 						signal!
 					)
 				}),
-			tokens: t.procedure.subscription(({ signal }) => {
-				const tokens = (map: Map<string, string>) => ({
-					TF_PVE_WaveCount: map.get("TF_PVE_WaveCount")!,
-					TF_MVM_Support: map.get("TF_MVM_Support")!,
-				})
-
-				return observableToAsyncIterable<ReturnType<typeof tokens>>(
-					configuration$.pipe(
-						switchMap((configuration) => {
-							const files: Record<string, string> = {
-								// "korean": "koreana",
-								"simplified_chinese": "schinese",
-								"traditional_chinese": "tchinese",
-								"latam_spanish": "latam"
-							}
-							return fileSystem.resolveFile(`resource/tf_${files[configuration.language] ?? configuration.language}.txt`)
-						}),
-						concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri!))),
-						map((text) => {
-							const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
-
-							const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
-							if (!lang) {
-								throw new Error("lang")
-							}
-
-							const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
-							if (!tokens) {
-								throw new Error("Tokens")
-							}
-
-							return new Map(
-								tokens
-									.filter((documentSymbol) => documentSymbol.detail != undefined)
-									.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
-							)
-						}),
-						map(tokens)
-					),
-					signal!
-				)
-			}),
-			waveStatus: t
-				.procedure
-				.subscription(({ signal }) => observableToAsyncIterable<ObservedValueOf<typeof waveStatus$>>(waveStatus$, signal!)),
-			openSettings: t
-				.procedure
-				.query(async () => {
-					await commands.executeCommand("workbench.action.openSettings", "vscode-vdf.popfile.waveStatusPreview")
-				}),
-			showSaveDialog: t
-				.procedure
-				.query(async () => {
-					const uri = await window.showSaveDialog({ filters: { Images: ["png", "jpg"] } })
-					return uri != null
-						? new Uri(uri)
-						: null
-				}),
-			save: t
-				.procedure
-				.input(
-					z.object({
-						uri: Uri.schema,
-						buf: z.instanceof(Uint8Array),
-					})
-				)
-				.mutation(async ({ input }) => {
-					await workspace.fs.writeFile(input.uri, input.buf)
-					commands.executeCommand("revealFileInOS", input.uri)
-				})
-		})
-
-		const handlers = {
-			request: new Map<string, (param: unknown) => void>(),
-			notification: new Map<string, (param: unknown) => void>(),
-		}
-
-		const messageSchema = z.object({
-			type: z.union([z.literal("request"), z.literal("notification")]),
-			method: z.string(),
-			param: z.any()
-		})
-
-		// Memory Leak
-		const trpc = TRPCRequestHandler({
-			router: router,
-			schema: z.enum(["webview"]),
-			onRequest: (method, handler) => {
-				handlers.request.set(method, handler)
-			},
-			sendNotification: async (server, method, param) => {
-				if (!stack.disposed) {
-					await webviewPanel.webview.postMessage({
-						type: "notification",
-						method: method,
-						param: param
-					})
-				}
-			}
-		})
-
-		handlers.request.set("vscode-vdf/trpc", async (param) => {
-			webviewPanel.webview.postMessage({
-				type: "response",
-				// @ts-ignore
-				id: param.id,
-				response: await trpc(param),
+				waveStatus: t
+					.procedure
+					.subscription(({ signal }) => observableToAsyncIterable<ObservedValueOf<typeof waveStatus$>>(waveStatus$, signal!)),
+				openSettings: t
+					.procedure
+					.query(async () => {
+						await commands.executeCommand("workbench.action.openSettings", "vscode-vdf.popfile.waveStatusPreview")
+					}),
 			})
-		})
-
-		stack.adopt(
-			webviewPanel.webview.onDidReceiveMessage(async (event) => {
-				const { type, method, param } = messageSchema.parse(event)
-				handlers[type].get(method)?.(param)
-			}),
-			(disposable) => disposable.dispose()
 		)
+
+		stack.use(TRPCWebViewRequestHandler(webviewPanel.webview, router))
 
 		const dist = vscode.Uri.joinPath(context.extensionUri, "apps/wavestatus-preview/dist")
 		const html = new TextDecoder("utf-8").decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))

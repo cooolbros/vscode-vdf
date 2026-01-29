@@ -8,11 +8,17 @@
 
 <script lang="ts">
 	import "@vscode/codicons/dist/codicon.ttf"
-	import type { HUDEnemyData, WaveStatus } from "client/commands/showWaveStatusPreviewToSide"
+	import type {
+		HUDEnemyData,
+		showWaveStatusPreviewToSide,
+		WaveStatus,
+	} from "client/commands/showWaveStatusPreviewToSide"
 	import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
+	import { createTRPCClient } from "common/web/TRPCClient"
 	import { combineLatest, concatMap, map, Observable, of, share, shareReplay, switchMap } from "rxjs"
 	import { toStore } from "svelte/store"
-	import { contextMenu$, trpc } from "./TRPCClient"
+
+	type AppRouter = NonNullable<Awaited<ReturnType<ReturnType<typeof showWaveStatusPreviewToSide>>>>
 
 	const SCALE = 6
 
@@ -22,6 +28,8 @@
 
 	const WAVE_HEIGHT = 70 * SCALE
 
+	const vscode = acquireVsCodeApi()
+	const { trpc, contextMenu$ } = createTRPCClient<AppRouter>(vscode)
 	const images = new Map<string, Observable<ImageBitmap | null>>()
 
 	let canvas: HTMLCanvasElement = $state()!
@@ -551,13 +559,11 @@
 	})
 
 	async function saveImageAs() {
-		const uriPromise = trpc.showSaveDialog.query()
 		const [uri, buf] = await Promise.all([
-			uriPromise,
+			trpc.showSaveDialog.query(),
 			save().then(async (blob) => new Uint8Array(await blob.arrayBuffer())),
 		])
 		if (uri) {
-			// @ts-ignore
 			await trpc.save.mutate({ uri: uri, buf: buf })
 		}
 	}

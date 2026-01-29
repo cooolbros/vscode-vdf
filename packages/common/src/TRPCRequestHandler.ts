@@ -7,6 +7,7 @@ import { z } from "zod"
 export interface TRPCRequestHandlerOptions<T extends z.util.EnumLike> {
 	router: AnyTRPCRouter
 	schema: z.ZodEnum<T>
+	signal?: AbortSignal,
 	onRequest: (method: string, handler: (param: unknown) => void) => void,
 	sendNotification: (server: z.infer<z.ZodEnum<T>>, method: string, param: any) => Promise<any>
 }
@@ -36,6 +37,16 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 	})({})
 
 	const subscriptions = new Map<z.infer<z.ZodEnum<T>>, Map<number, Unsubscribable>>()
+
+	opts.signal?.addEventListener("abort", () => {
+		for (const [client, map] of subscriptions) {
+			for (const [id, subscription] of map) {
+				subscription.unsubscribe()
+				map.delete(id)
+			}
+			subscriptions.delete(client)
+		}
+	})
 
 	opts.onRequest("vscode-vdf/trpc/observable/unsubscribe", (param: unknown) => {
 		const { client, id } = z.object({ client: opts.schema, id: z.number() }).parse(param)

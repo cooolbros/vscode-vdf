@@ -218,6 +218,9 @@ importers:
       client:
         specifier: workspace:*
         version: link:../../packages/client/src
+      common:
+        specifier: workspace:*
+        version: link:../../packages/common
       svelte:
         specifier: 'catalog:'
         version: 5.48.0

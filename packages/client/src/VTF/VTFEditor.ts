@@ -1,29 +1,29 @@
+import { initTRPC } from "@trpc/server"
+import { observableToAsyncIterable } from "@trpc/server/observable"
+import { devalueTransformer } from "common/devalueTransformer"
 import { Uri } from "common/Uri"
 import vscode, { commands, Disposable, EventEmitter, FilePermission, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
-import { z } from "zod"
+import z from "zod"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
+import { TRPCImageRouter } from "../TRPCImageRouter"
+import { TRPCWebViewRequestHandler } from "../TRPCWebViewRequestHandler"
 import { VTFDocument } from "./VTFDocument"
 
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 	private static readonly decoder = new TextDecoder("utf-8")
-	public static readonly commandSchema = z.discriminatedUnion("type", [
-		z.object({ type: z.literal("buf") }),
-		z.object({ type: z.literal("flags"), label: z.string(), value: z.number() }),
-		z.object({ type: z.literal("scale"), scale: z.number().min(10).max(200) }),
-		z.object({ type: z.literal("showErrorMessage"), message: z.string(), items: z.array(z.string()) }),
-		z.object({ type: z.literal("unsupportedVTFFormat"), format: z.string() })
-	])
 
 	private readonly extensionUri: vscode.Uri
 	private readonly fileSystemWatcherFactory: FileSystemWatcherFactory
 	private readonly onDidChangeCustomDocumentEventEmitter: EventEmitter<CustomDocumentEditEvent<VTFDocument>>
+	private readonly webviewPanels: Map<string, WebviewPanel>
 	public readonly onDidChangeCustomDocument: Event<CustomDocumentEditEvent<VTFDocument>>
 
 	public constructor(extensionUri: vscode.Uri, fileSystemWatcherFactory: FileSystemWatcherFactory, subscriptions: Disposable[]) {
 		this.extensionUri = extensionUri
 		this.fileSystemWatcherFactory = fileSystemWatcherFactory
 		this.onDidChangeCustomDocumentEventEmitter = new EventEmitter()
+		this.webviewPanels = new Map()
 		this.onDidChangeCustomDocument = this.onDidChangeCustomDocumentEventEmitter.event
 
 		const selectVTFZoomLevelCommand = commands.registerCommand("vscode-vdf.selectVTFZoomLevel", async (document: VTFDocument) => {
@@ -33,9 +33,24 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 			}
 		})
 
+		const send = (command: string) => {
+			return (arg: any) => {
+				const webviewPanel = this.webviewPanels.get(arg.uri)
+				if (webviewPanel) {
+					webviewPanel.reveal()
+					webviewPanel.webview.postMessage({ type: "context_menu", command: command })
+				}
+			}
+		}
+
+		const saveImageAsCommand = commands.registerCommand("vscode-vdf.VTFEditorSaveImageAs", send("vscode-vdf.VTFEditorSaveImageAs"))
+		const copyImageCommand = commands.registerCommand("vscode-vdf.VTFEditorCopyImage", send("vscode-vdf.VTFEditorCopyImage"))
+
 		subscriptions.push(
 			this.onDidChangeCustomDocumentEventEmitter,
-			selectVTFZoomLevelCommand
+			selectVTFZoomLevelCommand,
+			saveImageAsCommand,
+			copyImageCommand
 		)
 	}
 
@@ -72,7 +87,6 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 			openContext.backupId != undefined
 				? Promise.try(async () => new DataView((await workspace.fs.readFile(new Uri(openContext.backupId!))).buffer).getUint32(0, true))
 				: Promise.resolve(null),
-
 		])
 
 		return new VTFDocument(uri, readonly, buf, watcher, flags)
@@ -80,23 +94,16 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
 	public async resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): Promise<void> {
 
-		const dist = vscode.Uri.joinPath(this.extensionUri, "apps/vtf-editor/dist")
-		const html = VTFEditor.decoder.decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
-
-		webviewPanel.webview.options = { enableScripts: true }
-		webviewPanel.webview.html = html
-			.replaceAll("%READONLY%", `${document.readonly}`)
-			.replaceAll("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
-
-		document.show()
-
 		const stack = new DisposableStack()
 		webviewPanel.onDidDispose(() => stack.dispose())
+
+		const id = document.uri.toString()
+		this.webviewPanels.set(id, webviewPanel)
+		stack.defer(() => this.webviewPanels.delete(id))
 
 		stack.adopt(
 			webviewPanel.onDidChangeViewState(() => {
 				if (webviewPanel.visible) {
-					webviewPanel.webview.postMessage(document.buf$.value)
 					document.show()
 				}
 				else {
@@ -106,77 +113,114 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 			(disposable) => disposable.dispose()
 		)
 
-		stack.adopt(
-			webviewPanel.webview.onDidReceiveMessage(async (message) => {
-				const command = VTFEditor.commandSchema.parse(message)
-				switch (command.type) {
-					case "buf": {
-						webviewPanel.webview.postMessage(document.buf$.value)
-						break
-					}
-					case "flags": {
-						const prev = document.flags$.value
-						document.flags$.next(prev ^ command.value)
-						document.changes++
-						const next = document.flags$.value
-						this.onDidChangeCustomDocumentEventEmitter.fire({
-							document: document,
-							undo: () => {
-								document.flags$.next(prev)
-								document.changes--
-							},
-							redo: () => {
-								document.flags$.next(next)
-								document.changes++
-							},
-							label: command.label
+		const router = this.router(document)
+		stack.use(TRPCWebViewRequestHandler(webviewPanel.webview, router))
+
+		const dist = vscode.Uri.joinPath(this.extensionUri, "apps/vtf-editor/dist")
+		const html = VTFEditor.decoder.decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
+
+		webviewPanel.webview.options = { enableScripts: true }
+		webviewPanel.webview.html = html
+			.replace("%URI%", `${document.uri}`)
+			.replace("%READONLY%", `${document.readonly}`)
+			.replace("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
+
+		document.show()
+	}
+
+	public router(document: VTFDocument) {
+		const t = initTRPC.create({
+			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
+			isDev: true
+		})
+
+		return t.mergeRouters(
+			TRPCImageRouter(t),
+			t.router({
+				buf: t.procedure.query(() => document.buf$.value),
+				flags: {
+					events: t
+						.procedure
+						.subscription(({ signal }) => {
+							return observableToAsyncIterable<number>(document.flags$, signal!)
+						}),
+					set: t
+						.procedure
+						.input(
+							z.object({
+								label: z.string(),
+								value: z.number(),
+							})
+						)
+						.mutation(({ input }) => {
+							const prev = document.flags$.value
+							document.flags$.next(prev ^ input.value)
+							document.changes++
+							const next = document.flags$.value
+							this.onDidChangeCustomDocumentEventEmitter.fire({
+								document: document,
+								undo: () => {
+									document.flags$.next(prev)
+									document.changes--
+								},
+								redo: () => {
+									document.flags$.next(next)
+									document.changes++
+								},
+								label: input.label
+							})
 						})
-						break
-					}
-					case "scale": {
-						document.scale$.next(command.scale)
-						break
-					}
-					case "showErrorMessage": {
-						window.showErrorMessage(command.message, ...command.items)
-						break
-					}
-					case "unsupportedVTFFormat": {
+				},
+				scale: {
+					events: t
+						.procedure
+						.subscription(({ signal }) => {
+							return observableToAsyncIterable<number>(document.scale$, signal!)
+						}),
+					set: t
+						.procedure
+						.input(z.number().min(10).max(200))
+						.mutation(({ input }) => {
+							document.scale$.next(input)
+						})
+				},
+				showErrorMessage: t
+					.procedure
+					.input(
+						z.object({
+							message: z.string(),
+							items: z.array(z.string())
+						})
+					)
+					.query(async ({ input }) => {
+						window.showErrorMessage(input.message, ...input.items)
+					}),
+				unsupportedVTFFormat: t
+					.procedure
+					.input(
+						z.object({
+							format: z.string()
+						})
+					)
+					.mutation(async ({ input }) => {
 						const configuration = workspace.getConfiguration("vscode-vdf.vtf.formats")
 						const exclude = configuration.get<string[]>("exclude") ?? []
-						if (!exclude.includes(command.format)) {
+						if (!exclude.includes(input.format)) {
 
-							const requestSupportMessage = `(Github) Request support for "${command.format}"`
+							const requestSupportMessage = `(Github) Request support for "${input.format}"`
 							const dontAskAgain = "Don't ask again"
 
-							const result = await window.showErrorMessage(`Unsupported VTF format: "${command.format}"`, requestSupportMessage, dontAskAgain)
+							const result = await window.showErrorMessage(`Unsupported VTF format: "${input.format}"`, requestSupportMessage, dontAskAgain)
 							if (result == requestSupportMessage) {
-								const title = `Add support for ${command.format}`
+								const title = `Add support for ${input.format}`
 								await commands.executeCommand("vscode.open", `https://github.com/cooolbros/vscode-vdf/issues/new?title=${title}`)
 							}
 							else if (result == dontAskAgain) {
-								configuration.update("exclude", [...exclude, command.format], true)
+								configuration.update("exclude", [...exclude, input.format], true)
 							}
-							break
 						}
-					}
-				}
-			}),
-			(disposable) => disposable.dispose()
-		)
-
-		stack.adopt(
-			document.flags$.subscribe((flags) => {
-				webviewPanel.webview.postMessage({ type: "flags", flags })
-			}),
-			(subscription) => subscription.unsubscribe()
-		)
-
-		stack.adopt(
-			document.scale$.subscribe((scale) => {
-				webviewPanel.webview.postMessage({ type: "scale", value: scale })
-			}),
-			(subscription) => subscription.unsubscribe()
+					}),
+			})
 		)
 	}
 }

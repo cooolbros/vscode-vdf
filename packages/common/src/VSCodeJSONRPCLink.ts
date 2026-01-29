@@ -3,7 +3,7 @@ import type { AnyTRPCRouter } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
 import { transformResult, type DataTransformer, type TRPCResponse } from '@trpc/server/unstable-core-do-not-import'
 import { finalize, Subject } from "rxjs"
-import { z } from "zod"
+import * as z from "zod/mini"
 
 export interface VSCodeJSONRPCLinkOptions {
 	client: { name: string }
