@@ -119,7 +119,9 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						} satisfies VDFTextDocumentDependencies<VGUITextDocument>
 					})
 				)
-			}),
+			}).pipe(
+				shareReplay({ bufferSize: 1, refCount: true })
+			),
 		})
 
 		this.workspace = workspace
