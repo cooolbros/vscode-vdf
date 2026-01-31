@@ -9,6 +9,7 @@ import { Collection, Definitions, References, type DefinitionReferences } from "
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
+import { ChatSchemeSchema } from "./schemas/ChatSchemeSchema"
 import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
 import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
 import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
@@ -90,6 +91,10 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 								break
 							case VGUIFileType.SourceScheme:
 								schema = SourceSchemeSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.ChatScheme:
+								schema = ChatSchemeSchema
 								globals$ = of([])
 								break
 							case VGUIFileType.LanguageTokens:

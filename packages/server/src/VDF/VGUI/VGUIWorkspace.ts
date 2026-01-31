@@ -10,12 +10,13 @@ import { WorkspaceBase } from "../../WorkspaceBase"
 import { VGUITextDocument } from "./VGUITextDocument"
 
 export const enum VGUIFileType {
-	None = 0,
-	ClientScheme = 1,
-	SourceScheme = 2,
-	LanguageTokens = 3,
-	HUDAnimationsManifest = 4,
-	SurfacePropertiesManifest = 5,
+	None,
+	ClientScheme,
+	SourceScheme,
+	ChatScheme,
+	LanguageTokens,
+	HUDAnimationsManifest,
+	SurfacePropertiesManifest,
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
@@ -23,10 +24,11 @@ export class VGUIWorkspace extends WorkspaceBase {
 	private static readonly files = {
 		clientSchemeFiles: new Set(["resource/clientscheme.res"]),
 		sourceSchemeFiles: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
+		chatSchemeFiles: new Set(["resource/chatscheme.res"]),
 		languageTokensFiles: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
 	}
 
-	public static fileType(uri: Uri, teamFortress2Folder$: Observable<Uri>) {
+	public static fileType(uri: Uri, teamFortress2Folder$: Observable<Uri>): Observable<VGUIFileType> {
 		return defer(() => {
 			switch (uri.scheme) {
 				case "file":
@@ -42,13 +44,16 @@ export class VGUIWorkspace extends WorkspaceBase {
 			}
 		}).pipe(
 			map((path) => {
-				const { clientSchemeFiles, sourceSchemeFiles, languageTokensFiles } = VGUIWorkspace.files
+				const { clientSchemeFiles, sourceSchemeFiles, chatSchemeFiles, languageTokensFiles } = VGUIWorkspace.files
 				if (path != null) {
 					if (clientSchemeFiles.has(path)) {
 						return VGUIFileType.ClientScheme
 					}
 					else if (sourceSchemeFiles.has(path)) {
 						return VGUIFileType.SourceScheme
+					}
+					else if (chatSchemeFiles.has(path)) {
+						return VGUIFileType.ChatScheme
 					}
 					else if (languageTokensFiles.has(path)) {
 						return VGUIFileType.LanguageTokens
@@ -72,6 +77,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public readonly clientScheme$: Observable<DefinitionReferences>
 
 	public readonly sourceSchemeFiles$: Observable<Set<string>>
+	public readonly chatSchemeFiles$: Observable<Set<string>>
 
 	public readonly languageTokensFiles$: Observable<Set<string>>
 	public readonly languageTokens$: Observable<DefinitionReferences>
@@ -156,6 +162,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 		])
 
 		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
+		this.chatSchemeFiles$ = files("resource/chatscheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
 
 		this.languageTokensFiles$ = combineLatest([files("resource/chat_english.txt"), files("resource/tf_english.txt")]).pipe(
 			map((paths) => new Set(paths.flat())),
@@ -235,14 +242,18 @@ export class VGUIWorkspace extends WorkspaceBase {
 		return combineLatest({
 			clientSchemeFiles: this.clientSchemeFiles$,
 			sourceSchemeFiles: this.sourceSchemeFiles$,
+			chatSchemeFiles: this.chatSchemeFiles$,
 			languageTokensFiles: this.languageTokensFiles$
 		}).pipe(
-			map(({ clientSchemeFiles, sourceSchemeFiles, languageTokensFiles }) => {
+			map(({ clientSchemeFiles, sourceSchemeFiles, chatSchemeFiles, languageTokensFiles }) => {
 				if (clientSchemeFiles.has(path)) {
 					return VGUIFileType.ClientScheme
 				}
 				else if (sourceSchemeFiles.has(path)) {
 					return VGUIFileType.SourceScheme
+				}
+				else if (chatSchemeFiles.has(path)) {
+					return VGUIFileType.ChatScheme
 				}
 				else if (languageTokensFiles.has(path)) {
 					return VGUIFileType.LanguageTokens
