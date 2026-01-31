@@ -190,7 +190,7 @@ export abstract class VDFLanguageServer<
 			// Misc.
 			const items = schema.completion.values?.[key]
 			if (items != undefined) {
-				return Array.isArray(items) ? items : await items({ text, files })
+				return Array.isArray(items) ? items : await items({ text, document, position, files })
 			}
 
 			return null

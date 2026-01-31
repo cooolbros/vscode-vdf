@@ -6,7 +6,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
 import { combineLatest, combineLatestWith, concat, connectable, defer, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, ReplaySubject, shareReplay, Subscription, switchMap } from "rxjs"
-import { VDFRange, type VDFParserOptions } from "vdf"
+import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
@@ -46,7 +46,7 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 			toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
 			asset?: VGUIAssetType
 		}[]
-		values?: Record<string, CompletionItem[] | ((args: { text?: string, files: CompletionFiles }) => Promise<CompletionItem[]>)>
+		values?: Record<string, CompletionItem[] | ((args: { text?: string, document: TDocument, position: VDFPosition, files: CompletionFiles }) => Promise<CompletionItem[]>)>
 	}
 }
 

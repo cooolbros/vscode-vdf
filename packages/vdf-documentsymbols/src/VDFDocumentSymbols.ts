@@ -25,9 +25,9 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		iterateDocumentSymbols(this)
 	}
 
-	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => boolean): VDFDocumentSymbol | undefined {
+	public findRecursive(callback: (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => boolean): { documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined {
 		const path: VDFDocumentSymbol[] = []
-		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): VDFDocumentSymbol | undefined => {
+		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): { documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[] } | undefined => {
 			for (const documentSymbol of documentSymbols) {
 				if (documentSymbol.children) {
 					path.push(documentSymbol)
@@ -39,7 +39,7 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 				}
 
 				if (callback(documentSymbol, path)) {
-					return documentSymbol
+					return { documentSymbol, path }
 				}
 			}
 		}
@@ -47,7 +47,11 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 	}
 
 	public getDocumentSymbolAtPosition(position: IPosition): VDFDocumentSymbol | undefined {
-		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))
+		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))?.documentSymbol
+	}
+
+	public getPathAtPosition(position: IPosition): VDFDocumentSymbol[] | undefined {
+		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))?.path
 	}
 
 	public reduceRecursive<T>(initialValue: T, callbackfn: (previousValue: T, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => T): T {

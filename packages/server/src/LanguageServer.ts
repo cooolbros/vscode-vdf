@@ -666,10 +666,12 @@ export abstract class LanguageServer<
 			}
 
 			const length = items.length.toString().length
-			return items.map((item, index) => ({
-				...item,
-				sortText: index.toString().padStart(length, "0")
-			}))
+			return items.map((item, index) => {
+				return {
+					...item,
+					sortText: index.toString().padStart(length, "0"),
+				} satisfies CompletionItem
+			})
 		}
 		catch (error) {
 			console.log(error)
@@ -680,6 +682,21 @@ export abstract class LanguageServer<
 	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null>
 
 	protected async onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
+
+		const quote = (string: string) => {
+			if (string.length == 0 || /\s/.test(string)) {
+				return true
+			}
+
+			const trimmed = string.trim()
+			const start = trimmed.startsWith("{") || trimmed.startsWith("}") || trimmed.startsWith("[") || trimmed.startsWith("//")
+			const end = trimmed.endsWith("{") || trimmed.endsWith("}") || trimmed.endsWith("\"")
+			return start || end
+		}
+
+		const text = item.insertText ?? item.label
+		item.insertText = quote(text) ? `"${text}"` : text
+
 		const result = z.object({ image: z.object({ uri: Uri.schema, path: z.string() }) }).safeParse(item.data)
 
 		if (result.success) {
@@ -691,7 +708,7 @@ export abstract class LanguageServer<
 				if (value) {
 					item.documentation = {
 						kind: MarkupKind.Markdown,
-						value: value
+						value: value + "\n\n" + (typeof item.documentation == "string" ? item.documentation : item.documentation?.value ?? "")
 					}
 				}
 			}
