@@ -1,5 +1,15 @@
 # Change Log
 
+## [5.8.1]
+ - Add "Copy Image" context menu item to VTF editor
+ - Fix autocompletion items not surrounding text with double quotes
+ - Fix crash when handling client errors
+ - [VGUI] Add support for `chatscheme.res`
+ - [Popfile] Update `ItemName` autocompletion to only suggest TFBot owned items
+ - [Popfile] Fix definition provider not supporting Template items
+ - [Popfile] Fix "Copy image" context menu item error in Wave Status Preview
+ - [Popfile] Fix memory leak in Wave Status Preview
+
 ## [5.8.0]
  - Fix not suggesting enum values
  - Fix false positive file not found diagnostic when using `\` separators
