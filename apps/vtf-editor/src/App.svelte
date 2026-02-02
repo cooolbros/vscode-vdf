@@ -9,7 +9,7 @@
 		merge,
 		Observable,
 		scan,
-		share,
+		shareReplay,
 		startWith,
 		switchMap,
 	} from "rxjs"
@@ -69,8 +69,16 @@
 		}, initial?.scale ?? 100),
 		startWith(initial?.scale ?? 100),
 		distinctUntilChanged(),
-		share(),
+		shareReplay(1),
 	)
+
+	$effect(() => {
+		vscode.setState({ flags: flags, frame: frame, scale: $scale$ })
+	})
+
+	scale$.subscribe((scale) => {
+		trpc.scale.set.mutate(scale)
+	})
 
 	const ctrl$ = merge(
 		fromEvent<KeyboardEvent>(window, "keydown").pipe(
@@ -82,14 +90,6 @@
 			map(() => false),
 		),
 	).pipe(startWith(false))
-
-	$effect(() => {
-		vscode.setState({ flags: flags, frame: frame, scale: $scale$ })
-	})
-
-	$effect(() => {
-		trpc.scale.set.mutate($scale$)
-	})
 
 	// svelte-ignore non_reactive_update
 	let i = 0
@@ -163,7 +163,7 @@
 	}
 </script>
 
-<div id="container">
+<main>
 	<div>
 		<fieldset>
 			<legend>File Info</legend>
@@ -263,10 +263,10 @@
 			</div>
 		</fieldset>
 	</div>
-</div>
+</main>
 
 <style>
-	div#container {
+	main {
 		display: grid;
 		grid-template-columns: min-content 1fr;
 		grid-template-rows: auto minmax(0, 1fr);
