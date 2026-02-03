@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.8.2]
+ - Revert autocompletion items double quotes change
+
 ## [5.8.1]
  - Add "Copy Image" context menu item to VTF editor
  - Fix autocompletion items not surrounding text with double quotes

@@ -695,7 +695,7 @@ export abstract class LanguageServer<
 		}
 
 		const text = item.insertText ?? item.label
-		item.insertText = quote(text) ? `"${text}"` : text
+		// item.insertText = quote(text) ? `"${text}"` : text
 
 		const result = z.object({ image: z.object({ uri: Uri.schema, path: z.string() }) }).safeParse(item.data)
 
