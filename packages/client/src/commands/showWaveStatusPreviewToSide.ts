@@ -17,10 +17,21 @@ import { z } from "zod"
 import { Popfile } from "../Popfile"
 import { TRPCImageRouter } from "../TRPCImageRouter"
 import { TRPCWebViewRequestHandler } from "../TRPCWebViewRequestHandler"
+import { VSCodeRangeSchema } from "../VSCodeSchemas"
 import { initBSP } from "../wasm/bsp"
 import { initVTFPNG } from "../wasm/vtf"
 
 export type WaveStatus = Awaited<ReturnType<typeof getWaveStatus>>
+
+export interface Wave {
+	currency: number
+	percentage: number
+	icons: {
+		miniboss: HUDEnemyData[]
+		normal: HUDEnemyData[]
+		support: HUDEnemyData[]
+	}
+}
 
 export interface HUDEnemyData {
 	count: number
@@ -35,7 +46,7 @@ const enum Type {
 	Mission,
 }
 
-async function getWaveStatus(popfile: Popfile) {
+async function getWaveStatus(popfile: Popfile, cache: Map<number, Map<string, Wave>>) {
 
 	const TANK_PATH = "materials/hud/leaderboard_class_tank.vmt"
 
@@ -112,7 +123,14 @@ async function getWaveStatus(popfile: Popfile) {
 
 	const waves = popfile.waveSchedule
 		.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase() && documentSymbol.children)
-		.map((documentSymbol, index) => {
+		.map((documentSymbol, index): Wave => {
+
+			const text = popfile.document.getText(VSCodeRangeSchema.parse(documentSymbol.range))
+			const cached = cache.get(index)?.get(text)
+			if (cached) {
+				return cached
+			}
+
 			let currency = 0
 
 			const icons = {
@@ -334,7 +352,7 @@ async function getWaveStatus(popfile: Popfile) {
 
 			const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
 
-			return {
+			const wave: Wave = {
 				currency,
 				percentage: expected != 0
 					? actual / expected
@@ -345,6 +363,19 @@ async function getWaveStatus(popfile: Popfile) {
 					support: icons.support,
 				},
 			}
+
+			let map: Map<string, Wave>
+			if (!cache.has(index)) {
+				map = new Map()
+				cache.set(index, map)
+			}
+			else {
+				map = cache.get(index)!
+			}
+
+			map.clear()
+			map.set(text, wave)
+			return wave
 		})
 
 	return {
@@ -412,14 +443,16 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			share()
 		)
 
+		const cache = new Map<number, Map<string, Wave>>()
+
 		const waveStatus$ = onDidChangeTextDocument$.pipe(
 			filter((event) => [".pop", ".vmt"].includes(posix.extname(event.document.uri.fsPath))),
 			map(() => null),
 			startWith(null),
 			concatMap(async () => {
 				try {
-					const popfile = new Popfile(new Uri(document.uri), document.getText(), fileSystem)
-					return await getWaveStatus(popfile)
+					const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
+					return await getWaveStatus(popfile, cache)
 				}
 				catch (error) {
 					return null

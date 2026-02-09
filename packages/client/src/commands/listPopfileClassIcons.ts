@@ -53,7 +53,7 @@ export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsync
 		}
 
 		await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
-		const popfile = new Popfile(new Uri(document.uri), document.getText(), fileSystem)
+		const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
 		const icons = [...new Set(await popfile.classIcons())].toSorted((a, b) => a.localeCompare(b))
 
 		const table = new Table(1)

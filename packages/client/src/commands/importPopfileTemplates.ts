@@ -10,7 +10,7 @@ export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyn
 		try {
 			await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
 
-			const popfile = new Popfile(new Uri(document.uri), document.getText(), fileSystem)
+			const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
 			if (!popfile.base.length) {
 				window.showWarningMessage("#base")
 				return

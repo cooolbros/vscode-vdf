@@ -6,7 +6,7 @@ import { firstValueFrom } from "rxjs"
 import { VDFRange, VDFSyntaxError } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { workspace } from "vscode"
+import * as vscode from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
 
 export class UriSyntaxError extends Error {
@@ -30,8 +30,8 @@ export class Popfile {
 	public readonly waveScheduleRange: VDFRange
 	public readonly templatesBlock?: VDFDocumentSymbol
 
-	constructor(uri: Uri, text: string, private readonly fileSystem: FileSystemMountPoint) {
-		const { base, waveSchedule, waveScheduleRange } = this.load(uri, text)
+	constructor(public readonly uri: Uri, public readonly document: vscode.TextDocument, private readonly fileSystem: FileSystemMountPoint) {
+		const { base, waveSchedule, waveScheduleRange } = this.load(uri, document.getText())
 
 		this.base = base
 		this.waveSchedule = waveSchedule
@@ -51,7 +51,7 @@ export class Popfile {
 			throw new Error(path)
 		}
 
-		const text = Popfile.decoder.decode(await workspace.fs.readFile(uri))
+		const text = Popfile.decoder.decode(await vscode.workspace.fs.readFile(uri))
 		return this.load(uri, text)
 	}
 
