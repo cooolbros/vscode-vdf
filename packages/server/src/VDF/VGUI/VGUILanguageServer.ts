@@ -1,8 +1,9 @@
 import type { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { Uri } from "common/Uri"
-import { map, Observable, shareReplay } from "rxjs"
+import { map, shareReplay } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
@@ -15,13 +16,7 @@ export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocumen
 
 	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
 
-	private readonly teamFortress2Folder$ = new Observable<Uri>((subscriber) => {
-		return this.trpc.client.teamFortress2FileSystem.teamFortress2Folder.subscribe(undefined, {
-			onData: (value) => subscriber.next(value),
-			onError: (err) => subscriber.error(err),
-			onComplete: () => subscriber.complete(),
-		})
-	}).pipe(
+	private readonly teamFortress2Folder$ = fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.teamFortress2Folder, undefined).pipe(
 		shareReplay({ bufferSize: 1, refCount: true })
 	)
 

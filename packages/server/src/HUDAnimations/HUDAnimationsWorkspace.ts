@@ -1,10 +1,10 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import { BehaviorSubject, combineLatest, concat, concatMap, firstValueFrom, from, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
-import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
 import eventFiles from "./eventFiles.json"
@@ -47,13 +47,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 		const getVDFDocumentSymbols = (path: string) => concat(
 			ready$,
-			new Observable<VDFDocumentSymbols | null>((subscriber) => {
-				return server.trpc.servers.vgui.workspace.documentSymbol.subscribe({ key: uri, path }, {
-					onData: (value) => subscriber.next(value),
-					onError: (err) => subscriber.error(err),
-					onComplete: () => subscriber.complete(),
-				})
-			})
+			fromTRPCSubscription(server.trpc.servers.vgui.workspace.documentSymbol, { key: uri, path })
 		)
 
 		const fileDefinitions = new Map<string, Observable<{ uri: Uri, definitions: Definitions } | null>>()
@@ -62,13 +56,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			if (!definitions) {
 				definitions = concat(
 					ready$,
-					new Observable<{ uri: Uri, definitions: Definitions } | null>((subscriber) => {
-						return server.trpc.servers.vgui.workspace.definitions.subscribe({ key: uri, path: path }, {
-							onData: (value) => subscriber.next(value),
-							onError: (err) => subscriber.error(err),
-							onComplete: () => subscriber.complete(),
-						})
-					})
+					fromTRPCSubscription(server.trpc.servers.vgui.workspace.definitions, { key: uri, path: path })
 				)
 				fileDefinitions.set(path, definitions)
 			}
@@ -111,13 +99,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			shareReplay(1)
 		)
 
-		this.clientScheme$ = new Observable<Definitions>((subscriber) => {
-			return server.trpc.servers.vgui.workspace.clientScheme.subscribe({ key: uri }, {
-				onData: (value) => subscriber.next(value),
-				onError: (err) => subscriber.error(err),
-				onComplete: () => subscriber.complete(),
-			})
-		}).pipe(
+		this.clientScheme$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.clientScheme, { key: uri }).pipe(
 			shareReplay(1)
 		)
 

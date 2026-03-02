@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { VTFEditor } from "client/VTF/VTFEditor"
+	import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 	import { createTRPCClient } from "common/web/TRPCClient"
 	import {
 		distinctUntilChanged,
@@ -56,13 +57,7 @@
 				map((event) => (event.deltaY < 0 ? 1 : -1)),
 			),
 		).pipe(map((value) => ({ set: false, value: value * 10 }))),
-		new Observable<number>((subscriber) => {
-			trpc.scale.events.subscribe(undefined, {
-				onData: (value) => subscriber.next(value),
-				onError: (err) => subscriber.error(err),
-				onComplete: () => subscriber.complete(),
-			})
-		}).pipe(map((value) => ({ set: true, value: value }))),
+		fromTRPCSubscription(trpc.scale.events, undefined).pipe(map((value) => ({ set: true, value: value }))),
 	).pipe(
 		scan((scale, command) => {
 			return Math.max(10, Math.min(200, command.set ? command.value : scale + command.value))

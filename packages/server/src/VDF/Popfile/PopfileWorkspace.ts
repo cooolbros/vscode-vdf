@@ -1,4 +1,5 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
@@ -437,25 +438,13 @@ export class PopfileWorkspace extends WorkspaceBase {
 						return of(null)
 					}
 
-					return new Observable<Uri | null>((subscriber) => {
-						return this.server.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
-							onData: (value) => subscriber.next(value),
-							onError: (err) => subscriber.error(err),
-							onComplete: () => subscriber.complete(),
-						})
-					}).pipe(
+					return fromTRPCSubscription(this.server.trpc.servers.vmt.baseTexture, { uri }).pipe(
 						switchMap((uri) => {
 							if (uri == null) {
 								return of(null)
 							}
 
-							return new Observable<number>((subscriber) => {
-								return this.server.trpc.client.popfile.classIcon.flags.subscribe({ uri }, {
-									onData: (value) => subscriber.next(value),
-									onError: (err) => subscriber.error(err),
-									onComplete: () => subscriber.complete(),
-								})
-							}).pipe(
+							return fromTRPCSubscription(this.server.trpc.client.popfile.classIcon.flags, { uri }).pipe(
 								map((flags) => ({ uri, flags }))
 							)
 						})

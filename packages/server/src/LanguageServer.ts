@@ -4,6 +4,7 @@ import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
@@ -129,13 +130,7 @@ export abstract class LanguageServer<
 					resolveFile: (path) => {
 						let file$ = files.get(path)
 						if (!file$) {
-							file$ = new Observable<Uri | null>((subscriber) => {
-								return this.trpc.client.teamFortress2FileSystem.resolveFile.subscribe({ key, path }, {
-									onData: (value) => subscriber.next(value),
-									onError: (err) => subscriber.error(err),
-									onComplete: () => subscriber.complete(),
-								})
-							}).pipe(
+							file$ = fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.resolveFile, { key, path }).pipe(
 								distinctUntilChanged((a, b) => Uri.equals(a, b)),
 								finalize(() => files.delete(path)),
 								shareReplay({ bufferSize: 1, refCount: true })
@@ -408,13 +403,7 @@ export abstract class LanguageServer<
 
 	private async VTFToPNGBase64(uri: Uri) {
 		return await firstValueFrom(
-			new Observable<Uri | null>((subscriber) => {
-				return this.trpc.servers.vmt.baseTexture.subscribe({ uri }, {
-					onData: (value) => subscriber.next(value),
-					onError: (err) => subscriber.error(err),
-					onComplete: () => subscriber.complete(),
-				})
-			}).pipe(
+			fromTRPCSubscription(this.trpc.servers.vmt.baseTexture, { uri }).pipe(
 				concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.mutate({ uri }) : null),
 				catchError(() => of(null))
 			)

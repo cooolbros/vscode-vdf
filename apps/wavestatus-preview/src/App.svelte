@@ -8,12 +8,8 @@
 
 <script lang="ts">
 	import "@vscode/codicons/dist/codicon.ttf"
-	import type {
-		HUDEnemyData,
-		showWaveStatusPreviewToSide,
-		WaveStatus,
-	} from "client/commands/showWaveStatusPreviewToSide"
-	import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
+	import type { HUDEnemyData, showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
+	import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 	import { createTRPCClient } from "common/web/TRPCClient"
 	import { combineLatest, concatMap, map, Observable, of, share, shareReplay, switchMap } from "rxjs"
 	import { toStore } from "svelte/store"
@@ -35,16 +31,7 @@
 	let canvas: HTMLCanvasElement = $state()!
 
 	const image = (path: string) => {
-		return new Observable<{ width: number; height: number; buf: Uint8Array } | null>((subscriber) => {
-			return trpc.png.subscribe(
-				{ path },
-				{
-					onData: (value) => subscriber.next(value),
-					onError: (err) => subscriber.error(err),
-					onComplete: () => subscriber.complete(),
-				},
-			)
-		}).pipe(
+		return fromTRPCSubscription(trpc.png, { path }).pipe(
 			concatMap(async (png) => {
 				if (!png) {
 					return null
@@ -61,16 +48,7 @@
 	}
 
 	const font = (path: string, name: string) => {
-		return new Observable<Uint8Array | null>((subscriber) => {
-			return trpc.font.subscribe(
-				{ path },
-				{
-					onData: (value) => subscriber.next(value),
-					onError: (err) => subscriber.error(err),
-					onComplete: () => subscriber.complete(),
-				},
-			)
-		}).pipe(
+		return fromTRPCSubscription(trpc.font, { path }).pipe(
 			concatMap(async (buf) => {
 				if (buf) {
 					document.fonts.add(await new FontFace(name, buf).load())
@@ -81,13 +59,7 @@
 
 	const data$ = combineLatest({
 		canvas: fromReadable(toStore(() => canvas)),
-		skyname: new Observable<{ width: number; height: number; buf: Uint8Array } | null>((subscriber) => {
-			return trpc.skyname.subscribe(undefined, {
-				onData: (value) => subscriber.next(value),
-				onError: (err) => subscriber.error(err),
-				onComplete: () => subscriber.complete(),
-			})
-		}).pipe(
+		skyname: fromTRPCSubscription(trpc.skyname, undefined).pipe(
 			concatMap(async (png) => {
 				if (!png) {
 					return null
@@ -108,27 +80,9 @@
 			font("resource/tf2build.ttf", "TF2 Build"),
 			font("resource/tf2secondary.ttf", "TF2 Secondary"),
 		]),
-		tokens: new Observable<{ TF_PVE_WaveCount: string; TF_MVM_Support: string }>((subscriber) => {
-			return trpc.tokens.subscribe(undefined, {
-				onData: (value) => subscriber.next(value),
-				onError: (err) => subscriber.error(err),
-				onComplete: () => subscriber.complete(),
-			})
-		}),
-		configuration: new Observable<VSCodeVDFConfiguration["popfile"]["waveStatusPreview"]>((subscriber) => {
-			return trpc.configuration.subscribe(undefined, {
-				onData: (value) => subscriber.next(value),
-				onError: (err) => subscriber.error(err),
-				onComplete: () => subscriber.complete(),
-			})
-		}),
-		data: new Observable<WaveStatus>((subscriber) => {
-			return trpc.waveStatus.subscribe(undefined, {
-				onData: (value) => subscriber.next(value),
-				onError: (err) => subscriber.error(err),
-				onComplete: () => subscriber.complete(),
-			})
-		}).pipe(
+		tokens: fromTRPCSubscription(trpc.tokens, undefined),
+		configuration: fromTRPCSubscription(trpc.configuration, undefined),
+		data: fromTRPCSubscription(trpc.waveStatus, undefined).pipe(
 			switchMap((waveStatus) => {
 				const icons = new Set(
 					waveStatus.waves
