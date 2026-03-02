@@ -601,7 +601,7 @@
         "rxjs": "^7.8.2",
         "ts-loader": "^9.5.4",
         "ts-node": "^10.9.2",
-        "turbo": "^2.8.3",
+        "turbo": "^2.8.7",
         "typescript": "^5.9.3",
         "vscode-languageserver-textdocument": "^1.0.11",
         "webpack": "^5.104.1",
