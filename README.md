@@ -1,6 +1,6 @@
 <p align="center"><img src="https://raw.githubusercontent.com/cooolbros/vscode-vdf/main/icon.png" width="150"></p>
 
-# VSCode VDF Language Support
+# VSCode VDF
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/cooolbros/vscode-vdf/build.yaml)
 ![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/pfwobcke.vscode-vdf?label=Visual%20Studio%20Marketplace)
