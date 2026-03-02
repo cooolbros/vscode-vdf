@@ -1,7 +1,6 @@
 .env
 .next
 .turbo
-.vs
 .vscode-test
 .vscode-test-web
 *.db
@@ -11,6 +10,4 @@ bin
 dist
 node_modules
 obj
-out
 target
-tsconfig.tsbuildinfo
