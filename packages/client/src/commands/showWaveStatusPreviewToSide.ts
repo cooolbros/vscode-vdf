@@ -425,6 +425,9 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			{ enableScripts: true, retainContextWhenHidden: true }
 		)
 
+		// https://microsoft.github.io/vscode-codicons/dist/codicon.html
+		webviewPanel.iconPath = new ThemeIcon("output")
+
 		const stack = new AsyncDisposableStack()
 		webviewPanel.onDidDispose(() => stack.disposeAsync())
 
