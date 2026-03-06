@@ -1,5 +1,4 @@
 use std::{
-    fmt::Display,
     io::{BufReader, Cursor},
     vec,
 };
@@ -10,6 +9,7 @@ use bincode::{
     error::{DecodeError, EncodeError},
     impl_borrow_decode,
 };
+use derive_more::Display;
 use thiserror::Error;
 use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
 
@@ -35,14 +35,9 @@ pub struct BSPHeader {
 }
 
 #[wasm_bindgen]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Display)]
+#[display("VBSP")]
 pub struct BSPSignature;
-
-impl Display for BSPSignature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "VBSP")
-    }
-}
 
 impl<Context> Decode<Context> for BSPSignature {
     fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
@@ -74,14 +69,9 @@ struct BSPLZMAHeader {
     pub properties: [u8; 5],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
+#[display("LZMA")]
 struct LZMASignature;
-
-impl Display for LZMASignature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "LZMA")
-    }
-}
 
 impl<Context> Decode<Context> for LZMASignature {
     fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
@@ -102,7 +92,7 @@ pub struct LZMAHeader {
 }
 
 #[derive(Debug, Error)]
-#[error("{:#?}", self)]
+#[error(transparent)]
 pub enum BSPError {
     #[error(transparent)]
     DecodeError(#[from] DecodeError),
@@ -121,7 +111,7 @@ impl From<BSPError> for JsValue {
 }
 
 #[derive(Debug, Error)]
-#[error("{:#?}", self)]
+#[error(transparent)]
 pub enum EntitiesError {
     #[error(transparent)]
     BSPError(#[from] BSPError),
@@ -142,15 +132,13 @@ impl BSP {
     pub fn new(buf: Vec<u8>) -> Result<BSP, BSPError> {
         let mut reader = BufReader::new(Cursor::new(&buf));
         let config = bincode::config::standard().with_fixed_int_encoding();
-
         let header: BSPHeader = bincode::decode_from_reader(&mut reader, config)?;
-
         Ok(BSP { buf, header })
     }
 
     pub fn lump(&self, i: usize) -> Result<Vec<u8>, BSPError> {
         let lump = &self.header.lumps[i];
-        let buf = &self
+        let buf = self
             .buf
             .get(lump.offset as usize..(lump.offset + lump.len) as usize)
             .ok_or(DecodeError::UnexpectedEnd { additional: lump.len as usize })?;

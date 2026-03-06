@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 bincode = { workspace = true }
+derive_more = { workspace = true }
 lzma-rs = "0.3.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_with = "3.16.1"

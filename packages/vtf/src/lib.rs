@@ -1,13 +1,11 @@
-use std::{
-    fmt::Display,
-    io::{BufReader, Cursor, Seek, SeekFrom},
-};
+use std::io::{BufReader, Cursor, Seek, SeekFrom};
 
 use bincode::{
     de::Decoder,
     error::{AllowedEnumVariants, DecodeError},
     impl_borrow_decode, Decode,
 };
+use derive_more::Display;
 use thiserror::Error;
 use wasm_bindgen::{prelude::wasm_bindgen, JsError, JsValue};
 
@@ -59,14 +57,9 @@ pub struct VTFHeader {
 }
 
 #[wasm_bindgen]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Display)]
+#[display("VTF\0")]
 pub struct VTFSignature;
-
-impl Display for VTFSignature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "VTF\0")
-    }
-}
 
 impl<Context> Decode<Context> for VTFSignature {
     fn decode<D: Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, DecodeError> {
