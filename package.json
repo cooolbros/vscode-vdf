@@ -291,6 +291,11 @@
                         "description": "Show/Hide sky for Wave Status Preview.",
                         "default": true
                     },
+                    "vscode-vdf.popfile.waveStatusPreview.banner.enable": {
+                        "type": "boolean",
+                        "description": "Show/Hide mission banner for Wave Status Preview.",
+                        "default": true
+                    },
                     "vscode-vdf.popfile.waveStatusPreview.font.bold": {
                         "type": "string",
                         "description": "Bold font for Wave Status Preview. Must be installed",

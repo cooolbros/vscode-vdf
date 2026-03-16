@@ -33,6 +33,9 @@ export const VSCodeVDFConfigurationSchema = z.object({
 				colour: z.string(),
 				sky: z.boolean(),
 			}),
+			banner: z.object({
+				enable: z.boolean()
+			}),
 			font: z.object({
 				bold: z.string(),
 				regular: z.string(),

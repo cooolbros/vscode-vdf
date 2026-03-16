@@ -3,12 +3,13 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { findMap } from "common/popfile/findMap"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, concatMap, filter, firstValueFrom, map, Observable, of, share, shareReplay, startWith, switchMap, type ObservedValueOf } from "rxjs"
+import { catchError, concatMap, filter, firstValueFrom, map, Observable, of, ReplaySubject, share, shareReplay, startWith, switchMap, type ObservedValueOf } from "rxjs"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import vscode, { commands, DocumentSymbol, ThemeIcon, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
@@ -21,7 +22,25 @@ import { VSCodeRangeSchema } from "../VSCodeSchemas"
 import { initBSP } from "../wasm/bsp"
 import { initVTFPNG } from "../wasm/vtf"
 
-export type WaveStatus = Awaited<ReturnType<typeof getWaveStatus>>
+function transformDifficulty(arg: string): string {
+	switch (arg.toLowerCase()) {
+		case "nor": return "normal"
+		case "int": return "intermediate"
+		case "adv": return "advanced"
+		case "exp": return "expert"
+		default: return arg
+	}
+}
+
+const difficultySchema = z.enum(["normal", "intermediate", "advanced", "expert"])
+
+export interface Meta {
+	/** Map name without `mvm_` prefix or `.bsp` extension */
+	map: string | null,
+	reverse: boolean,
+	difficulty: z.infer<typeof difficultySchema> | null,
+	mission: string,
+}
 
 export interface Wave {
 	currency: number
@@ -46,7 +65,7 @@ const enum Type {
 	Mission,
 }
 
-async function getWaveStatus(popfile: Popfile, cache: Map<number, Map<string, Wave>>) {
+async function getWaveStatus(meta: Meta, popfile: Popfile, cache: Map<number, Map<string, Wave>>) {
 
 	const TANK_PATH = "materials/hud/leaderboard_class_tank.vmt"
 
@@ -379,6 +398,7 @@ async function getWaveStatus(popfile: Popfile, cache: Map<number, Map<string, Wa
 		})
 
 	return {
+		meta,
 		starting,
 		eventPopfile,
 		waves,
@@ -412,8 +432,100 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 
 		const id = document.uri.toString()
 		const name = posix.parse(new Uri(document.uri).basename()).name
+		const fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
 
-		await Promise.all([
+		const [meta] = await Promise.all([
+			Promise.try(async (): Promise<Meta> => {
+				const items_game = await Promise.try(async () => {
+					const uri = await firstValueFrom(fileSystem.resolveFile("scripts/items/items_game.txt"))
+					const buf = await workspace.fs.readFile(uri!)
+					const text = new TextDecoder("utf-8").decode(buf)
+					const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: false })
+					return documentSymbols[0].children!
+				})
+
+				const mvm_maps = items_game.find((documentSymbol) => documentSymbol.key.toLowerCase() == "mvm_maps")?.children!
+
+				for (const map of mvm_maps) {
+					const missions = map.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == "missions")?.children!
+					const mission = missions.find((documentSymbol) => documentSymbol.key.toLowerCase() == name.toLowerCase())?.children
+					if (mission) {
+						let display_name = mission.find((documentSymbol) => documentSymbol.key.toLowerCase() == "display_name")?.detail!
+						if (display_name[0] == "#") {
+							display_name = display_name.substring(1)
+						}
+
+						const difficulty = difficultySchema.safeParse(mission.find((documentSymbol) => documentSymbol.key.toLowerCase() == "difficulty")?.detail!).data
+						const language = await firstValueFrom(language$)
+						return {
+							map: map.key,
+							reverse: false,
+							difficulty: difficulty ?? null,
+							mission: language.get(display_name.toLowerCase() as Lowercase<string>) ?? name
+						}
+					}
+				}
+
+				const label = (value: string) => {
+					return value.split("_").map((value) => `${value.at(0)?.toUpperCase() ?? ""}${value.substring(1).toLowerCase()}`).join(" ")
+				}
+
+				const bsp = await findMap(new Uri(document.uri), fileSystem)
+				if (bsp != null) {
+					const pattern = /^((?<reverse>rev)_)?((?<difficulty>nor(mal)?|int(ermediate)?|adv(anced)?|exp(ert)?)_)?(?<mission>.+)$/gmi
+					const string = name.substring(posix.parse(bsp).name.length + "_".length)
+					const { reverse, difficulty, mission } = pattern.exec(string)?.groups ?? {}
+					return {
+						map: posix.parse(bsp).name.substring("mvm_".length),
+						reverse: reverse != undefined,
+						difficulty: difficulty != undefined
+							? difficultySchema.safeParse(transformDifficulty(difficulty)).data ?? null
+							: null,
+						mission: mission != undefined
+							? label(mission)
+							: name,
+					}
+				}
+				else {
+					let mapSegments: string[] | null = null
+					let reverse: boolean | null = null
+					let difficulty: z.infer<typeof difficultySchema> | null = null
+					let missionSegments: string[] | null = null
+
+					let mapCompleted = false
+
+					for (const segment of name.substring("mvm_".length).split("_")) {
+						let str = segment.toLowerCase()
+						if (str == "rev") {
+							mapCompleted = true
+							if (reverse == null) {
+								reverse = true
+							}
+						}
+						else if (["nor", "normal", "int", "intermediate", "adv", "advanced", "exp", "expert"].includes(str)) {
+							mapCompleted = true
+							difficulty = difficultySchema.safeParse(transformDifficulty(segment)).data ?? null
+						}
+						else {
+							if (!mapCompleted) {
+								(mapSegments ??= []).push(segment)
+							}
+							else {
+								(missionSegments ??= []).push(segment)
+							}
+						}
+					}
+
+					return {
+						map: mapSegments?.join("_") ?? null,
+						reverse: reverse ?? false,
+						difficulty: difficulty,
+						mission: missionSegments != null
+							? label(missionSegments.join("_"))
+							: name,
+					}
+				}
+			}),
 			initBSP(context),
 			initVTFPNG(context),
 		])
@@ -436,7 +548,6 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			webviewPanels.delete(id)
 		})
 
-		const fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
 		stack.use(fileSystem)
 
 		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
@@ -455,7 +566,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			concatMap(async () => {
 				try {
 					const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
-					return await getWaveStatus(popfile, cache)
+					return await getWaveStatus(meta, popfile, cache)
 				}
 				catch (error) {
 					return null
@@ -523,6 +634,49 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
+		const language$ = configuration$.pipe(
+			switchMap((configuration) => {
+				const files: Record<string, string> = {
+					// "korean": "koreana",
+					"simplified_chinese": "schinese",
+					"traditional_chinese": "tchinese",
+					"latam_spanish": "latam"
+				}
+				return fileSystem.resolveFile(`resource/tf_${files[configuration.language] ?? configuration.language}.txt`)
+			}),
+			concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri!))),
+			map((text) => {
+				const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
+
+				const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
+				if (!lang) {
+					throw new Error("lang")
+				}
+
+				const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
+				if (!tokens) {
+					throw new Error("Tokens")
+				}
+
+				return new Map<Lowercase<string>, string>(
+					tokens
+						.filter((documentSymbol) => documentSymbol.detail != undefined)
+						.map((documentSymbol) => [documentSymbol.key.toLowerCase() as Lowercase<string>, documentSymbol.detail!])
+				)
+			}),
+			share({
+				connector: () => new ReplaySubject(1),
+				resetOnComplete: () => new Observable<void>((subscriber) => {
+					if (stack.disposed) {
+						subscriber.next()
+					}
+					else {
+						stack.defer(() => subscriber.next())
+					}
+				})
+			})
+		)
+
 		const t = initTRPC.create({
 			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
 			isDev: true
@@ -542,26 +696,17 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 				skyname: t
 					.procedure
 					.subscription(async ({ signal }) => {
-						const basename = new Uri(document.uri).basename()
-						const maps = await fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })
-						const map = maps
-							.values()
-							.filter(([, type]) => type == 1)
-							.find(([name]) => basename.startsWith(posix.parse(name).name))
-							?.[0]
-
-						if (!map) {
+						if (!meta.map) {
 							return observableToAsyncIterable<null>(of(null), signal!)
 						}
 
-						const uri = await firstValueFrom(fileSystem.resolveFile(`maps/${map}`))
-						if (!uri) {
+						const uri = await firstValueFrom(fileSystem.resolveFile(`maps/mvm_${meta.map}.bsp`))
+						if (uri == null) {
 							return observableToAsyncIterable<null>(of(null), signal!)
 						}
 
-						const buf = await workspace.fs.readFile(uri)
-						const bsp = new BSP(buf)
-						const entities = bsp.entities()
+						const buf = await workspace.fs.readFile(uri!)
+						const entities = new BSP(buf).entities()
 
 						const skyname = entities[0]["skyname"]
 
@@ -598,43 +743,12 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 					}),
 				tokens: t.procedure.subscription(({ signal }) => {
 					const tokens = (map: Map<string, string>) => ({
-						TF_PVE_WaveCount: map.get("TF_PVE_WaveCount")!,
-						TF_MVM_Support: map.get("TF_MVM_Support")!,
+						TF_PVE_WaveCount: map.get("TF_PVE_WaveCount".toLowerCase())!,
+						TF_MVM_Support: map.get("TF_MVM_Support".toLowerCase())!,
 					})
 
 					return observableToAsyncIterable<ReturnType<typeof tokens>>(
-						configuration$.pipe(
-							switchMap((configuration) => {
-								const files: Record<string, string> = {
-									// "korean": "koreana",
-									"simplified_chinese": "schinese",
-									"traditional_chinese": "tchinese",
-									"latam_spanish": "latam"
-								}
-								return fileSystem.resolveFile(`resource/tf_${files[configuration.language] ?? configuration.language}.txt`)
-							}),
-							concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri!))),
-							map((text) => {
-								const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
-
-								const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
-								if (!lang) {
-									throw new Error("lang")
-								}
-
-								const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
-								if (!tokens) {
-									throw new Error("Tokens")
-								}
-
-								return new Map(
-									tokens
-										.filter((documentSymbol) => documentSymbol.detail != undefined)
-										.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
-								)
-							}),
-							map(tokens)
-						),
+						language$.pipe(map(tokens)),
 						signal!
 					)
 				}),

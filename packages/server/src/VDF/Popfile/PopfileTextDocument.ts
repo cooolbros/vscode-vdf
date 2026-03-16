@@ -1111,7 +1111,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			dependencies$: combineLatest([
 				defer(async () => PopfileTextDocument.Schema(this)),
 				from(workspace.dependencies),
-				from(workspace.entities(init.uri.basename())),
+				from(workspace.entities(init.uri)),
 			]).pipe(
 				map(([schema, workspace, entities]) => {
 					return {

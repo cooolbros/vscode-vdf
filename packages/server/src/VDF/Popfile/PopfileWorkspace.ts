@@ -1,5 +1,6 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
@@ -329,22 +330,13 @@ export class PopfileWorkspace extends WorkspaceBase {
 		this.classIcons = new Map()
 	}
 
-	public async entities(basename: string) {
+	public async entities(uri: Uri) {
+		const basename = uri.basename()
 		if (posix.extname(basename) != ".pop") {
 			return null
 		}
 
-		const maps = await this.fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })
-		const bsp = maps
-			.values()
-			.filter(([, type]) => type == 1)
-			.map(([name]) => posix.parse(name).name)
-			.filter((name) => basename.startsWith(name))
-			.toArray()
-			.toSorted((a, b) => basename.substring(a.length).length - basename.substring(b.length).length)[0]
-
-		console.log(`${basename} => ${bsp != undefined ? `${bsp}.bsp` : null}`)
-
+		const bsp = await findMap(uri, this.fileSystem)
 		if (!bsp) {
 			return null
 		}

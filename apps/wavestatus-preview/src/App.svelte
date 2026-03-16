@@ -22,6 +22,7 @@
 	const RED_SOLID = "rgb(192 28 0)"
 	const TAN_LIGHT = "rgb(235 226 202)"
 
+	const BANNER_HEIGHT = 60 * SCALE
 	const WAVE_HEIGHT = 70 * SCALE
 
 	const vscode = acquireVsCodeApi()
@@ -119,12 +120,14 @@
 			configuration,
 			data: { waveStatus, icons },
 		}) => {
+			const CURRENCY_FONT = `400 ${11 * SCALE}px/1 '${configuration.font.bold}'`
+
 			const context = canvas.getContext("2d")!
 			context.reset()
 			context.imageSmoothingEnabled = true
 			context.textRendering = "optimizeLegibility"
 
-			const { starting, waves } = waveStatus
+			const { meta, starting, eventPopfile, waves } = waveStatus
 
 			const widths = waves.map((wave) => {
 				const count = Math.min(
@@ -143,9 +146,73 @@
 
 			let width = Math.max(200, ...widths)
 
-			context.beginPath()
+			const label = (value: string) => {
+				return value
+					.split("_")
+					.map((value) => `${value.at(0)?.toUpperCase() ?? ""}${value.substring(1).toLowerCase()}`)
+					.join(" ")
+			}
+
+			/** Not null if `configuration.banner.enable` */
+			const banner = (() => {
+				if (configuration.banner.enable) {
+					const missionNameFontSize = 16
+					return {
+						mapDifficulty: {
+							font: `${10 * SCALE}px/1 '${configuration.font.regular}'`,
+							fill: TAN_LIGHT,
+							text: [
+								meta.map != null ? label(meta.map) : undefined,
+								meta.reverse ? "Reverse" : undefined,
+								meta.difficulty,
+							]
+								.filter(Boolean)
+								.join(" ")
+								.toUpperCase(),
+						},
+						missionName: {
+							fontSize: missionNameFontSize,
+							font: `${missionNameFontSize * SCALE}px/1 '${configuration.font.bold}'`,
+							fill: TAN_LIGHT,
+							text: meta.mission.toUpperCase(),
+						},
+						startingCurrency: {
+							font: CURRENCY_FONT,
+							fill: CREDITS_GREEN,
+							text: `Starting: $${starting}`,
+						},
+					}
+				} else {
+					return null
+				}
+			})()
+
+			// Expand width for mission information
+			if (banner != null) {
+				function measureText({ font, text }: { font: string; text: string }): number {
+					context.save()
+					context.font = font
+					const textWidth = context.measureText(text).width / SCALE
+					context.restore()
+					return textWidth
+				}
+
+				// Map Name / Difficulty
+				if (banner.mapDifficulty.text.length > 0) {
+					width = Math.max(width, measureText(banner.mapDifficulty))
+				}
+
+				// Mission Name
+				width = Math.max(width, measureText(banner.missionName))
+
+				// Starting Currency
+				width = Math.max(width, measureText(banner.startingCurrency))
+			}
+
+			context.save()
 			context.font = `400 ${11 * SCALE}px/1 '${configuration.font.bold}'`
 			const supportText = context.measureText(tokens.TF_MVM_Support)
+			context.restore()
 
 			// Expand width for Support label
 			for (const wave of waves.values().filter((wave) => wave.icons.support.length > 0)) {
@@ -172,7 +239,7 @@
 			}
 
 			canvas.width = (width + 5 * 3) * SCALE
-			canvas.height = WAVE_HEIGHT * waves.length
+			canvas.height = (configuration.banner.enable ? BANNER_HEIGHT : 0) + WAVE_HEIGHT * waves.length
 
 			canvas.style.width = `${canvas.width / (SCALE / 2)}px`
 			canvas.style.height = `${canvas.height / (SCALE / 2)}px`
@@ -198,8 +265,68 @@
 				)
 			}
 
+			if (banner != null) {
+				// Background
+				if (configuration.panel.enable) {
+					drawSourceImage(
+						context,
+						tournament_panel_brown!.image,
+						{ width: 128, height: 128, corner: 22 },
+						{
+							x: 0,
+							y: 0,
+							width: canvas.width,
+							height: BANNER_HEIGHT,
+							corner: 5 * SCALE,
+						},
+					)
+				}
+
+				// Mission Name
+				context.save()
+				context.font = banner.missionName.font
+				context.fillStyle = banner.missionName.fill
+				context.textAlign = "center"
+				context.textBaseline = "middle"
+				context.letterSpacing = "2px"
+				context.fillText(banner.missionName.text, canvas.width / 2, BANNER_HEIGHT / 2)
+				context.restore()
+
+				const GAP = 1
+
+				// Map / Difficulty
+				if (banner.mapDifficulty.text.length > 0) {
+					context.save()
+					context.font = banner.mapDifficulty.font
+					context.fillStyle = banner.mapDifficulty.fill
+					context.textAlign = "center"
+					context.textBaseline = "bottom"
+					context.letterSpacing = "2px"
+					context.fillText(
+						banner.mapDifficulty.text,
+						canvas.width / 2,
+						BANNER_HEIGHT / 2 - (banner.missionName.fontSize / 2 + GAP) * SCALE,
+					)
+					context.restore()
+				}
+
+				// Starting Currency
+				context.save()
+				context.font = banner.startingCurrency.font
+				context.fillStyle = banner.startingCurrency.fill
+				context.textAlign = "center"
+				context.textBaseline = "top"
+				context.letterSpacing = "2px"
+				context.fillText(
+					banner.startingCurrency.text,
+					canvas.width / 2,
+					BANNER_HEIGHT / 2 + (banner.missionName.fontSize / 2 + GAP) * SCALE,
+				)
+				context.restore()
+			}
+
 			for (const [index, wave] of waves.entries()) {
-				const y = WAVE_HEIGHT * index
+				const y = (configuration.banner.enable ? BANNER_HEIGHT : 0) + WAVE_HEIGHT * index
 
 				// Background
 				if (configuration.panel.enable) {
@@ -220,21 +347,21 @@
 				const labelY = y + 6 * SCALE + (15 / 2) * SCALE
 
 				// WaveCountLabel
-				context.beginPath()
+				context.save()
 				context.font = `${11 * SCALE}px/1 '${configuration.font.bold}'`
 				context.fillStyle = TAN_LIGHT
 				context.textAlign = "center"
 				context.textBaseline = "middle"
 				context.letterSpacing = "2px"
-				const waveNumberText = waveStatus.eventPopfile == "Halloween" ? "666" : `${index + 1} / ${waves.length}`
+				const waveNumberText = eventPopfile == "Halloween" ? "666" : `${index + 1} / ${waves.length}`
 				const waveCountLabelText = tokens.TF_PVE_WaveCount.replace("%s1", waveNumberText)
 				const waveCountLabelWidth = context.measureText(waveCountLabelText)
 				context.fillText(waveCountLabelText, canvas.width / 2, labelY)
-				context.letterSpacing = "0px"
+				context.restore()
 
 				// Wave Currency
-				context.beginPath()
-				context.font = `400 ${11 * SCALE}px/1 '${configuration.font.bold}'`
+				context.save()
+				context.font = CURRENCY_FONT
 				context.fillStyle = CREDITS_GREEN
 				context.textAlign = "left"
 				context.textBaseline = "middle"
@@ -243,6 +370,7 @@
 					canvas.width / 2 + waveCountLabelWidth.width / 2 + 5 * SCALE,
 					labelY,
 				)
+				context.restore()
 
 				// ProgressBarBG
 				drawSourceImage(
@@ -292,10 +420,13 @@
 					}
 
 					// EnemyCountImageBG
+					context.save()
 					context.beginPath()
 					context.fillStyle = icon.miniboss ? RED_SOLID : TAN_LIGHT
 					context.roundRect(x + 2 * SCALE, y + 1 * SCALE, 16 * SCALE, 16 * SCALE, 4 * SCALE)
 					context.fill()
+					context.closePath()
+					context.restore()
 
 					// EnemyCountImage
 					const image = icons[icon.classIconName ?? ""]
@@ -305,16 +436,17 @@
 						const size = (14 * SCALE) / 4
 						for (let i = 0; i < 4; i++) {
 							for (let j = 0; j < 4; j++) {
-								context.beginPath()
+								context.save()
 								context.fillStyle = (i + j) & 1 ? "rgb(0 0 0)" : "rgb(255 0 255)"
 								context.fillRect(x + 3 * SCALE + j * size, y + 2 * SCALE + i * size, size, size)
-								context.closePath()
+								context.restore()
 							}
 						}
 					}
 
 					// EnemyCount
 					if (count) {
+						context.save()
 						context.font = `500 ${14 * SCALE}px/1 '${configuration.font.regular}'`
 						context.fillStyle = TAN_LIGHT
 						context.textAlign = "center"
@@ -333,6 +465,8 @@
 							}
 							context.fillText(`${text}…`, x + 10 * SCALE, y + 18 * SCALE)
 						}
+
+						context.restore()
 					}
 				}
 
@@ -349,21 +483,23 @@
 					x += 5 * SCALE
 
 					// SeparatorBar
-					context.beginPath()
+					context.save()
 					context.fillStyle = TAN_LIGHT
 					context.fillRect(x, y + 32 * SCALE, 1 * SCALE, 30 * SCALE)
 					x += 1 * SCALE
+					context.restore()
 
 					x += 5 * SCALE
 
 					// SupportLabel
-					context.beginPath()
+					context.save()
 					context.font = `400 ${11 * SCALE}px/1 '${configuration.font.bold}'`
 					context.fillStyle = TAN_LIGHT
 					context.textAlign = "left"
 					context.textBaseline = "middle"
 					// + 12 * SCALE + 30
 					context.fillText(tokens.TF_MVM_Support, x, y + 6 * SCALE + 32 * SCALE + 20 * SCALE)
+					context.restore()
 
 					for (const icon of wave.icons.support) {
 						EnemyCountPanel(icon, x, y + 32 * SCALE, false)
