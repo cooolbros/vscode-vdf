@@ -49,7 +49,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 
 		const next = document.diagnostics.next({
 			...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, document.diagnostics.set(value.values)])),
-			...Object.fromEntries(files.entries().map((value) => <const>[value, file])),
+			...Object.fromEntries(files.values().map((value) => <const>[value, file])),
 		})
 
 		const getDiagnostics = document.diagnostics.header(
@@ -67,7 +67,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 				}
 
 				documentSymbol.children.forAll((documentSymbol) => {
-					diagnostics.push(...next(documentSymbol.key, documentSymbol, path, context))
+					diagnostics.push(...next(documentSymbol.key.toLowerCase(), documentSymbol, path, context))
 				})
 
 				return diagnostics
