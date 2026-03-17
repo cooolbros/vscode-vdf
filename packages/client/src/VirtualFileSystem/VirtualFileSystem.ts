@@ -41,9 +41,7 @@ export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSyst
 				}, <[string, vscode.FileType][]>[])
 		},
 		[Symbol.asyncDispose]: async () => {
-			for (const fileSystem of fileSystems) {
-				fileSystem[Symbol.asyncDispose]()
-			}
+			await Promise.all(fileSystems.map((fileSystem) => fileSystem[Symbol.asyncDispose]()))
 		}
 	}
 }
