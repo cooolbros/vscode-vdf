@@ -88,6 +88,7 @@ export abstract class LanguageServer<
 	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
+	protected readonly workspaceUris: Promise<Uri[]>
 	protected readonly fileSystems: RefCountAsyncDisposableFactory<({ type: "tf2" } | { type: "folder", uri: Uri })[], FileSystemMountPoint>
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
@@ -118,6 +119,9 @@ export abstract class LanguageServer<
 		this.languageId = languageId
 		this.connection = connection
 		this.languageServerConfiguration = languageServerConfiguration
+
+		const workspaceUris = Promise.withResolvers<Uri[]>()
+		this.workspaceUris = workspaceUris.promise
 
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
@@ -242,6 +246,7 @@ export abstract class LanguageServer<
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server v${version}`)
 			this.connection.console.log(languageServerConfiguration.platform)
+			workspaceUris.resolve(params.workspaceFolders?.map((workspaceFolder) => new Uri(workspaceFolder.uri)) ?? [])
 			return {
 				serverInfo: {
 					name: `${name} Language Server`

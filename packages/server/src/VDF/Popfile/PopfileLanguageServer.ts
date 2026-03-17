@@ -30,15 +30,20 @@ export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileT
 				foldingRangeProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$) => {
+				const [workspaceUris, workspace] = await Promise.all([
+					this.workspaceUris,
+					firstValueFrom(this.workspace$)
+				])
+
 				return new PopfileTextDocument(
 					init,
 					documentConfiguration$,
 					await this.fileSystems.get([
-						{ type: "folder", uri: init.uri.dirname() },
-						{ type: "tf2" }
+						{ type: "tf2" },
+						...workspaceUris.map((uri) => ({ type: <const>"folder", uri: uri })),
 					]),
 					this.documents,
-					await firstValueFrom(this.workspace$)
+					workspace
 				)
 			}
 		})

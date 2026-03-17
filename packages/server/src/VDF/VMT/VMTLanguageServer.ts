@@ -22,32 +22,31 @@ export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument>
 			servers: new Set(),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
-				let workspace: VMTWorkspace | null
+				const [workspaceUris, hudRoot] = await Promise.all([
+					this.workspaceUris,
+					this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
+				])
+
+				const paths: ({ type: "tf2" } | { type: "folder", uri: Uri })[] = []
 
 				if (hudRoot != null) {
-					const key = hudRoot.toString()
-					let w = this.workspaces.get(key)
-					if (!w) {
-						w = new VMTWorkspace(hudRoot, await this.fileSystems.get([{ type: "folder", uri: hudRoot }, { type: "tf2" }]), this.documents)
-						this.workspaces.set(key, w)
-					}
-					workspace = w
+					paths.push({ type: "folder", uri: hudRoot })
 				}
-				else {
-					const key = "tf2"
-					let w = this.workspaces.get(key)
-					if (!w) {
-						w = new VMTWorkspace(new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get([{ type: "tf2" }]), this.documents)
-						this.workspaces.set(key, w)
-					}
-					workspace = w
+
+				paths.push({ type: "tf2" })
+				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
+
+				const key = hudRoot?.toString() ?? "tf2"
+				let workspace = this.workspaces.get(key)
+				if (!workspace) {
+					workspace = new VMTWorkspace(hudRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)
+					this.workspaces.set(key, workspace)
 				}
 
 				return new VMTTextDocument(
 					init,
 					documentConfiguration$,
-					await this.fileSystems.get([...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []), { type: "tf2" }]),
+					await this.fileSystems.get(paths),
 					this.documents,
 					workspace,
 				)
