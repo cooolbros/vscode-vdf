@@ -25,7 +25,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 	let id = 0
 	const subjects = new Map<number, Subject<any>>()
 
-	opts.onNotification("vscode-vdf/trpc/observable/next", (param) => {
+	opts.onNotification("vscode-vdf/trpc/subscription/next", (param) => {
 		const { id, notification } = nextSchema.parse(param)
 
 		const subject = subjects.get(id)
@@ -79,7 +79,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 							return subject.pipe(
 								finalize(() => {
 									if (subjects.has(op.id)) {
-										sendRequest("vscode-vdf/trpc/observable/unsubscribe", { client: op.context.client, id: op.id })
+										sendRequest("vscode-vdf/trpc/subscription/unsubscribe", { client: op.context.client, id: op.id })
 									}
 									subjects.delete(op.id)
 								})

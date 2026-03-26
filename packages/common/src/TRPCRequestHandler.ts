@@ -48,7 +48,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 		}
 	})
 
-	opts.onRequest("vscode-vdf/trpc/observable/unsubscribe", (param: unknown) => {
+	opts.onRequest("vscode-vdf/trpc/subscription/unsubscribe", (param: unknown) => {
 		const { client, id } = z.object({ client: opts.schema, id: z.number() }).parse(param)
 		const subscription = subscriptions.get(client)?.get(id)
 		subscriptions.get(client)?.delete(id)
@@ -91,7 +91,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 					observable.subscribe({
 						next: (value) => {
 							if ("data" in value.result) {
-								opts.sendNotification(client, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "N", value: transformer.output.serialize(value) } })
+								opts.sendNotification(client, "vscode-vdf/trpc/subscription/next", { id: op.id, notification: { kind: "N", value: transformer.output.serialize(value) } })
 							}
 						},
 						error: (err) => {
@@ -105,11 +105,11 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 								ctx: op.context,
 							})
 							console.dir(error)
-							opts.sendNotification(client, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "E", error: error } })
+							opts.sendNotification(client, "vscode-vdf/trpc/subscription/next", { id: op.id, notification: { kind: "E", error: error } })
 						},
 						complete: () => {
 							if (subscriptions.get(client)?.has(op.id)) {
-								opts.sendNotification(client, "vscode-vdf/trpc/observable/next", { id: op.id, notification: { kind: "C" } })
+								opts.sendNotification(client, "vscode-vdf/trpc/subscription/next", { id: op.id, notification: { kind: "C" } })
 							}
 						},
 					})
