@@ -53,11 +53,11 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 		? (key: string): string => `"${key}"`
 		: (key: string): string => quote(key) ? `"${key}"` : key
 
-	// Comment text
-	const blockCommentAfterSlash = " "
+	function printComment(comment: `//${string}`): string {
+		return comment.trimEnd()
+	}
 
 	const lineCommentBeforeSlash = "\t"
-	const lineCommentAfterSlash = " "
 
 	const stringifyObject = (keyValues: VDFFormatKeyValue[], level: number): string => {
 		let str = ""
@@ -89,7 +89,7 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 					}
 				}
 
-				str += `${getIndentation(level)}//${keyValue.blockComment != "" && keyValue.blockComment[0] != "/" ? blockCommentAfterSlash : ""}${keyValue.blockComment}`
+				str += `${getIndentation(level)}${printComment(keyValue.blockComment)}`
 			}
 			else if (keyValue.key != undefined && keyValue.value != undefined) {
 				if (Array.isArray(keyValue.value)) {
@@ -106,7 +106,7 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 					}
 
 					if (keyValue.inLineComment != undefined) {
-						str += `${lineCommentBeforeSlash}//${keyValue.inLineComment != "" ? lineCommentAfterSlash : ""}${keyValue.inLineComment}${eol}`
+						str += `${lineCommentBeforeSlash}${printComment(keyValue.inLineComment)}${eol}`
 					}
 					else {
 						str += eol
@@ -121,7 +121,7 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 						str += ` ${keyValue.conditional}`
 					}
 					if (keyValue.inLineComment != undefined) {
-						str += `${lineCommentBeforeSlash}//${keyValue.inLineComment != "" ? lineCommentAfterSlash : ""}${keyValue.inLineComment}`
+						str += `${lineCommentBeforeSlash}${printComment(keyValue.inLineComment)}`
 					}
 				}
 			}

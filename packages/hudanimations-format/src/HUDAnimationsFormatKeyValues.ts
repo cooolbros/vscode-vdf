@@ -1,15 +1,15 @@
 import type { HUDAnimationStatementType } from "hudanimations-documentsymbols"
 
 export interface HUDAnimationsFormatKeyValue {
-	comment?: string
+	comment?: `//${string}`
 	event?: HUDAnimationsFormatEventKeyValue
 }
 
 export interface HUDAnimationsFormatEventKeyValue {
 	name: string
 	conditional?: string
-	comment?: string
-	animations: (Animation | { comment?: string })[]
+	comment?: `//${string}`
+	animations: (Animation | { comment?: `//${string}` })[]
 }
 
 /**
@@ -17,7 +17,7 @@ export interface HUDAnimationsFormatEventKeyValue {
  */
 export interface StatementBase {
 	conditional?: string
-	comment?: string
+	comment?: `//${string}`
 }
 
 /**

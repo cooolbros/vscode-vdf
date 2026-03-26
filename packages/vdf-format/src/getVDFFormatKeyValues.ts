@@ -131,7 +131,7 @@ export function getVDFFormatKeyValues(str: string, options: VDFParserOptions): V
 				case VDFTokenType.Conditional:
 					throw new Error()
 				case VDFTokenType.Comment: {
-					keyValue.blockComment = currentToken.value.trim()
+					keyValue.blockComment = currentToken.value
 					break
 				}
 			}

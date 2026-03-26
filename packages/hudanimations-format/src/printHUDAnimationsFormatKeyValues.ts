@@ -77,8 +77,8 @@ export function printHUDAnimationsFormatKeyValues(keyValues: HUDAnimationsFormat
 		return quote(value) ? `"${value}"` : value
 	}
 
-	function printComment(comment: string): string {
-		return `//${comment != "" && comment[0] != "/" ? " " : ""}${comment}`
+	function printComment(comment: `//${string}`): string {
+		return comment.trimEnd()
 	}
 
 	function printAnimation(animation: Animation, maxKeyLengths: number[]): string {

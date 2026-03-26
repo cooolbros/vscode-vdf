@@ -212,11 +212,10 @@ export class VDFTokeniser {
 			}
 			default: {
 				if (this.str[index] == "/" && index + 1 < this.str.length && this.str[index + 1] == "/") {
-
-					index += 2 // Skip '//'
-
 					const start = index
 					const startPosition = new VDFPosition(line, character)
+
+					index += 2 // Skip '//'
 
 					while (index < this.str.length && this.str[index] != "\n") {
 						index++
@@ -233,7 +232,7 @@ export class VDFTokeniser {
 
 					token = {
 						type: VDFTokenType.Comment,
-						value: this.str.slice(start, end).trim(),
+						value: <`//${string}`>this.str.slice(start, end),
 						range: range,
 						exteriorRange: range
 					}

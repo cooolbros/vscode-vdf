@@ -14,6 +14,6 @@ export type VDFToken = (
 	| { type: VDFTokenType.OpeningBrace, value: "{" }
 	| { type: VDFTokenType.ClosingBrace, value: "}" }
 	| { type: VDFTokenType.Conditional, value: `[${string}]` }
-	| { type: VDFTokenType.Comment, value: string }
+	| { type: VDFTokenType.Comment, value: `//${string}` }
 	| { type: VDFTokenType.NewLine, value: "\n" }
 ) & { range: VDFRange, exteriorRange: VDFRange }

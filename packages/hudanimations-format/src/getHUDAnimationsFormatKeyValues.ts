@@ -56,7 +56,7 @@ export function getHUDAnimationsFormatKeyValues(str: string): HUDAnimationsForma
 						}
 					}
 
-					let comment: string | undefined
+					let comment: `//${string}` | undefined
 					while (true) {
 						const commentToken = tokeniser.peek()
 						if (commentToken == null) {
@@ -109,9 +109,9 @@ export function getHUDAnimationsFormatKeyValues(str: string): HUDAnimationsForma
 		return keyValues
 	}
 
-	function parseEvent(): (Animation | { comment?: string })[] {
+	function parseEvent(): (Animation | { comment?: `//${string}` })[] {
 
-		const statements: (Animation | { comment?: string })[] = []
+		const statements: (Animation | { comment?: `//${string}` })[] = []
 
 		const token = tokeniser.token()
 		if (token == null) {
