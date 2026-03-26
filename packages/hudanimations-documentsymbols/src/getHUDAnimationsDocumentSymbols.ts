@@ -1,5 +1,5 @@
 import { UnexpectedCharacterError, UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFToken } from "vdf"
-import { Accel, AnimateDocumentSymbol, Bias, Bounce, DeAccel, FireCommandDocumentSymbol, Flicker, Gain, HUDAnimationsEventDocumentSymbol, Linear, PlaySoundDocumentSymbol, Pulse, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetFontDocumentSymbol, SetInputEnabledDocumentSymbol, SetStringDocumentSymbol, SetTextureDocumentSymbol, SetVisibleDocumentSymbol, Spline, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
+import { Accel, AnimateDocumentSymbol, Bias, Bounce, DeAccel, FireCommandDocumentSymbol, Flicker, Gain, HUDAnimationsEventDocumentSymbol, Linear, PlaySoundDocumentSymbol, Pulse, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetFontDocumentSymbol, SetInputEnabledDocumentSymbol, SetStringDocumentSymbol, SetTextureDocumentSymbol, SetVisibleDocumentSymbol, Spline, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, Unknown, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
 import { HUDAnimationsDocumentSymbols, HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
 export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocumentSymbols {
@@ -181,7 +181,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 							return new Spline(interpolator.range,)
 						}
 						default: {
-							throw new UnexpectedTokenError(`'${interpolator.value}'`, ["interpolator"], interpolator.range)
+							return new Unknown(interpolator.value, interpolator.range)
 						}
 					}
 				})()

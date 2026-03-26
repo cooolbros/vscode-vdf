@@ -308,6 +308,40 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 							}
 						}
 
+						if ("interpolator" in statement) {
+							if (statement.interpolator.type == "Unknown") {
+								const interpolator = statement.interpolator
+								diagnostics.push({
+									range: interpolator.range,
+									severity: DiagnosticSeverity.Warning,
+									code: "invalid-interpolator",
+									source: "hudanimations",
+									message: `Invalid interpolator '${interpolator.value}'.`,
+									data: {
+										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+											const complexInterpolatorsParams: Record<string, string> = {
+												"Bias": "bias",
+												"Flicker": "randomness",
+												"Gain": "bias",
+												"Pulse": "frequency"
+											}
+
+											const complexInterpolators = Object.keys(complexInterpolatorsParams)
+											const newInterpolator = findBestMatch(interpolator.value, ["Accel", "Bounce", "DeAccel", "Linear", "Spline", ...complexInterpolators].toSorted()) ?? "Linear"
+											const complex = complexInterpolators.includes(newInterpolator)
+											const arg = "0"
+											const newText = complex ? `${newInterpolator} ${arg}` : newInterpolator
+
+											return {
+												title: `Change interpolator to '${newInterpolator}'${complex ? ` with ${complexInterpolatorsParams[newInterpolator]} ${arg}` : ""}`,
+												edit: createDocumentWorkspaceEdit(TextEdit.replace(interpolator.range, newText))
+											}
+										}
+									}
+								})
+							}
+						}
+
 						if ("font" in statement && workspace != null) {
 							const definitions = definitionReferences.definitions.get(null, Symbol.for("font"), statement.font)
 							if (!definitions || !definitions.length) {

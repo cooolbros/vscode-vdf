@@ -180,6 +180,14 @@ export class Bias {
 	}
 }
 
+export class Unknown {
+	public readonly type = <const>"Unknown"
+	constructor(public readonly value: string, public readonly range: VDFRange) { }
+	public toString(): string {
+		return this.value
+	}
+}
+
 export type Interpolator = (
 	| Linear
 	| Accel
@@ -190,6 +198,7 @@ export type Interpolator = (
 	| Flicker
 	| Gain
 	| Bias
+	| Unknown
 )
 
 export class RunEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
