@@ -1,9 +1,10 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concat, concatMap, firstValueFrom, from, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concat, firstValueFrom, from, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -84,11 +85,11 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 				return combineLatest(
 					files.map((file) => {
 						return fileSystem.resolveFile(file).pipe(
-							concatMap(async (uri) => {
+							switchMap((uri) => {
 								return uri != null
-									? await documents.get(uri)
-									: null
-							})
+									? usingAsync(async () => await documents.get(uri))
+									: of(null)
+							}),
 						)
 					})
 				)

@@ -275,10 +275,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 		let documentSymbols$ = this.documentSymbols.get(path)
 		if (!documentSymbols$) {
 			documentSymbols$ = this.fileSystem.resolveFile(path).pipe(
-				concatMap(async (uri) => {
-					return uri
-						? this.documents.get(uri)
-						: null
+				switchMap((uri) => {
+					return uri != null
+						? usingAsync(async () => await this.documents.get(uri))
+						: of(null)
 				}),
 				switchMap((document) => {
 					return document != null
