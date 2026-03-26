@@ -138,9 +138,9 @@ export function TRPCClientRouter(
 				z.object({
 					uri: Uri.schema
 				})
-			).mutation(async ({ input }) => {
+			).query(async ({ input }) => {
 				await initVTFPNG(context)
-				const vtf = new VTF(await workspace.fs.readFile(input.uri))
+				using vtf = new VTF(await workspace.fs.readFile(input.uri))
 				return VTFToPNGBase64(vtf, 256)
 			}),
 		window: t.router({

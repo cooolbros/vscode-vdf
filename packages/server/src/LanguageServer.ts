@@ -409,7 +409,7 @@ export abstract class LanguageServer<
 	private async VTFToPNGBase64(uri: Uri) {
 		return await firstValueFrom(
 			fromTRPCSubscription(this.trpc.servers.vmt.baseTexture, { uri }).pipe(
-				concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.mutate({ uri }) : null),
+				concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.query({ uri }) : null),
 				catchError(() => of(null))
 			)
 		)
