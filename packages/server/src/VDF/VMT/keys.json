@@ -1,4 +1,9 @@
 {
+    "lightmappedgeneric": {
+        "reference": [
+            "unlitgeneric"
+        ]
+    },
     "unlitgeneric": {
         "values": [
             {
@@ -45,6 +50,11 @@
                 "label": "%keywords",
                 "kind": 5
             }
+        ]
+    },
+    "vertexlitgeneric": {
+        "reference": [
+            "unlitgeneric"
         ]
     }
 }
