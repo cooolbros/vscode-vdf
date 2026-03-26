@@ -1,4 +1,5 @@
 import { HUDAnimationStatementType } from "hudanimations-documentsymbols"
+import { quote } from "vdf-format"
 import type { Animation, HUDAnimationsFormatKeyValue } from "./HUDAnimationsFormatKeyValues"
 import type { HUDAnimationsFormatStringifyOptions } from "./HUDAnimationsFormatStringifyOptions"
 
@@ -9,15 +10,11 @@ export function printHUDAnimationsFormatKeyValues(keyValues: HUDAnimationsFormat
 
 	const spaces = options.tabs * 4
 
-	function quoted(value: string): boolean {
-		return value == "" || /\s/.test(value)
-	}
-
 	function len(str?: string): number {
 		if (str == undefined) {
 			return 0
 		}
-		return str.length + (quoted(str) ? 2 : 0)
+		return str.length + (quote(str) ? 2 : 0)
 	}
 
 	function getKeyLengths(animation: Animation): number[] {
@@ -77,7 +74,7 @@ export function printHUDAnimationsFormatKeyValues(keyValues: HUDAnimationsFormat
 	}
 
 	function print(value: string): string {
-		return quoted(value) ? `"${value}"` : value
+		return quote(value) ? `"${value}"` : value
 	}
 
 	function printComment(comment: string): string {

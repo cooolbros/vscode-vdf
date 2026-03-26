@@ -4,6 +4,7 @@ import { getVDFFormatKeyValues } from "./getVDFFormatKeyValues"
 import { printVDFFormatKeyValues } from "./printVDFFormatKeyValues"
 
 export type { VDFFormatStringifyOptions } from "./VDFFormatStringifyOptions"
+export { quote } from "./quote"
 
 export function formatVDF(str: string, parserOptions: VDFParserOptions, stringifyOptions: VDFFormatStringifyOptions): string {
 	return printVDFFormatKeyValues(getVDFFormatKeyValues(str, parserOptions), stringifyOptions)

@@ -1,6 +1,7 @@
 import { VDFIndentation, VDFNewLine } from "vdf"
 import type { VDFFormatKeyValue } from "./VDFFormatKeyValue"
 import type { VDFFormatStringifyOptions } from "./VDFFormatStringifyOptions"
+import { quote } from "./quote"
 
 export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?: Partial<VDFFormatStringifyOptions>): string {
 
@@ -48,15 +49,9 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 			}
 		})()
 
-	const getToken: (key: string) => string = _options.quotes
+	const print: (key: string) => string = _options.quotes
 		? (key: string): string => `"${key}"`
-		: (key: string): string => {
-			const k = key.trimStart()
-			if (!key.length || k.startsWith("{") || k.startsWith("}") || k.startsWith("[") || k.startsWith("//") || k.startsWith("\\") || /\s/.test(key)) {
-				return `"${key}"`
-			}
-			return key
-		}
+		: (key: string): string => quote(key) ? `"${key}"` : key
 
 	// Comment text
 	const blockCommentAfterSlash = " "
@@ -104,7 +99,7 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 						str += eol
 					}
 
-					str += `${getIndentation(level)}${getToken(keyValue.key)}`
+					str += `${getIndentation(level)}${print(keyValue.key)}`
 
 					if (keyValue.conditional != undefined) {
 						str += ` ${keyValue.conditional}`
@@ -121,7 +116,7 @@ export function printVDFFormatKeyValues(keyValues: VDFFormatKeyValue[], options?
 					str += `${getIndentation(level)}}`
 				}
 				else {
-					str += `${getIndentation(level)}${getToken(keyValue.key)}${getWhitespace(longestKeyLength, keyValue.key.length + (!_options.quotes && (!keyValue.key.length || /\s/.test(keyValue.key)) ? 2 : 0))}${getToken(keyValue.value)}`
+					str += `${getIndentation(level)}${print(keyValue.key)}${getWhitespace(longestKeyLength, keyValue.key.length + (!_options.quotes && (!keyValue.key.length || /\s/.test(keyValue.key)) ? 2 : 0))}${print(keyValue.value)}`
 					if (keyValue.conditional != undefined) {
 						str += ` ${keyValue.conditional}`
 					}
