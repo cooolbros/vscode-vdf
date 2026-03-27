@@ -453,12 +453,39 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"AutoJumpMin": [string(float)],
 			"Class": [string(set(values.class.values)), KeyDistinct.Last],
 			"ClassIcon": [validateClassIcon, KeyDistinct.Last],
-			"EventChangeAttributes": [document.diagnostics.documentSymbols(KeyDistinct.First, () => [])({
+			"EventChangeAttributes": [document.diagnostics.documentSymbols(KeyDistinct.First)({
 				"Default": [(key, documentSymbol, path, context) => validateTFBot(key, documentSymbol, path, context)]
 			}, (documentSymbol, path, context, unknown) => {
 				const diagnostics: DiagnosticCodeActions = []
-
 				const key = documentSymbol.key.toLowerCase()
+
+				const events = context.dependencies.schema.keys[`${"EventChangeAttributes".toLowerCase()}`]?.values?.map(({ label }) => label) ?? ["Default"]
+				const index = events.findIndex((event) => event.toLowerCase() == key)
+				if (index == -1) {
+					diagnostics.push({
+						range: documentSymbol.nameRange,
+						severity: DiagnosticSeverity.Warning,
+						code: "unknown-event",
+						source: "popfile",
+						message: `Unknown event '${documentSymbol.key}'.`
+					})
+				}
+				else if (documentSymbol.key != events[index]) {
+					diagnostics.push({
+						range: documentSymbol.nameRange,
+						severity: DiagnosticSeverity.Hint,
+						message: events[index],
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: `Replace "${documentSymbol.key}" with "${events[index]}"`,
+									edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, events[index]))
+								}
+							}
+						}
+					})
+				}
+
 				const eventChangeAttributes = path.at(-1)!.children!
 				const first = eventChangeAttributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == key)!
 
@@ -1120,6 +1147,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							keys: {
 								...schema.keys,
 								...workspace.schema.keys,
+								...entities?.keys,
 							},
 							values: {
 								...schema.values,

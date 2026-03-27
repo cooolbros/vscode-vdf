@@ -1,62 +1,11 @@
 {
     "class": {},
     "classicon": {},
-    "default": {
-        "values": [
-            {
-                "label": "CharacterAttributes",
-                "kind": 7
-            },
-            {
-                "label": "ItemAttributes",
-                "kind": 7,
-                "multiple": true
-            },
-            {
-                "label": "Attributes",
-                "kind": 5,
-                "multiple": true
-            },
-            {
-                "label": "BehaviorModifiers",
-                "kind": 5
-            },
-            {
-                "label": "Item",
-                "kind": 5,
-                "multiple": true
-            },
-            {
-                "label": "MaxVisionRange",
-                "kind": 5
-            },
-            {
-                "label": "Skill",
-                "kind": 5
-            },
-            {
-                "label": "WeaponRestrictions",
-                "kind": 5
-            }
-        ]
-    },
     "doneoutput": {
         "reference": [
             "startwaveoutput"
         ],
         "values": []
-    },
-    "eventchangeattributes": {
-        "values": [
-            {
-                "label": "Default",
-                "kind": 7
-            },
-            {
-                "label": "RevertGateBotsBehavior",
-                "kind": 7
-            }
-        ]
     },
     "firstspawnoutput": {
         "reference": [
@@ -119,12 +68,6 @@
     "population": {
         "reference": [
             "waveschedule"
-        ],
-        "values": []
-    },
-    "revertgatebotsbehavior": {
-        "reference": [
-            "default"
         ],
         "values": []
     },

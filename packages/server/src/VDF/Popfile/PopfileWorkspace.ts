@@ -8,6 +8,7 @@ import { firstValueFrom, map, Observable, of, shareReplay, switchMap } from "rxj
 import type { VDFRange } from "vdf"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver"
+import { z } from "zod"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import type { VDFTextDocumentSchema } from "../VDFTextDocument"
@@ -27,7 +28,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 		globals$: Observable<DefinitionReferences[]>
 	}>
 
-	private readonly maps: Map<string, Promise<{ values: VDFTextDocumentSchema<PopfileTextDocument>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocument>["completion"]["values"] } } | null>>
+	private readonly maps: Map<string, Promise<{ keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"], values: VDFTextDocumentSchema<PopfileTextDocument>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocument>["completion"]["values"] } } | null>>
 	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
 
 	constructor(
@@ -397,7 +398,42 @@ export class PopfileWorkspace extends WorkspaceBase {
 					"BigNet"
 				].toSorted()
 
+				// EventChangeAttributes
+				const OnTriggerSchema = z.array(z.string())
+				const populator = entities.get("point_populator_interface")?.[0]?.targetname
+				const events = new Map([["default", "Default"]])
+				for (const logic_relay of entities.get("logic_relay") ?? []) {
+					for (const trigger of OnTriggerSchema.safeParse(logic_relay["OnTrigger"]).data ?? []) {
+						const [target, input, parameter, delay, once] = trigger.split(",")
+						if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes" || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
+							const key = parameter.toLowerCase()
+							if (!events.has(key)) {
+								events.set(parameter.toLowerCase(), parameter)
+							}
+						}
+					}
+				}
+
 				return {
+					keys: {
+						[`${"EventChangeAttributes".toLowerCase()}`]: {
+							values: events.values().map((event) => ({ label: event, kind: CompletionItemKind.Class })).toArray()
+						},
+						...Object.fromEntries(
+							events.keys().map((key) => [key, {
+								values: [
+									{ label: "CharacterAttributes", kind: CompletionItemKind.Class },
+									{ label: "ItemAttributes", kind: CompletionItemKind.Class, multiple: true },
+									{ label: "Attributes", kind: CompletionItemKind.Field, multiple: true },
+									{ label: "BehaviorModifiers", kind: CompletionItemKind.Field },
+									{ label: "Item", kind: CompletionItemKind.Field, multiple: true },
+									{ label: "MaxVisionRange", kind: CompletionItemKind.Field },
+									{ label: "Skill", kind: CompletionItemKind.Field },
+									{ label: "WeaponRestrictions", kind: CompletionItemKind.Field }
+								]
+							}])
+						)
+					},
 					values: {
 						[`${"ClosestPoint".toLowerCase()}`]: {
 							kind: CompletionItemKind.Enum,
