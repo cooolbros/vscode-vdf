@@ -1,5 +1,21 @@
 # Change Log
 
+## [5.9.0]
+ - Fix crash caused by missing #base files
+ - Fix formatter not quoting values that include control characters
+ - Remove formatter formatting inside comments
+ - Update minimum VSCode to `^1.110.0`
+ - HUD Animations:
+   - Add invalid interpolator diagnostic
+ - Popfile
+   - Add unknown event diagnostic for `EventChangeAttributes`
+   - Add autocompletion for `EventChangeAttributes` events
+   - Add mission information and starting currency to Wave Status Preview
+   - Fix Wave Status Preview always recalculating RandomChoice blocks
+ - VMT:
+   - Fix diagnostics
+   - Enable autocompletion for `LightmappedGeneric` and `VertexlitGeneric`
+
 ## [5.8.2]
  - Revert autocompletion items double quotes change
 
