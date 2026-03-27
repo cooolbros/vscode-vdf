@@ -6,8 +6,9 @@ export function quote(value: string): boolean {
 	}
 
 	const trimmed = value.trim()
-	const start = trimmed.startsWith("{") || trimmed.startsWith("}") || trimmed.startsWith("\"") || trimmed.startsWith("[") || trimmed.startsWith("//")
-	const end = trimmed.endsWith("{") || trimmed.endsWith("}") || trimmed.endsWith("\"")
+	const includes = trimmed.includes("{") || trimmed.includes("}")
+	const start = trimmed.startsWith("\"") || trimmed.startsWith("[") || trimmed.startsWith("//")
+	const end = trimmed.endsWith("\"")
 
-	return start || end
+	return includes || start || end
 }
