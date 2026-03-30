@@ -467,7 +467,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 						severity: DiagnosticSeverity.Warning,
 						code: "unknown-event",
 						source: "popfile",
-						message: `Unknown event '${documentSymbol.key}'.`
+						message: `Unknown event '${documentSymbol.key}'.`,
+						data: createUnknownAttributeCodeAction(documentSymbol, context)
 					})
 				}
 				else if (documentSymbol.key != events[index]) {
