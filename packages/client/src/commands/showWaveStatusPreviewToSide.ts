@@ -479,7 +479,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			}),
 			share({
 				connector: () => new ReplaySubject(1),
-				resetOnComplete: () => new Observable<void>((subscriber) => {
+				resetOnRefCountZero: () => new Observable<void>((subscriber) => {
 					if (stack.disposed) {
 						subscriber.next()
 					}
