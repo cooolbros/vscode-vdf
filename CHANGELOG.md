@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.9.1]
+ - [Popfile] Add Add unknown conditional code action to unknown event diagnostics
+
 ## [5.9.0]
  - Fix crash caused by missing #base files
  - Fix formatter not quoting values that include control characters
