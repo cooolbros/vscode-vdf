@@ -38,15 +38,6 @@ export function activate(context: ExtensionContext): void {
 				}
 				case "tf2": {
 					const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
-
-					try {
-						console.log(await workspace.fs.stat(root))
-					}
-					catch (error) {
-						console.warn(error)
-						context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
-					}
-
 					return await VSCodeFileSystem({
 						root: root,
 						type: FileType.Directory,
@@ -78,6 +69,9 @@ export function activate(context: ExtensionContext): void {
 	// Window
 	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, context.subscriptions)))
+
+	// Workspace
+	context.subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
