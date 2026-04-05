@@ -1,7 +1,7 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
-import type { Uri } from "common/Uri"
+import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { combineLatest, defer, firstValueFrom, from, map, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
@@ -56,6 +56,8 @@ const removeSoundChars = (value: string): { chars: string, value: string } => {
 }
 
 export interface PopfileTextDocumentDependencies extends VDFTextDocumentDependencies {
+	bsp: `mvm_${string}.bsp` | null
+	events: Map<string, string>
 	game_sounds: Definitions
 }
 
@@ -452,39 +454,121 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			]
 		})
 
+		const validateTemplateReference: RefineReference<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
+			const diagnostics: DiagnosticCodeActions = []
+
+			// Don't push diagnostics for Templates declared in files with no .bsp because the valid events are not yet known
+			if (context.dependencies.bsp == null) {
+				return diagnostics
+			}
+
+			function validateTemplateReferenceInner(definition: Definition, seen: Set<string>) {
+				const diagnostics: DiagnosticCodeActions = []
+
+				// Dont push diagnostics for Templates declared in current document because they are already checked
+				if (Uri.equals(definition.uri, document.uri)) {
+					return diagnostics
+				}
+
+				const template: string | undefined = definition.data.template
+				const events: { key: string, range: VDFRange }[] = definition.data.events
+
+				if (template != undefined && !seen.has(template.toLowerCase())) {
+					const definitions = context.definitionReferences.definitions.get(null, Symbol.for("template"), template) ?? []
+					for (const definition of definitions) {
+						diagnostics.push(...validateTemplateReferenceInner(definition, new Set([...seen, template.toLowerCase()])))
+					}
+				}
+
+				for (const event of events) {
+					const key = event.key.toLowerCase()
+					const name = context.dependencies.events.get(key)
+					if (name == undefined) {
+						diagnostics.push({
+							range: detailRange,
+							severity: DiagnosticSeverity.Warning,
+							code: "unknown-event",
+							source: "popfile",
+							message: `Unknown event '${event.key}' in template ${definition.key}.`,
+							relatedInformation: [
+								{
+									location: {
+										uri: definition.uri.toString(),
+										range: event.range
+									},
+									message: `${event.key} is declared here.`
+								}
+							],
+							data: createUnknownAttributeCodeAction(documentSymbol, context)
+						})
+					}
+					else if (event.key != name) {
+						diagnostics.push({
+							range: detailRange,
+							severity: DiagnosticSeverity.Hint,
+							message: name,
+							data: {
+								fix: () => {
+									return {
+										title: `Replace "${event.key}" with "${name}"`,
+										edit: {
+											changes: {
+												[definition.uri.toString()]: [
+													TextEdit.replace(event.range, name)
+												]
+											}
+										}
+									}
+								}
+							}
+						})
+					}
+				}
+
+				return diagnostics
+			}
+
+			for (const definition of definitions) {
+				diagnostics.push(...validateTemplateReferenceInner(definition, new Set([definition.key.toLowerCase()])))
+			}
+
+			return diagnostics
+		}
+
 		const validateTFBot = documentSymbols({
 			"AutoJumpMax": [string(float)],
 			"AutoJumpMin": [string(float)],
 			"Class": [string(set(values.class.values)), KeyDistinct.Last],
 			"ClassIcon": [validateClassIcon, KeyDistinct.Last],
-			"EventChangeAttributes": [document.diagnostics.documentSymbols(KeyDistinct.First)({
-				"Default": [(key, documentSymbol, path, context) => validateTFBot(key, documentSymbol, path, context)]
+			"EventChangeAttributes": [document.diagnostics.documentSymbols(KeyDistinct.Last)({
+				"Default": [validateDynamicAttributes, KeyDistinct.Last]
 			}, (documentSymbol, path, context, unknown) => {
 				const diagnostics: DiagnosticCodeActions = []
 				const key = documentSymbol.key.toLowerCase()
 
-				const events = context.dependencies.schema.keys[`${"EventChangeAttributes".toLowerCase()}`]?.values?.map(({ label }) => label) ?? ["Default"]
-				const index = events.findIndex((event) => event.toLowerCase() == key)
-				if (index == -1) {
-					diagnostics.push({
-						range: documentSymbol.nameRange,
-						severity: DiagnosticSeverity.Warning,
-						code: "unknown-event",
-						source: "popfile",
-						message: `Unknown event '${documentSymbol.key}'.`,
-						data: createUnknownAttributeCodeAction(documentSymbol, context)
-					})
+				const name = context.dependencies.events.get(key)
+				if (name == undefined) {
+					if (context.dependencies.bsp != null) {
+						diagnostics.push({
+							range: documentSymbol.nameRange,
+							severity: DiagnosticSeverity.Warning,
+							code: "unknown-event",
+							source: "popfile",
+							message: `Unknown event '${documentSymbol.key}'.`,
+							data: createUnknownAttributeCodeAction(documentSymbol, context)
+						})
+					}
 				}
-				else if (documentSymbol.key != events[index]) {
+				else if (documentSymbol.key != name) {
 					diagnostics.push({
 						range: documentSymbol.nameRange,
 						severity: DiagnosticSeverity.Hint,
-						message: events[index],
+						message: name,
 						data: {
 							fix: ({ createDocumentWorkspaceEdit }) => {
 								return {
-									title: `Replace "${documentSymbol.key}" with "${events[index]}"`,
-									edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, events[index]))
+									title: `Replace "${documentSymbol.key}" with "${name}"`,
+									edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, name))
 								}
 							}
 						}
@@ -528,7 +612,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			"Name": [string(), KeyDistinct.Last],
 			"Scale": [string(float), KeyDistinct.Last],
 			"TeleportWhere": [string(dynamic("Where")), KeyDistinct.None],
-			"Template": [string(reference(Symbol.for("template"))), KeyDistinct.First],
+			"Template": [string(reference(Symbol.for("template"), validateTemplateReference)), KeyDistinct.First],
 			...dynamicAttributes,
 		})
 
@@ -849,7 +933,12 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 								.values()
 								.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Item".toLowerCase() && documentSymbol.detail != undefined)
 								.map((documentSymbol) => documentSymbol.detail!)
-								.toArray()
+								.toArray(),
+							events: (documentSymbol.children!
+								.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "EventChangeAttributes".toLowerCase())
+								?.children ?? [])
+								.filter((documentSymbol) => documentSymbol.children != undefined)
+								.map((documentSymbol) => ({ key: documentSymbol.key, range: documentSymbol.nameRange }))
 						}
 					})
 				}
@@ -1162,23 +1251,25 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 							keys: {
 								...schema.keys,
 								...workspace.schema.keys,
-								...entities?.keys,
+								...entities?.schema.keys,
 							},
 							values: {
 								...schema.values,
 								...workspace.schema.values,
-								...entities?.values
+								...entities?.schema.values
 							},
 							completion: {
 								...schema.completion,
 								values: {
 									...schema.completion.values,
 									...workspace.completion.values,
-									...entities?.completion.values,
+									...entities?.schema.completion.values,
 								}
 							}
 						},
 						globals$: workspace.globals$,
+						bsp: entities?.bsp ?? null,
+						events: entities?.events ?? new Map([["default", "Default"]]),
 						game_sounds: game_sounds.definitions,
 					} satisfies PopfileTextDocumentDependencies
 				})

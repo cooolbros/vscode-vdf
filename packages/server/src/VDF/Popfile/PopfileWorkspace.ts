@@ -29,7 +29,18 @@ export class PopfileWorkspace extends WorkspaceBase {
 		globals$: Observable<DefinitionReferences[]>
 	}>
 
-	private readonly maps: Map<string, Promise<{ keys: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["keys"], values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["completion"]["values"] } } | null>>
+	private readonly maps: Map<
+		string,
+		Promise<{
+			bsp: `mvm_${string}.bsp`,
+			events: Map<string, string>,
+			schema: {
+				keys: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["keys"],
+				values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["values"],
+				completion: { values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["completion"]["values"] }
+			}
+		} | null>
+	>
 	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
 
 	constructor(
@@ -410,39 +421,43 @@ export class PopfileWorkspace extends WorkspaceBase {
 				}
 
 				return {
-					keys: {
-						[`${"EventChangeAttributes".toLowerCase()}`]: {
-							values: events.values().map((event) => ({ label: event, kind: CompletionItemKind.Class })).toArray()
+					bsp: bsp,
+					events: events,
+					schema: {
+						keys: {
+							[`${"EventChangeAttributes".toLowerCase()}`]: {
+								values: events.values().map((event) => ({ label: event, kind: CompletionItemKind.Class })).toArray()
+							},
+							...Object.fromEntries(
+								events.keys().map((key) => [key, {
+									values: [
+										{ label: "CharacterAttributes", kind: CompletionItemKind.Class },
+										{ label: "ItemAttributes", kind: CompletionItemKind.Class, multiple: true },
+										{ label: "Attributes", kind: CompletionItemKind.Field, multiple: true },
+										{ label: "BehaviorModifiers", kind: CompletionItemKind.Field },
+										{ label: "Item", kind: CompletionItemKind.Field, multiple: true },
+										{ label: "MaxVisionRange", kind: CompletionItemKind.Field },
+										{ label: "Skill", kind: CompletionItemKind.Field },
+										{ label: "WeaponRestrictions", kind: CompletionItemKind.Field }
+									]
+								}])
+							)
 						},
-						...Object.fromEntries(
-							events.keys().map((key) => [key, {
-								values: [
-									{ label: "CharacterAttributes", kind: CompletionItemKind.Class },
-									{ label: "ItemAttributes", kind: CompletionItemKind.Class, multiple: true },
-									{ label: "Attributes", kind: CompletionItemKind.Field, multiple: true },
-									{ label: "BehaviorModifiers", kind: CompletionItemKind.Field },
-									{ label: "Item", kind: CompletionItemKind.Field, multiple: true },
-									{ label: "MaxVisionRange", kind: CompletionItemKind.Field },
-									{ label: "Skill", kind: CompletionItemKind.Field },
-									{ label: "WeaponRestrictions", kind: CompletionItemKind.Field }
-								]
-							}])
-						)
-					},
-					values: {
-						[`${"ClosestPoint".toLowerCase()}`]: {
-							kind: CompletionItemKind.Enum,
-							values: teamSpawns
-						},
-						[`${"Where".toLowerCase()}`]: {
-							kind: CompletionItemKind.Enum,
-							values: teamSpawns
-						}
-					},
-					completion: {
 						values: {
-							[`${"StartingPathTrackNode".toLowerCase()}`]: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
-							[`${"Target".toLowerCase()}`]: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+							[`${"ClosestPoint".toLowerCase()}`]: {
+								kind: CompletionItemKind.Enum,
+								values: teamSpawns
+							},
+							[`${"Where".toLowerCase()}`]: {
+								kind: CompletionItemKind.Enum,
+								values: teamSpawns
+							}
+						},
+						completion: {
+							values: {
+								[`${"StartingPathTrackNode".toLowerCase()}`]: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+								[`${"Target".toLowerCase()}`]: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+							}
 						}
 					}
 				}
