@@ -857,7 +857,17 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				for (const [index, documentSymbol] of documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase() && documentSymbol.children != undefined).entries()) {
 
 					documentSymbol.children!.forEach((documentSymbol) => {
-						if (documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children != undefined) {
+
+						const key = documentSymbol.key.toLowerCase()
+
+						if (key == "Sound".toLowerCase() && documentSymbol.detail != undefined) {
+							const { value } = removeSoundChars(documentSymbol.detail)
+							if (dependencies.game_sounds.get(null, Symbol.for("sound"), value)?.length) {
+								references.set(null, Symbol.for("sound"), value, documentSymbol.detailRange!)
+							}
+						}
+
+						if (key == "WaveSpawn".toLowerCase() && documentSymbol.children != undefined) {
 							const name = documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Name".toLowerCase())
 							if (name?.detail != undefined) {
 								definitions.set(index, wavespawn, name.detail!, {
@@ -879,7 +889,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 									if (key == "WaitForAllSpawned".toLowerCase() || key == "WaitForAllDead".toLowerCase()) {
 										return "wavespawn"
 									}
-									else if (sounds.has(key)) {
+									else if (sounds.difference(new Set(["Sound".toLowerCase()])).has(key)) {
 										return "sound"
 									}
 									else if (!waveSpawnKeys.includes(documentSymbol.key.toLowerCase())) {
