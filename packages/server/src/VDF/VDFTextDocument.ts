@@ -179,6 +179,12 @@ export abstract class VDFTextDocument<
 			}
 		},
 		documentSymbols: (distinct: KeyDistinct, unknown: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDependencies>) => DiagnosticCodeActions = (key, parent, documentSymbol) => [{ range: documentSymbol.nameRange, severity: DiagnosticSeverity.Warning, code: "unknown-key", source: this.languageId, message: `Unknown key '${key}'.` }]) => {
+
+			const finds = {
+				[KeyDistinct.First]: Array.prototype.find,
+				[KeyDistinct.Last]: Array.prototype.findLast,
+			}
+
 			return (schema: Record<string, [Validate<TDependencies>] | [Validate<TDependencies>, KeyDistinct]>, fallback?: Fallback<TDependencies>): Validate<TDependencies> => {
 				const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
 				return (name, documentSymbol, path, context) => {
@@ -213,11 +219,7 @@ export abstract class VDFTextDocument<
 
 								// Distinct Keys
 								if (data.distinct != undefined && data.distinct != KeyDistinct.None) {
-									const find = data.distinct == KeyDistinct.First
-										? Array.prototype.find
-										: Array.prototype.findLast
-
-									const first = find.call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
+									const first = finds[data.distinct].call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
 									if (first != documentSymbol) {
 										diagnostics.push({
 											range: documentSymbol.nameRange,
