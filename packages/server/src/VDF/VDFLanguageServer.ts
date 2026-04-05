@@ -14,7 +14,7 @@ import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } 
 import { type TextDocumentInit } from "../TextDocumentBase"
 import { VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
-export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument>> {
+export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies extends VDFTextDocumentDependencies> {
 	name: "popfile" | "vdf" | "vmt"
 	platform: string
 	servers: Set<VSCodeVDFLanguageID>
@@ -24,12 +24,13 @@ export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocumen
 
 export abstract class VDFLanguageServer<
 	TLanguageId extends Extract<VSCodeVDFLanguageID, "popfile" | "vdf" | "vmt">,
-	TDocument extends VDFTextDocument<TDocument>,
-> extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
+	TDocument extends VDFTextDocument<TDocument, TDependencies>,
+	TDependencies extends VDFTextDocumentDependencies
+> extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, TDependencies> {
 
-	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>
+	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>
 
-	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument>) {
+	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>) {
 		super(languageId, name, connection, {
 			platform: VDFLanguageServerConfiguration.platform,
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
@@ -190,7 +191,7 @@ export abstract class VDFLanguageServer<
 			// Misc.
 			const items = schema.completion.values?.[key]
 			if (items != undefined) {
-				return Array.isArray(items) ? items : await items({ text, document, position, files })
+				return Array.isArray(items) ? items : await items({ text, position, files })
 			}
 
 			return null

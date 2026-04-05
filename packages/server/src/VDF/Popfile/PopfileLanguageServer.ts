@@ -2,10 +2,14 @@ import { defer, firstValueFrom, shareReplay, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { PopfileTextDocument } from "./PopfileTextDocument"
+import { PopfileTextDocument, type PopfileTextDocumentDependencies } from "./PopfileTextDocument"
 import { PopfileWorkspace } from "./PopfileWorkspace"
 
-export class PopfileLanguageServer extends VDFLanguageServer<"popfile", PopfileTextDocument> {
+export class PopfileLanguageServer extends VDFLanguageServer<
+	"popfile",
+	PopfileTextDocument,
+	PopfileTextDocumentDependencies
+> {
 
 	private readonly workspace$ = defer(async () => new PopfileWorkspace(
 		await this.fileSystems.get([{ type: "tf2" }]),

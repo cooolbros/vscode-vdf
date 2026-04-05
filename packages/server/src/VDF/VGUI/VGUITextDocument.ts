@@ -17,7 +17,10 @@ import { SourceSchemeSchema } from "./schemas/SourceSchemeSchema"
 import { SurfacePropertiesManifestSchema } from "./schemas/SurfacePropertiesManifestSchema"
 import { VGUISchema } from "./schemas/VGUISchema"
 
-export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
+export interface VGUITextDocumentDependencies extends VDFTextDocumentDependencies {
+}
+
+export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUITextDocumentDependencies> {
 
 	public static keyTransform = (key: string) => key.replace(/_(minmode|override|(lo|hi)def)$/, "")
 	public readonly workspace: VGUIWorkspace | null
@@ -64,7 +67,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
 				).pipe(
 					map((type) => {
-						let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocument>
+						let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocumentDependencies>
 						let globals$: Observable<DefinitionReferences[]>
 
 						switch (type) {
@@ -116,7 +119,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument> {
 						return {
 							schema: schema(this),
 							globals$: globals$,
-						} satisfies VDFTextDocumentDependencies<VGUITextDocument>
+						} satisfies VGUITextDocumentDependencies
 					})
 				)
 			}).pipe(

@@ -13,22 +13,23 @@ import { Collection, Definitions, References, type Definition, type DefinitionRe
 import { WorkspaceBase } from "../../WorkspaceBase"
 import type { VDFTextDocumentSchema } from "../VDFTextDocument"
 import type { PopfileLanguageServer } from "./PopfileLanguageServer"
-import type { PopfileTextDocument } from "./PopfileTextDocument"
+import type { PopfileTextDocument, PopfileTextDocumentDependencies } from "./PopfileTextDocument"
 
 export class PopfileWorkspace extends WorkspaceBase {
 
+	public readonly game_sounds: Promise<DefinitionReferences>
 	public readonly paints: Promise<Map<string, string>>
 	public readonly effects: Promise<Map<string, string>>
 	public readonly dependencies: Promise<{
 		schema: {
-			keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"],
-			values: VDFTextDocumentSchema<PopfileTextDocument>["values"],
+			keys: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["keys"],
+			values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["values"],
 		},
-		completion: Pick<VDFTextDocumentSchema<PopfileTextDocument>["completion"], "values">,
+		completion: Pick<VDFTextDocumentSchema<PopfileTextDocumentDependencies>["completion"], "values">,
 		globals$: Observable<DefinitionReferences[]>
 	}>
 
-	private readonly maps: Map<string, Promise<{ keys: VDFTextDocumentSchema<PopfileTextDocument>["keys"], values: VDFTextDocumentSchema<PopfileTextDocument>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocument>["completion"]["values"] } } | null>>
+	private readonly maps: Map<string, Promise<{ keys: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["keys"], values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["values"], completion: { values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["completion"]["values"] } } | null>>
 	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
 
 	constructor(
@@ -154,7 +155,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 			}
 		})
 
-		const game_sounds = Promise.try(async () => {
+		this.game_sounds = Promise.try(async () => {
 			const uri = await firstValueFrom(this.fileSystem.resolveFile("scripts/game_sounds_manifest.txt"))
 			await using document = await documents.get(uri!)
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
@@ -265,7 +266,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 			)
 		})
 
-		this.dependencies = Promise.all([items, attributes, game_sounds, this.paints, this.effects]).then(([items, attributes, game_sounds, paints, effects]) => {
+		this.dependencies = Promise.all([items, attributes, this.game_sounds, this.paints, this.effects]).then(([items, attributes, game_sounds, paints, effects]) => {
 			const paintItems = paints
 				.entries()
 				.map(([key, name]) => {
@@ -307,13 +308,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 					keys: {
 						...attributes.keys,
 					},
-					values: {
-						"game_sounds\0": {
-							kind: 0,
-							enumIndex: false,
-							values: game_sounds.definitions.ofType(null, Symbol.for("sound")).keys().toArray()
-						}
-					}
+					values: {}
 				},
 				completion: {
 					values: {

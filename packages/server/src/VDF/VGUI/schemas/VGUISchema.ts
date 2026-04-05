@@ -7,7 +7,7 @@ import { VGUIAssetType, type RefineString, type VDFTextDocumentSchema } from "..
 import clientscheme from "../clientscheme.json"
 import keys from "../keys.json"
 import values from "../values.json"
-import { VGUITextDocument } from "../VGUITextDocument"
+import { VGUITextDocument, type VGUITextDocumentDependencies } from "../VGUITextDocument"
 
 const elements = [
 	"pin_to_sibling",
@@ -74,11 +74,11 @@ const definitionReferences = new Map([
 	[Symbol.for("string"), { keys: new Set(strings.map((string) => string.toLowerCase())), match: (value: string) => value[0] == "#", toDefinition: (value: string) => value.substring(1), toReference: (name: string) => `#${name}` }],
 ])
 
-export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocumentDependencies> => {
 
 	const { set, reference, file } = document.diagnostics
 
-	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocument> => {
+	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocumentDependencies> => {
 		const refine = document.diagnostics.reference(type)
 		return (name, detail, detailRange, documentSymbol, path, context) => {
 			let value = match(detail)

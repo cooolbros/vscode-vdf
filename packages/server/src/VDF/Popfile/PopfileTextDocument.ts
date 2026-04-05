@@ -7,9 +7,9 @@ import { combineLatest, defer, firstValueFrom, from, map, type Observable } from
 import type { VDFRange } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, MarkupKind, TextEdit } from "vscode-languageserver"
-import { Collection, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
+import { Collection, Definitions, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
-import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type RefineReference, type RefineString, type Validate, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import { KeyDistinct, VDFTextDocument, VGUIAssetType, type Context, type Fallback, type RefineReference, type RefineString, type Validate, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
 import values from "./values.json"
@@ -55,7 +55,11 @@ const removeSoundChars = (value: string): { chars: string, value: string } => {
 	return { chars, value }
 }
 
-export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
+export interface PopfileTextDocumentDependencies extends VDFTextDocumentDependencies {
+	game_sounds: Definitions
+}
+
+export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, PopfileTextDocumentDependencies> {
 
 	private static readonly collectTFBotItems = (path: VDFDocumentSymbol[], definitionReferences: DefinitionReferences) => {
 
@@ -200,10 +204,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		}
 	}
 
-	public static readonly Schema = (document: PopfileTextDocument): VDFTextDocumentSchema<PopfileTextDocument> => {
+	public static readonly Schema = (document: PopfileTextDocument): VDFTextDocumentSchema<PopfileTextDocumentDependencies> => {
 		const { unreachable, any, header, string, length, integer, float, set, dynamic, reference } = document.diagnostics
 
-		const createUnknownAttributeCodeAction = (documentSymbol: VDFDocumentSymbol, context: Context<PopfileTextDocument>): DiagnosticCodeAction["data"] => ({
+		const createUnknownAttributeCodeAction = (documentSymbol: VDFDocumentSymbol, context: Context<PopfileTextDocumentDependencies>): DiagnosticCodeAction["data"] => ({
 			fix: ({ createDocumentWorkspaceEdit }) => {
 				const conditional = context.documentSymbols?.findRecursive((documentSymbol) => {
 					return documentSymbol.conditional != null && !TextDocumentBase.conditionals.values().some((conditional) => {
@@ -250,7 +254,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"ShouldPreserveSquad": [string(set(["0", "1"]))]
 		}, (documentSymbol, path, context) => validateSpawner("Squad", documentSymbol, path, context))
 
-		const validateSquad: Validate<PopfileTextDocument> = (key, documentSymbol, path, context) => {
+		const validateSquad: Validate<PopfileTextDocumentDependencies> = (key, documentSymbol, path, context) => {
 			const diagnostics: DiagnosticCodeActions = []
 			diagnostics.push(...validateSquadDocumentSymbols(key, documentSymbol, path, context))
 
@@ -294,7 +298,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"StartingPathTrackNode": [string()],
 		})
 
-		const validateItemKey: RefineReference<PopfileTextDocument> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
+		const validateItemKey: RefineReference<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
 			const key = definitions[0].key
 			if (detail != key) {
 				return [{
@@ -316,7 +320,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateItem = string(reference(Symbol.for("item"), validateItemKey))
 
-		const validateItemNameOwner: RefineString<PopfileTextDocument> = (name, detail, detailRange, documentSymbol, path, context) => {
+		const validateItemNameOwner: RefineString<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context) => {
 
 			const result = PopfileTextDocument.collectTFBotItems(path, context.definitionReferences)!
 			const canonicalClassName = result.canonicalClassName
@@ -355,7 +359,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			...validateItemKey(name, detail, detailRange, documentSymbol, path, context, definitions)
 		]))
 
-		const validateItemAttributes = (): Validate<PopfileTextDocument> => {
+		const validateItemAttributes = (): Validate<PopfileTextDocumentDependencies> => {
 			const validate = documentSymbols({ "ItemName": [validateItemName] }, () => [])
 			return (key, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
@@ -378,7 +382,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			}
 		}
 
-		const dynamicAttributes: Record<string, [Validate<PopfileTextDocument>] | [Validate<PopfileTextDocument>, KeyDistinct]> = {
+		const dynamicAttributes: Record<string, [Validate<PopfileTextDocumentDependencies>] | [Validate<PopfileTextDocumentDependencies>, KeyDistinct]> = {
 			"Attributes": [string(set(values.attributes.values)), KeyDistinct.None],
 			"BehaviorModifiers": [string(set(["Mobber", "Push"]))],
 			"CharacterAttributes": [documentSymbols({}, () => [])],
@@ -528,7 +532,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			...dynamicAttributes,
 		})
 
-		const validateSpawner: Validate<PopfileTextDocument> = (name, documentSymbol, path, context) => {
+		const validateSpawner: Validate<PopfileTextDocumentDependencies> = (name, documentSymbol, path, context) => {
 			switch (documentSymbol.key.toLowerCase()) {
 				case "Mob".toLowerCase():
 					return validateMob("Mob", documentSymbol, path, context)
@@ -554,7 +558,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			}
 		}
 
-		const validatePopulator = (): Fallback<PopfileTextDocument> => {
+		const validatePopulator = (): Fallback<PopfileTextDocumentDependencies> => {
 			const where = new Set([
 				"ClosestPoint".toLowerCase(),
 				"Where".toLowerCase(),
@@ -611,7 +615,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateWaitBetweenSpawnsFloat = string(float)
 
-		const validateWaitBetweenSpawns: Validate<PopfileTextDocument> = (key, documentSymbol, path, context) => {
+		const validateWaitBetweenSpawns: Validate<PopfileTextDocumentDependencies> = (key, documentSymbol, path, context) => {
 			const diagnostics: DiagnosticCodeActions = []
 			diagnostics.push(...validateWaitBetweenSpawnsFloat(key, documentSymbol, path, context))
 
@@ -630,7 +634,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			return diagnostics
 		}
 
-		const validateWaitBetweenSpawnsAfterDeath: Validate<PopfileTextDocument> = (key, documentSymbol, path, context) => {
+		const validateWaitBetweenSpawnsAfterDeath: Validate<PopfileTextDocumentDependencies> = (key, documentSymbol, path, context) => {
 			const diagnostics: DiagnosticCodeActions = []
 			diagnostics.push(...validateWaitBetweenSpawnsFloat(key, documentSymbol, path, context))
 
@@ -680,7 +684,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 		const validateSoundFile = document.diagnostics.file("sound", "sound", null)
 
-		const validateSound: RefineString<PopfileTextDocument> = (name, detail, detailRange, documentSymbol, path, context) => {
+		const validateSound: RefineString<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context) => {
 			const { chars, value } = removeSoundChars(detail)
 			const definitions = context.definitionReferences.definitions.get(null, Symbol.for("sound"), value)
 			if (definitions?.length) {
@@ -730,7 +734,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			"WaitForAllSpawned": [validateWaitForAll],
 		}, validatePopulator())
 
-		const validateWaveSpawn: Validate<PopfileTextDocument> = (key, documentSymbol, path, context) => {
+		const validateWaveSpawn: Validate<PopfileTextDocumentDependencies> = (key, documentSymbol, path, context) => {
 			const diagnostics: DiagnosticCodeActions = []
 			diagnostics.push(...validateWaveSpawnDocumentSymbols(key, documentSymbol, path, context))
 
@@ -784,7 +788,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 		return {
 			keys: keys,
 			values: values,
-			getDefinitionReferences({ dependencies, document, documentSymbols }) {
+			getDefinitionReferences({ dependencies, documentSymbols }) {
 				const wavespawn = Symbol.for("wavespawn")
 				const template = Symbol.for("template")
 				const item = Symbol.for("item")
@@ -907,8 +911,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 							for (const sound of values.get("sound") ?? []) {
 								if (sound.detail) {
 									const { value } = removeSoundChars(sound.detail)
-									const lower = value.toLowerCase()
-									if (dependencies.schema.values["game_sounds\0"].values.some((sound) => sound.toLowerCase() == lower)) {
+									if (dependencies.game_sounds.get(null, Symbol.for("sound"), value)?.length) {
 										references.set(null, Symbol.for("sound"), value, sound.detailRange!)
 									}
 								}
@@ -1095,7 +1098,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 
 						return [...soundFiles, ...soundScripts]
 					}])),
-					[`${"ItemName".toLowerCase()}`]: async ({ text, document, position }) => {
+					[`${"ItemName".toLowerCase()}`]: async ({ text, position }) => {
 						const { documentSymbols, definitionReferences } = await firstValueFrom(combineLatest({
 							documentSymbols: document.documentSymbols$,
 							definitionReferences: document.definitionReferences$
@@ -1138,10 +1141,11 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 			keyTransform: (key) => key,
 			dependencies$: combineLatest([
 				defer(async () => PopfileTextDocument.Schema(this)),
+				from(workspace.game_sounds),
 				from(workspace.dependencies),
 				from(workspace.entities(init.uri)),
 			]).pipe(
-				map(([schema, workspace, entities]) => {
+				map(([schema, game_sounds, workspace, entities]) => {
 					return {
 						schema: {
 							...schema,
@@ -1163,9 +1167,10 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument> {
 									...entities?.completion.values,
 								}
 							}
-						} satisfies VDFTextDocumentSchema<PopfileTextDocument>,
-						globals$: workspace.globals$
-					}
+						},
+						globals$: workspace.globals$,
+						game_sounds: game_sounds.definitions,
+					} satisfies PopfileTextDocumentDependencies
 				})
 			)
 		})

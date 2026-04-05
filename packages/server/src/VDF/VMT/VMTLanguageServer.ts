@@ -8,10 +8,14 @@ import { combineLatest, of, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { VMTTextDocument } from "./VMTTextDocument"
+import { VMTTextDocument, type VMTTextDocumentDependencies } from "./VMTTextDocument"
 import { VMTWorkspace } from "./VMTWorkspace"
 
-export class VMTLanguageServer extends VDFLanguageServer<"vmt", VMTTextDocument> {
+export class VMTLanguageServer extends VDFLanguageServer<
+	"vmt",
+	VMTTextDocument,
+	VMTTextDocumentDependencies
+> {
 
 	private readonly workspaces: Map<string, VMTWorkspace>
 

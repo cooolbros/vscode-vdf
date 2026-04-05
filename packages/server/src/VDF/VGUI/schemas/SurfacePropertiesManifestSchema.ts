@@ -1,9 +1,9 @@
 import { CompletionItemKind } from "vscode-languageserver"
 import { type VDFTextDocumentSchema } from "../../VDFTextDocument"
-import type { VGUITextDocument } from "../VGUITextDocument"
+import type { VGUITextDocument, VGUITextDocumentDependencies } from "../VGUITextDocument"
 import { HUDAnimationsManifestSchema } from "./HUDAnimationsManifestSchema"
 
-export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocumentDependencies> => {
 	const schema = HUDAnimationsManifestSchema(document)
 	return {
 		keys: {

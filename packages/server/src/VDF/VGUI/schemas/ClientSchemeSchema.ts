@@ -5,7 +5,7 @@ import { CompletionItemKind, DiagnosticSeverity, InlayHint, MarkupKind } from "v
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import type { ColourInformationStringify, DiagnosticCodeActions, DocumentLinkData } from "../../../TextDocumentBase"
 import { KeyDistinct, VGUIAssetType, type RefineString, type Validate, type VDFTextDocumentSchema } from "../../VDFTextDocument"
-import type { VGUITextDocument } from "../VGUITextDocument"
+import type { VGUITextDocument, VGUITextDocumentDependencies } from "../VGUITextDocument"
 
 type SchemeAction = (documentSymbol: VDFDocumentSymbol) => void
 
@@ -47,7 +47,7 @@ function SchemeForEach(documentSymbols: VDFDocumentSymbols, callbacks: Partial<S
 	}
 }
 
-export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocumentDependencies> => {
 
 	const { header, documentSymbols, string, reference } = document.diagnostics
 
@@ -55,7 +55,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 		? KeyDistinct.First
 		: KeyDistinct.None
 
-	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocument> => {
+	const match = (type: symbol, match: (detail: string) => string | null): RefineString<VGUITextDocumentDependencies> => {
 		const refine = reference(type)
 		return (name, detail, detailRange, documentSymbol, path, context) => {
 			let value = match(detail)
@@ -70,7 +70,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 		(detail) => !/\d+\s+\d+\s+\d+\s+\d+/.test(detail) ? detail : null
 	))
 
-	const next: Validate<VGUITextDocument> = (name, documentSymbol, path, context) => {
+	const next: Validate<VGUITextDocumentDependencies> = (name, documentSymbol, path, context) => {
 		const diagnostics: DiagnosticCodeActions = []
 		if (!documentSymbol.children) {
 			diagnostics.push({

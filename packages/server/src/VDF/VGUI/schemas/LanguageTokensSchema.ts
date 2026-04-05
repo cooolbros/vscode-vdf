@@ -2,9 +2,9 @@ import type { VDFRange } from "vdf"
 import { CompletionItemKind } from "vscode-languageserver"
 import { Collection, type Definition } from "../../../DefinitionReferences"
 import { KeyDistinct, type VDFTextDocumentSchema } from "../../VDFTextDocument"
-import type { VGUITextDocument } from "../VGUITextDocument"
+import type { VGUITextDocument, VGUITextDocumentDependencies } from "../VGUITextDocument"
 
-export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocument> => {
+export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumentSchema<VGUITextDocumentDependencies> => {
 
 	const { header, documentSymbols, string } = document.diagnostics
 

@@ -13,7 +13,12 @@ import { EventType, HUDAnimationsTextDocument, type HUDAnimationsTextDocumentDep
 import { HUDAnimationsWorkspace } from "./HUDAnimationsWorkspace"
 import eventFiles from "./eventFiles.json"
 
-export class HUDAnimationsLanguageServer extends LanguageServer<"hudanimations", HUDAnimationsTextDocument, HUDAnimationsDocumentSymbols, HUDAnimationsTextDocumentDependencies> {
+export class HUDAnimationsLanguageServer extends LanguageServer<
+	"hudanimations",
+	HUDAnimationsTextDocument,
+	HUDAnimationsDocumentSymbols,
+	HUDAnimationsTextDocumentDependencies
+> {
 
 	public static readonly keywords = <const>[
 		"Animate",

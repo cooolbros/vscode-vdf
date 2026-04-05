@@ -9,10 +9,14 @@ import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "../../DefinitionReferences"
 import { VDFLanguageServer } from "../VDFLanguageServer"
-import { VGUITextDocument } from "./VGUITextDocument"
+import { VGUITextDocument, type VGUITextDocumentDependencies } from "./VGUITextDocument"
 import { VGUIWorkspace } from "./VGUIWorkspace"
 
-export class VGUILanguageServer extends VDFLanguageServer<"vdf", VGUITextDocument> {
+export class VGUILanguageServer extends VDFLanguageServer<
+	"vdf",
+	VGUITextDocument,
+	VGUITextDocumentDependencies
+> {
 
 	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
 

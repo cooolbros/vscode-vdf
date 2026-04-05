@@ -9,7 +9,7 @@ import { CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode
 import { Collection, type Definition } from "../../DefinitionReferences"
 import type { DiagnosticCodeActions, DocumentLinkData, TextDocumentInit } from "../../TextDocumentBase"
 import type { WorkspaceBase } from "../../WorkspaceBase"
-import { VDFTextDocument, type VDFTextDocumentSchema } from "../VDFTextDocument"
+import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import keys from "./keys.json"
 import values from "./values.json"
 import type { VMTWorkspace } from "./VMTWorkspace"
@@ -41,9 +41,12 @@ const files = new Set([
 
 const set = new Set(files.values().map((file) => file.toLowerCase()))
 
-export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
+export interface VMTTextDocumentDependencies extends VDFTextDocumentDependencies {
+}
 
-	public static readonly Schema = (document: VMTTextDocument): VDFTextDocumentSchema<VMTTextDocument> => {
+export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDocumentDependencies> {
+
+	public static readonly Schema = (document: VMTTextDocument): VDFTextDocumentSchema<VMTTextDocumentDependencies> => {
 
 		const file = document.diagnostics.file("image", "materials", ".vtf")
 
@@ -214,10 +217,9 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument> {
 									}
 								})
 							},
-
-						} satisfies VDFTextDocumentSchema<VMTTextDocument>,
+						},
 						globals$: of([])
-					}
+					} satisfies VMTTextDocumentDependencies
 				})
 			)
 		})

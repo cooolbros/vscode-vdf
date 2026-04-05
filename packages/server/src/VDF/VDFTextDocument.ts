@@ -14,27 +14,27 @@ import { Collection, Definitions, References, type Definition, type DefinitionRe
 import type { CompletionFiles } from "../LanguageServer"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
-export interface VDFTextDocumentConfiguration<TDocument extends VDFTextDocument<TDocument>> {
+export interface VDFTextDocumentConfiguration<TDependencies extends VDFTextDocumentDependencies> {
 	relativeFolderPath: string | null
 	VDFParserOptions: VDFParserOptions
 	keyTransform: (key: string) => string,
-	dependencies$: Observable<VDFTextDocumentDependencies<TDocument>>
+	dependencies$: Observable<TDependencies>
 }
 
-export interface VDFTextDocumentDependencies<TDocument extends VDFTextDocument<TDocument>> {
-	schema: VDFTextDocumentSchema<TDocument>
+export interface VDFTextDocumentDependencies {
+	schema: VDFTextDocumentSchema<this>
 	globals$: Observable<DefinitionReferences[]>
 }
 
-export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocument>> {
+export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDependencies> {
 	keys: Record<string, { reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
 	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
-	getDefinitionReferences(params: DefinitionReferencesHandlerParams<TDocument>): { scopes: Map<symbol, Map<number, VDFRange>>, definitions: Collection<Definition>, references: Collection<VDFRange> }
+	getDefinitionReferences(params: DefinitionReferencesHandlerParams<TDependencies>): { scopes: Map<symbol, Map<number, VDFRange>>, definitions: Collection<Definition>, references: Collection<VDFRange> }
 	definitionReferences: Map<symbol, { keys: Set<string>, toReference?: ((name: string) => string) }>
-	getDiagnostics(params: DiagnosticsHandlerParams<TDocument>): DiagnosticCodeActions
-	getLinks(params: DocumentLinksHandlerParams<TDocument>): DocumentLinkData[]
-	getColours(params: DocumentColoursHandlerParams<TDocument>): ColourInformationStringify[]
-	getInlayHints(params: DocumentInlayHintsHandlerParams<TDocument>): Promise<InlayHint[]>
+	getDiagnostics(params: DiagnosticsHandlerParams<TDependencies>): DiagnosticCodeActions
+	getLinks(params: DocumentLinksHandlerParams): DocumentLinkData[]
+	getColours(params: DocumentColoursHandlerParams): ColourInformationStringify[]
+	getInlayHints(params: DocumentInlayHintsHandlerParams<TDependencies>): Promise<InlayHint[]>
 	completion: {
 		root: CompletionItem[]
 		typeKey: string | null
@@ -46,36 +46,35 @@ export interface VDFTextDocumentSchema<TDocument extends VDFTextDocument<TDocume
 			toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
 			asset?: VGUIAssetType
 		}[]
-		values?: Record<string, CompletionItem[] | ((args: { text?: string, document: TDocument, position: VDFPosition, files: CompletionFiles }) => Promise<CompletionItem[]>)>
+		values?: Record<string, CompletionItem[] | ((args: { text?: string, position: VDFPosition, files: CompletionFiles }) => Promise<CompletionItem[]>)>
 	}
 }
 
-export interface DefinitionReferencesHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
-	dependencies: VDFTextDocumentDependencies<TDocument>
-	document: VDFTextDocument<TDocument>
+export interface DefinitionReferencesHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
+	dependencies: TDependencies
 	documentSymbols: VDFDocumentSymbols
 }
 
-export interface DiagnosticsHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
-	dependencies: VDFTextDocumentDependencies<TDocument>
+export interface DiagnosticsHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
+	dependencies: TDependencies
 	documentConfiguration: VSCodeVDFConfiguration
 	documentSymbols: VDFDocumentSymbol[]
 	definitionReferences: DefinitionReferences
 }
 
-export interface DocumentLinksHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+export interface DocumentLinksHandlerParams {
 	documentSymbols: VDFDocumentSymbol[]
 	definitionReferences: DefinitionReferences
 	resolve: (value: string, extension?: `.${string}`) => string
 }
 
-export interface DocumentColoursHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
+export interface DocumentColoursHandlerParams {
 	documentSymbols: VDFDocumentSymbol[]
 	next: (callback: (colours: ColourInformationStringify[], documentSymbol: VDFDocumentSymbol) => void) => ColourInformationStringify[]
 }
 
-export interface DocumentInlayHintsHandlerParams<TDocument extends VDFTextDocument<TDocument>> {
-	dependencies: VDFTextDocumentDependencies<TDocument>
+export interface DocumentInlayHintsHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
+	dependencies: TDependencies
 	documentSymbols: VDFDocumentSymbol[]
 }
 
@@ -91,21 +90,21 @@ const enum BaseResultType {
 	Success,
 }
 
-type BaseResult<TDocument extends VDFTextDocument<TDocument>> = (
+type BaseResult<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies extends VDFTextDocumentDependencies> = (
 	| { type: BaseResultType.Self }
 	| { type: BaseResultType.None }
 	| { type: BaseResultType.Error, paths: string[][] }
-	| { type: BaseResultType.Success, document: VDFTextDocument<TDocument> }
+	| { type: BaseResultType.Success, document: TDocument }
 )
 
-export interface Context<TDocument extends VDFTextDocument<TDocument>> {
-	dependencies: VDFTextDocumentDependencies<TDocument>,
+export interface Context<TDependencies extends VDFTextDocumentDependencies> {
+	dependencies: TDependencies,
 	documentConfiguration: VSCodeVDFConfiguration,
 	documentSymbols: VDFDocumentSymbols | undefined,
 	definitionReferences: DefinitionReferences,
 }
 
-export type Validate<TDocument extends VDFTextDocument<TDocument>> = (name: string, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+export type Validate<TDependencies extends VDFTextDocumentDependencies> = (name: string, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDependencies>) => DiagnosticCodeActions
 
 export const enum KeyDistinct {
 	None,
@@ -113,24 +112,27 @@ export const enum KeyDistinct {
 	Last,
 }
 
-export type RefineString<TDocument extends VDFTextDocument<TDocument>> = (name: string, detail: string, detailRange: VDFRange, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>) => DiagnosticCodeActions
+export type RefineString<TDependencies extends VDFTextDocumentDependencies> = (name: string, detail: string, detailRange: VDFRange, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDependencies>) => DiagnosticCodeActions
 
-export type RefineReference<TDocument extends VDFTextDocument<TDocument>> = (...args: [...Parameters<RefineString<TDocument>>, definitions: readonly Definition[]]) => DiagnosticCodeActions
+export type RefineReference<TDependencies extends VDFTextDocumentDependencies> = (...args: [...Parameters<RefineString<TDependencies>>, definitions: readonly Definition[]]) => DiagnosticCodeActions
 
-export type Fallback<TDocument extends VDFTextDocument<TDocument>> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDocument>, unknown: () => DiagnosticCodeActions) => DiagnosticCodeActions
+export type Fallback<TDependencies extends VDFTextDocumentDependencies> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDependencies>, unknown: () => DiagnosticCodeActions) => DiagnosticCodeActions
 
-export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocument>> extends TextDocumentBase<VDFDocumentSymbols, VDFTextDocumentDependencies<TDocument>> {
+export abstract class VDFTextDocument<
+	TDocument extends VDFTextDocument<TDocument, TDependencies>,
+	TDependencies extends VDFTextDocumentDependencies
+> extends TextDocumentBase<VDFDocumentSymbols, TDependencies> {
 
-	public readonly configuration: VDFTextDocumentConfiguration<TDocument>
+	public readonly configuration: VDFTextDocumentConfiguration<TDependencies>
 
-	protected getDiagnostics: (dependencies: VDFTextDocumentDependencies<TDocument>, configuration: VSCodeVDFConfiguration, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
+	protected getDiagnostics: (dependencies: TDependencies, configuration: VSCodeVDFConfiguration, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 
 	/**
 	 * #base
 	 */
 	public readonly base$: Observable<string[]>
 
-	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
+	private readonly context = new Map<string, Observable<BaseResult<TDocument, TDependencies>>>()
 
 	public readonly diagnostics = {
 		unreachable: (range: VDFRange, fix?: NonNullable<DiagnosticCodeAction["data"]>["fix"]): DiagnosticCodeAction => {
@@ -149,7 +151,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 			}
 		},
 		any: () => [],
-		header: (validate: Validate<TDocument>, multiple: boolean): VDFTextDocumentSchema<TDocument>["getDiagnostics"] => {
+		header: (validate: Validate<TDependencies>, multiple: boolean): VDFTextDocumentSchema<TDependencies>["getDiagnostics"] => {
 			return ({ dependencies, documentConfiguration, documentSymbols, definitionReferences }) => {
 				const diagnostics: DiagnosticCodeActions = []
 				const [header, ...rest] = documentSymbols
@@ -176,8 +178,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		documentSymbols: (distinct: KeyDistinct, unknown: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDocument>) => DiagnosticCodeActions = (key, parent, documentSymbol) => [{ range: documentSymbol.nameRange, severity: DiagnosticSeverity.Warning, code: "unknown-key", source: this.languageId, message: `Unknown key '${key}'.` }]) => {
-			return (schema: Record<string, [Validate<TDocument>] | [Validate<TDocument>, KeyDistinct]>, fallback?: Fallback<TDocument>): Validate<TDocument> => {
+		documentSymbols: (distinct: KeyDistinct, unknown: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDependencies>) => DiagnosticCodeActions = (key, parent, documentSymbol) => [{ range: documentSymbol.nameRange, severity: DiagnosticSeverity.Warning, code: "unknown-key", source: this.languageId, message: `Unknown key '${key}'.` }]) => {
+			return (schema: Record<string, [Validate<TDependencies>] | [Validate<TDependencies>, KeyDistinct]>, fallback?: Fallback<TDependencies>): Validate<TDependencies> => {
 				const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
 				return (name, documentSymbol, path, context) => {
 					const diagnostics: DiagnosticCodeActions = []
@@ -268,7 +270,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}
 			}
 		},
-		string: (refine?: RefineString<TDocument>): Validate<TDocument> => {
+		string: (refine?: RefineString<TDependencies>): Validate<TDependencies> => {
 			return (key, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (documentSymbol.detail == undefined) {
@@ -287,7 +289,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		length: (max: number): RefineString<TDocument> => {
+		length: (max: number): RefineString<TDependencies> => {
 			return (name, detail, detailRange, path, context) => {
 				const length = detail.length + "\0".length
 				if (length > max) {
@@ -313,7 +315,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}]
 			}
 			return []
-		}) satisfies RefineString<TDocument>,
+		}) satisfies RefineString<TDependencies>,
 		float: ((name, detail, detailRange, path, context) => {
 			if (!/^\d*\.?\d+$/.test(detail)) {
 				return [{
@@ -325,8 +327,8 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}]
 			}
 			return []
-		}) satisfies RefineString<TDocument>,
-		set: (values: string[], fix?: Record<string, string>): RefineString<TDocument> => {
+		}) satisfies RefineString<TDependencies>,
+		set: (values: string[], fix?: Record<string, string>): RefineString<TDependencies> => {
 			const set = new Set(values.map((value) => value.toLowerCase()))
 			return (name, detail, detailRange, path, context) => {
 				if (!set.has(detail.toLowerCase())) {
@@ -376,7 +378,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				}
 			}
 		},
-		dynamic: (key: string): RefineString<TDocument> => {
+		dynamic: (key: string): RefineString<TDependencies> => {
 			const id = key.toLowerCase()
 			return (name, detail, detailRange, documentSymbol, path, context) => {
 				if (id in context.dependencies.schema.values) {
@@ -394,7 +396,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return []
 			}
 		},
-		reference: (type: symbol, refine?: RefineReference<TDocument>): RefineString<TDocument> => {
+		reference: (type: symbol, refine?: RefineReference<TDependencies>): RefineString<TDependencies> => {
 			return (key, detail, detailRange, documentSymbol, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (detail == "") {
@@ -464,7 +466,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		file: (name: string, folder: string | null, extension: string | null): RefineString<TDocument> => {
+		file: (name: string, folder: string | null, extension: string | null): RefineString<TDependencies> => {
 			return (_name, detail, detailRange, path, context) => {
 				const diagnostics: DiagnosticCodeActions = []
 				if (detail == "") {
@@ -518,7 +520,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 				return diagnostics
 			}
 		},
-		next: (schema: Record<string, RefineString<TDocument>>): Validate<TDocument> => {
+		next: (schema: Record<string, RefineString<TDependencies>>): Validate<TDependencies> => {
 			const map = new Map(Object.entries(schema).map(([key, validate]) => <const>[key.toLowerCase(), { key, validate }]))
 			return (key, documentSymbol, path, context) => {
 				const data = map.get(key)
@@ -534,7 +536,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
 		documents: RefCountAsyncDisposableFactory<Uri, TDocument>,
-		configuration: VDFTextDocument<TDocument>["configuration"],
+		configuration: VDFTextDocumentConfiguration<TDependencies>,
 	) {
 		super(init, documentConfiguration$, fileSystem, {
 			getDocumentSymbols: (text) => {
@@ -556,14 +558,13 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 							.toArray(),
 						...dependencies.schema.getDefinitionReferences({
 							dependencies,
-							document: this,
 							documentSymbols: header ?? new VDFDocumentSymbols()
 						})
 					}
 				}),
 				(source$) => {
 
-					function check(path: string, stack: string[]): Observable<BaseResult<TDocument>> {
+					function check(path: string, stack: string[]): Observable<BaseResult<TDocument, TDependencies>> {
 
 						const index = stack.findIndex((p) => p.toLowerCase() == path.toLowerCase())
 						if (index != -1) {
@@ -625,7 +626,7 @@ export abstract class VDFTextDocument<TDocument extends VDFTextDocument<TDocumen
 										const self = posix.resolve(`/${configuration.relativeFolderPath ?? ""}`, this.uri.basename()).substring(1)
 										observable$ = (
 											path.toLowerCase() == self.toLowerCase()
-												? concat(of({ type: BaseResultType.Self } satisfies BaseResult<TDocument>), NEVER)
+												? concat(of({ type: BaseResultType.Self } satisfies BaseResult<TDocument, TDependencies>), NEVER)
 												: check(path, [self])
 										).pipe(
 											finalize(() => this.context.delete(path)),
