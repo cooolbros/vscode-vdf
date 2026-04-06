@@ -248,22 +248,7 @@ export abstract class VDFTextDocument<
 									}
 								}
 
-								if (documentSymbol.key != data.key) {
-									diagnostics.push({
-										range: documentSymbol.nameRange,
-										severity: DiagnosticSeverity.Hint,
-										message: data.key,
-										data: {
-											fix: ({ createDocumentWorkspaceEdit }) => {
-												return {
-													title: `Replace "${documentSymbol.key}" with "${data.key}"`,
-													edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, data.key))
-												}
-											}
-										}
-									})
-								}
-
+								diagnostics.push(TextDocumentBase.diagnostics.key(data.key, documentSymbol.key, documentSymbol.nameRange))
 								diagnostics.push(...data.validate(data.key, documentSymbol, [...path, parent], context))
 							}
 						})
@@ -361,22 +346,7 @@ export abstract class VDFTextDocument<
 				}
 				else {
 					const value = values.find((value) => value.toLowerCase() == detail!.toLowerCase())!
-					if (detail != value) {
-						return [{
-							range: detailRange,
-							severity: DiagnosticSeverity.Hint,
-							message: value,
-							data: {
-								fix: ({ createDocumentWorkspaceEdit }) => {
-									return {
-										title: `Replace "${detail}" with "${value}"`,
-										edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, value))
-									}
-								}
-							}
-						}]
-					}
-					return []
+					return [TextDocumentBase.diagnostics.key(value, detail, detailRange)]
 				}
 			}
 		},
@@ -462,6 +432,7 @@ export abstract class VDFTextDocument<
 						})
 					}
 
+					diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, detail, detailRange, { newText: (name) => context.dependencies.schema.definitionReferences.get(type)?.toReference?.(name) ?? name }))
 					diagnostics.push(...refine?.(key, detail, detailRange, documentSymbol, path, context, definitions) ?? [])
 				}
 

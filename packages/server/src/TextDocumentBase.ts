@@ -4,9 +4,10 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type IRange } from "vdf"
-import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
+import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { References, type DefinitionReferences } from "./DefinitionReferences"
+import type { TextDocumentRequestParams } from "./LanguageServer"
 
 export interface TextDocumentInit {
 	uri: Uri
@@ -26,7 +27,7 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 	}>
 }
 
-export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({ createDocumentWorkspaceEdit, findBestMatch }: { createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
+export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({ params, createDocumentWorkspaceEdit, findBestMatch }: { params: TextDocumentRequestParams<CodeActionParams>, createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
 
 export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
 
@@ -48,6 +49,33 @@ export abstract class TextDocumentBase<
 		"[$WINDOWS]",
 		"[$X360]",
 	])
+
+	public static readonly diagnostics = {
+		key: (name: string, key: string, range: VDFRange, edit?: { uri?: () => Uri, range?: () => VDFRange, newText?: (name: string) => string }): DiagnosticCodeAction | null => {
+			if (name == key) {
+				return null
+			}
+
+			return {
+				range: range,
+				severity: DiagnosticSeverity.Hint,
+				message: name,
+				data: {
+					fix: ({ params }) => {
+						const uri = edit?.uri?.() ?? params.textDocument.uri
+						return {
+							title: `Replace "${key}" with "${name}"`,
+							edit: {
+								changes: {
+									[uri.toString()]: [TextEdit.replace(edit?.range?.() ?? range, edit?.newText?.(name) ?? name)]
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 
 	public readonly uri: Uri
 	public readonly languageId: string

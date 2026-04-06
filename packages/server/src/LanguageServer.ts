@@ -812,6 +812,7 @@ export abstract class LanguageServer<
 		const uri = params.textDocument.uri.toString()
 
 		const utils = {
+			params: params,
 			createDocumentWorkspaceEdit: (edit: TextEdit) => ({ changes: { [uri]: [edit] } }),
 			findBestMatch: (mainString: string, targetStrings: string[]) => {
 				return targetStrings.length != 0

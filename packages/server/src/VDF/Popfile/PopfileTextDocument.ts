@@ -301,23 +301,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		})
 
 		const validateItemKey: RefineReference<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
-			const key = definitions[0].key
-			if (detail != key) {
-				return [{
-					range: detailRange,
-					severity: DiagnosticSeverity.Hint,
-					message: key,
-					data: {
-						fix: ({ createDocumentWorkspaceEdit }) => {
-							return {
-								title: `Replace "${detail}" with "${key}"`,
-								edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, key))
-							}
-						}
-					}
-				}]
-			}
-			return []
+			return [TextDocumentBase.diagnostics.key(definitions[0].key, detail, detailRange)]
 		}
 
 		const validateItem = string(reference(Symbol.for("item"), validateItemKey))
@@ -502,26 +486,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 							data: createUnknownAttributeCodeAction(documentSymbol, context)
 						})
 					}
-					else if (event.key != name) {
-						diagnostics.push({
-							range: detailRange,
-							severity: DiagnosticSeverity.Hint,
-							message: name,
-							data: {
-								fix: () => {
-									return {
-										title: `Replace "${event.key}" with "${name}"`,
-										edit: {
-											changes: {
-												[definition.uri.toString()]: [
-													TextEdit.replace(event.range, name)
-												]
-											}
-										}
-									}
-								}
-							}
-						})
+					else {
+						diagnostics.push(TextDocumentBase.diagnostics.key(name, event.key, detailRange, { uri: () => definition.uri, range: () => event.range }))
 					}
 				}
 
@@ -559,20 +525,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 						})
 					}
 				}
-				else if (documentSymbol.key != name) {
-					diagnostics.push({
-						range: documentSymbol.nameRange,
-						severity: DiagnosticSeverity.Hint,
-						message: name,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit }) => {
-								return {
-									title: `Replace "${documentSymbol.key}" with "${name}"`,
-									edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.nameRange, name))
-								}
-							}
-						}
-					})
+				else {
+					diagnostics.push(TextDocumentBase.diagnostics.key(name, documentSymbol.key, documentSymbol.nameRange))
 				}
 
 				const eventChangeAttributes = path.at(-1)!.children!
@@ -772,23 +726,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			const { chars, value } = removeSoundChars(detail)
 			const definitions = context.definitionReferences.definitions.get(null, Symbol.for("sound"), value)
 			if (definitions?.length) {
-				const name = definitions[0].key
-				if (value != name) {
-					return [{
-						range: detailRange,
-						severity: DiagnosticSeverity.Hint,
-						message: name,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit }) => {
-								return {
-									title: `Replace "${detail}" with "${name}"`,
-									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, `${chars}${name}`))
-								}
-							}
-						}
-					}]
-				}
-				return []
+				return [TextDocumentBase.diagnostics.key(definitions[0].key, value, detailRange, { newText: (name) => `${chars}${name}` })]
 			}
 			else {
 				return validateSoundFile(name, value, detailRange, documentSymbol, path, context)

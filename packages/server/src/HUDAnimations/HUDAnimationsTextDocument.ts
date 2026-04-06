@@ -250,6 +250,9 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 									}
 								})
 							}
+							else {
+								diagnostics.push(TextDocumentBase.diagnostics.key(event[0].key, statement.event, statement.eventRange))
+							}
 						}
 
 						if ("element" in statement && workspace != null && documentSymbol.eventName.toLowerCase() in eventFiles) {
@@ -303,8 +306,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 											})
 										)
 									)
-
 								}
+							}
+							else {
+								diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, statement.element, statement.elementRange))
 							}
 						}
 
@@ -376,6 +381,9 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 									}
 								})
 							}
+							else {
+								diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, statement.font, statement.fontRange))
+							}
 						}
 
 						if (statement.type == HUDAnimationStatementType.Animate && workspace != null && HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase()) && !/^\s*\d+\s+\d+\s+\d+\s+\d+\s*$/.test(statement.value)) {
@@ -412,6 +420,9 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 										}
 									}
 								})
+							}
+							else {
+								diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, statement.value, statement.valueRange))
 							}
 						}
 
