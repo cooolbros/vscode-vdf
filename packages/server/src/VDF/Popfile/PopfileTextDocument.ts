@@ -792,7 +792,41 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				"RandomPlacement": [any],
 				"RespawnWaveTime": [string(integer)],
 				"StartingCurrency": [string(integer)],
-				"Templates": [documentSymbols({}, (documentSymbol, path, context, unknown) => validateTFBot("template", documentSymbol, path, context)), KeyDistinct.First],
+				"Templates": [documentSymbols({}, (documentSymbol, path, context, unknown) => {
+					const diagnostics: DiagnosticCodeActions = []
+					diagnostics.push(...validateTFBot("template", documentSymbol, path, context))
+
+					const key = documentSymbol.key.toLowerCase()
+					const first = path.at(-1)!.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == key)!
+					if (first != documentSymbol) {
+						diagnostics.push({
+							range: documentSymbol.nameRange,
+							severity: DiagnosticSeverity.Warning,
+							code: "duplicate-key",
+							source: "popfile",
+							message: `Duplicate key '${first.key}'`,
+							relatedInformation: [
+								{
+									location: {
+										uri: document.uri.toString(),
+										range: first.nameRange
+									},
+									message: `${first.key} is declared here.`
+								}
+							],
+							data: {
+								fix: ({ createDocumentWorkspaceEdit }) => {
+									return {
+										title: `Remove duplicate ${documentSymbol.key}`,
+										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+									}
+								}
+							}
+						})
+					}
+
+					return diagnostics
+				}), KeyDistinct.None /* {} */],
 				"Wave": [documentSymbols({
 					"Checkpoint": [string(set(["Yes"]))] /* Unreachable code detected. */,
 					"Description": [string()],
