@@ -1,4 +1,4 @@
-import type { IPosition } from "vdf"
+import type { PositionLike } from "vdf"
 import type { HUDAnimationsEventDocumentSymbol, HUDAnimationsStatementDocumentSymbol } from "./HUDAnimationsDocumentSymbol"
 
 export class HUDAnimationsDocumentSymbols extends Array<HUDAnimationsEventDocumentSymbol> {
@@ -11,7 +11,7 @@ export class HUDAnimationsDocumentSymbols extends Array<HUDAnimationsEventDocume
 		}
 	}
 
-	public getHUDAnimationStatementAtPosition(position: IPosition): HUDAnimationsStatementDocumentSymbol | undefined {
+	public getHUDAnimationStatementAtPosition(position: PositionLike): HUDAnimationsStatementDocumentSymbol | undefined {
 		for (const event of this) {
 			for (const statement of event.children) {
 				if (statement.range.contains(position)) {

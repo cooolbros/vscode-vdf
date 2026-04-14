@@ -1,4 +1,4 @@
-import type { IPosition } from "vdf/src/VDFPosition"
+import type { PositionLike } from "vdf"
 import { z } from "zod"
 import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
@@ -46,11 +46,11 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		return iterateDocumentSymbols(this)
 	}
 
-	public getDocumentSymbolAtPosition(position: IPosition): VDFDocumentSymbol | undefined {
+	public getDocumentSymbolAtPosition(position: PositionLike): VDFDocumentSymbol | undefined {
 		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))?.documentSymbol
 	}
 
-	public getPathAtPosition(position: IPosition): VDFDocumentSymbol[] | undefined {
+	public getPathAtPosition(position: PositionLike): VDFDocumentSymbol[] | undefined {
 		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))?.path
 	}
 

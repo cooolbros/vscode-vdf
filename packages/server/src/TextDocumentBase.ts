@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
 import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
-import { VDFRange, VDFSyntaxError, type IRange } from "vdf"
+import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
 import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { References, type DefinitionReferences } from "./DefinitionReferences"
@@ -271,7 +271,7 @@ export abstract class TextDocumentBase<
 		this.text$.next(this.document.getText())
 	}
 
-	public getText(range?: IRange) {
+	public getText(range?: RangeLike) {
 		return this.document.getText(range)
 	}
 

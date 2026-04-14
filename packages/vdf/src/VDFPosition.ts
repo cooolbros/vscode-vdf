@@ -1,27 +1,26 @@
 import { z } from "zod"
 
-export interface IPosition {
+export interface PositionLike {
 	line: number
 	character: number
 }
 
-export class VDFPosition implements IPosition {
+export class VDFPosition implements PositionLike {
 
 	public static readonly schema = z.object({
 		line: z.number(),
 		character: z.number(),
 	}).transform((arg) => new VDFPosition(arg.line, arg.character))
 
-	public line: number
-	public character: number
+	public readonly line: number
+	public readonly character: number
 
 	constructor(line: number, character: number) {
-
 		this.line = line
 		this.character = character
 	}
 
-	public isBefore(value: IPosition): boolean {
+	public isBefore(value: PositionLike): boolean {
 		if (this.line < value.line) {
 			return true
 		}
@@ -31,7 +30,7 @@ export class VDFPosition implements IPosition {
 		return this.character <= value.character
 	}
 
-	public isAfter(value: IPosition): boolean {
+	public isAfter(value: PositionLike): boolean {
 		if (this.line < value.line) {
 			return false
 		}
