@@ -838,9 +838,13 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					}
 					seen.add(key)
 
-					const templateTemplate = documentSymbol.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())
+					if (!documentSymbol.children) {
+						continue
+					}
 
-					documentSymbol.children!.forEach((documentSymbol) => {
+					const templateTemplate = documentSymbol.children.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())
+
+					documentSymbol.children.forEach((documentSymbol) => {
 						if (!documentSymbol.detail) {
 							return
 						}
@@ -866,13 +870,13 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 						conditional: documentSymbol.conditional ?? undefined,
 						data: {
 							template: templateTemplate?.detail,
-							TFClass: documentSymbol.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Class".toLowerCase())?.detail,
-							items: documentSymbol.children!
+							TFClass: documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Class".toLowerCase())?.detail,
+							items: documentSymbol.children
 								.values()
 								.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Item".toLowerCase() && documentSymbol.detail != undefined)
 								.map((documentSymbol) => documentSymbol.detail!)
 								.toArray(),
-							events: (documentSymbol.children!
+							events: (documentSymbol.children
 								.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "EventChangeAttributes".toLowerCase())
 								?.children ?? [])
 								.filter((documentSymbol) => documentSymbol.children != undefined)
