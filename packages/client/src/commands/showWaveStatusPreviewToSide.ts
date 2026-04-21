@@ -4,6 +4,7 @@ import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { findMap } from "common/popfile/findMap"
+import { populationSpawnerKeys } from "common/popfile/populationSpawnerKeys"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -193,15 +194,6 @@ async function getWaveStatus(meta: Meta, popfile: Popfile, cache: Map<number, Ma
 			let actual = 0
 
 			function addSpawner({ type, spawner, totalCount }: { type: Type, spawner: VDFDocumentSymbol, totalCount: number }) {
-				const populationSpawnerKeys = [
-					"Mob",
-					"RandomChoice",
-					"SentryGun",
-					"Squad",
-					"Tank",
-					"TFBot",
-				].map((key) => key.toLowerCase())
-
 				switch (spawner.key.toLowerCase()) {
 					case "TFBot".toLowerCase(): {
 						if (totalCount > 0 || type == Type.Support) {
