@@ -6,11 +6,7 @@ export default {
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
 
-	onwarn: (warning, defaultHandler) => {
-		if (warning.code == "css_unused_selector" && warning.message.includes(".codicon")) {
-			return
-		}
-
-		defaultHandler(warning)
+	compilerOptions: {
+		warningFilter: (warning) => !(warning.code == "css_unused_selector" && warning.message.includes(".codicon"))
 	}
 }
