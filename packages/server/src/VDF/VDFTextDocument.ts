@@ -123,6 +123,14 @@ export abstract class VDFTextDocument<
 	TDependencies extends VDFTextDocumentDependencies
 > extends TextDocumentBase<VDFDocumentSymbols, TDependencies> {
 
+	private static base(documentSymbols: VDFDocumentSymbols): string[] {
+		return documentSymbols
+			.values()
+			.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
+			.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
+			.toArray()
+	}
+
 	public readonly configuration: VDFTextDocumentConfiguration<TDependencies>
 
 	protected getDiagnostics: (dependencies: TDependencies, configuration: VSCodeVDFConfiguration, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
@@ -524,11 +532,7 @@ export abstract class VDFTextDocument<
 						dependencies: dependencies,
 						documentConfiguration: documentConfiguration,
 						documentSymbols: documentSymbols,
-						base: documentSymbols
-							.values()
-							.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
-							.map((documentSymbol) => posix.resolve("/", configuration.relativeFolderPath ?? "", documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")).substring(1))
-							.toArray(),
+						base: VDFTextDocument.base(documentSymbols).map((detail) => posix.resolve("/", configuration.relativeFolderPath ?? "", detail.replaceAll(/[/\\]+/g, "/")).substring(1)),
 						...dependencies.schema.getDefinitionReferences({
 							dependencies,
 							documentSymbols: header ?? new VDFDocumentSymbols()
@@ -836,13 +840,7 @@ export abstract class VDFTextDocument<
 		}
 
 		this.base$ = this.documentSymbols$.pipe(
-			map((documentSymbols) => {
-				return documentSymbols
-					.values()
-					.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
-					.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
-					.toArray()
-			}),
+			map((documentSymbols) => VDFTextDocument.base(documentSymbols)),
 			distinctUntilChanged((a: string[], b: string[]) => a.length == b.length && a.every((str, i) => str == b[i])),
 			map((base) => base.map((value) => posix.resolve("/", this.configuration.relativeFolderPath ?? "", value).substring(1))),
 			shareReplay(1)
