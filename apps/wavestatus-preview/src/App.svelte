@@ -680,7 +680,7 @@
 >
 	<canvas data-vscode-context={JSON.stringify({ webviewSection: "canvas" })} bind:this={canvas}></canvas>
 	<div>
-		<button class="settings" onclick={() => trpc.openSettings.query()}>
+		<button title="Settings" class="settings" onclick={() => trpc.openSettings.query()}>
 			<i class="codicon codicon-settings-gear"></i>
 		</button>
 		<button class="floating-click-widget" onclick={saveImageAs}>Save</button>
