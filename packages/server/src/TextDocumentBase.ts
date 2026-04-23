@@ -29,7 +29,7 @@ export interface TextDocumentBaseConfiguration<TDocumentSymbols extends Document
 
 export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: ({ params, createDocumentWorkspaceEdit, findBestMatch }: { params: TextDocumentRequestParams<CodeActionParams>, createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit, findBestMatch: (mainString: string, targetStrings: string[]) => string | null }) => Omit<CodeAction, "kind" | "diagnostic" | "isPreferred"> | null } }
 
-export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | null>)[]
+export type DiagnosticCodeActions = (DiagnosticCodeAction | null | Observable<DiagnosticCodeAction | DiagnosticCodeAction[] | null>)[]
 
 export type DocumentLinkData = Omit<DocumentLink, "range" | "data"> & { range: VDFRange, data: { resolve: () => Promise<Uri | null> } }
 
@@ -204,7 +204,7 @@ export abstract class TextDocumentBase<
 								diagnostics.map((diagnostic) => isObservable(diagnostic) ? diagnostic : of(diagnostic))
 							).pipe(
 								map((diagnostics) => {
-									return diagnostics.filter((diagnostic) => diagnostic != null)
+									return diagnostics.flat().filter((diagnostic) => diagnostic != null)
 								})
 							)
 						})

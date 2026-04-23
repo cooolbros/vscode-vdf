@@ -1,11 +1,11 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
-import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
+import { BaseErrorType, BaseResultType, combineLatestBaseFiles, type BaseError, type BaseResult, type BaseValue } from "common/operators/combineLatestBaseFiles"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { combineLatest, combineLatestWith, concat, connectable, defer, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, ReplaySubject, shareReplay, Subscription, switchMap } from "rxjs"
+import { catchError, combineLatest, concat, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -83,20 +83,6 @@ export const enum VGUIAssetType {
 	Image = 1
 }
 
-const enum BaseResultType {
-	Self,
-	None,
-	Error,
-	Success,
-}
-
-type BaseResult<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies extends VDFTextDocumentDependencies> = (
-	| { type: BaseResultType.Self }
-	| { type: BaseResultType.None }
-	| { type: BaseResultType.Error, paths: string[][] }
-	| { type: BaseResultType.Success, document: TDocument }
-)
-
 export interface Context<TDependencies extends VDFTextDocumentDependencies> {
 	dependencies: TDependencies,
 	documentConfiguration: VSCodeVDFConfiguration,
@@ -140,7 +126,7 @@ export abstract class VDFTextDocument<
 	 */
 	public readonly base$: Observable<string[]>
 
-	private readonly context = new Map<string, Observable<BaseResult<TDocument, TDependencies>>>()
+	private readonly context = new Map<string, Observable<BaseResult<DefinitionReferences>>>()
 
 	public readonly diagnostics = {
 		unreachable: (range: VDFRange, fix?: NonNullable<DiagnosticCodeAction["data"]>["fix"]): DiagnosticCodeAction => {
@@ -524,191 +510,314 @@ export abstract class VDFTextDocument<
 				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
 			},
 			defaultDocumentSymbols: new VDFDocumentSymbols(),
-			definitionReferences$: defer(() => this.documentSymbols$).pipe(
-				combineLatestWith(configuration.dependencies$, defer(() => this.documentConfiguration$)),
-				map(([documentSymbols, dependencies, documentConfiguration]) => {
-					const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
-					return {
-						dependencies: dependencies,
-						documentConfiguration: documentConfiguration,
-						documentSymbols: documentSymbols,
-						base: VDFTextDocument.base(documentSymbols).map((detail) => posix.resolve("/", configuration.relativeFolderPath ?? "", detail.replaceAll(/[/\\]+/g, "/")).substring(1)),
-						...dependencies.schema.getDefinitionReferences({
-							dependencies,
-							documentSymbols: header ?? new VDFDocumentSymbols()
-						})
-					}
-				}),
-				(source$) => {
-
-					function check(path: string, stack: string[]): Observable<BaseResult<TDocument, TDependencies>> {
-
-						const index = stack.findIndex((p) => p.toLowerCase() == path.toLowerCase())
-						if (index != -1) {
-							return concat(
-								of({
-									type: <const>BaseResultType.Error,
-									paths: [
-										[...stack.slice(index), path]
-									]
-								}),
-								// Don't .complete() or Observable will be removed from this.context
-								NEVER
-							)
-						}
-
-						return fileSystem.resolveFile(path).pipe(
-							switchMap((uri) => {
-								if (uri == null) {
-									return of({ type: <const>BaseResultType.None })
-								}
-
-								return usingAsync(async () => await documents.get(uri)).pipe(
-									switchMap((document) => {
-										return document.base$.pipe(
-											map((paths) => {
-												return paths.map((p) => check(p, [...stack, path]))
+			definitionReferences$: combineLatest({
+				documentConfiguration: documentConfiguration$,
+				value: configuration.dependencies$.pipe(
+					switchMap((dependencies) => {
+						return combineLatest({
+							globals: dependencies.globals$,
+							value: this.documentSymbols$.pipe(
+								map((documentSymbols) => {
+									return {
+										base: VDFTextDocument.base(documentSymbols),
+										value: {
+											dependencies,
+											documentSymbols,
+											definitionReferences: dependencies.schema.getDefinitionReferences({
+												dependencies: dependencies,
+												documentSymbols: documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children ?? new VDFDocumentSymbols(),
 											}),
-											combineLatestPersistent(),
-											map((results) => {
-												if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-													return { type: <const>BaseResultType.Success, document: document }
-												}
-
-												return {
-													type: <const>BaseResultType.Error,
-													paths: results
-														.values()
-														.filter((result) => result.type == BaseResultType.Error)
-														.map((result) => result.paths.flat())
-														.toArray()
-												}
-											})
-										)
-									})
-								)
-							})
-						)
-					}
-
-					const context = new Map<string, { connectable$: Observable<DefinitionReferences | null>, subscription: Subscription }>()
-
-					return source$.pipe(
-						switchMap((value) => {
-							const observables = value.base.map((path) => {
-								let value = context.get(path)
-								if (!value) {
-									let observable$ = this.context.get(path)
-									if (!observable$) {
-										const self = posix.resolve(`/${configuration.relativeFolderPath ?? ""}`, this.uri.basename()).substring(1)
-										observable$ = (
-											path.toLowerCase() == self.toLowerCase()
-												? concat(of({ type: BaseResultType.Self } satisfies BaseResult<TDocument, TDependencies>), NEVER)
-												: check(path, [self])
-										).pipe(
-											finalize(() => this.context.delete(path)),
-											shareReplay({ bufferSize: 1, refCount: true })
-										)
-										this.context.set(path, observable$)
+										}
 									}
+								}),
+								(source$) => {
+									const fs = (current: Uri, relativeFolderPath: string) => {
+										const self = `${relativeFolderPath}/${current.basename()}`
+										const external = ambient(current)
+										return ({ stack, detail }: BaseValue): Observable<BaseResult<DefinitionReferences>> => {
+											const path = posix.resolve(`/${relativeFolderPath}/${detail}`).substring(1)
 
-									const connectable$ = connectable(
-										observable$.pipe(
-											switchMap((result) => {
-												switch (result.type) {
-													case BaseResultType.Self:
-													case BaseResultType.None:
-													case BaseResultType.Error:
-														return of(null)
-													case BaseResultType.Success:
-														return result.document.definitionReferences$.pipe(
-															finalize(() => {
-																result.document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
+											if (path.toLowerCase() == self.toLowerCase()) {
+												return concat(
+													of<BaseResult<DefinitionReferences>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Self, self: self, detail: detail, uri: current }] }),
+													NEVER
+												)
+											}
+
+											const index = stack.findIndex((p) => p.path.toLowerCase() == path.toLowerCase())
+											if (index != -1) {
+												return concat(
+													of<BaseResult<DefinitionReferences>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Cyclic, stack: stack.slice(index) }] }),
+													NEVER
+												)
+											}
+
+											return fileSystem.resolveFile(path).pipe(
+												switchMap((uri) => {
+													if (uri != null) {
+														return usingAsync(async () => await documents.get(uri)).pipe(
+															switchMap((document) => {
+																return document.base$.pipe(
+																	map((base) => ({ base: base, value: undefined })),
+																	combineLatestBaseFiles({
+																		stack: [...stack, { path: path, uri: document.uri }],
+																		open: fs(document.uri, posix.dirname(path))
+																	}),
+																	switchMap(({ base: results }) => {
+																		if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+																			return document.definitionReferences$.pipe(
+																				map((value) => ({ type: <const>BaseResultType.Success, ambient: false, value: value })),
+																				finalize(() => {
+																					document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
+																				})
+																			)
+																		}
+
+																		return of<BaseResult<DefinitionReferences>>({
+																			type: <const>BaseResultType.Error,
+																			self: self,
+																			errors: results
+																				.values()
+																				.map((result) => {
+																					switch (result.type) {
+																						case BaseResultType.None:
+																						case BaseResultType.Success:
+																							return null
+																						case BaseResultType.Error:
+																							return {
+																								type: <const>BaseErrorType.Base,
+																								path: result.self,
+																								errors: result.errors
+																							}
+																					}
+																				})
+																				.filter((error) => error != null)
+																				.toArray()
+																		})
+																	})
+																)
 															})
 														)
+													}
+													else {
+														return external({ stack, detail })
+													}
+												})
+											)
+										}
+									}
+
+									const ambient = (current: Uri) => {
+										const self = current.fsPath
+										const dirname = current.dirname()
+										return ({ stack, detail }: BaseValue): Observable<BaseResult<DefinitionReferences>> => {
+											const uri = current.with({ path: posix.resolve(dirname.joinPath(detail).path) })
+											const fsPath = uri.fsPath.toLowerCase()
+
+											if (Uri.equals(current, uri) || current.fsPath.toLowerCase() == fsPath) {
+												return concat(
+													of<BaseResult<DefinitionReferences>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Self, self: self, detail: detail, uri: current }] }),
+													NEVER
+												)
+											}
+
+											const index = stack.findIndex((p) => p.path.toLowerCase() == fsPath)
+											if (index != -1) {
+												return concat(
+													of<BaseResult<DefinitionReferences>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Cyclic, stack: stack.slice(index) }] }),
+													NEVER
+												)
+											}
+
+											return usingAsync(async () => await documents.get(uri)).pipe(
+												switchMap((document) => {
+													return document.base$.pipe(
+														map((base) => ({ base: base, value: undefined })),
+														combineLatestBaseFiles({
+															stack: [...stack, { path: document.uri.fsPath, uri: document.uri }],
+															open: ambient(document.uri),
+														}),
+														switchMap(({ base: results }) => {
+															if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+																return document.definitionReferences$.pipe(
+																	map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
+																)
+															}
+
+															return of<BaseResult<DefinitionReferences>>({
+																type: <const>BaseResultType.Error,
+																self: self,
+																errors: results
+																	.values()
+																	.map((result) => {
+																		switch (result.type) {
+																			case BaseResultType.None:
+																			case BaseResultType.Success:
+																				return null
+																			case BaseResultType.Error:
+																				return {
+																					type: <const>BaseErrorType.Base,
+																					path: result.self,
+																					errors: result.errors
+																				}
+																		}
+																	})
+																	.filter((error) => error != null)
+																	.toArray()
+															})
+														}),
+													)
+												}),
+												catchError(() => {
+													return concat(of({ type: <const>BaseResultType.None }), NEVER)
+												})
+											)
+										}
+									}
+
+									const open = configuration.relativeFolderPath != null
+										? fs(init.uri, configuration.relativeFolderPath)
+										: ambient(init.uri)
+
+									return source$.pipe(
+										combineLatestBaseFiles({
+											stack: [],
+											open: ({ stack, detail }) => {
+												let observable$ = this.context.get(detail)
+												if (!observable$) {
+													observable$ = open({ stack, detail }).pipe(
+														finalize(() => this.context.delete(detail)),
+														shareReplay({ bufferSize: 1, refCount: true }),
+													)
+													this.context.set(detail, observable$)
 												}
-											})
-										),
-										{
-											connector: () => new ReplaySubject(1),
-											resetOnDisconnect: false
-										}
+												return observable$
+											},
+										}),
+										map(({ base: results, value }) => {
+											const { definitionReferences, ...rest } = value
+
+											const base = results
+												.values()
+												.filter((result) => result.type == BaseResultType.Success)
+												.map((result) => result.value)
+												.toArray()
+
+											const definitions = value.definitionReferences.definitions.clone()
+
+											for (const baseDefinitionReferences of base) {
+												for (const { scope, type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
+													// Copy #base definitions to document, used for Goto Definition
+													if (scope == null) {
+														definitions.set(null, type, key, ...baseDefinitions)
+													}
+												}
+											}
+
+											return {
+												...rest,
+												base,
+												definitionReferences: {
+													scopes: definitionReferences.scopes,
+													definitions: definitions,
+													references: definitionReferences.references,
+												}
+											}
+										})
 									)
-
-									value = {
-										connectable$: connectable$,
-										subscription: connectable$.connect()
-									}
-
-									context.set(path, value)
 								}
-
-								return value.connectable$
-							})
-
-							for (const key of context.keys().filter((key) => !value.base.includes(key))) {
-								context.get(key)!.subscription.unsubscribe()
-								context.delete(key)
-							}
-
-							const base$ = defer(() => {
-								if (observables.length != 0) {
-									return combineLatest(observables).pipe(
-										map((definitionReferences) => definitionReferences.filter((definitionReferences) => definitionReferences != null))
-									)
-								}
-								else {
-									return of([])
-								}
-							})
-
-							return combineLatest({
-								globals: value.dependencies.globals$,
-								base: base$
-							}).pipe(
-								map(({ globals, base }) => {
-									const definitions = value.definitions.clone()
-
-									for (const baseDefinitionReferences of base) {
-										for (const { scope, type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
-											// Copy #base definitions to document, used for Goto Definition
-											definitions.set(null, type, key, ...baseDefinitions)
-										}
-									}
-
-									for (const global of globals) {
-										global.references.setDocumentReferences(this.uri, new References(this.uri, value.references, []), true)
-									}
-
-									return {
-										dependencies: value.dependencies,
-										documentConfiguration: value.documentConfiguration,
-										documentSymbols: value.documentSymbols,
-										definitionReferences: {
-											scopes: value.scopes,
-											definitions: new Definitions({
-												version: [this.version, ...base.flatMap(({ definitions }) => definitions.version)],
-												collection: definitions,
-												globals: globals.map(({ definitions }) => definitions)
-											}),
-											references: new References(this.uri, value.references, base.map(({ references }) => references), this.references$)
-										} satisfies DefinitionReferences
-									}
-								}),
 							)
-						}),
-						finalize(() => {
-							for (const { subscription } of context.values()) {
-								subscription.unsubscribe()
-							}
-							context.clear()
-						})
-					)
-				}
-			)
+						}).pipe(
+							map(({ globals, value }) => {
+								for (const global of globals) {
+									global.references.setDocumentReferences(this.uri, new References(this.uri, value.definitionReferences.references, []), true)
+								}
+
+								return {
+									dependencies: value.dependencies,
+									documentSymbols: value.documentSymbols,
+									definitionReferences: {
+										scopes: value.definitionReferences.scopes,
+										definitions: new Definitions({
+											version: [this.version, ...value.base.flatMap(({ definitions }) => definitions.version)],
+											collection: value.definitionReferences.definitions,
+											globals: globals.map(({ definitions }) => definitions)
+										}),
+										references: new References(this.uri, value.definitionReferences.references, value.base.map(({ references }) => references), this.references$)
+									} satisfies DefinitionReferences
+								}
+							})
+						)
+					})
+				)
+			}).pipe(
+				map(({ documentConfiguration, value }) => {
+					return {
+						dependencies: value.dependencies,
+						documentConfiguration: documentConfiguration,
+						documentSymbols: value.documentSymbols,
+						definitionReferences: value.definitionReferences
+					}
+				})
+			),
 		})
 
 		this.configuration = configuration
+
+		const getBaseDiagnostics = (documentSymbol: VDFDocumentSymbol, error: BaseError): DiagnosticCodeAction[] => {
+			switch (error.type) {
+				case BaseErrorType.Self:
+					return [{
+						range: documentSymbol.detailRange!,
+						severity: DiagnosticSeverity.Error,
+						code: "base-self-reference",
+						source: "vdf",
+						message: `#base directive '${error.detail}' #bases itself.`,
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: "Remove self #base",
+									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+								}
+							},
+						}
+					}]
+				case BaseErrorType.Cyclic:
+					return [{
+						range: documentSymbol.detailRange!,
+						severity: DiagnosticSeverity.Error,
+						code: "base-cyclic",
+						source: "vdf",
+						message: `#base directive is cyclic.`,
+						relatedInformation: error.stack.map(({ uri }, index) => ({
+							location: {
+								uri: uri.toString(),
+								range: new VDFRange(new VDFPosition(0, 0))
+							},
+							message: `#base -> "${error.stack[(index + 1) % error.stack.length].path}"`
+						})),
+						data: {
+							fix({ createDocumentWorkspaceEdit }) {
+								return {
+									title: "Remove cyclic #base",
+									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+								}
+							},
+						}
+					} satisfies DiagnosticCodeAction]
+				case BaseErrorType.Base:
+					const path = error.path
+					return error.errors.flatMap((error) => {
+						return getBaseDiagnostics(documentSymbol, error).map((diagnostic) => {
+							const { message, ...rest } = diagnostic
+							return {
+								message: `#base error in "${path}": ${diagnostic.message}`,
+								...rest
+							}
+						})
+					})
+			}
+		}
 
 		this.getDiagnostics = (dependencies, documentConfiguration, documentSymbols, definitionReferences) => {
 			const diagnostics: DiagnosticCodeActions = []
@@ -773,53 +882,31 @@ export abstract class VDFTextDocument<
 						})
 					}
 
-					const relativePath = configuration.relativeFolderPath
-						? posix.resolve(`/${configuration.relativeFolderPath}/${detail}`).substring(1)
-						: dirname.relative(dirname.joinPath(detail))
+					if (!this.context.has(detail)) {
+						console.warn(`${this.uri.basename()}: !this.context.has("${detail}")`)
+					}
 
 					diagnostics.push(
-						this.context.get(relativePath)!.pipe(
+						this.context.get(detail)?.pipe(
 							map((result) => {
 								switch (result.type) {
-									case BaseResultType.Self:
-										return {
-											range: documentSymbol.detailRange!,
-											severity: DiagnosticSeverity.Error,
-											code: "base-self-reference",
-											source: "vdf",
-											message: "#base directive references itself.",
-											data: {
-												fix({ createDocumentWorkspaceEdit }) {
-													return {
-														title: "Remove self #base",
-														edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-													}
-												},
-											}
-										}
 									case BaseResultType.None:
 										return this.diagnostics.unreachable(documentSymbol.range)
-									case BaseResultType.Error:
-										return {
-											range: documentSymbol.detailRange!,
-											severity: DiagnosticSeverity.Error,
-											code: "base-cyclic",
-											source: init.languageId,
-											message: [
-												"#base directive is cyclic.",
-												...result.paths.map((paths) => paths.map((path) => `"${path}"`).join(" -> "))
-											].join("\n"),
-											data: {
-												fix({ createDocumentWorkspaceEdit }) {
-													return {
-														title: "Remove cyclic #base",
-														edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-													}
-												},
-											}
-										}
 									case BaseResultType.Success:
-										return null
+										if (!result.ambient) {
+											return []
+										}
+
+										return [{
+											range: documentSymbol.detailRange!,
+											severity: DiagnosticSeverity.Hint,
+											source: "vdf",
+											message: "#base directive is ambient.",
+										}]
+									case BaseResultType.Error:
+										return result.errors.flatMap((error) => {
+											return getBaseDiagnostics(documentSymbol, error)
+										})
 								}
 							})
 						) ?? null
@@ -841,8 +928,7 @@ export abstract class VDFTextDocument<
 
 		this.base$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => VDFTextDocument.base(documentSymbols)),
-			distinctUntilChanged((a: string[], b: string[]) => a.length == b.length && a.every((str, i) => str == b[i])),
-			map((base) => base.map((value) => posix.resolve("/", this.configuration.relativeFolderPath ?? "", value).substring(1))),
+			distinctUntilChanged((previous, current) => previous.length == current.length && previous.every((detail, index) => detail == current[index])),
 			shareReplay(1)
 		)
 	}
