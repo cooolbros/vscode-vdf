@@ -31,12 +31,19 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			servers: new Set(["hudanimations"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
+				const paths: ({ type: "tf2" } | { type: "folder", uri: Uri })[] = []
 
-				const fileSystem = await this.fileSystems.get([
-					{ type: "folder", uri: hudRoot ?? init.uri.dirname() },
-					{ type: "tf2" },
+				const [workspaceUris, hudRoot] = await Promise.all([
+					this.workspaceUris,
+					this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 				])
+
+				if (hudRoot != null) {
+					paths.push({ type: "folder", uri: hudRoot })
+				}
+
+				paths.push({ type: "tf2" })
+				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
 
 				let workspace: Promise<VGUIWorkspace> | null
 
@@ -46,7 +53,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 					if (!w) {
 						w = Promise.resolve(new VGUIWorkspace({
 							uri: hudRoot,
-							fileSystem: fileSystem,
+							fileSystem: await this.fileSystems.get(paths),
 							documents: this.documents,
 							request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: hudRoot })
 						}))
@@ -62,7 +69,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 					init,
 					documentConfiguration$,
 					this.teamFortress2Folder$,
-					fileSystem,
+					await this.fileSystems.get(paths),
 					this.documents,
 					await workspace,
 				)

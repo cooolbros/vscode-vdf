@@ -26,12 +26,12 @@ export class VMTLanguageServer extends VDFLanguageServer<
 			servers: new Set(),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
+				const paths: ({ type: "tf2" } | { type: "folder", uri: Uri })[] = []
+
 				const [workspaceUris, hudRoot] = await Promise.all([
 					this.workspaceUris,
 					this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 				])
-
-				const paths: ({ type: "tf2" } | { type: "folder", uri: Uri })[] = []
 
 				if (hudRoot != null) {
 					paths.push({ type: "folder", uri: hudRoot })
