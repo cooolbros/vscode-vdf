@@ -6,8 +6,16 @@ export function usingAsync<T extends AsyncDisposable>(
 	return new Observable<T>((subscriber) => {
 		const resourcePromise = resourceFactory()
 		resourcePromise
-			.then((resource) => subscriber.next(resource))
-			.catch((error) => subscriber.error(error))
+			.then((resource) => {
+				if (!subscriber.closed) {
+					subscriber.next(resource)
+				}
+			})
+			.catch((error) => {
+				if (!subscriber.closed) {
+					subscriber.error(error)
+				}
+			})
 
 		return () => {
 			resourcePromise
