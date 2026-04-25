@@ -4,7 +4,7 @@ import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { combineLatest, of, switchMap } from "rxjs"
+import { of, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -74,11 +74,8 @@ export class VMTLanguageServer extends VDFLanguageServer<
 						return observableToAsyncIterable<Uri | null>(
 							usingAsync(async () => await this.documents.get(input.uri)).pipe(
 								switchMap((document) => {
-									return combineLatest({
-										documentSymbols: document.documentSymbols$,
-										dependencies: document.configuration.dependencies$
-									}).pipe(
-										switchMap(({ documentSymbols, dependencies }) => {
+									return document.documentSymbols$.pipe(
+										switchMap((documentSymbols) => {
 											const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
 											if (!header) {
 												return of(null)
