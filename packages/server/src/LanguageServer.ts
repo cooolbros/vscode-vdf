@@ -436,7 +436,7 @@ export abstract class LanguageServer<
 		}
 	}
 
-	private sendDiagnostics(document: TDocument, diagnostics: DiagnosticCodeAction[]) {
+	protected sendDiagnostics(document: TDocument, diagnostics: DiagnosticCodeAction[]) {
 
 		const result: Diagnostic[] = []
 		const map = new Map<number, DiagnosticCodeAction>()

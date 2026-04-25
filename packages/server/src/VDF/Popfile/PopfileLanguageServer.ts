@@ -1,6 +1,7 @@
 import { defer, firstValueFrom, shareReplay, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
+import type { DiagnosticCodeAction } from "../../TextDocumentBase"
 import { VDFLanguageServer } from "../VDFLanguageServer"
 import { PopfileTextDocument, type PopfileTextDocumentDependencies } from "./PopfileTextDocument"
 import { PopfileWorkspace } from "./PopfileWorkspace"
@@ -106,6 +107,11 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 		}
 
 		return stack.move()
+	}
+
+	protected sendDiagnostics(document: PopfileTextDocument, diagnostics: DiagnosticCodeAction[]) {
+		super.sendDiagnostics(document, diagnostics)
+		document.workspace.disposeClassIcons$.next()
 	}
 
 	protected async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {

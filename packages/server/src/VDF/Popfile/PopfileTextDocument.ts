@@ -56,6 +56,7 @@ const removeSoundChars = (value: string): { chars: string, value: string } => {
 }
 
 export interface PopfileTextDocumentDependencies extends VDFTextDocumentDependencies {
+	classIcons: Map<string, VDFRange[]>
 	bsp: `mvm_${string}.bsp` | null
 	events: Map<string, string>
 	game_sounds: Definitions
@@ -383,59 +384,14 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 
 		const validateDynamicAttributes = documentSymbols(dynamicAttributes)
 
-		const validateClassIcon = string((name, detail, detailRange, path, context) => {
-			return [
-				document.workspace.fileSystem.resolveFile(`materials/hud/leaderboard_class_${detail}.vmt`).pipe(
-					map((uri) => {
-						if (uri != null) {
-							return null
-						}
-
-						return {
-							range: detailRange,
-							severity: DiagnosticSeverity.Warning,
-							code: "missing-file",
-							source: "popfile",
-							message: `Cannot find class icon '${detail}'.`,
-						}
-					})
-				),
-				// https://github.com/cooolbros/vscode-vdf/issues/62
-				document.workspace.classIconFlags(detail).pipe(
-					map((vtf) => {
-						if (!vtf) {
-							return null
-						}
-
-						const noMip = (vtf.flags & 256) == 256
-						const noLod = (vtf.flags & 512) == 512
-
-						if (noMip && noLod) {
-							return null
-						}
-
-						return {
-							range: detailRange,
-							severity: DiagnosticSeverity.Warning,
-							code: "missing-vtf-flags",
-							source: "popfile",
-							message: `ClassIcon '${detail}' does not set VTF flag${!noMip && !noLod ? "s" : ""} ${!noMip ? `"No Mipmap"` : ""}${!noMip && !noLod ? " and " : ""}${!noLod ? `"No Level Of Detail"` : ""}.`,
-							data: {
-								fix: () => {
-									return {
-										title: `Set VTF flags: "No Mipmap" and "No Level Of Detail".`,
-										command: {
-											title: "",
-											command: "vscode-vdf.setVTFFlags",
-											arguments: [vtf.uri, 256 | 512]
-										}
-									}
-								},
-							}
-						} satisfies DiagnosticCodeAction
-					})
-				)
-			]
+		const validateClassIcon = string((name, detail, detailRange, documentSymbol, path, context) => {
+			let classIcons = context.dependencies.classIcons.get(detail)
+			if (!classIcons) {
+				classIcons = []
+				context.dependencies.classIcons.set(detail, classIcons)
+			}
+			classIcons.push(detailRange)
+			return []
 		})
 
 		const validateTemplateReference: RefineReference<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
@@ -1006,7 +962,66 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				[Symbol.for("wavespawn"), { keys: new Set(["WaitForAllSpawned".toLowerCase(), "WaitForAllDead".toLowerCase()]) }],
 				[Symbol.for("item"), { keys: new Set(["Item".toLowerCase()]) }],
 			]),
-			getDiagnostics: getDiagnostics,
+			getDiagnostics: (params) => {
+				params.dependencies.classIcons.clear()
+				const diagnostics = getDiagnostics(params)
+
+				for (const [classIcon, ranges] of params.dependencies.classIcons) {
+					diagnostics.push(
+						document.workspace.classIconFlags(classIcon).pipe(
+							map((vtf) => {
+								if (vtf == null) {
+									return {
+										severity: DiagnosticSeverity.Warning,
+										code: "missing-file",
+										source: "popfile",
+										message: `Cannot find class icon '${classIcon}'.`,
+									}
+								}
+
+								// https://github.com/cooolbros/vscode-vdf/issues/62
+								const noMip = (vtf.flags & 256) == 256
+								const noLod = (vtf.flags & 512) == 512
+
+								if (!noMip || !noLod) {
+									return {
+										severity: DiagnosticSeverity.Warning,
+										code: "missing-vtf-flags",
+										source: "popfile",
+										message: `ClassIcon '${classIcon}' does not set VTF flag${!noMip && !noLod ? "s" : ""} ${!noMip ? `"No Mipmap"` : ""}${!noMip && !noLod ? " and " : ""}${!noLod ? `"No Level Of Detail"` : ""}.`,
+										data: {
+											fix: () => {
+												return {
+													title: `Set VTF flags: "No Mipmap" and "No Level Of Detail".`,
+													command: {
+														title: "",
+														command: "vscode-vdf.setVTFFlags",
+														arguments: [vtf.uri, 256 | 512]
+													}
+												}
+											},
+										}
+									}
+								}
+
+								return null
+							}),
+							map((diagnostic) => {
+								if (!diagnostic) {
+									return null
+								}
+
+								return ranges.map((range) => ({
+									range: range,
+									...diagnostic
+								}))
+							})
+						)
+					)
+				}
+
+				return diagnostics
+			},
 			getLinks: ({ documentSymbols, definitionReferences, resolve }) => {
 				const links: DocumentLinkData[] = []
 
@@ -1244,6 +1259,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 							}
 						},
 						globals$: workspace.globals$,
+						classIcons: new Map(),
 						bsp: entities?.bsp ?? null,
 						events: entities?.events ?? new Map([["default", "Default"]]),
 						game_sounds: game_sounds.definitions,
