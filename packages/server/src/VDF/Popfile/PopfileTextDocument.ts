@@ -6,6 +6,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { combineLatest, defer, firstValueFrom, from, map, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
+import { quote } from "vdf-format"
 import { CompletionItem, CompletionItemKind, DiagnosticSeverity, InlayHint, InlayHintKind, InsertTextFormat, MarkupKind, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../../TextDocumentBase"
@@ -319,7 +320,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					start: { line: position.line, character: 0 },
 					end: { line: position.line, character: position.character }
 				})
-				const newText = `Item		${/\s/.test(detail) ? `"${detail}"` : detail}\n${before}`
+				const newText = `Item		${quote(detail) ? `"${detail}"` : detail}\n${before}`
 
 				return [{
 					range: detailRange,
