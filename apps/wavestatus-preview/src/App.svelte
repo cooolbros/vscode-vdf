@@ -52,7 +52,7 @@
 		return fromTRPCSubscription(trpc.font, { path }).pipe(
 			concatMap(async (buf) => {
 				if (buf) {
-					document.fonts.add(await new FontFace(name, buf).load())
+					document.fonts.add(new FontFace(name, buf))
 				}
 			}),
 		)
