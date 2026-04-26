@@ -272,7 +272,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					data: {
 						fix: ({ createDocumentWorkspaceEdit }) => {
 							return {
-								title: `Replace Squad with TFBot`,
+								title: "Replace Squad with TFBot",
 								edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.range, document.getText(documentSymbol.children![0]!.range)))
 							}
 						},
