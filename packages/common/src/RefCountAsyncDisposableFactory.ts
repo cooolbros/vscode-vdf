@@ -1,6 +1,6 @@
 export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable> {
 
-	private readonly map: Map<string, { count: { value: number }, value: Promise<TValue> }>
+	protected readonly map: Map<string, { count: { value: number }, value: Promise<TValue> }>
 
 	constructor(private readonly keyHash: (key: TKey) => string, private readonly factory: (key: TKey, factory: RefCountAsyncDisposableFactory<TKey, TValue>) => Promise<TValue>) {
 		this.map = new Map()

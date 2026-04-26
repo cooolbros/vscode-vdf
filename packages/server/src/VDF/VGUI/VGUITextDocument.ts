@@ -30,10 +30,11 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		teamFortress2Folder$: Observable<Uri>,
 		fileSystem: FileSystemMountPoint,
+		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
 		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
 		workspace: VGUIWorkspace | null,
 	) {
-		super(init, documentConfiguration$, fileSystem, documents, {
+		super(init, documentConfiguration$, fileSystem, createFileSystemWatcher, documents, {
 			relativeFolderPath: (() => {
 				if (workspace) {
 					return posix.dirname(workspace.relative(init.uri))

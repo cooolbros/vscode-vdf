@@ -1,3 +1,4 @@
+import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { defer, firstValueFrom, shareReplay, Subscription } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
@@ -47,6 +48,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 						{ type: "tf2" },
 						...workspaceUris.map((uri) => ({ type: <const>"folder", uri: uri })),
 					]),
+					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,
 					workspace
 				)

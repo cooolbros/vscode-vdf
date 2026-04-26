@@ -3,9 +3,10 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { BSP } from "bsp"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { concat, distinctUntilChanged, from, map, Observable, switchAll } from "rxjs"
+import { concat, concatMap, distinctUntilChanged, from, map, Observable, switchAll } from "rxjs"
 import vscode, { commands, languages, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
@@ -55,6 +56,21 @@ export function TRPCClientRouter(
 							return UTF8Decoder.decode(arr)
 						})()
 					}
+				}),
+			createFileSystemWatcher: t
+				.procedure
+				.input(URISchema)
+				.subscription(async ({ input, signal }) => {
+					const dirname = input.uri.dirname()
+					const basename = input.uri.basename()
+					return observableToAsyncIterable<"change" | "create" | "delete">(
+						usingAsync(async () => fileSystemWatcherFactory.get(dirname)).pipe(
+							concatMap(async (watcher) => await watcher.get(basename)),
+							switchAll(),
+							map((event) => event.type)
+						),
+						signal!,
+					)
 				})
 		}),
 		teamFortress2FileSystem: t
@@ -236,13 +252,17 @@ export function TRPCClientRouter(
 					.procedure
 					.input(URISchema)
 					.subscription(({ input, signal }) => {
+						const dirname = input.uri.dirname()
+						const basename = input.uri.basename()
+						const flags = async () => VTFDocument.flags(await workspace.fs.readFile(input.uri))
 						return observableToAsyncIterable<number>(
 							concat(
-								from(Promise.try(async () => VTFDocument.flags(await workspace.fs.readFile(input.uri)))),
-								from(fileSystemWatcherFactory.get(input.uri)).pipe(
+								from(Promise.try(flags)),
+								usingAsync(async () => fileSystemWatcherFactory.get(dirname)).pipe(
+									concatMap(async (watcher) => await watcher.get(basename)),
 									switchAll(),
-									map((buf) => VTFDocument.flags(buf))
-								),
+									concatMap(flags)
+								)
 							).pipe(
 								distinctUntilChanged(),
 							),

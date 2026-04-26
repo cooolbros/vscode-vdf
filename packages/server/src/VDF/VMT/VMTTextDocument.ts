@@ -195,10 +195,11 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
+		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
 		documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>,
 		workspace: VMTWorkspace | null,
 	) {
-		super(init, documentConfiguration$, fileSystem, documents, {
+		super(init, documentConfiguration$, fileSystem, createFileSystemWatcher, documents, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,

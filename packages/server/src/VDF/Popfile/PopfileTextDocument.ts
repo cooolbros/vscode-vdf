@@ -1222,10 +1222,11 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		init: TextDocumentInit,
 		documentConfiguration: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
+		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 		workspace: PopfileWorkspace
 	) {
-		super(init, documentConfiguration, fileSystem, documents, {
+		super(init, documentConfiguration, fileSystem, createFileSystemWatcher, documents, {
 			relativeFolderPath: "scripts/population",
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,

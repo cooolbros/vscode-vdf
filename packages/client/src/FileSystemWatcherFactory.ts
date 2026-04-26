@@ -1,38 +1,51 @@
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
-import type { Uri } from "common/Uri"
-import { concatMap, debounceTime, Observable, share } from "rxjs"
+import { Uri } from "common/Uri"
+import { Subject } from "rxjs"
 import vscode, { RelativePattern, workspace } from "vscode"
 
-export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri, Observable<Uint8Array> & { [Symbol.asyncDispose](): Promise<void> }> {
+export type EventType = "change" | "create" | "delete"
 
+class DisposableSubject<T> extends Subject<T> implements AsyncDisposable {
+	public async [Symbol.asyncDispose](): Promise<void> {
+	}
+}
+
+class VDFFileSystemWatcher extends RefCountAsyncDisposableFactory<string, DisposableSubject<{ type: EventType, basename: string }>> implements AsyncDisposable {
+	private readonly disposables: AsyncDisposableStack
+
+	constructor(base: Uri) {
+		const stack = new AsyncDisposableStack()
+
+		const pattern = new RelativePattern(vscode.Uri.parse(base.toString()), "*")
+		const watcher = stack.adopt(workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
+
+		const next = (type: EventType, uri: vscode.Uri) => {
+			const basename = base.relative(new Uri(uri))
+			this.map.get(basename)?.value.then((subject) => subject.next({ type, basename }))
+		}
+
+		stack.adopt(watcher.onDidChange((uri) => next("change", uri)), (disposable) => disposable.dispose())
+		stack.adopt(watcher.onDidCreate((uri) => next("create", uri)), (disposable) => disposable.dispose())
+		stack.adopt(watcher.onDidDelete((uri) => next("delete", uri)), (disposable) => disposable.dispose())
+
+		super(
+			(basename) => basename,
+			async (basename, factory) => new DisposableSubject()
+		)
+
+		this.disposables = stack.move()
+	}
+
+	public async [Symbol.asyncDispose](): Promise<void> {
+		return await this.disposables.disposeAsync()
+	}
+}
+
+export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri, VDFFileSystemWatcher> {
 	constructor() {
 		super(
 			(uri) => uri.toString(),
-			async (uri) => {
-				const segments = uri.toString().split("/")
-				const basename = segments.pop()!
-
-				const observable = new Observable<void>((subscriber) => {
-					const watcher = workspace.createFileSystemWatcher(new RelativePattern(vscode.Uri.parse(segments.join("/")), basename), true, false, true)
-					watcher.onDidChange(() => subscriber.next())
-					return () => watcher.dispose()
-				}).pipe(
-					debounceTime(100),
-					concatMap(async () => await workspace.fs.readFile(uri)),
-					share()
-				)
-
-				return new Proxy<Observable<Uint8Array> & { [Symbol.asyncDispose](): Promise<void> }>(observable as any, {
-					get: (target, p, receiver) => {
-						if (p != Symbol.asyncDispose) {
-							return Reflect.get(target, p, receiver)
-						}
-						else {
-							return async () => { }
-						}
-					}
-				})
-			}
+			async (uri) => new VDFFileSystemWatcher(uri)
 		)
 	}
 }

@@ -5,7 +5,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, combineLatest, concat, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, shareReplay, switchMap } from "rxjs"
+import { catchError, combineLatest, concat, distinctUntilChanged, filter, finalize, firstValueFrom, map, NEVER, Observable, of, shareReplay, startWith, switchMap } from "rxjs"
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -502,6 +502,7 @@ export abstract class VDFTextDocument<
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
+		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
 		documents: RefCountAsyncDisposableFactory<Uri, TDocument>,
 		configuration: VDFTextDocumentConfiguration<TDependencies>,
 	) {
@@ -629,47 +630,58 @@ export abstract class VDFTextDocument<
 												)
 											}
 
-											return usingAsync(async () => await documents.get(uri)).pipe(
-												switchMap((document) => {
-													return document.base$.pipe(
-														map((base) => ({ base: base, value: undefined })),
-														combineLatestBaseFiles({
-															stack: [...stack, { path: document.uri.fsPath, uri: document.uri }],
-															open: ambient(document.uri),
-														}),
-														switchMap(({ base: results }) => {
-															if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-																return document.definitionReferences$.pipe(
-																	map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
-																)
-															}
+											return createFileSystemWatcher(uri).pipe(
+												filter((type) => type != "change"),
+												startWith(<const>"create"),
+												switchMap((type) => {
+													switch (type) {
+														case "create":
+															return usingAsync(async () => await documents.get(uri)).pipe(
+																switchMap((document) => {
+																	return document.base$.pipe(
+																		map((base) => ({ base: base, value: undefined })),
+																		combineLatestBaseFiles({
+																			stack: [...stack, { path: document.uri.fsPath, uri: document.uri }],
+																			open: ambient(document.uri),
+																		}),
+																		switchMap(({ base: results }) => {
+																			if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+																				return document.definitionReferences$.pipe(
+																					map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
+																				)
+																			}
 
-															return of<BaseResult<DefinitionReferences>>({
-																type: <const>BaseResultType.Error,
-																self: self,
-																errors: results
-																	.values()
-																	.map((result) => {
-																		switch (result.type) {
-																			case BaseResultType.None:
-																			case BaseResultType.Success:
-																				return null
-																			case BaseResultType.Error:
-																				return {
-																					type: <const>BaseErrorType.Base,
-																					path: result.self,
-																					errors: result.errors
-																				}
-																		}
-																	})
-																	.filter((error) => error != null)
-																	.toArray()
-															})
-														}),
-													)
-												}),
-												catchError(() => {
-													return concat(of({ type: <const>BaseResultType.None }), NEVER)
+																			return of<BaseResult<DefinitionReferences>>({
+																				type: <const>BaseResultType.Error,
+																				self: self,
+																				errors: results
+																					.values()
+																					.map((result) => {
+																						switch (result.type) {
+																							case BaseResultType.None:
+																							case BaseResultType.Success:
+																								return null
+																							case BaseResultType.Error:
+																								return {
+																									type: <const>BaseErrorType.Base,
+																									path: result.self,
+																									errors: result.errors
+																								}
+																						}
+																					})
+																					.filter((error) => error != null)
+																					.toArray()
+																			})
+																		}),
+																	)
+																}),
+																catchError(() => {
+																	return concat(of({ type: <const>BaseResultType.None }), NEVER)
+																})
+															)
+														case "delete":
+															return concat(of({ type: <const>BaseResultType.None }), NEVER)
+													}
 												})
 											)
 										}

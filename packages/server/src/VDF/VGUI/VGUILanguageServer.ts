@@ -70,6 +70,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 					documentConfiguration$,
 					this.teamFortress2Folder$,
 					await this.fileSystems.get(paths),
+					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,
 					await workspace,
 				)
