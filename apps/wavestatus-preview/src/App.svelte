@@ -50,7 +50,7 @@
 
 	const font = (path: string, name: string) => {
 		return fromTRPCSubscription(trpc.font, { path }).pipe(
-			concatMap(async (buf) => {
+			map((buf) => {
 				if (buf) {
 					document.fonts.add(new FontFace(name, buf))
 				}
