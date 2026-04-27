@@ -82,8 +82,7 @@
     "fixedrespawnwavetime": {
         "kind": 12,
         "values": [
-            "Yes",
-            "No"
+            "Yes"
         ]
     },
     "objective": {

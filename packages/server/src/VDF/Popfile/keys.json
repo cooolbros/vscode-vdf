@@ -339,6 +339,10 @@
                 "kind": 5
             },
             {
+                "label": "FixedRespawnWaveTime",
+                "kind": 5
+            },
+            {
                 "label": "IsEndless",
                 "kind": 5
             },
