@@ -248,7 +248,8 @@
             },
             {
                 "label": "Tag",
-                "kind": 5
+                "kind": 5,
+                "multiple": true
             },
             {
                 "label": "TeleportWhere",
