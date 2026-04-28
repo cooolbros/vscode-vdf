@@ -39,9 +39,8 @@
     "behaviormodifiers": {
         "kind": 13,
         "values": [
-            "Idle",
-            "Push",
-            "Mobber"
+            "Mobber",
+            "Push"
         ]
     },
     "canbotsattackwhileinspawnroom": {
