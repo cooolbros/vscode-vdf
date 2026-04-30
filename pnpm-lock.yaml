@@ -283,6 +283,9 @@ importers:
       vdf-documentsymbols:
         specifier: workspace:*
         version: link:../vdf-documentsymbols
+      vdf-format:
+        specifier: workspace:*
+        version: link:../vdf-format
       vscode-languageclient:
         specifier: 'catalog:'
         version: 9.0.1
