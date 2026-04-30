@@ -1,13 +1,21 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { BaseResultType, combineLatestBaseFiles, fs, type Stack } from "common/operators/combineLatestBaseFiles"
+import { usingAsync } from "common/operators/usingAsync"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import { Uri } from "common/Uri"
-import { posix } from "path"
-import { firstValueFrom } from "rxjs"
-import { VDFRange, VDFSyntaxError } from "vdf"
-import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
+import { combineLatest, concat, defer, distinctUntilChanged, filter, from, map, Observable, shareReplay, switchAll, withLatestFrom } from "rxjs"
+import { VDFSyntaxError, type RangeLike } from "vdf"
+import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import * as vscode from "vscode"
+import { quote } from "vdf-format"
+import { commands, workspace, type TextDocumentChangeEvent } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
+import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
+import { VSCodeDocumentGetTextSchema } from "./VSCodeSchemas"
+
+export interface VSCodeDocumentLike {
+	getText(range?: RangeLike): string
+}
 
 export class UriSyntaxError extends Error {
 	public readonly cause: VDFSyntaxError
@@ -17,286 +25,419 @@ export class UriSyntaxError extends Error {
 	}
 }
 
-/**
- * @class
- */
-export class Popfile {
+export interface TemplateBuilder {
+	name: string
+	uri: Uri
+	documentSymbols: VDFDocumentSymbol[]
+}
 
-	private static readonly decoder = new TextDecoder("utf-8")
-	public static readonly robot = ["robot_standard.pop", "robot_giant.pop", "robot_gatebot.pop"].map((name) => `scripts/population/${name}`)
+const multiple = new Set([
+	"Attributes",
+	"Item",
+	"ItemAttributes", // distinct by ItemName
+	"Tag",
+	"TeleportWhere",
+])
 
-	public readonly base: { value: string, range: VDFRange }[]
-	public readonly waveSchedule: VDFDocumentSymbols
-	public readonly waveScheduleRange: VDFRange
-	public readonly templatesBlock?: VDFDocumentSymbol
+const ArrayLowKeyIncludes = (array: VDFDocumentSymbol[], key: string) => {
+	return array.some((documentSymbol) => documentSymbol.key.toLowerCase() == key)
+}
 
-	constructor(public readonly uri: Uri, public readonly document: vscode.TextDocument, private readonly fileSystem: FileSystemMountPoint) {
-		const { base, waveSchedule, waveScheduleRange } = this.load(uri, document.getText())
+const TFBotMerge = (array: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbol[]) => {
+	array.push(...documentSymbols.filter((documentSymbol) => {
+		const key = documentSymbol.key.toLowerCase()
+		return multiple.has(key) || !ArrayLowKeyIncludes(array, key)
+	}))
+}
 
-		this.base = base
-		this.waveSchedule = waveSchedule
-		this.waveScheduleRange = waveScheduleRange
+const BaseMerge = (array: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbol[]) => {
+	array.push(...documentSymbols.filter((documentSymbol) => !ArrayLowKeyIncludes(array, documentSymbol.key.toLowerCase())))
+}
 
-		const templatesBlock = waveSchedule.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Templates".toLowerCase())
-		if (templatesBlock?.detail) {
-			throw new Error(`Templates ${templatesBlock.detail}`)
-		}
+export abstract class PopfileBase implements AsyncDisposable {
 
-		this.templatesBlock = templatesBlock
-	}
+	public static readonly robot = new Set([
+		"scripts/population/robot_standard.pop",
+		"scripts/population/robot_giant.pop",
+		"scripts/population/robot_gatebot.pop",
+	])
 
-	private async read(path: string) {
-		const uri = await firstValueFrom(this.fileSystem.resolveFile(path))
-		if (!uri) {
-			throw new Error(path)
-		}
+	public readonly uri: Uri
+	public readonly document$: Observable<VSCodeDocumentLike>
+	private readonly fileSystem: FileSystemMountPoint
+	private readonly fileSystemWatcherFactory: FileSystemWatcherFactory
+	private readonly onDidChangeTextDocument$: Observable<TextDocumentChangeEvent>
 
-		const text = Popfile.decoder.decode(await vscode.workspace.fs.readFile(uri))
-		return this.load(uri, text)
-	}
+	public readonly documentSymbols$: Observable<VDFDocumentSymbols>
+	public readonly base$: Observable<string[]>
+	public readonly waveSchedule$: Observable<{ documentSymbol: VDFDocumentSymbol, waveSchedule: Map<string, VDFDocumentSymbol[]> }>
+	public readonly startingCurrency$: Observable<number>
+	public readonly eventPopfile$: Observable<"Halloween" | null>
 
-	private load(uri: Uri, text: string) {
-		const document = TextDocument.create(uri.toString(), "popfile", 1, text)
+	public readonly templatesBlocks$: Observable<VDFDocumentSymbol[]>
+	public readonly templates$: Observable<Map<string, Template>>
+	public readonly missions$: Observable<VDFDocumentSymbol[]>
+	public readonly waves$: Observable<VDFDocumentSymbol[]>
 
-		try {
-			const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) })
-			const base = documentSymbols
-				.values()
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base")
-				.filter((documentSymbol) => documentSymbol.detail != undefined)
-				.map((documentSymbol) => ({ value: documentSymbol.detail!, range: documentSymbol.range }))
-				.toArray()
+	public readonly referencedTemplates$: Observable<Set<string>>
+	public readonly classIcons$: Observable<string[]>
 
-			const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
-			if (!waveSchedule?.children) {
-				throw new Error("WaveSchedule")
-			}
+	constructor(uri: Uri, document$: Observable<VSCodeDocumentLike>, fileSystem: FileSystemMountPoint, fileSystemWatcherFactory: FileSystemWatcherFactory, onDidChangeTextDocument$: Observable<TextDocumentChangeEvent>) {
 
-			return {
-				document,
-				base,
-				waveSchedule: waveSchedule.children!,
-				waveScheduleRange: waveSchedule.childrenRange!
-			}
-		}
-		catch (error) {
-			if (error instanceof VDFSyntaxError) {
-				throw new UriSyntaxError(uri, error)
-			}
-			throw error
-		}
-	}
+		this.uri = uri
+		this.document$ = document$.pipe(shareReplay(1))
+		this.fileSystem = fileSystem
+		this.fileSystemWatcherFactory = fileSystemWatcherFactory
+		this.onDidChangeTextDocument$ = onDidChangeTextDocument$
 
-	public async templates() {
-		const templatesBlock = this.waveSchedule.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Templates".toLowerCase())
-		const templates = new Map(templatesBlock?.children?.map((documentSymbol) => [documentSymbol.key.toLowerCase(), new Template(documentSymbol.key, documentSymbol)]))
+		this.documentSymbols$ = this.document$.pipe(
+			map((document, index) => {
+				try {
+					return getVDFDocumentSymbols(document.getText(), { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) })
+				}
+				catch (error) {
+					if (error instanceof UriSyntaxError) {
+						if (index == 0) {
+							Promise.allSettled([Promise.try(async () => {
+								await commands.executeCommand("vscode.open", error.uri)
+								await Promise.all([
+									commands.executeCommand("revealLine", { lineNumber: error.cause.range.start.line, at: "top" }),
+									commands.executeCommand("workbench.action.problems.focus")
+								])
+							})])
+						}
 
-		// Merge templates in file with #base templates
-		const mergeBaseTemplates = async (path: string) => {
-			const { base, waveSchedule } = await this.read(path)
-
-			const templatesDocumentSymbols = waveSchedule
-				.values()
-				.filter(({ key }) => key.toLowerCase() == "Templates".toLowerCase())
-				.map((documentSymbol) => documentSymbol.children)
-				.filter(children => children != undefined)
-				.flatMap((children) => children)
-
-			for (const template of templatesDocumentSymbols) {
-				if (template.children != undefined && template.children.length > 0) {
-					const key = template.key.toLowerCase()
-					if (!templates.has(key)) {
-						templates.set(key, new Template(template.key))
+						return null
 					}
-					templates.get(key)!.add(template.children)
-				}
-			}
-
-			for (const baseFile of base) {
-				const basePath = posix.resolve(`/${posix.dirname(path)}/${baseFile.value}`).substring(1)
-				await mergeBaseTemplates(basePath)
-			}
-		}
-
-		for (const baseFile of this.base) {
-			const basePath = posix.resolve(`/scripts/population/${baseFile.value}`).substring(1)
-			await mergeBaseTemplates(basePath)
-		}
-
-		for (const template of templates.values()) {
-			template.resolve(templates)
-		}
-
-		return templates
-	}
-
-	private waveSpawns() {
-		return [
-			// https://github.com/cooolbros/vscode-vdf/issues/43
-			...this.waveSchedule
-				.values()
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Mission".toLowerCase())
-				.map((documentSymbol) => documentSymbol.children)
-				.filter((children) => children != undefined),
-			...this.waveSchedule
-				.values()
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase())
-				.flatMap((documentSymbol) => documentSymbol.children ?? [])
-				.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase())
-				.map((documentSymbol) => documentSymbol.children)
-				.filter((children) => children != undefined)
-		]
-	}
-
-	public referencedTemplates() {
-
-		const collect = (squad: VDFDocumentSymbols): string[] => squad.flatMap((documentSymbol) => {
-			switch (documentSymbol.key.toLowerCase()) {
-				case "TFBot".toLowerCase(): {
-					const template = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
-					return template ? [template] : []
-				}
-				case "Squad".toLowerCase():
-				case "RandomChoice".toLowerCase(): {
-					return documentSymbol.children != undefined
-						? collect(documentSymbol.children)
-						: []
-				}
-				default:
-					return []
-			}
-		})
-
-		const waveSpawns = this.waveSpawns()
-
-		return new Set(
-			waveSpawns
-				.flatMap((documentSymbols) => {
-					const spawner = documentSymbols.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
-					if (!spawner) {
-						return []
+					else {
+						console.error(error)
+						return null
 					}
+				}
+			}),
+			filter((value) => value != null),
+			shareReplay({ bufferSize: 1, refCount: true }),
+		)
 
-					switch (spawner.key.toLowerCase()) {
+		this.base$ = this.documentSymbols$.pipe(
+			map((documentSymbols) => {
+				return documentSymbols
+					.values()
+					.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
+					.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
+					.toArray()
+			}),
+			distinctUntilChanged((previous, current) => previous.length == current.length && previous.every((detail, index) => detail == current[index])),
+			shareReplay(1)
+		)
+
+		this.waveSchedule$ = this.documentSymbols$.pipe(
+			map((documentSymbols) => {
+				const documentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
+				if (!documentSymbol?.children) {
+					throw new Error("WaveSchedule")
+				}
+
+				return {
+					documentSymbol: documentSymbol,
+					waveSchedule: Map.groupBy(documentSymbol.children, (documentSymbol) => documentSymbol.key.toLowerCase())
+				}
+			}),
+			shareReplay(1)
+		)
+
+		this.startingCurrency$ = this.waveSchedule$.pipe(
+			map(({ waveSchedule }) => parseInt(waveSchedule.get("StartingCurrency".toLowerCase())?.at(-1)?.detail ?? "") || 0),
+			distinctUntilChanged(),
+		)
+
+		this.eventPopfile$ = this.waveSchedule$.pipe(
+			map(({ waveSchedule }) => waveSchedule.get("EventPopfile".toLowerCase())?.at(-1)?.detail?.toLowerCase() == "Halloween".toLowerCase() ? <const>"Halloween" : null),
+			distinctUntilChanged(),
+		)
+
+		const blocks = (key: string) => this.waveSchedule$.pipe(
+			map(({ waveSchedule }) => waveSchedule.get(key) ?? []),
+			withLatestFrom(this.document$),
+			map(([blocks, document]) => {
+				return {
+					value: blocks,
+					text: blocks.map((block) => document.getText(block.range))
+				}
+			}),
+			distinctUntilChanged((previous, current) => previous.value.length == current.value.length && previous.text.every((text, index) => text == current.text[index])),
+			map((value) => value.value)
+		)
+
+		this.templatesBlocks$ = blocks("Templates".toLowerCase())
+		this.missions$ = blocks("Mission".toLowerCase())
+		this.waves$ = blocks("Wave".toLowerCase())
+
+		this.templates$ = defer(() => this.getTemplates([])).pipe(
+			map((value) => new Map(value.entries().map(([key, builder]) => [key, new Template(builder, value)])))
+		)
+
+		const spawns$ = combineLatest({ missions: this.missions$, waves: this.waves$ }).pipe(
+			map(({ missions, waves }) => {
+				return [
+					// https://github.com/cooolbros/vscode-vdf/issues/43
+					...missions
+						.values()
+						.map((documentSymbol) => documentSymbol.children)
+						.filter((children) => children != undefined),
+					...waves
+						.values()
+						.flatMap((documentSymbol) => documentSymbol.children ?? [])
+						.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase())
+						.map((documentSymbol) => documentSymbol.children)
+						.filter((children) => children != undefined)
+				]
+			}),
+			shareReplay({ bufferSize: 1, refCount: true })
+		)
+
+		this.referencedTemplates$ = spawns$.pipe(
+			map((spawns) => {
+				const collect = (squad: VDFDocumentSymbols): string[] => squad.flatMap((documentSymbol) => {
+					switch (documentSymbol.key.toLowerCase()) {
 						case "TFBot".toLowerCase(): {
-							const template = spawner.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+							const template = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
 							return template ? [template] : []
 						}
 						case "Squad".toLowerCase():
 						case "RandomChoice".toLowerCase(): {
-							return spawner.children != undefined
-								? collect(spawner.children)
+							return documentSymbol.children != undefined
+								? collect(documentSymbol.children)
 								: []
 						}
 						default:
 							return []
 					}
 				})
+
+				return new Set(
+					spawns.flatMap((documentSymbols) => {
+						const spawner = documentSymbols.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+						if (!spawner) {
+							return []
+						}
+
+						switch (spawner.key.toLowerCase()) {
+							case "TFBot".toLowerCase(): {
+								const template = spawner.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+								return template ? [template] : []
+							}
+							case "Squad".toLowerCase():
+							case "RandomChoice".toLowerCase(): {
+								return spawner.children != undefined
+									? collect(spawner.children)
+									: []
+							}
+							default:
+								return []
+						}
+					})
+				)
+			})
+		)
+
+		this.classIcons$ = combineLatest({ templates: this.templates$, spawns: spawns$ }).pipe(
+			map(({ templates, spawns }) => {
+				const collect = (squad: VDFDocumentSymbols): string[] => {
+					return squad.flatMap((documentSymbol) => {
+						switch (documentSymbol.key.toLowerCase()) {
+							case "TFBot".toLowerCase(): {
+								const classIcon = documentSymbol.children?.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+								if (classIcon) {
+									return [classIcon]
+								}
+
+								const templateReference = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+								if (templateReference) {
+									const template = templates.get(templateReference)
+									if (template) {
+										const classIcon = template.documentSymbols.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+										if (classIcon) {
+											return [classIcon]
+										}
+									}
+								}
+
+								return []
+							}
+							case "Squad".toLowerCase():
+							case "RandomChoice".toLowerCase(): {
+								return documentSymbol.children != undefined
+									? collect(documentSymbol.children)
+									: []
+							}
+							default:
+								return []
+						}
+					})
+				}
+
+				return new Set(
+					spawns
+						.flatMap((documentSymbols) => {
+							const spawner = documentSymbols.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+							if (!spawner) {
+								return []
+							}
+
+							switch (spawner.key.toLowerCase()) {
+								case "TFBot".toLowerCase(): {
+									const classIcon = spawner.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+									return classIcon ? [classIcon] : []
+								}
+								case "Squad".toLowerCase():
+								case "RandomChoice".toLowerCase(): {
+									return spawner.children != undefined
+										? collect(spawner.children)
+										: []
+								}
+								default:
+									return []
+							}
+						})
+				)
+			}),
+			map((set) => {
+				return [...set].toSorted()
+			})
 		)
 	}
 
-	public async classIcons() {
+	protected getTemplates(stack: Stack): Observable<Map<string, TemplateBuilder>> {
+		return combineLatest({ base: this.base$, value: this.templatesBlocks$ }).pipe(
+			combineLatestBaseFiles({
+				stack: stack,
+				open: fs({
+					current: this.uri,
+					documentSelector: async (uri) => new BasePopfile(
+						uri,
+						concat(
+							from(workspace.fs.readFile(uri)).pipe(
+								map((buf) => new TextDecoder("utf-8").decode(buf)),
+								map((text) => {
+									const document = TextDocument.create(uri.toString(), "popfile", 1, text)
+									return { getText: (range?: RangeLike) => document.getText(range) }
+								})
+							),
+							this.onDidChangeTextDocument$.pipe(
+								filter((event) => Uri.equals(new Uri(event.document.uri), uri)),
+								map((event) => {
+									return { getText: (range?: RangeLike) => event.document.getText(VSCodeDocumentGetTextSchema.parse(range)) }
+								})
+							)
+						),
+						this.fileSystem,
+						this.fileSystemWatcherFactory,
+						this.onDidChangeTextDocument$,
+					),
+					observableSelector: (popfile) => popfile.getTemplates([...stack, { path: `scripts/population/${this.uri.basename()}`, uri: this.uri }]),
+					fileSystem: this.fileSystem,
+					createFileSystemWatcher: (uri) => usingAsync(async () => this.fileSystemWatcherFactory.get(uri)).pipe(switchAll()),
+					relativeFolderPath: "scripts/population",
+				}),
 
-		const templates = await this.templates()
-		const waveSpawns = this.waveSpawns()
+			}),
+			map(({ base: results, value }) => {
+				const map = this.getTemplatesMap(value)
 
-		const collect = (squad: VDFDocumentSymbols): string[] => squad.flatMap((documentSymbol) => {
-			switch (documentSymbol.key.toLowerCase()) {
-				case "TFBot".toLowerCase(): {
-					const classIcon = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
-					if (classIcon) {
-						return [classIcon]
-					}
-
-					const template = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
-					if (template) {
-						const value = templates.get(template)
-						if (value) {
-							const classIcon = value.documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
-							if (classIcon) {
-								return [classIcon]
-							}
+				for (const baseMap of results.values().filter((result) => result.type == BaseResultType.Success)) {
+					for (const [key, base] of baseMap.value) {
+						let builder = map.get(key)
+						if (!builder) {
+							builder = { name: base.name, uri: base.uri, documentSymbols: [] }
+							map.set(key, builder)
 						}
-					}
 
-					return []
+						BaseMerge(builder.documentSymbols, base.documentSymbols)
+					}
 				}
-				case "Squad".toLowerCase():
-				case "RandomChoice".toLowerCase(): {
-					return documentSymbol.children != undefined
-						? collect(documentSymbol.children)
-						: []
-				}
-				default:
-					return []
-			}
-		})
 
-		return new Set(
-			waveSpawns
-				.flatMap((documentSymbols) => {
-					const spawner = documentSymbols.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
-					if (!spawner) {
-						return []
-					}
-
-					switch (spawner.key.toLowerCase()) {
-						case "TFBot".toLowerCase(): {
-							const classIcon = spawner.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
-							return classIcon ? [classIcon] : []
-						}
-						case "Squad".toLowerCase():
-						case "RandomChoice".toLowerCase(): {
-							return spawner.children != undefined
-								? collect(spawner.children)
-								: []
-						}
-						default:
-							return []
-					}
-				})
+				return map
+			})
 		)
+	}
+
+	protected abstract getTemplatesMap(templatesBlocks: VDFDocumentSymbol[]): Map<string, TemplateBuilder>
+
+	public async [Symbol.asyncDispose](): Promise<void> {
+	}
+}
+
+export class MissionPopfile extends PopfileBase {
+	protected getTemplatesMap(templatesBlocks: VDFDocumentSymbol[]): Map<string, TemplateBuilder> {
+		const map = new Map<string, TemplateBuilder>()
+
+		const templatesBlock = templatesBlocks[0]
+		if (templatesBlock != undefined) {
+			const seen = new Set<string>()
+			for (const template of templatesBlock?.children ?? []) {
+				const key = template.key.toLowerCase()
+				if (seen.has(key)) {
+					continue
+				}
+				seen.add(key)
+
+				if (template.children != undefined && template.children.length > 0) {
+					map.set(key, { name: template.key, uri: this.uri, documentSymbols: [...template.children] })
+				}
+			}
+		}
+
+		return map
+	}
+}
+
+export class BasePopfile extends PopfileBase {
+	protected getTemplatesMap(templatesBlocks: VDFDocumentSymbol[]): Map<string, TemplateBuilder> {
+		const map = new Map<string, TemplateBuilder>()
+
+		for (const templatesBlock of templatesBlocks) {
+			const seen = new Set<string>()
+			for (const template of templatesBlock?.children ?? []) {
+				const key = template.key.toLowerCase()
+				if (seen.has(key)) {
+					continue
+				}
+				seen.add(key)
+
+				if (template.children != undefined && template.children.length > 0) {
+					let builder = map.get(key)
+					if (!builder) {
+						builder = { name: template.key, uri: this.uri, documentSymbols: [] }
+						map.set(key, builder)
+					}
+
+					BaseMerge(builder.documentSymbols, template.children)
+				}
+			}
+		}
+
+		return map
 	}
 }
 
 export class Template {
 
 	public readonly name: string
-	public readonly range?: VDFRange
+	public readonly uri: Uri
 	public readonly documentSymbols: VDFDocumentSymbol[]
-	public readonly keys: Set<string>
 
-	constructor(name: string, documentSymbol?: VDFDocumentSymbol) {
-		this.name = name
-		this.range = documentSymbol?.range
+	constructor(builder: TemplateBuilder, templates: Map<string, TemplateBuilder>) {
+		this.name = builder.name
+		this.uri = builder.uri
 
-		this.documentSymbols = []
-		if (documentSymbol) {
-			if (!documentSymbol.children) {
-				throw new Error(name)
-			}
-			this.documentSymbols.push(...documentSymbol.children)
-		}
+		const documentSymbols = [...builder.documentSymbols]
 
-		this.keys = new Set(documentSymbol?.children?.map(({ key }) => key.toLowerCase()))
-	}
-
-	public add(documentSymbols: VDFDocumentSymbol[]) {
-		const keyValues = documentSymbols.filter((documentSymbol) => !this.keys.has(documentSymbol.key.toLowerCase()))
-		this.documentSymbols.push(...keyValues)
-		for (const { key } of keyValues) {
-			this.keys.add(key.toLowerCase())
-		}
-	}
-
-	public resolve(templates: Map<string, Template>) {
-		const seen = new Set([this.name])
-
-		const add = (documentSymbols: VDFDocumentSymbol[]) => {
-
-			const referencedTemplate = documentSymbols.find(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail
+		const seen = new Set([this.name.toLowerCase()])
+		const collectTemplateKeys = (documentSymbols: VDFDocumentSymbol[]): VDFDocumentSymbol[] => {
+			const referencedTemplate = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail
 			if (!referencedTemplate) {
-				return
+				return []
 			}
 
 			const key = referencedTemplate.toLowerCase()
@@ -307,23 +448,21 @@ export class Template {
 
 			const template = templates.get(key)
 			if (!template) {
-				return
+				return []
 			}
 
-			this.add(template.documentSymbols)
+			const result: VDFDocumentSymbol[] = []
+			TFBotMerge(result, template.documentSymbols)
+			TFBotMerge(result, collectTemplateKeys(template.documentSymbols))
+			return result
 		}
 
-		add(this.documentSymbols)
-
-		for (const documentSymbol of this.documentSymbols) {
-			if (documentSymbol.key == "Template".toLowerCase()) {
-				this.documentSymbols.splice(this.documentSymbols.indexOf(documentSymbol), 1)
-			}
-		}
+		documentSymbols.push(...collectTemplateKeys(documentSymbols))
+		this.documentSymbols = documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() != "Template".toLowerCase())
 	}
 
 	public toString(eol: string) {
-		const print = (s: string) => /\s/.test(s) ? `"${s}"` : s
+		const print = (s: string) => quote(s) ? `"${s}"` : s
 		const toString = (documentSymbols: VDFDocumentSymbol[], i: number): string => {
 			return documentSymbols.map((documentSymbol) => `${"\t".repeat(i)}${print(documentSymbol.key)}${documentSymbol.detail ? `\t${print(documentSymbol.detail)}` : `${eol}${"\t".repeat(i)}{${eol}${toString(documentSymbol.children!, i + 1)}${eol}${"\t".repeat(i)}}`}`).join(eol)
 		}

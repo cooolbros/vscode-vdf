@@ -2,105 +2,125 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { commands, EndOfLine, Position, Range, window, workspace, WorkspaceEdit, type TextEditor } from "vscode"
-import { Popfile, UriSyntaxError } from "../Popfile"
+import { combineLatest, EMPTY, firstValueFrom, map, of } from "rxjs"
+import type { RangeLike } from "vdf"
+import { commands, EndOfLine, Position, window, workspace, WorkspaceEdit, type TextEditor } from "vscode"
+import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
+import { MissionPopfile, PopfileBase, UriSyntaxError } from "../Popfile"
+import { VSCodeDocumentGetTextSchema, VSCodePositionSchema, VSCodeRangeSchema } from "../VSCodeSchemas"
 
-export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>) {
+export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document }: TextEditor) => {
 		try {
 			await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
+			const popfile = new MissionPopfile(
+				new Uri(document.uri),
+				of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
+				fileSystem,
+				fileSystemWatcherFactory,
+				EMPTY
+			)
 
-			const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
-			if (!popfile.base.length) {
+			const { robotTemplates, popfile: { documentSymbols, base, waveSchedule, templates, referencedTemplates } } = await firstValueFrom(combineLatest({
+				robotTemplates: combineLatest(PopfileBase.robot.values().map((path) => fileSystem.resolveFile(path)).toArray()).pipe(
+					map((uris) => new Set(uris.values().filter((uri) => uri != null).map((uri) => uri.toString()).toArray()))
+				),
+				popfile: combineLatest({
+					documentSymbols: popfile.documentSymbols$,
+					base: popfile.base$,
+					waveSchedule: popfile.waveSchedule$,
+					templates: popfile.templates$,
+					referencedTemplates: popfile.referencedTemplates$,
+				})
+			}))
+
+			if (!base.length) {
 				window.showWarningMessage("#base")
 				return
 			}
-			if (!popfile.waveSchedule) {
-				window.showWarningMessage("WaveSchedule")
-				return
-			}
 
-			const templates = await popfile.templates()
-			const templatesInFile = new Set(templates.entries().filter(([key, template]) => template.range != undefined).map(([key, template]) => key))
-			const referencedTemplates = popfile.referencedTemplates()
+			const templatesBlocks = waveSchedule.waveSchedule.get("Templates".toLowerCase()) ?? []
+			const templatesBlock = templatesBlocks.at(0)
+			const templatesInFile = new Map(templatesBlock?.children?.map((documentSymbol) => [documentSymbol.key.toLowerCase(), documentSymbol]))
 
 			const edit = new WorkspaceEdit()
 			const eol = document.eol == EndOfLine.CRLF ? "\r\n" : "\n"
 
 			// Append KeyValues to existing referenced Templates
-			for (const key of templatesInFile) {
+			for (const [key, documentSymbol] of templatesInFile) {
 				const template = templates.get(key)!
-				const range = template.range!
-				edit.replace(
-					document.uri,
-					new Range(new Position(range.start.line, range.start.character), new Position(range.end.line, range.end.character)),
-					template.toString(eol).split(eol).map((line, index) => `${index != 0 ? "\t".repeat(2) : ""}${line}`).join(eol)
-				)
+				if (documentSymbol.children != undefined && template.documentSymbols.length > documentSymbol.children.length) {
+					edit.replace(
+						document.uri,
+						VSCodeRangeSchema.parse(documentSymbol.range),
+						template.toString(eol).split(eol).map((line, index) => `${index != 0 ? "\t".repeat(2) : ""}${line}`).join(eol)
+					)
+				}
 			}
 
-			let text = new Set(templates.keys())
+			const templatesToAdd = new Set(templates.keys())
 				.difference(templatesInFile)
 				.intersection(referencedTemplates)
-				.keys()
-				.map((key) => templates.get(key)!.toString(eol))
-				.reduce((a, b, index) => `${a}${index != 0 ? eol.repeat(2) : ""}${b}`, "")
-				.split(eol).map((line) => `${line != "" ? "\t".repeat(2) : ""}${line}`).join(eol)
+				.values()
+				.map((key) => templates.get(key)!)
+				.filter((template) => !robotTemplates.has(template.uri.toString()))
+				.toArray()
 
-			let insertPosition = popfile.templatesBlock?.children!.at(-1)?.range.end
-			if (insertPosition) {
-				edit.insert(
-					document.uri,
-					new Position(insertPosition.line, insertPosition.character),
-					`${eol.repeat(2)}${text}`
-				)
-			}
-			else if (popfile.templatesBlock?.childrenRange) {
-				edit.insert(
-					document.uri,
-					new Position(popfile.templatesBlock.childrenRange.start.line, popfile.templatesBlock.childrenRange.start.character),
-					`${eol}${text}`
-				)
-			}
-			else {
-				text = `${eol}\tTemplates${eol}\t{${eol}${text}${eol}\t}${eol}`
+			if (templatesToAdd.length > 0) {
+				let text = templatesToAdd
+					.map((template) => template.toString(eol))
+					.reduce((a, b, index) => `${a}${index != 0 ? eol.repeat(2) : ""}${b}`, "")
+					.split(eol).map((line) => `${line != "" ? "\t".repeat(2) : ""}${line}`).join(eol)
 
-				let position = popfile.waveSchedule.find((documentSymbol, index, obj) =>
-					documentSymbol.key.toLowerCase() != "Mission".toLowerCase()
-					&& documentSymbol.key.toLowerCase() != "Wave".toLowerCase()
-					&& ["Mission".toLowerCase(), "Wave".toLowerCase()].includes(obj[index + 1]?.key.toLowerCase())
-				)?.range.end
-
-				if (position) {
-					text = `${eol}${text}`
+				let insertPosition = templatesBlock?.children!.at(-1)?.range.end
+				if (insertPosition) {
+					edit.insert(
+						document.uri,
+						VSCodePositionSchema.parse(insertPosition),
+						`${eol.repeat(2)}${text}`
+					)
+				}
+				else if (templatesBlock?.childrenRange) {
+					edit.insert(
+						document.uri,
+						VSCodePositionSchema.parse(templatesBlock.childrenRange),
+						`${eol}${text}`
+					)
 				}
 				else {
-					position = popfile.waveScheduleRange.start
-				}
+					text = `${eol}\tTemplates${eol}\t{${eol}${text}${eol}\t}${eol}`
 
-				edit.insert(
-					document.uri,
-					new Position(position.line, position.character),
-					text
-				)
+					let position = waveSchedule.documentSymbol.children!.find((documentSymbol, index, obj) =>
+						documentSymbol.key.toLowerCase() != "Mission".toLowerCase()
+						&& documentSymbol.key.toLowerCase() != "Wave".toLowerCase()
+						&& ["Mission".toLowerCase(), "Wave".toLowerCase()].includes(obj[index + 1]?.key.toLowerCase())
+					)?.range.end
+
+					if (position) {
+						text = `${eol}${text}`
+					}
+					else {
+						position = waveSchedule.documentSymbol.range.start
+					}
+
+					edit.insert(
+						document.uri,
+						new Position(position.line, position.character),
+						text
+					)
+				}
 			}
 
 			// Remove #base files
-			for (const { value, range } of popfile.base) {
-				const basePath = posix.resolve(`/scripts/population/${value}`).substring(1)
-				if (!Popfile.robot.includes(basePath)) {
-					edit.delete(document.uri, new Range(
-						new Position(range.start.line, range.start.character),
-						new Position(range.end.line, range.end.character),
-					))
+			for (const documentSymbol of documentSymbols.values().filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base")) {
+				if (!documentSymbol.detail || !PopfileBase.robot.has(posix.resolve(`/scripts/population/${documentSymbol.detail}`).substring(1))) {
+					edit.delete(document.uri, VSCodeRangeSchema.parse(documentSymbol.range))
 				}
 			}
 
 			// Remove rest of Templates blocks
-			for (const templateBlock of popfile.waveSchedule.values().filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Templates".toLowerCase()).drop(1)) {
-				edit.delete(document.uri, new Range(
-					new Position(templateBlock.range.start.line, templateBlock.range.start.character),
-					new Position(templateBlock.range.end.line, templateBlock.range.end.character)
-				))
+			for (const templateBlock of templatesBlocks.values().drop(1)) {
+				edit.delete(document.uri, VSCodeRangeSchema.parse(templateBlock.range))
 			}
 
 			await workspace.applyEdit(edit)

@@ -53,12 +53,11 @@ export class VTFDocument implements CustomDocument {
 
 	public dispose: () => void
 
-	public constructor(uri: vscode.Uri, readonly: boolean, buf: Uint8Array, watcher: Observable<Uint8Array> & { [Symbol.asyncDispose](): Promise<void> }, backup: number | null) {
+	public constructor(uri: vscode.Uri, readonly: boolean, buf: Uint8Array, watcher$: Observable<Uint8Array>, backup: number | null) {
 		this.uri = uri
 		this.readonly = readonly
 
 		const stack = new AsyncDisposableStack()
-		stack.use(watcher)
 
 		this.buf$ = new BehaviorSubject(buf)
 		stack.defer(() => this.buf$.complete())
@@ -76,7 +75,7 @@ export class VTFDocument implements CustomDocument {
 		)
 
 		stack.adopt(
-			watcher.subscribe(async (buf) => {
+			watcher$.subscribe(async (buf) => {
 				if (this.changes == 0) {
 					this.buf$.next(buf)
 				}

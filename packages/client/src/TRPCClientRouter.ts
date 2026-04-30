@@ -6,12 +6,12 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { concat, concatMap, distinctUntilChanged, from, map, Observable, switchAll } from "rxjs"
+import { concat, concatMap, distinctUntilChanged, filter, from, Observable, switchAll } from "rxjs"
 import vscode, { commands, languages, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
-import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
+import type { EventType, FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { searchForHUDRoot } from "./searchForHUDRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
@@ -61,14 +61,8 @@ export function TRPCClientRouter(
 				.procedure
 				.input(URISchema)
 				.subscription(async ({ input, signal }) => {
-					const dirname = input.uri.dirname()
-					const basename = input.uri.basename()
-					return observableToAsyncIterable<"change" | "create" | "delete">(
-						usingAsync(async () => fileSystemWatcherFactory.get(dirname)).pipe(
-							concatMap(async (watcher) => await watcher.get(basename)),
-							switchAll(),
-							map((event) => event.type)
-						),
+					return observableToAsyncIterable<EventType>(
+						usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(switchAll()),
 						signal!,
 					)
 				})
@@ -252,16 +246,15 @@ export function TRPCClientRouter(
 					.procedure
 					.input(URISchema)
 					.subscription(({ input, signal }) => {
-						const dirname = input.uri.dirname()
-						const basename = input.uri.basename()
 						const flags = async () => VTFDocument.flags(await workspace.fs.readFile(input.uri))
 						return observableToAsyncIterable<number>(
 							concat(
 								from(Promise.try(flags)),
-								usingAsync(async () => fileSystemWatcherFactory.get(dirname)).pipe(
-									concatMap(async (watcher) => await watcher.get(basename)),
+								usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(
 									switchAll(),
-									concatMap(flags)
+									filter((type) => type == "change"),
+									concatMap(flags),
+									distinctUntilChanged(),
 								)
 							).pipe(
 								distinctUntilChanged(),

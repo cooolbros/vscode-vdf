@@ -14,3 +14,5 @@ export const VSCodePositionSchema = z.object({ line: z.number(), character: z.nu
 export const VSCodeRangeSchema = z.object({ start: VSCodePositionSchema, end: VSCodePositionSchema }).transform(({ start, end }) => new Range(start, end))
 
 export const VSCodeLocationSchema = z.object({ uri: VSCodeUriSchema, range: VSCodeRangeSchema }).transform((arg) => new Location(arg.uri, arg.range))
+
+export const VSCodeDocumentGetTextSchema = VSCodeRangeSchema.optional()

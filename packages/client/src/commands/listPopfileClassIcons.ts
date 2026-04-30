@@ -1,8 +1,12 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
+import { EMPTY, firstValueFrom, of } from "rxjs"
+import type { RangeLike } from "vdf"
 import { EndOfLine, type TextEditor, window, workspace, WorkspaceEdit } from "vscode"
-import { Popfile } from "../Popfile"
+import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
+import { MissionPopfile } from "../Popfile"
+import { VSCodeDocumentGetTextSchema } from "../VSCodeSchemas"
 
 class Table {
 
@@ -45,7 +49,7 @@ class Table {
 	}
 }
 
-export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>) {
+export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document, selection }: TextEditor) => {
 		if (document.languageId != "popfile") {
 			window.showWarningMessage(document.languageId)
@@ -53,8 +57,15 @@ export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsync
 		}
 
 		await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
-		const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
-		const icons = [...new Set(await popfile.classIcons())].toSorted((a, b) => a.localeCompare(b))
+		const popfile = new MissionPopfile(
+			new Uri(document.uri),
+			of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
+			fileSystem,
+			fileSystemWatcherFactory,
+			EMPTY
+		)
+
+		const icons = await firstValueFrom(popfile.classIcons$)
 
 		const table = new Table(1)
 		table.setHeader(["Icons"])

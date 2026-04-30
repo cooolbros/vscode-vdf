@@ -3,6 +3,7 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { populationSpawnerKeys } from "common/popfile/populationSpawnerKeys"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
@@ -10,16 +11,18 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, concatMap, filter, firstValueFrom, map, Observable, of, ReplaySubject, share, shareReplay, startWith, switchMap, type ObservedValueOf } from "rxjs"
+import { catchError, combineLatest, concat, concatMap, filter, firstValueFrom, from, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, take, withLatestFrom, type ObservedValueOf } from "rxjs"
+import type { RangeLike } from "vdf"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import vscode, { commands, DocumentSymbol, ThemeIcon, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
-import { Popfile } from "../Popfile"
+import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
+import { MissionPopfile } from "../Popfile"
 import { TRPCImageRouter } from "../TRPCImageRouter"
 import { TRPCWebViewRequestHandler } from "../TRPCWebViewRequestHandler"
-import { VSCodeRangeSchema } from "../VSCodeSchemas"
+import { VSCodeDocumentGetTextSchema } from "../VSCodeSchemas"
 import { initBSP } from "../wasm/bsp"
 import { initVTFPNG } from "../wasm/vtf"
 
@@ -66,338 +69,7 @@ const enum Type {
 	Mission,
 }
 
-async function getWaveStatus(meta: Meta, popfile: Popfile, cache: Map<number, Map<string, Wave>>) {
-
-	const TANK_PATH = "materials/hud/leaderboard_class_tank.vmt"
-
-	const starting = parseInt(popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "StartingCurrency".toLowerCase())?.detail ?? "") || 0
-	const eventPopfile = popfile.waveSchedule.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "EventPopfile".toLowerCase())?.detail?.toLowerCase() == "Halloween".toLowerCase()
-		? <const>"Halloween"
-		: null
-	const templates = await popfile.templates()
-
-	function attribute(documentSymbols: VDFDocumentSymbol[] | undefined, key: string): boolean {
-		if (!documentSymbols) {
-			return false
-		}
-
-		const value = documentSymbols.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Attributes".toLowerCase() && documentSymbol.detail?.toLowerCase() == key.toLowerCase())?.detail
-		if (value) {
-			return true
-		}
-
-		for (const eventChangeAttributes of documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "EventChangeAttributes".toLowerCase() && documentSymbol.children)) {
-			const defaultEvent = eventChangeAttributes.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Default".toLowerCase())?.children
-			const value = attribute(defaultEvent, key)
-			if (value) {
-				return true
-			}
-		}
-
-		const templateName = documentSymbols.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
-		if (templateName) {
-			const value = attribute(templates.get(templateName)?.documentSymbols, key)
-			if (value) {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	function getClassIcon(documentSymbols?: VDFDocumentSymbol[]): string | null {
-		if (!documentSymbols) {
-			return null
-		}
-
-		const icon = documentSymbols.findLast(({ key }) => key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
-		if (icon) {
-			return icon
-		}
-
-		const TFClass = documentSymbols.findLast(({ key }) => key.toLowerCase() == "Class".toLowerCase())?.detail?.toLowerCase()
-		if (TFClass) {
-			if (TFClass == "Demoman".toLowerCase()) {
-				return "Demo".toLowerCase()
-			}
-			else if (TFClass == "Heavyweapons".toLowerCase()) {
-				return "Heavy".toLowerCase()
-			}
-			else {
-				return TFClass
-			}
-		}
-
-		const templateName = documentSymbols.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
-		if (templateName) {
-			const icon = getClassIcon(templates.get(templateName)?.documentSymbols)
-			if (icon) {
-				return icon
-			}
-		}
-
-		return null
-	}
-
-	const missions = popfile.waveSchedule.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Mission".toLowerCase() && documentSymbol.children)
-
-	const waves = popfile.waveSchedule
-		.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "Wave".toLowerCase() && documentSymbol.children)
-		.map((documentSymbol, index): Wave => {
-
-			const text = popfile.document.getText(VSCodeRangeSchema.parse(documentSymbol.range))
-			const cached = cache.get(index)?.get(text)
-			if (cached) {
-				return cached
-			}
-
-			let currency = 0
-
-			const icons = {
-				normal: <HUDEnemyData[]>[],
-				support: <HUDEnemyData[]>[],
-			}
-
-			for (const mission of missions) {
-
-				const objective = mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Objective".toLowerCase())
-				if (objective?.detail?.toLowerCase() == "DestroySentries".toLowerCase()) {
-					continue
-				}
-
-				let beginAtWave = parseInt(mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "BeginAtWave".toLowerCase())?.detail ?? "")
-				let runForThisManyWaves = parseInt(mission.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.detail ?? "")
-
-				if (!isNaN(beginAtWave)) {
-					beginAtWave += -1
-					if (beginAtWave > index) {
-						continue
-					}
-					else if (!isNaN(runForThisManyWaves)) {
-						if ((beginAtWave + runForThisManyWaves) <= index) {
-							continue
-						}
-					}
-				}
-
-				const spawner = mission.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
-				if (spawner) {
-					addSpawner({
-						type: Type.Mission,
-						spawner: spawner,
-						totalCount: 1
-					})
-				}
-			}
-
-			let expected = 0
-			let actual = 0
-
-			function addSpawner({ type, spawner, totalCount }: { type: Type, spawner: VDFDocumentSymbol, totalCount: number }) {
-				switch (spawner.key.toLowerCase()) {
-					case "TFBot".toLowerCase(): {
-						if (totalCount > 0 || type == Type.Support) {
-							addIcon({
-								type,
-								icon: getClassIcon(spawner.children)?.toLowerCase() ?? null,
-								count: totalCount,
-								miniboss: attribute(spawner.children, "MiniBoss".toLowerCase()),
-								alwayscrit: attribute(spawner.children, "AlwaysCrit".toLowerCase()),
-							})
-						}
-						break
-					}
-					case "Squad".toLowerCase(): {
-						if (!spawner.children) {
-							return
-						}
-
-						const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
-
-						for (const i of Array.from({ length: totalCount }).keys()) {
-							const member = children[i % children.length]
-							switch (member.key.toLowerCase()) {
-								case "TFBot".toLowerCase(): {
-									addIcon({
-										type: type,
-										icon: getClassIcon(member.children),
-										count: 1,
-										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
-										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
-									})
-									break
-								}
-								case "Tank".toLowerCase(): {
-									if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
-										addIcon({
-											type: type,
-											icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
-											count: 1,
-											miniboss: type != Type.Mission,
-											alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
-										})
-									}
-									break
-								}
-							}
-						}
-						break
-					}
-					case "RandomChoice".toLowerCase(): {
-						if (!spawner.children) {
-							return
-						}
-
-						const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
-
-						for (const i of Array.from({ length: totalCount }).keys()) {
-							const member = children[Math.floor(Math.random() * children.length)]
-							switch (member.key.toLowerCase()) {
-								case "TFBot".toLowerCase(): {
-									addIcon({
-										type: type,
-										icon: getClassIcon(member.children),
-										count: 1,
-										miniboss: attribute(member.children, "MiniBoss".toLowerCase()),
-										alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
-									})
-									break
-								}
-								case "Tank".toLowerCase(): {
-									if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
-										addIcon({
-											type: type,
-											icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
-											count: 1,
-											miniboss: type != Type.Mission,
-											alwayscrit: attribute(member.children, "AlwaysCrit".toLowerCase()),
-										})
-									}
-									break
-								}
-							}
-						}
-						break
-					}
-					case "Tank".toLowerCase(): {
-						if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
-							addIcon({
-								type: type,
-								icon: getClassIcon(spawner.children) ?? "Tank".toLowerCase(),
-								count: totalCount,
-								miniboss: type != Type.Mission,
-								alwayscrit: false,
-							})
-						}
-						break
-					}
-				}
-			}
-
-			function addIcon({ type, icon, count, miniboss, alwayscrit }: {
-				type: Type,
-				icon: string | null,
-				count: number,
-				miniboss: boolean,
-				alwayscrit: boolean,
-			}) {
-				const arr = {
-					[Type.Normal]: icons.normal,
-					[Type.Support]: icons.support,
-					[Type.Mission]: icons.support,
-				}[type]
-
-				const path = icon && `materials/hud/leaderboard_class_${icon.toLowerCase()}.vmt`
-				const existing = arr.find((value) => value.classIconName == path)
-				if (existing) {
-					existing.count += count
-					existing.miniboss ||= miniboss
-					existing.alwayscrit ||= alwayscrit
-				}
-				else {
-					arr.push({
-						count: count,
-						classIconName: path,
-						miniboss: type != Type.Mission && miniboss,
-						alwayscrit: alwayscrit,
-					})
-				}
-
-				if (type == Type.Normal) {
-					actual += count
-				}
-			}
-
-			const waveSpawns = documentSymbol.children!.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children)
-
-			for (const waveSpawn of waveSpawns) {
-
-				const totalCurrency = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCurrency".toLowerCase())?.detail ?? "") || 0
-				if (totalCurrency > 0) {
-					currency += totalCurrency
-				}
-
-				const support = waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail != undefined
-
-				// @ts-ignore
-				const totalCount = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCount".toLowerCase())?.detail) || 0
-
-				if (!support) {
-					if (totalCount > 0) {
-						expected += totalCount
-					}
-					else {
-						continue
-					}
-				}
-
-				const spawner = waveSpawn.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
-				if (spawner) {
-					addSpawner({
-						type: support ? Type.Support : Type.Normal,
-						spawner: spawner,
-						totalCount: totalCount,
-					})
-				}
-			}
-
-			const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
-
-			const wave: Wave = {
-				currency,
-				percentage: expected != 0
-					? actual / expected
-					: 1,
-				icons: {
-					miniboss: miniboss,
-					normal: normal,
-					support: icons.support,
-				},
-			}
-
-			let map: Map<string, Wave>
-			if (!cache.has(index)) {
-				map = new Map()
-				cache.set(index, map)
-			}
-			else {
-				map = cache.get(index)!
-			}
-
-			map.clear()
-			map.set(text, wave)
-			return wave
-		})
-
-	return {
-		meta,
-		starting,
-		eventPopfile,
-		waves,
-	}
-}
-
-export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>) {
+export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 
 	const webviewPanels = new Map<string, WebviewPanel>()
 
@@ -424,7 +96,30 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 
 		const id = document.uri.toString()
 		const name = posix.parse(new Uri(document.uri).basename()).name
-		const fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
+
+		const webviewPanel = window.createWebviewPanel(
+			"vscode-vdf.waveStatusPreview",
+			name,
+			{ viewColumn: ViewColumn.Beside, preserveFocus: true },
+			{ enableScripts: true, retainContextWhenHidden: true }
+		)
+
+		// https://microsoft.github.io/vscode-codicons/dist/codicon.html
+		webviewPanel.iconPath = new ThemeIcon("output")
+
+		const stack = new AsyncDisposableStack()
+		webviewPanel.onDidDispose(() => stack.disposeAsync())
+
+		webviewPanels.set(id, webviewPanel)
+		stack.defer(() => void webviewPanels.delete(id))
+
+		const dispose$ = new ReplaySubject<void>(1)
+		stack.defer(() => dispose$.next())
+
+		const shareReplayUntilDisposed = <T>() => share<T>({
+			connector: () => new ReplaySubject(1),
+			resetOnRefCountZero: () => dispose$
+		})
 
 		const configuration$ = new Observable<ConfigurationChangeEvent>((subscriber) => {
 			const disposable = workspace.onDidChangeConfiguration((event) => {
@@ -436,11 +131,15 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			map(() => null),
 			startWith(null),
 			map(() => VSCodeVDFConfigurationSchema.shape.popfile.shape.waveStatusPreview.parse(workspace.getConfiguration("vscode-vdf.popfile.waveStatusPreview"))),
-			shareReplay({ bufferSize: 1, refCount: true })
+			shareReplayUntilDisposed()
 		)
 
-		const language$ = configuration$.pipe(
-			switchMap((configuration) => {
+		const fileSystem$ = usingAsync(async () => await fileSystemMountPointFactory.get({ type: "tf2" })).pipe(
+			shareReplayUntilDisposed()
+		)
+
+		const language$ = combineLatest({ fileSystem: fileSystem$, configuration: configuration$ }).pipe(
+			switchMap(({ fileSystem, configuration }) => {
 				const files: Record<string, string> = {
 					// "korean": "koreana",
 					"simplified_chinese": "schinese",
@@ -469,21 +168,11 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 						.map((documentSymbol) => [documentSymbol.key.toLowerCase() as Lowercase<string>, documentSymbol.detail!])
 				)
 			}),
-			share({
-				connector: () => new ReplaySubject(1),
-				resetOnRefCountZero: () => new Observable<void>((subscriber) => {
-					if (stack.disposed) {
-						subscriber.next()
-					}
-					else {
-						stack.defer(() => subscriber.next())
-					}
-				})
-			})
+			shareReplayUntilDisposed(),
 		)
 
-		const [meta] = await Promise.all([
-			Promise.try(async (): Promise<Meta> => {
+		const meta$ = fileSystem$.pipe(
+			concatMap(async (fileSystem) => {
 				const items_game = await Promise.try(async () => {
 					const uri = await firstValueFrom(fileSystem.resolveFile("scripts/items/items_game.txt"))
 					const buf = await workspace.fs.readFile(uri!)
@@ -574,29 +263,8 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 					}
 				}
 			}),
-			initBSP(context),
-			initVTFPNG(context),
-		])
-
-		const webviewPanel = window.createWebviewPanel(
-			"vscode-vdf.waveStatusPreview",
-			name,
-			{ viewColumn: ViewColumn.Beside, preserveFocus: true },
-			{ enableScripts: true, retainContextWhenHidden: true }
+			take(1)
 		)
-
-		// https://microsoft.github.io/vscode-codicons/dist/codicon.html
-		webviewPanel.iconPath = new ThemeIcon("output")
-
-		const stack = new AsyncDisposableStack()
-		webviewPanel.onDidDispose(() => stack.disposeAsync())
-
-		webviewPanels.set(id, webviewPanel)
-		stack.defer(() => {
-			webviewPanels.delete(id)
-		})
-
-		stack.use(fileSystem)
 
 		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
 			const disposable = workspace.onDidChangeTextDocument((event) => subscriber.next(event))
@@ -606,24 +274,404 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 		)
 
 		const cache = new Map<number, Map<string, Wave>>()
+		stack.defer(() => cache.clear())
 
-		const waveStatus$ = onDidChangeTextDocument$.pipe(
-			filter((event) => [".pop", ".vmt"].includes(posix.extname(event.document.uri.fsPath))),
-			map(() => null),
-			startWith(null),
-			concatMap(async () => {
-				try {
-					const popfile = new Popfile(new Uri(document.uri), document, fileSystem)
-					return await getWaveStatus(meta, popfile, cache)
+		const waveStatus$ = combineLatest({
+			meta: meta$,
+			popfile: fileSystem$.pipe(
+				map((fileSystem) => {
+					return new MissionPopfile(
+						new Uri(document.uri),
+						concat(
+							of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
+							onDidChangeTextDocument$.pipe(
+								filter((event) => event.document == document),
+								map((event) => ({ getText: (range?: RangeLike) => event.document.getText(VSCodeDocumentGetTextSchema.parse(range)) }))
+							)
+						),
+						fileSystem,
+						fileSystemWatcherFactory,
+						onDidChangeTextDocument$
+					)
+				}),
+				switchMap((popfile) => {
+					return combineLatest({
+						startingCurrency: popfile.startingCurrency$,
+						eventPopfile: popfile.eventPopfile$,
+						templates: popfile.templates$,
+						missions: popfile.missions$,
+						waves: popfile.waves$,
+					}).pipe(
+						withLatestFrom(popfile.document$),
+					)
+				})
+			)
+		}).pipe(
+			map(({ meta, popfile: [waveSchedule, document] }) => {
+				const TANK_PATH = "materials/hud/leaderboard_class_tank.vmt"
+				const { startingCurrency, eventPopfile, templates, missions, waves } = waveSchedule
+
+				function attribute(documentSymbols: VDFDocumentSymbol[] | undefined, key: string): boolean {
+					if (documentSymbols == undefined) {
+						return false
+					}
+
+					key = key.toLowerCase()
+					const check = (documentSymbol: VDFDocumentSymbol) => documentSymbol.key.toLowerCase() == "Attributes".toLowerCase() && documentSymbol.detail?.toLowerCase() == key
+
+					const value = documentSymbols.some(check)
+					if (value) {
+						return true
+					}
+
+					for (const eventChangeAttributes of documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "EventChangeAttributes".toLowerCase() && documentSymbol.children)) {
+						const defaultEvent = eventChangeAttributes.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Default".toLowerCase())?.children
+						const value = defaultEvent?.some(check)
+						if (value) {
+							return true
+						}
+					}
+
+					const templateName = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+					if (templateName) {
+						const template = templates.get(templateName)
+						if (template != undefined) {
+							const value = attribute(template.documentSymbols, key)
+							if (value) {
+								return true
+							}
+						}
+					}
+
+					return false
 				}
-				catch (error) {
+
+				function getClassIcon(documentSymbols?: VDFDocumentSymbol[]): string | null {
+					if (!documentSymbols) {
+						return null
+					}
+
+					const icon = documentSymbols.findLast(({ key }) => key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+					if (icon) {
+						return icon
+					}
+
+					const TFClass = documentSymbols.findLast(({ key }) => key.toLowerCase() == "Class".toLowerCase())?.detail?.toLowerCase()
+					if (TFClass) {
+						if (TFClass == "Demoman".toLowerCase()) {
+							return "Demo".toLowerCase()
+						}
+						else if (TFClass == "Heavyweapons".toLowerCase()) {
+							return "Heavy".toLowerCase()
+						}
+						else {
+							return TFClass
+						}
+					}
+
+					const templateName = documentSymbols.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+					if (templateName) {
+						const icon = getClassIcon(templates.get(templateName)?.documentSymbols)
+						if (icon) {
+							return icon
+						}
+					}
+
 					return null
 				}
-			}),
-			filter((value) => value != null)
+
+				return {
+					meta,
+					startingCurrency: startingCurrency,
+					eventPopfile: eventPopfile,
+					waves: waves.map((documentSymbol, index): Wave => {
+
+						const missionSpawns = missions
+							.values()
+							.map((documentSymbol) => {
+								const children = documentSymbol.children
+								if (!children) {
+									return null
+								}
+
+								const objective = children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Objective".toLowerCase())
+								if (objective?.detail?.toLowerCase() == "DestroySentries".toLowerCase()) {
+									return null
+								}
+
+								let beginAtWave = parseInt(children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "BeginAtWave".toLowerCase())?.detail ?? "")
+								let runForThisManyWaves = parseInt(children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.detail ?? "")
+
+								if (!isNaN(beginAtWave)) {
+									beginAtWave += -1
+									if (beginAtWave > index) {
+										return null
+									}
+									else if (!isNaN(runForThisManyWaves)) {
+										if ((beginAtWave + runForThisManyWaves) <= index) {
+											return null
+										}
+									}
+								}
+
+								return children.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+							})
+							.filter((value) => value != null)
+							.toArray()
+
+						const waveSpawns = documentSymbol.children!.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children)
+
+						function hashSpawner(documentSymbols: VDFDocumentSymbol[], findLast: (documentSymbol: VDFDocumentSymbol) => boolean): string[] {
+							return [
+								...documentSymbols.map((documentSymbol) => document.getText(documentSymbol.range)),
+								...documentSymbols.flatMap((documentSymbol) => {
+									const spawner = documentSymbol.children?.findLast(findLast)
+									if (!spawner || !spawner.children) {
+										return []
+									}
+
+									switch (spawner.key.toLowerCase()) {
+										case "TFBot".toLowerCase():
+											const templateName = spawner.children.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+											return templateName != undefined ? [templates.get(templateName.toLowerCase())?.toString("\n") ?? ""] : []
+										case "Squad".toLowerCase():
+										case "RandomChoice".toLowerCase():
+											return spawner.children
+												.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "TFBot".toLowerCase() && documentSymbol.children)
+												.flatMap((documentSymbol) => {
+													const templateName = documentSymbol.children!.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+													return templateName != undefined ? [templates.get(templateName.toLowerCase())?.toString("\n") ?? ""] : []
+												})
+										case "Tank".toLowerCase():
+											return []
+										default:
+											return []
+									}
+								})
+							]
+						}
+
+						const key = JSON.stringify([
+							hashSpawner(waveSpawns, (documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase())),
+							hashSpawner(missionSpawns, (documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase())),
+						])
+
+						const cached = cache.get(index)?.get(key)
+						if (cached) {
+							return cached
+						}
+
+						let currency = 0
+
+						const icons = {
+							normal: <HUDEnemyData[]>[],
+							support: <HUDEnemyData[]>[],
+						}
+
+						for (const spawner of missionSpawns) {
+							addSpawner({
+								type: Type.Mission,
+								spawner: spawner,
+								totalCount: 1
+							})
+						}
+
+						let expected = 0
+						let actual = 0
+
+						function addSpawner({ type, spawner, totalCount }: { type: Type, spawner: VDFDocumentSymbol, totalCount: number }) {
+							switch (spawner.key.toLowerCase()) {
+								case "TFBot".toLowerCase(): {
+									if (totalCount > 0 || type == Type.Support) {
+										addIcon({
+											type,
+											icon: getClassIcon(spawner.children)?.toLowerCase() ?? null,
+											count: totalCount,
+											miniboss: attribute(spawner.children, "MiniBoss"),
+											alwayscrit: attribute(spawner.children, "AlwaysCrit"),
+										})
+									}
+									break
+								}
+								case "Squad".toLowerCase(): {
+									if (!spawner.children) {
+										return
+									}
+
+									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
+
+									for (const i of Array.from({ length: totalCount }).keys()) {
+										const member = children[i % children.length]
+										switch (member.key.toLowerCase()) {
+											case "TFBot".toLowerCase(): {
+												addIcon({
+													type: type,
+													icon: getClassIcon(member.children),
+													count: 1,
+													miniboss: attribute(member.children, "MiniBoss"),
+													alwayscrit: attribute(member.children, "AlwaysCrit"),
+												})
+												break
+											}
+											case "Tank".toLowerCase(): {
+												if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
+													addIcon({
+														type: type,
+														icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
+														count: 1,
+														miniboss: type != Type.Mission,
+														alwayscrit: attribute(member.children, "AlwaysCrit"),
+													})
+												}
+												break
+											}
+										}
+									}
+									break
+								}
+								case "RandomChoice".toLowerCase(): {
+									if (!spawner.children) {
+										return
+									}
+
+									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
+
+									for (const i of Array.from({ length: totalCount }).keys()) {
+										const member = children[Math.floor(Math.random() * children.length)]
+										switch (member.key.toLowerCase()) {
+											case "TFBot".toLowerCase(): {
+												addIcon({
+													type: type,
+													icon: getClassIcon(member.children),
+													count: 1,
+													miniboss: attribute(member.children, "MiniBoss"),
+													alwayscrit: attribute(member.children, "AlwaysCrit"),
+												})
+												break
+											}
+											case "Tank".toLowerCase(): {
+												if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
+													addIcon({
+														type: type,
+														icon: getClassIcon(member.children) ?? "Tank".toLowerCase(),
+														count: 1,
+														miniboss: type != Type.Mission,
+														alwayscrit: attribute(member.children, "AlwaysCrit"),
+													})
+												}
+												break
+											}
+										}
+									}
+									break
+								}
+								case "Tank".toLowerCase(): {
+									if (!icons.support.some((value) => value.classIconName == TANK_PATH)) {
+										addIcon({
+											type: type,
+											icon: getClassIcon(spawner.children) ?? "Tank".toLowerCase(),
+											count: totalCount,
+											miniboss: type != Type.Mission,
+											alwayscrit: false,
+										})
+									}
+									break
+								}
+							}
+						}
+
+						function addIcon({ type, icon, count, miniboss, alwayscrit }: {
+							type: Type,
+							icon: string | null,
+							count: number,
+							miniboss: boolean,
+							alwayscrit: boolean,
+						}) {
+							const arr = {
+								[Type.Normal]: icons.normal,
+								[Type.Support]: icons.support,
+								[Type.Mission]: icons.support,
+							}[type]
+
+							const path = icon && `materials/hud/leaderboard_class_${icon.toLowerCase()}.vmt`
+							const existing = arr.find((value) => value.classIconName == path)
+							if (existing) {
+								existing.count += count
+								existing.miniboss ||= miniboss
+								existing.alwayscrit ||= alwayscrit
+							}
+							else {
+								arr.push({
+									count: count,
+									classIconName: path,
+									miniboss: type != Type.Mission && miniboss,
+									alwayscrit: alwayscrit,
+								})
+							}
+
+							if (type == Type.Normal) {
+								actual += count
+							}
+						}
+
+						for (const waveSpawn of waveSpawns) {
+
+							const totalCurrency = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCurrency".toLowerCase())?.detail ?? "") || 0
+							if (totalCurrency > 0) {
+								currency += totalCurrency
+							}
+
+							const support = waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail != undefined
+							const totalCount = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCount".toLowerCase())?.detail ?? "") || 0
+
+							if (!support) {
+								if (totalCount > 0) {
+									expected += totalCount
+								}
+								else {
+									continue
+								}
+							}
+
+							const spawner = waveSpawn.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+							if (spawner) {
+								addSpawner({
+									type: support ? Type.Support : Type.Normal,
+									spawner: spawner,
+									totalCount: totalCount,
+								})
+							}
+						}
+
+						const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
+
+						const wave: Wave = {
+							currency,
+							percentage: expected != 0
+								? actual / expected
+								: 1,
+							icons: {
+								miniboss: miniboss,
+								normal: normal,
+								support: icons.support,
+							},
+						}
+
+						let map = cache.get(index)
+						if (!map) {
+							map = new Map()
+							cache.set(index, map)
+						}
+						map.clear()
+						map.set(key, wave)
+
+						return wave
+					})
+				}
+			})
 		)
 
-		function vtf(path: string) {
+		function vtf(fileSystem: FileSystemMountPoint, path: string) {
 			return fileSystem.resolveFile(path).pipe(
 				switchMap((uri) => {
 					if (!uri) {
@@ -651,7 +699,13 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 									if (!uri) {
 										return null
 									}
-									const vtf = new VTF(await workspace.fs.readFile(uri))
+
+									const [buf] = await Promise.all([
+										await workspace.fs.readFile(uri),
+										initVTFPNG(context)
+									])
+
+									using vtf = new VTF(buf)
 									return {
 										width: vtf.header.width,
 										height: vtf.header.height,
@@ -688,25 +742,40 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 				skyname: t
 					.procedure
 					.subscription(async ({ signal }) => {
-						if (!meta.map) {
-							return observableToAsyncIterable<null>(of(null), signal!)
-						}
+						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>> | null>(
+							combineLatest({
+								meta: meta$,
+								fileSystem: fileSystem$,
+								init: from(initBSP(context))
+							}).pipe(
+								concatMap(async ({ meta, fileSystem }) => {
+									if (!meta.map) {
+										return of(null)
+									}
 
-						const uri = await firstValueFrom(fileSystem.resolveFile(`maps/mvm_${meta.map}.bsp`))
-						if (uri == null) {
-							return observableToAsyncIterable<null>(of(null), signal!)
-						}
+									const uri = await firstValueFrom(fileSystem.resolveFile(`maps/mvm_${meta.map}.bsp`))
+									if (uri == null) {
+										return of(null)
+									}
 
-						const buf = await workspace.fs.readFile(uri!)
-						const entities = new BSP(buf).entities()
+									const [buf] = await Promise.all([
+										workspace.fs.readFile(uri),
+										initBSP(context)
+									])
 
-						const skyname = entities[0]["skyname"]
+									const entities = new BSP(buf).entities()
+									const skyname = entities[0]["skyname"]
 
-						// bk
-						// ft
-						// lf
-						// rt
-						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>> | null>(vtf(`materials/skybox/${skyname}ft.vmt`), signal!)
+									// bk
+									// ft
+									// lf
+									// rt
+									return vtf(fileSystem, `materials/skybox/${skyname}ft.vmt`)
+								}),
+								switchAll()
+							),
+							signal!
+						)
 					}),
 				png: t
 					.procedure
@@ -716,7 +785,12 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 						})
 					)
 					.subscription(({ input, signal }) => {
-						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>>>(vtf(input.path), signal!)
+						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>>>(
+							fileSystem$.pipe(
+								switchMap((fileSystem) => vtf(fileSystem, input.path))
+							),
+							signal!
+						)
 					}),
 				font: t
 					.procedure
@@ -727,8 +801,12 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 					)
 					.subscription(({ input, signal }) => {
 						return observableToAsyncIterable<Uint8Array | null>(
-							fileSystem.resolveFile(input.path).pipe(
-								concatMap(async (uri) => uri && new Uint8Array(await workspace.fs.readFile(uri)))
+							fileSystem$.pipe(
+								switchMap((fileSystem) => {
+									return fileSystem.resolveFile(input.path).pipe(
+										concatMap(async (uri) => uri && new Uint8Array(await workspace.fs.readFile(uri)))
+									)
+								})
 							),
 							signal!
 						)

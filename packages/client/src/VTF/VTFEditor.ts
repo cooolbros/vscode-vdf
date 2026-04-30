@@ -1,7 +1,9 @@
 import { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { devalueTransformer } from "common/devalueTransformer"
+import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
+import { concatMap, switchAll } from "rxjs"
 import vscode, { commands, Disposable, EventEmitter, FilePermission, window, workspace, type CancellationToken, type CustomDocumentBackup, type CustomDocumentBackupContext, type CustomDocumentEditEvent, type CustomDocumentOpenContext, type CustomEditorProvider, type Event, type WebviewPanel } from "vscode"
 import z from "zod"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
@@ -75,7 +77,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 	}
 
 	public async openCustomDocument(uri: vscode.Uri, openContext: CustomDocumentOpenContext, token: CancellationToken): Promise<VTFDocument> {
-		const [readonly, buf, watcher, flags] = await Promise.all([
+		const [readonly, buf, watcher$, flags] = await Promise.all([
 			Promise.try(async () => {
 				const stat = await workspace.fs.stat(uri)
 				return stat.permissions
@@ -83,13 +85,16 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 					: false
 			}),
 			Promise.try(async () => new Uint8Array(await workspace.fs.readFile(uri))),
-			this.fileSystemWatcherFactory.get(new Uri(uri)),
+			usingAsync(async () => await this.fileSystemWatcherFactory.get(new Uri(uri))).pipe(
+				switchAll(),
+				concatMap(async () => await workspace.fs.readFile(uri))
+			),
 			openContext.backupId != undefined
 				? Promise.try(async () => new DataView((await workspace.fs.readFile(new Uri(openContext.backupId!))).buffer).getUint32(0, true))
 				: Promise.resolve(null),
 		])
 
-		return new VTFDocument(uri, readonly, buf, watcher, flags)
+		return new VTFDocument(uri, readonly, buf, watcher$, flags)
 	}
 
 	public async resolveCustomEditor(document: VTFDocument, webviewPanel: WebviewPanel, token: CancellationToken): Promise<void> {

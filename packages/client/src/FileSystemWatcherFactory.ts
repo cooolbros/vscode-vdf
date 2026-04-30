@@ -6,46 +6,64 @@ import vscode, { RelativePattern, workspace } from "vscode"
 export type EventType = "change" | "create" | "delete"
 
 class DisposableSubject<T> extends Subject<T> implements AsyncDisposable {
+
+	constructor(private readonly disposeAsync: () => Promise<void>) {
+		super()
+	}
+
 	public async [Symbol.asyncDispose](): Promise<void> {
+		await this.disposeAsync()
 	}
 }
 
-class VDFFileSystemWatcher extends RefCountAsyncDisposableFactory<string, DisposableSubject<{ type: EventType, basename: string }>> implements AsyncDisposable {
-	private readonly disposables: AsyncDisposableStack
+class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSubject<EventType>> implements AsyncDisposable {
 
-	constructor(base: Uri) {
-		const stack = new AsyncDisposableStack()
+	private readonly stack: DisposableStack
 
-		const pattern = new RelativePattern(vscode.Uri.parse(base.toString()), "*")
-		const watcher = stack.adopt(workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
-
-		const next = (type: EventType, uri: vscode.Uri) => {
-			const basename = base.relative(new Uri(uri))
-			this.map.get(basename)?.value.then((subject) => subject.next({ type, basename }))
-		}
-
-		stack.adopt(watcher.onDidChange((uri) => next("change", uri)), (disposable) => disposable.dispose())
-		stack.adopt(watcher.onDidCreate((uri) => next("create", uri)), (disposable) => disposable.dispose())
-		stack.adopt(watcher.onDidDelete((uri) => next("delete", uri)), (disposable) => disposable.dispose())
-
+	constructor(private readonly dirname: Uri) {
 		super(
 			(basename) => basename,
-			async (basename, factory) => new DisposableSubject()
+			async (basename, factory) => { throw new Error("unreachable") }
 		)
 
-		this.disposables = stack.move()
+		this.stack = new DisposableStack()
+
+		const pattern = new RelativePattern(vscode.Uri.parse(dirname.toString()), "*")
+		const watcher = this.stack.adopt(workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
+
+		const next = (type: EventType, uri: vscode.Uri) => {
+			const basename = dirname.relative(new Uri(uri))
+			this.map.get(basename)?.value.then((subject) => subject.next(type))
+		}
+
+		this.stack.adopt(watcher.onDidChange((uri) => next("change", uri)), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidCreate((uri) => next("create", uri)), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidDelete((uri) => next("delete", uri)), (disposable) => disposable.dispose())
 	}
 
 	public async [Symbol.asyncDispose](): Promise<void> {
-		return await this.disposables.disposeAsync()
+		this.stack.dispose()
 	}
 }
 
-export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri, VDFFileSystemWatcher> {
+export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri, DisposableSubject<EventType>> {
+	private readonly folderWatchers: RefCountAsyncDisposableFactory<Uri, FolderWatcher>
+
 	constructor() {
 		super(
 			(uri) => uri.toString(),
-			async (uri) => new VDFFileSystemWatcher(uri)
+			async (uri) => {
+				const dirname = uri.dirname()
+				const basename = uri.basename()
+				const folderWatcher = await this.folderWatchers.get(dirname)
+				const fileWatcher = await folderWatcher.get(basename, async () => new DisposableSubject<EventType>(async () => await folderWatcher[Symbol.asyncDispose]()))
+				return fileWatcher
+			}
+		)
+
+		this.folderWatchers = new RefCountAsyncDisposableFactory(
+			(dirname) => dirname.toString(),
+			async (dirname) => new FolderWatcher(dirname)
 		)
 	}
 }

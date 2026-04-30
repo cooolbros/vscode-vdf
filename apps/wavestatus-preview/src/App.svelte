@@ -127,7 +127,7 @@
 			context.imageSmoothingEnabled = true
 			context.textRendering = "optimizeLegibility"
 
-			const { meta, starting, eventPopfile, waves } = waveStatus
+			const { meta, startingCurrency, eventPopfile, waves } = waveStatus
 
 			const widths = waves.map((wave) => {
 				const count = Math.min(
@@ -179,7 +179,7 @@
 						startingCurrency: {
 							font: CURRENCY_FONT,
 							fill: CREDITS_GREEN,
-							text: `Starting: $${starting}`,
+							text: `Starting: $${startingCurrency}`,
 						},
 					}
 				} else {
