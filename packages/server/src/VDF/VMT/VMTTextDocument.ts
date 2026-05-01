@@ -1,3 +1,4 @@
+import type { WatchEvent } from "client/FileSystemWatcherFactory"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
@@ -195,11 +196,11 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
-		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
+		watch: (uri: Uri) => Observable<WatchEvent>,
 		documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>,
 		workspace: VMTWorkspace | null,
 	) {
-		super(init, documentConfiguration$, fileSystem, createFileSystemWatcher, documents, {
+		super(init, documentConfiguration$, fileSystem, watch, documents, {
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,

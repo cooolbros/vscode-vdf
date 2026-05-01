@@ -1,3 +1,4 @@
+import type { WatchEvent } from "client/FileSystemWatcherFactory"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -1223,11 +1224,11 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		init: TextDocumentInit,
 		documentConfiguration: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
-		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
+		watch: (uri: Uri) => Observable<WatchEvent>,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 		workspace: PopfileWorkspace
 	) {
-		super(init, documentConfiguration, fileSystem, createFileSystemWatcher, documents, {
+		super(init, documentConfiguration, fileSystem, watch, documents, {
 			relativeFolderPath: "scripts/population",
 			VDFParserOptions: { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) },
 			keyTransform: (key) => key,

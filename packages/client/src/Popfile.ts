@@ -337,7 +337,7 @@ export abstract class PopfileBase implements AsyncDisposable {
 					),
 					observableSelector: (popfile) => popfile.getTemplates([...stack, { path: `scripts/population/${this.uri.basename()}`, uri: this.uri }]),
 					fileSystem: this.fileSystem,
-					createFileSystemWatcher: (uri) => usingAsync(async () => this.fileSystemWatcherFactory.get(uri)).pipe(switchAll()),
+					watch: (uri) => usingAsync(async () => this.fileSystemWatcherFactory.get(uri)).pipe(switchAll()),
 					relativeFolderPath: "scripts/population",
 				}),
 

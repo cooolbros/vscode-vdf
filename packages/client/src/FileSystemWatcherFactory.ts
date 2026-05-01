@@ -3,7 +3,11 @@ import { Uri } from "common/Uri"
 import { Subject } from "rxjs"
 import vscode, { RelativePattern, workspace } from "vscode"
 
-export type EventType = "change" | "create" | "delete"
+export type WatchEvent = (
+	| { type: "create", exists: true }
+	| { type: "change" }
+	| { type: "delete", exists: false }
+)
 
 class DisposableSubject<T> extends Subject<T> implements AsyncDisposable {
 
@@ -16,7 +20,7 @@ class DisposableSubject<T> extends Subject<T> implements AsyncDisposable {
 	}
 }
 
-class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSubject<EventType>> implements AsyncDisposable {
+class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSubject<WatchEvent>> implements AsyncDisposable {
 
 	private readonly stack: DisposableStack
 
@@ -31,14 +35,14 @@ class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSub
 		const pattern = new RelativePattern(vscode.Uri.parse(dirname.toString()), "*")
 		const watcher = this.stack.adopt(workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
 
-		const next = (type: EventType, uri: vscode.Uri) => {
-			const basename = dirname.relative(new Uri(uri))
-			this.map.get(basename)?.value.then((subject) => subject.next(type))
+		const next = (uri: Uri, event: WatchEvent) => {
+			const basename = dirname.relative(uri)
+			return this.map.get(basename)?.value.then((subject) => subject.next(event))
 		}
 
-		this.stack.adopt(watcher.onDidChange((uri) => next("change", uri)), (disposable) => disposable.dispose())
-		this.stack.adopt(watcher.onDidCreate((uri) => next("create", uri)), (disposable) => disposable.dispose())
-		this.stack.adopt(watcher.onDidDelete((uri) => next("delete", uri)), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidChange((event) => next(new Uri(event), { type: "change" })), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidCreate((event) => next(new Uri(event), { type: "create", exists: true })), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidDelete((event) => next(new Uri(event), { type: "delete", exists: false })), (disposable) => disposable.dispose())
 	}
 
 	public async [Symbol.asyncDispose](): Promise<void> {
@@ -46,7 +50,7 @@ class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSub
 	}
 }
 
-export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri, DisposableSubject<EventType>> {
+export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri, DisposableSubject<WatchEvent>> {
 	private readonly folderWatchers: RefCountAsyncDisposableFactory<Uri, FolderWatcher>
 
 	constructor() {
@@ -56,7 +60,7 @@ export class FileSystemWatcherFactory extends RefCountAsyncDisposableFactory<Uri
 				const dirname = uri.dirname()
 				const basename = uri.basename()
 				const folderWatcher = await this.folderWatchers.get(dirname)
-				const fileWatcher = await folderWatcher.get(basename, async () => new DisposableSubject<EventType>(async () => await folderWatcher[Symbol.asyncDispose]()))
+				const fileWatcher = await folderWatcher.get(basename, async () => new DisposableSubject<WatchEvent>(async () => await folderWatcher[Symbol.asyncDispose]()))
 				return fileWatcher
 			}
 		)

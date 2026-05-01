@@ -1,3 +1,4 @@
+import type { WatchEvent } from "client/FileSystemWatcherFactory"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { ambient, BaseErrorType, BaseResultType, combineLatestBaseFiles, fs, type BaseError, type BaseResult, type BaseValue } from "common/operators/combineLatestBaseFiles"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -501,7 +502,7 @@ export abstract class VDFTextDocument<
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
-		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
+		watch: (uri: Uri) => Observable<WatchEvent>,
 		documents: RefCountAsyncDisposableFactory<Uri, TDocument>,
 		configuration: VDFTextDocumentConfiguration<TDependencies>,
 	) {
@@ -544,7 +545,7 @@ export abstract class VDFTextDocument<
 											current: init.uri,
 											documentSelector,
 											observableSelector,
-											createFileSystemWatcher,
+											watch,
 											fileSystem,
 											relativeFolderPath: configuration.relativeFolderPath
 										})
@@ -554,7 +555,7 @@ export abstract class VDFTextDocument<
 											current: init.uri,
 											documentSelector,
 											observableSelector,
-											createFileSystemWatcher
+											watch
 										})
 									}
 

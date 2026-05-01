@@ -6,12 +6,12 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { concat, concatMap, distinctUntilChanged, filter, from, Observable, switchAll } from "rxjs"
+import { concat, concatMap, distinctUntilChanged, filter, from, map, Observable, switchAll } from "rxjs"
 import vscode, { commands, languages, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
-import type { EventType, FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
+import type { FileSystemWatcherFactory, WatchEvent } from "./FileSystemWatcherFactory"
 import { searchForHUDRoot } from "./searchForHUDRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
@@ -61,8 +61,21 @@ export function TRPCClientRouter(
 				.procedure
 				.input(URISchema)
 				.subscription(async ({ input, signal }) => {
-					return observableToAsyncIterable<EventType>(
-						usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(switchAll()),
+					return observableToAsyncIterable<WatchEvent>(
+						concat(
+							from(workspace.fs.stat(input.uri).then(() => true, () => false)).pipe(
+								map((exists) => {
+									return (
+										exists
+											? { type: "create", exists: true }
+											: { type: "delete", exists: false }
+									) satisfies WatchEvent
+								})
+							),
+							usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(
+								switchAll()
+							)
+						),
 						signal!,
 					)
 				})
@@ -252,7 +265,7 @@ export function TRPCClientRouter(
 								from(Promise.try(flags)),
 								usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(
 									switchAll(),
-									filter((type) => type == "change"),
+									filter((event) => event.type == "change"),
 									concatMap(flags),
 									distinctUntilChanged(),
 								)

@@ -1,3 +1,4 @@
+import type { WatchEvent } from "client/FileSystemWatcherFactory"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -30,11 +31,11 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		teamFortress2Folder$: Observable<Uri>,
 		fileSystem: FileSystemMountPoint,
-		createFileSystemWatcher: (uri: Uri) => Observable<"change" | "create" | "delete">,
+		watch: (uri: Uri) => Observable<WatchEvent>,
 		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
 		workspace: VGUIWorkspace | null,
 	) {
-		super(init, documentConfiguration$, fileSystem, createFileSystemWatcher, documents, {
+		super(init, documentConfiguration$, fileSystem, watch, documents, {
 			relativeFolderPath: (() => {
 				if (workspace) {
 					return posix.dirname(workspace.relative(init.uri))
