@@ -1,13 +1,8 @@
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
+import type { WatchEvent } from "common/WatchEvent"
 import { Subject } from "rxjs"
 import vscode, { RelativePattern, workspace } from "vscode"
-
-export type WatchEvent = (
-	| { type: "create", exists: true }
-	| { type: "change" }
-	| { type: "delete", exists: false }
-)
 
 class DisposableSubject<T> extends Subject<T> implements AsyncDisposable {
 

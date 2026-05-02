@@ -1,8 +1,8 @@
-import type { WatchEvent } from "client/FileSystemWatcherFactory"
 import { posix } from "path"
 import { concat, map, NEVER, Observable, of, Subscription, switchMap } from "rxjs"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import { Uri } from "../Uri"
+import type { WatchEvent } from "../WatchEvent"
 import { usingAsync } from "./usingAsync"
 
 export interface BaseConfig<D extends DocumentLike, T> {

@@ -296,9 +296,6 @@ importers:
 
   packages/common:
     devDependencies:
-      client:
-        specifier: workspace:*
-        version: link:../client/src
       devalue:
         specifier: ^5.6.4
         version: 5.6.4
