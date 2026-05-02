@@ -161,7 +161,6 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 
 			const color = SchemeDefinitionMatcher(Symbol.for("color"), false, colorDocumentation)
 			const font = SchemeDefinitionMatcher(Symbol.for("font"), true, () => ({ kind: CompletionItemKind.Text }))
-			const border = SchemeDefinitionMatcher(Symbol.for("border"), true, () => ({ kind: CompletionItemKind.Snippet }))
 
 			SchemeForEach(documentSymbols, {
 				Colors: (documentSymbol) => color(documentSymbol),
@@ -173,12 +172,28 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				},
 				Fonts: (documentSymbol) => font(documentSymbol),
 				Borders: (documentSymbol) => {
-					border(documentSymbol)
-					documentSymbol.children?.forAll((documentSymbol) => {
-						if (documentSymbol.key.toLowerCase() == "color" && documentSymbol.detail != undefined) {
-							references.set(null, Symbol.for("color"), documentSymbol.detail, documentSymbol.detailRange!)
-						}
+					definitions.set(null, Symbol.for("border"), documentSymbol.key, {
+						uri: document.uri,
+						key: documentSymbol.key,
+						range: documentSymbol.range,
+						keyRange: documentSymbol.nameRange,
+						nameRange: undefined,
+						detail: documentSymbol.detail,
+						documentation: document.definitions.documentation(documentSymbol),
+						conditional: documentSymbol.conditional ?? undefined,
+						completionItem: { kind: CompletionItemKind.Snippet }
 					})
+
+					if (documentSymbol.children) {
+						documentSymbol.children?.forAll((documentSymbol) => {
+							if (documentSymbol.key.toLowerCase() == "color" && documentSymbol.detail != undefined) {
+								references.set(null, Symbol.for("color"), documentSymbol.detail, documentSymbol.detailRange!)
+							}
+						})
+					}
+					else {
+						references.set(null, Symbol.for("border"), documentSymbol.detail!, documentSymbol.detailRange!)
+					}
 				}
 			})
 
