@@ -7,6 +7,50 @@
         ],
         "values": []
     },
+    "eventchangeattributes": {
+        "values": [
+            {
+                "label": "Attributes",
+                "kind": 5,
+                "multiple": true
+            },
+            {
+                "label": "BehaviorModifiers",
+                "kind": 5
+            },
+            {
+                "label": "CharacterAttributes",
+                "kind": 7
+            },
+            {
+                "label": "Item",
+                "kind": 5,
+                "multiple": true
+            },
+            {
+                "label": "ItemAttributes",
+                "kind": 7,
+                "multiple": true
+            },
+            {
+                "label": "MaxVisionRange",
+                "kind": 5
+            },
+            {
+                "label": "Skill",
+                "kind": 5
+            },
+            {
+                "label": "Tag",
+                "kind": 5,
+                "multiple": true
+            },
+            {
+                "label": "WeaponRestrictions",
+                "kind": 5
+            }
+        ]
+    },
     "firstspawnoutput": {
         "reference": [
             "startwaveoutput"
