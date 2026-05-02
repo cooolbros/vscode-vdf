@@ -1,5 +1,5 @@
 import { posix } from "path"
-import { concat, map, NEVER, Observable, of, Subscription, switchMap } from "rxjs"
+import { concat, filter, map, NEVER, Observable, of, Subscription, switchMap } from "rxjs"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import { Uri } from "../Uri"
 import type { WatchEvent } from "../WatchEvent"
@@ -170,56 +170,58 @@ export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) 
 		}
 
 		return watch(uri).pipe(
-			switchMap((exists) => {
-				if (!exists) {
-					return concat(of({ type: <const>BaseResultType.None }), NEVER)
-				}
+			filter((event) => event.type != "change"),
+			switchMap((event) => {
+				switch (event.type) {
+					case "create":
+						return usingAsync(async () => await documentSelector(uri)).pipe(
+							switchMap((document) => {
+								return document.base$.pipe(
+									map((base) => ({ base: base, value: undefined })),
+									combineLatestBaseFiles({
+										stack: [...stack, { path: self, uri: current }],
+										open: ambient({
+											current: document.uri,
+											documentSelector,
+											observableSelector,
+											watch,
+										}),
+									}),
+									switchMap(({ base: results }) => {
+										if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+											return observableSelector(document).pipe(
+												map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
+											)
+										}
 
-				return usingAsync(async () => await documentSelector(uri)).pipe(
-					switchMap((document) => {
-						return document.base$.pipe(
-							map((base) => ({ base: base, value: undefined })),
-							combineLatestBaseFiles({
-								stack: [...stack, { path: self, uri: current }],
-								open: ambient({
-									current: document.uri,
-									documentSelector,
-									observableSelector,
-									watch,
-								}),
-							}),
-							switchMap(({ base: results }) => {
-								if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-									return observableSelector(document).pipe(
-										map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
-									)
-								}
-
-								return of<BaseResult<T>>({
-									type: <const>BaseResultType.Error,
-									self: self,
-									errors: results
-										.values()
-										.map((result) => {
-											switch (result.type) {
-												case BaseResultType.None:
-												case BaseResultType.Success:
-													return null
-												case BaseResultType.Error:
-													return {
-														type: <const>BaseErrorType.Base,
-														path: result.self,
-														errors: result.errors
+										return of<BaseResult<T>>({
+											type: <const>BaseResultType.Error,
+											self: self,
+											errors: results
+												.values()
+												.map((result) => {
+													switch (result.type) {
+														case BaseResultType.None:
+														case BaseResultType.Success:
+															return null
+														case BaseResultType.Error:
+															return {
+																type: <const>BaseErrorType.Base,
+																path: result.self,
+																errors: result.errors
+															}
 													}
-											}
+												})
+												.filter((error) => error != null)
+												.toArray()
 										})
-										.filter((error) => error != null)
-										.toArray()
-								})
-							}),
+									}),
+								)
+							})
 						)
-					})
-				)
+					case "delete":
+						return concat(of({ type: <const>BaseResultType.None }), NEVER)
+				}
 			})
 		)
 	}
