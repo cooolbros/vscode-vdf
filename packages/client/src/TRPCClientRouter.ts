@@ -8,7 +8,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { WatchEvent } from "common/WatchEvent"
 import { concat, concatMap, distinctUntilChanged, filter, from, map, Observable, switchAll } from "rxjs"
-import vscode, { commands, languages, window, workspace, type ExtensionContext } from "vscode"
+import vscode, { commands, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
@@ -287,17 +287,21 @@ export function TRPCClientRouter(
 					)
 					.query(async ({ input }) => {
 						const configuration = workspace.getConfiguration("vscode-vdf")
-						if (configuration.get("popfile.vscript.enable") == true && !(await languages.getLanguages()).includes("squirrel")) {
-							const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
-							switch (result) {
-								case "Yes":
-									await commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: "vscode", path: "extension/ocet247.tf2-vscript-support" }))
-									break
-								case "No":
-									break
-								case "Don't ask again":
-									configuration.update("popfile.vscript.enable", false, true)
-									break
+						if (configuration.get("popfile.vscript.enable") == true) {
+							const languages = await vscode.languages.getLanguages()
+							const installed = languages.includes("squirrel") || languages.includes("tf2vscript")
+							if (!installed) {
+								const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
+								switch (result) {
+									case "Yes":
+										await commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: "vscode", path: "extension/ocet247.tf2-vscript-support" }))
+										break
+									case "No":
+										break
+									case "Don't ask again":
+										configuration.update("popfile.vscript.enable", false, true)
+										break
+								}
 							}
 						}
 					})
