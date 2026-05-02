@@ -1,5 +1,28 @@
 # Change Log
 
+## [5.10.0]
+ - Add suport for reading ambient #base files
+ - Fix crash when updating extension
+ - Fix file system provider error in VSCode Web
+ - VGUI
+   - Add workspace folders to file system
+ - Popfile
+   - Add `FixedRespawnWaveTime` to `WaveSchedule` autocompletion
+   - Add dynamic attributes to `EventChangeAttributes` autocompletion
+   - Add support for multiple `Tags` in `TFBot` autocompletion
+   - Add duplicate Template definition diagnostic
+   - Remove deprecated `BehaviorModifiers` value `Idler`
+   - Remove deprecated `Checkpoint` value `No`
+   - Fix definition provider not supporting Wave `Sound`
+   - Fix `Default` event allowing all `TFBot` attributes
+   - Fix incorrect `EventChangeAttributes` `duplicate-key` diagnostic
+   - Fix false positive `duplicate-key` diagnostics when using conditionals
+   - Fix crash caused by invalid Templates
+   - Defer `unknown-event` diagnostics in #base Template definitions until template is referenced
+   - Improve performance of `missing-vtf-flags` diagnostics
+   - Wave Status Preview:
+     - Fix not recalculating RandomChoice blocks when editing referenced Templates or Missions
+
 ## [5.9.1]
  - [Popfile] Add Add unknown conditional code action to unknown event diagnostics
 
