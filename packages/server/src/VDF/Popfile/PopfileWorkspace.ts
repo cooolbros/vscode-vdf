@@ -53,7 +53,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 
 		const items_game = Promise.try(async () => {
 			const uri = await firstValueFrom(this.fileSystem.resolveFile("scripts/items/items_game.txt"))
-			const document = await documents.get(uri!)
+			await using document = await documents.get(uri!)
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
 			const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")?.children
 			if (!items_game) {
