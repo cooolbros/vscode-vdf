@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
 import { posix } from "path"
-import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import { DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
@@ -475,8 +475,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 					},
 					<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>[]
 				)
-			}),
-			shareReplay(1)
+			})
 		)
 	}
 
