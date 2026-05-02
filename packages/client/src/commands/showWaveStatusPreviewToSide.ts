@@ -195,7 +195,7 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 						const difficulty = difficultySchema.safeParse(mission.find((documentSymbol) => documentSymbol.key.toLowerCase() == "difficulty")?.detail!).data
 						const language = await firstValueFrom(language$)
 						return {
-							map: map.key,
+							map: map.key.substring("mvm_".length),
 							reverse: false,
 							difficulty: difficulty ?? null,
 							mission: language.get(display_name.toLowerCase() as Lowercase<string>) ?? name
@@ -263,7 +263,8 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 					}
 				}
 			}),
-			take(1)
+			take(1),
+			shareReplayUntilDisposed()
 		)
 
 		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
@@ -749,6 +750,8 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 								init: from(initBSP(context))
 							}).pipe(
 								concatMap(async ({ meta, fileSystem }) => {
+									console.warn(meta)
+
 									if (!meta.map) {
 										return of(null)
 									}
