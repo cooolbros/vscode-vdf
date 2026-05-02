@@ -37,7 +37,7 @@ const multiple = new Set([
 	"ItemAttributes", // distinct by ItemName
 	"Tag",
 	"TeleportWhere",
-])
+].map((key) => key.toLowerCase()))
 
 const ArrayLowKeyIncludes = (array: VDFDocumentSymbol[], key: string) => {
 	return array.some((documentSymbol) => documentSymbol.key.toLowerCase() == key)
@@ -453,7 +453,7 @@ export class Template {
 			return result
 		}
 
-		documentSymbols.push(...collectTemplateKeys(documentSymbols))
+		TFBotMerge(documentSymbols, collectTemplateKeys(documentSymbols))
 		this.documentSymbols = documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() != "Template".toLowerCase())
 	}
 
