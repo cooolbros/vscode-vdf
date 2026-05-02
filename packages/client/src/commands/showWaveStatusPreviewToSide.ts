@@ -750,8 +750,6 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 								init: from(initBSP(context))
 							}).pipe(
 								concatMap(async ({ meta, fileSystem }) => {
-									console.warn(meta)
-
 									if (!meta.map) {
 										return of(null)
 									}
