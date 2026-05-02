@@ -39,6 +39,11 @@ export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyn
 				return
 			}
 
+			if (!waveSchedule.documentSymbol) {
+				window.showWarningMessage("WaveSchedule")
+				return
+			}
+
 			const templatesBlocks = waveSchedule.waveSchedule.get("Templates".toLowerCase()) ?? []
 			const templatesBlock = templatesBlocks.at(0)
 			const templatesInFile = new Map(templatesBlock?.children?.map((documentSymbol) => [documentSymbol.key.toLowerCase(), documentSymbol]))

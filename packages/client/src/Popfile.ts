@@ -70,7 +70,7 @@ export abstract class PopfileBase implements AsyncDisposable {
 
 	public readonly documentSymbols$: Observable<VDFDocumentSymbols>
 	public readonly base$: Observable<string[]>
-	public readonly waveSchedule$: Observable<{ documentSymbol: VDFDocumentSymbol, waveSchedule: Map<string, VDFDocumentSymbol[]> }>
+	public readonly waveSchedule$: Observable<{ documentSymbol?: VDFDocumentSymbol, waveSchedule: Map<string, VDFDocumentSymbol[]> }>
 	public readonly startingCurrency$: Observable<number>
 	public readonly eventPopfile$: Observable<"Halloween" | null>
 
@@ -134,13 +134,9 @@ export abstract class PopfileBase implements AsyncDisposable {
 		this.waveSchedule$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {
 				const documentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
-				if (!documentSymbol?.children) {
-					throw new Error("WaveSchedule")
-				}
-
 				return {
 					documentSymbol: documentSymbol,
-					waveSchedule: Map.groupBy(documentSymbol.children, (documentSymbol) => documentSymbol.key.toLowerCase())
+					waveSchedule: Map.groupBy(documentSymbol?.children ?? [], (documentSymbol) => documentSymbol.key.toLowerCase())
 				}
 			}),
 			shareReplay(1)
