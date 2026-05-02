@@ -838,8 +838,9 @@ function createNewGetDiagnostics(diagnosticsSchema: DiagnosticsSchema) {
 				diagnostics.push(...validateEvent(documentSymbol, path, context, unknown))
 
 				const key = documentSymbol.key.toLowerCase()
+				const conditional = documentSymbol.conditional?.toLowerCase()
 				const eventChangeAttributes = path.at(-1)!.children!
-				const first = eventChangeAttributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == key)!
+				const first = eventChangeAttributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == key && documentSymbol.conditional?.toLowerCase() == conditional)!
 
 				if (first != documentSymbol) {
 					diagnostics.push({
@@ -1106,7 +1107,8 @@ function createNewGetDiagnostics(diagnosticsSchema: DiagnosticsSchema) {
 					diagnostics.push(...validateTFBot("template", documentSymbol, path, context))
 
 					const key = documentSymbol.key.toLowerCase()
-					const first = path.at(-1)!.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == key)!
+					const conditional = documentSymbol.conditional?.toLowerCase()
+					const first = path.at(-1)!.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == key && documentSymbol.conditional?.toLowerCase() == conditional)!
 					if (first != documentSymbol) {
 						diagnostics.push({
 							range: documentSymbol.nameRange,
