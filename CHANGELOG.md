@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.10.1]
+ - Fix Template merging in Wave Status Preview
+
 ## [5.10.0]
  - Add suport for reading ambient #base files
  - Fix crash when updating extension
