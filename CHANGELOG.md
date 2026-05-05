@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.10.2]
+ - [Popfile] Fix embedded VScript features
+
 ## [5.10.1]
  - Fix Template merging in Wave Status Preview
 
