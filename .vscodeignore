@@ -11,12 +11,12 @@
 **/next.config.js
 **/node_modules
 **/postcss.config.js
+**/rspack.config.mts
 **/svelte.config.js
 **/tailwind.config.js
 **/theme.config.tsx
 **/tsconfig.json
 **/vite.config.ts
-**/webpack.config.ts
 apps/**/package.json
 apps/**/src/**
 apps/API
