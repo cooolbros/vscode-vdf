@@ -8,7 +8,7 @@ import { VDFPosition, VDFRange } from "vdf"
 import { DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
-import { Fonts } from "../VDF/VGUI/clientscheme.json"
+import clientscheme from "../VDF/VGUI/clientscheme.json"
 import eventFiles from "./eventFiles.json"
 import type { HUDAnimationsWorkspace } from "./HUDAnimationsWorkspace"
 
@@ -30,7 +30,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 		"MenuColor",
 	].map((i) => i.toLowerCase()))
 
-	public static readonly fontProperties = new Set(Fonts.map((i) => i.toLowerCase()))
+	public static readonly fontProperties = new Set(clientscheme.Fonts.map((i) => i.toLowerCase()))
 
 	protected getDiagnostics: (dependencies: HUDAnimationsTextDocumentDependencies, documentConfiguration: VSCodeVDFConfiguration, documentSymbols: HUDAnimationsDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
 

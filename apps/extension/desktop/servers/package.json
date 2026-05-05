@@ -1,8 +1,8 @@
 {
     "name": "desktop-servers",
     "scripts": {
-        "dev": "webpack --watch --mode none",
-        "build": "webpack"
+        "dev": "rspack build --watch --mode none",
+        "build": "rspack build"
     },
     "devDependencies": {
         "common": "workspace:*",

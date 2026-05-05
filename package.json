@@ -596,6 +596,8 @@
         "package": "vsce package --no-dependencies"
     },
     "devDependencies": {
+        "@rspack/cli": "^2.0.1",
+        "@rspack/core": "^2.0.1",
         "@trpc/client": "^11.11.0",
         "@trpc/server": "^11.11.0",
         "@types/path-browserify": "^1.0.2",
@@ -604,13 +606,9 @@
         "@vscode/vsce": "^3.7.1",
         "path-browserify": "^1.0.1",
         "rxjs": "^7.8.2",
-        "ts-loader": "^9.5.4",
-        "ts-node": "^10.9.2",
         "turbo": "^2.8.20",
         "typescript": "^5.9.3",
         "vscode-languageserver-textdocument": "^1.0.11",
-        "webpack": "^5.104.1",
-        "webpack-cli": "^7.0.2",
         "zod": "^4.3.6"
     },
     "vsce": {
