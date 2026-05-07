@@ -596,7 +596,7 @@
         "package": "vsce package --no-dependencies"
     },
     "devDependencies": {
-        "@rspack/cli": "^2.0.1",
+        "@rspack/cli": "^2.0.2",
         "@rspack/core": "^2.0.1",
         "@trpc/client": "^11.11.0",
         "@trpc/server": "^11.11.0",
