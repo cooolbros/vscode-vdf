@@ -727,11 +727,7 @@ function createNewGetDiagnostics(diagnosticsSchema: DiagnosticsSchema) {
 			"StartingPathTrackNode": [string()],
 		})
 
-		const validateItemKey: RefineReference<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context, definitions) => {
-			return [TextDocumentBase.diagnostics.key(definitions[0].key, detail, detailRange)]
-		}
-
-		const validateItem = string(reference(Symbol.for("item"), validateItemKey))
+		const validateItem = string(reference(Symbol.for("item")))
 
 		const validateItemNameOwner: RefineString<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context) => {
 
@@ -767,10 +763,7 @@ function createNewGetDiagnostics(diagnosticsSchema: DiagnosticsSchema) {
 			return []
 		}
 
-		const validateItemName = string(reference(Symbol.for("item"), (name, detail, detailRange, documentSymbol, path, context, definitions) => [
-			...validateItemNameOwner(name, detail, detailRange, documentSymbol, path, context),
-			...validateItemKey(name, detail, detailRange, documentSymbol, path, context, definitions)
-		]))
+		const validateItemName = string(reference(Symbol.for("item"), (name, detail, detailRange, documentSymbol, path, context, definitions) => validateItemNameOwner(name, detail, detailRange, documentSymbol, path, context)))
 
 		const validateItemAttributes = (): Validate<PopfileTextDocumentDependencies> => {
 			const validate = documentSymbols({ "ItemName": [validateItemName] }, () => [])

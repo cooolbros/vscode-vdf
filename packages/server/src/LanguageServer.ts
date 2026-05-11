@@ -834,8 +834,8 @@ export abstract class LanguageServer<
 						}),
 						...(commands.length && {
 							command: {
-								command: "vscode-vdf.executeCommands",
 								title: "",
+								command: "vscode-vdf.executeCommands",
 								arguments: [commands]
 							}
 						})
