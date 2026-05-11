@@ -1,5 +1,10 @@
 # Change Log
 
+## [5.10.3]
+ - Improve performance of `#base` autocompletion
+ - [Popfile] Fix `ClassIcon` partial autocompletion not working
+ - [Popfile] Fix "Fix all issues of kind" code action not working for `Item` and `ItemName` key diagnostics
+
 ## [5.10.2]
  - [Popfile] Fix embedded VScript features
 
