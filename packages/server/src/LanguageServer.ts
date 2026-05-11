@@ -16,7 +16,6 @@ import { BehaviorSubject, catchError, combineLatest, concatMap, distinctUntilCha
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
-import type { FileType } from "vscode"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, InlayHint, InlayHintRequest, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type InlayHintParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { version } from "../../../package.json"
@@ -68,15 +67,6 @@ export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<
 }
 
 export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
-
-export type CompletionFiles = (path: string, options: CompletionFilesOptions) => Promise<CompletionItem[]>
-
-export interface CompletionFilesOptions {
-	value: string | null
-	extensionsPattern: `.${string}` | null
-	callbackfn?: (name: string, type: FileType) => Partial<Omit<CompletionItem, "label" | "kind" | "sortText">> | null
-	image?: boolean
-}
 
 export abstract class LanguageServer<
 	TLanguageId extends VSCodeVDFLanguageID,
@@ -565,72 +555,6 @@ export abstract class LanguageServer<
 			const items = await this.getCompletion(
 				document,
 				position,
-				async (path: string, { value, extensionsPattern, callbackfn, image }: CompletionFilesOptions) => {
-
-					const documentConfiguration = await firstValueFrom(document.documentConfiguration$)
-					let startsWithFilter: ([name, type]: [string, FileType]) => boolean
-
-					if (value) {
-						const [last, ...rest] = value.split("/").reverse()
-						if (rest.length) {
-							path += `/${rest.reverse().join("/")}`
-						}
-						startsWithFilter = ([name]) => name.toLowerCase().startsWith(last)
-					}
-					else {
-						startsWithFilter = () => true
-					}
-
-					path = posix.resolve(`/${path}`).substring(1)
-
-					const entries = await document.fileSystem.readDirectory(path, {
-						recursive: documentConfiguration.filesAutoCompletionKind == "all",
-						pattern: extensionsPattern != null
-							? `**/*${extensionsPattern}`
-							: undefined
-					})
-
-					const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
-
-					return entries
-						.values()
-						.filter(startsWithFilter)
-						.map(
-							callbackfn == undefined
-								? ([name, type]: [string, FileType]): CompletionItem | null => ({
-									label: name,
-									kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-									...(incremental && {
-										commitCharacters: ["/"],
-									}),
-								})
-								: ([name, type]: [string, FileType], index: number): CompletionItem | null => {
-									const rest = callbackfn(name, type)
-									if (!rest) {
-										return null
-									}
-
-									return {
-										label: name,
-										kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
-										...(incremental && {
-											commitCharacters: ["/"],
-										}),
-										...(image && type == 1 && {
-											data: {
-												image: {
-													uri: document.uri,
-													path: posix.join(path, name)
-												}
-											},
-										}),
-										...rest
-									}
-								}
-						)
-						.filter((item) => item != null)
-						.toArray()
-				},
 				(text?: string) => {
 					const [before, after] = document.getText(new VDFRange(
 						position.with({ character: position.character - 1 }),
@@ -673,7 +597,7 @@ export abstract class LanguageServer<
 		}
 	}
 
-	protected abstract getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null>
+	protected abstract getCompletion(document: TDocument, position: VDFPosition, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null>
 
 	protected async onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
 

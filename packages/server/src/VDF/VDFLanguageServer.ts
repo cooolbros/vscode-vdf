@@ -4,13 +4,13 @@ import { generateTokens } from "common/generateTokens"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { firstValueFrom, type Observable } from "rxjs"
+import { firstValueFrom, identity, type Observable } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
 import { CompletionItem, CompletionItemKind, MarkupKind, Range, TextEdit, type Connection, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
-import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
+import { LanguageServer, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
 import { VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
@@ -49,7 +49,7 @@ export abstract class VDFLanguageServer<
 		return await super.onDidOpen(event)
 	}
 
-	protected async getCompletion(document: TDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
+	protected async getCompletion(document: TDocument, position: VDFPosition, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
 
 		const keys = async (text?: string) => {
 
@@ -110,17 +110,22 @@ export abstract class VDFLanguageServer<
 
 		const values = async (key: string, text?: string): Promise<CompletionItem[] | null> => {
 			if (key == "#base") {
-				const basename = document.uri.basename()
+				const basename = document.uri.basename().toLowerCase()
 				const documentSymbols = await firstValueFrom(document.documentSymbols$)
-				return await files(document.configuration.relativeFolderPath ?? "", {
-					value: text ?? null,
-					extensionsPattern: null,
-					callbackfn: (name, type) => {
-						return name == basename || documentSymbols.some((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail == name)
-							? null
-							: {}
+				const bases = new Set(
+					documentSymbols
+						.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined)
+						.map((documentSymbol) => documentSymbol.detail!.toLowerCase())
+				)
+
+				return (await document.completion.files({
+					folder: document.configuration.relativeFolderPath ?? "",
+					text: text,
+					filter: ([name, type], startsWithFilter) => {
+						const nameLowerCase = name.toLowerCase()
+						return startsWithFilter(name) && nameLowerCase != basename && !bases.has(nameLowerCase)
 					},
-				})
+				})).toArray()
 			}
 
 			key = document.configuration.keyTransform(key.toLowerCase())
@@ -175,23 +180,24 @@ export abstract class VDFLanguageServer<
 			// Files
 			const fileConfiguration = schema.completion.files.find(({ keys }) => keys.has(key))
 			if (fileConfiguration != undefined) {
-				return await files(fileConfiguration.folder ?? "", {
-					value: text ?? null,
-					extensionsPattern: fileConfiguration.extensionsPattern,
-					callbackfn: fileConfiguration.toCompletionItem != null
-						? (name, type) => fileConfiguration.toCompletionItem!(name, type, () => {
-							const { dir, name: nameNoExt } = posix.parse(name)
-							return posix.join(dir, nameNoExt)
-						})
-						: undefined,
+				const withoutExtension = (name: string) => {
+					const { dir, name: nameNoExt } = posix.parse(name)
+					return posix.join(dir, nameNoExt)
+				}
+
+				return (await document.completion.files({
+					folder: fileConfiguration.folder ?? "",
+					text: text,
+					basenamePattern: fileConfiguration.basenamePattern,
+					filter: fileConfiguration.filter,
 					image: fileConfiguration.asset == VGUIAssetType.Image
-				})
+				})).map(fileConfiguration.map ? (item) => fileConfiguration.map!(item, withoutExtension) : identity).toArray()
 			}
 
 			// Misc.
 			const items = schema.completion.values?.[key]
 			if (items != undefined) {
-				return Array.isArray(items) ? items : await items({ text, position, files })
+				return Array.isArray(items) ? items : await items({ text, position })
 			}
 
 			return null

@@ -39,7 +39,7 @@ export const SurfacePropertiesManifestSchema = (document: VGUITextDocument): VDF
 						"file"
 					]),
 					folder: null,
-					extensionsPattern: ".txt",
+					basenamePattern: "*.txt",
 				},
 			],
 		}

@@ -369,7 +369,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 						"font",
 					]),
 					folder: null,
-					extensionsPattern: ".*tf",
+					basenamePattern: "*.*tf",
 				},
 				{
 					keys: new Set([
@@ -377,14 +377,13 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 						"ButtonsSC".toLowerCase(),
 					]),
 					folder: null,
-					extensionsPattern: null,
 				},
 				{
 					keys: new Set([
 						"image",
 					]),
 					folder: "materials/vgui",
-					extensionsPattern: ".vmt",
+					basenamePattern: "*.vmt",
 					asset: VGUIAssetType.Image
 				},
 			],

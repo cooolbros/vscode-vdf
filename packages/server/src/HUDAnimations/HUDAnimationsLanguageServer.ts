@@ -8,7 +8,7 @@ import { firstValueFrom, Subscription } from "rxjs"
 import { VDFPosition } from "vdf"
 import { CompletionItem, CompletionItemKind, InsertTextFormat, Range, TextEdit, type Connection, type DocumentFormattingParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
-import { LanguageServer, type CompletionFiles, type TextDocumentRequestParams } from "../LanguageServer"
+import { LanguageServer, type TextDocumentRequestParams } from "../LanguageServer"
 import { EventType, HUDAnimationsTextDocument, type HUDAnimationsTextDocumentDependencies } from "./HUDAnimationsTextDocument"
 import { HUDAnimationsWorkspace } from "./HUDAnimationsWorkspace"
 import eventFiles from "./eventFiles.json"
@@ -194,7 +194,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 		return stack.move()
 	}
 
-	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, files: CompletionFiles, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
+	protected async getCompletion(document: HUDAnimationsTextDocument, position: VDFPosition, conditionals: (text?: string) => CompletionItem[]): Promise<CompletionItem[] | null> {
 
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
@@ -592,8 +592,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 				})
 		}
 
-		function sounds(text?: string) {
-			return files("sound", { value: text ?? null, extensionsPattern: null })
+		async function sounds(text?: string) {
+			return (await document.completion.files({ folder: "sound", text: text })).toArray()
 		}
 
 		return []

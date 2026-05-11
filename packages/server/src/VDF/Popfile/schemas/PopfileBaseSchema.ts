@@ -562,26 +562,20 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 							"ClassIcon".toLowerCase()
 						]),
 						folder: "materials/hud",
-						extensionsPattern: ".vmt",
-						toCompletionItem: (name, type, withoutExtension) => {
-							if (type == 1 && name.startsWith("leaderboard_class_")) {
-								const insertText = withoutExtension().substring("leaderboard_class_".length)
-								return {
-									label: name.substring("leaderboard_class_".length),
-									insertText: insertText,
-								}
-							}
-							else {
-								return null
-							}
+						basenamePattern: "leaderboard_class_*.vmt",
+						filter: ([name, type], startsWithFilter) => type == 1 && startsWithFilter(name.substring("leaderboard_class_".length)),
+						map: (item, withoutExtension) => {
+							item.label = item.label.substring("leaderboard_class_".length)
+							item.insertText = withoutExtension(item.label)
+							return item
 						},
 						asset: VGUIAssetType.Image
 					}
 				],
 				values: {
-					...Object.fromEntries(sounds.values().map((value) => [value, async ({ text, files }) => {
+					...Object.fromEntries(sounds.values().map((value) => [value, async ({ text }) => {
 						const [soundFiles, soundScripts] = await Promise.all([
-							files("sound", { value: text ?? null, extensionsPattern: null }),
+							document.completion.files({ folder: "sound", text: text }),
 							firstValueFrom(document.definitionReferences$).then((definitionReferences) =>
 								definitionReferences.definitions.ofType(null, Symbol.for("sound"))
 									.values()

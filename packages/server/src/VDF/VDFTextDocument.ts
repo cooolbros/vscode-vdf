@@ -9,9 +9,9 @@ import { combineLatest, distinctUntilChanged, finalize, firstValueFrom, map, Obs
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
+import type { FileType } from "vscode"
 import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
-import type { CompletionFiles } from "../LanguageServer"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
 export interface VDFTextDocumentConfiguration<TDependencies extends VDFTextDocumentDependencies> {
@@ -42,11 +42,12 @@ export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDepe
 		files: {
 			keys: Set<string>
 			folder: string | null
-			extensionsPattern: `.${string}` | null
-			toCompletionItem?: (name: string, type: number, withoutExtension: () => string) => Partial<Omit<CompletionItem, "kind">> | null,
+			basenamePattern?: string
+			filter?: ([name, type]: [string, FileType], startsWithFilter: (name: string) => boolean) => boolean
+			map?: (item: CompletionItem, withoutExtension: (name: string) => string) => CompletionItem
 			asset?: VGUIAssetType
 		}[]
-		values?: Record<string, CompletionItem[] | ((args: { text?: string, position: VDFPosition, files: CompletionFiles }) => Promise<CompletionItem[]>)>
+		values?: Record<string, CompletionItem[] | ((args: { text?: string, position: VDFPosition }) => Promise<CompletionItem[]>)>
 	}
 }
 

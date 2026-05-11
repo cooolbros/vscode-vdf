@@ -182,8 +182,11 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 					{
 						keys: set,
 						folder: "materials",
-						extensionsPattern: ".vtf",
-						toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
+						basenamePattern: "*.vtf",
+						map: (item, withoutExtension) => {
+							item.insertText = withoutExtension(item.label)
+							return item
+						}
 					}
 				],
 			}

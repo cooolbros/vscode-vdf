@@ -2,9 +2,11 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
-import { BehaviorSubject, combineLatest, filter, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { posix } from "path"
+import { BehaviorSubject, combineLatest, filter, firstValueFrom, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
-import { CodeAction, CodeLens, Color, ColorInformation, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
+import type { FileType } from "vscode"
+import { CodeAction, CodeLens, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { References, type DefinitionReferences } from "./DefinitionReferences"
 import type { TextDocumentRequestParams } from "./LanguageServer"
@@ -103,6 +105,53 @@ export abstract class TextDocumentBase<
 				dedent(this.getText(range)),
 				"```",
 			].join("\n")
+		}
+	}
+
+	public readonly completion = {
+		files: async ({ folder, text, basenamePattern, filter, image = false }: { folder: string, text?: string, basenamePattern?: string, filter?: ([name, type]: [string, FileType], startsWithFilter: (name: string) => boolean) => boolean, image?: boolean, }): Promise<IteratorObject<CompletionItem>> => {
+			const documentConfiguration = await firstValueFrom(this.documentConfiguration$)
+			let startsWithFilter: (name: string) => boolean
+
+			if (text != undefined) {
+				const [last, ...rest] = text.split("/").reverse()
+				if (rest.length) {
+					folder += `/${rest.reverse().join("/")}`
+				}
+				const lastLowerCase = last.toLowerCase()
+				startsWithFilter = (name) => name.toLowerCase().startsWith(lastLowerCase)
+			}
+			else {
+				startsWithFilter = () => true
+			}
+
+			filter ??= (value) => startsWithFilter(value[0])
+
+			folder = posix.resolve(`/${folder}`).substring(1)
+			const recursive = documentConfiguration.filesAutoCompletionKind == "all"
+			const pattern = basenamePattern && `${recursive ? "**/*" : ""}${basenamePattern}`
+			const entries = await this.fileSystem.readDirectory(folder, { recursive, pattern })
+
+			const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
+
+			return entries
+				.values()
+				.filter((value) => filter(value, startsWithFilter))
+				.map(([name, type]): CompletionItem => ({
+					label: name,
+					kind: type == 1 ? CompletionItemKind.File : CompletionItemKind.Folder,
+					...(incremental && {
+						commitCharacters: ["/"],
+					}),
+					...((image && type == 1) && {
+						data: {
+							image: {
+								uri: this.uri,
+								path: posix.join(folder, name)
+							}
+						},
+					}),
+				}))
 		}
 	}
 

@@ -399,19 +399,21 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 				{
 					keys: images,
 					folder: "materials/vgui",
-					extensionsPattern: ".vmt",
-					toCompletionItem: (name, type, withoutExtension) => ({ insertText: withoutExtension() }),
+					basenamePattern: "*.vmt",
+					map: (item, withoutExtension) => {
+						item.insertText = withoutExtension(item.label)
+						return item
+					},
 					asset: VGUIAssetType.Image
 				},
 				{
 					keys: sounds,
 					folder: "sound",
-					extensionsPattern: null,
 				},
 				{
 					keys: new Set(["modelname"]),
 					folder: null,
-					extensionsPattern: ".mdl",
+					basenamePattern: "*.mdl",
 				}
 			],
 		}
