@@ -81,8 +81,8 @@ importers:
         specifier: ^11.0.0
         version: 11.0.0
       drizzle-orm:
-        specifier: ^0.45.1
-        version: 0.45.1(bun-types@1.2.6)
+        specifier: ^0.45.2
+        version: 0.45.2(bun-types@1.2.6)
       vdf:
         specifier: workspace:*
         version: link:../../packages/vdf
@@ -2511,8 +2511,8 @@ packages:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
 
-  drizzle-orm@0.45.1:
-    resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
+  drizzle-orm@0.45.2:
+    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -6755,7 +6755,7 @@ snapshots:
 
   dotenv@17.2.3: {}
 
-  drizzle-orm@0.45.1(bun-types@1.2.6):
+  drizzle-orm@0.45.2(bun-types@1.2.6):
     optionalDependencies:
       bun-types: 1.2.6
 
