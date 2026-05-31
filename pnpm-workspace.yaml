@@ -1,3 +1,7 @@
+engineStrict: true
+preferWorkspacePackages: true
+shellEmulator: true
+
 packages:
   - 'apps/*'
   - 'apps/extension/browser/*'
@@ -13,9 +17,9 @@ catalog:
   vscode-languageclient: ^9.0.1
   vscode-languageserver: ^9.0.1
 
-onlyBuiltDependencies:
-  - '@playwright/browser-chromium'
-  - '@vscode/vsce-sign'
-  - esbuild
-  - keytar
-  - sharp
+allowBuilds:
+  '@playwright/browser-chromium': true
+  '@vscode/vsce-sign': true
+  esbuild: true
+  keytar: true
+  sharp: true
