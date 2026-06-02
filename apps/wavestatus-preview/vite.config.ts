@@ -10,7 +10,7 @@ export default defineConfig({
 		}
 	},
 	build: {
-		target: "ESNext",
+		target: "esnext",
 		rollupOptions: {
 			output: {
 				assetFileNames: "assets/[name].[ext]"
