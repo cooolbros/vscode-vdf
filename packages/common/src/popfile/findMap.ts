@@ -3,6 +3,10 @@ import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { Uri } from "../Uri"
 
 export async function findMap(uri: Uri, fileSystem: FileSystemMountPoint): Promise<`mvm_${string}.bsp` | null> {
+	if (posix.extname(uri.basename()) != ".pop") {
+		return null
+	}
+
 	const maps = await fileSystem.readDirectory("maps", { pattern: "mvm_*.bsp" })
 	const basename = uri.basename()
 
