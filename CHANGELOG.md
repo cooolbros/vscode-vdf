@@ -15,9 +15,9 @@
  - Add suport for reading ambient #base files
  - Fix crash when updating extension
  - Fix file system provider error in VSCode Web
- - VGUI
+ - VGUI:
    - Add workspace folders to file system
- - Popfile
+ - Popfile:
    - Add `FixedRespawnWaveTime` to `WaveSchedule` autocompletion
    - Add dynamic attributes to `EventChangeAttributes` autocompletion
    - Add support for multiple `Tags` in `TFBot` autocompletion
@@ -44,7 +44,7 @@
  - Update minimum VSCode to `^1.110.0`
  - HUD Animations:
    - Add invalid interpolator diagnostic
- - Popfile
+ - Popfile:
    - Add unknown event diagnostic for `EventChangeAttributes`
    - Add autocompletion for `EventChangeAttributes` events
    - Add mission information and starting currency to Wave Status Preview
@@ -70,7 +70,7 @@
  - Fix not suggesting enum values
  - Fix false positive file not found diagnostic when using `\` separators
  - Fix crash caused by "Fix all issues of kind" code action
- - Popfile
+ - Popfile:
    - Add inlay hints and autocompletion for `"attach particle effect"` ([#85](https://github.com/cooolbros/vscode-vdf/issues/85))
    - Add colour picker for `"set item tint RGB 2"`
    - Add ItemName unowned Item diagnostic and code action ([#84](https://github.com/cooolbros/vscode-vdf/issues/84))
@@ -125,12 +125,12 @@
  - Fix formatter not quoting tokens that start with control characters
  - Fix #base definitions not being correctly removed
  - Update minimum VSCode to `^1.105.0`
- - VGUI
+ - VGUI:
    - Add inlay hints for `o` wide/tall
    - Add definition provider for clientscheme definitions in clientscheme files
    - Add links for clientscheme CustomFontFiles string fonts
    - Add inlay hints for clientscheme CustomFontFiles range values
- - Popfile
+ - Popfile:
    - Add unknown keys diagnostics
    - Fix using incorrect BSP version for some custom maps
    - Add `InitWaveOutput` to `Wave` autocompletion
@@ -266,7 +266,7 @@
  - Fix autocompletion returning incorrect files when searching parent directories (`..`)
  - Fix formatter inserting newline at incorrect position when using `insertNewlineBeforeObjects`
  - Add code action to fix all issues of same type
- - VGUI
+ - VGUI:
    - Add inlay hints for enum numbers and language token references
    - Add language token values to autocompletion documentation
    - Add `activeimage` and `inactiveimage` image keys
