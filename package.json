@@ -606,7 +606,7 @@
         "@vscode/vsce": "^3.7.1",
         "path-browserify": "^1.0.1",
         "rxjs": "^7.8.2",
-        "turbo": "^2.8.20",
+        "turbo": "^2.9.18",
         "typescript": "^5.9.3",
         "vscode-languageserver-textdocument": "^1.0.11",
         "zod": "^4.3.6"
