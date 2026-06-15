@@ -59,7 +59,6 @@ export class VPK {
 			const end = i
 			i++
 
-			// @ts-ignore
 			return this.decoder.decode(data.buffer.slice(start, end))
 		}
 
