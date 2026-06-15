@@ -5,10 +5,10 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
 import { firstValueFrom, identity, type Observable } from "rxjs"
-import { VDFIndentation, VDFNewLine, VDFPosition } from "vdf"
+import { VDFIndentation, VDFNewLine, VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { formatVDF, type VDFFormatStringifyOptions } from "vdf-format"
-import { CompletionItem, CompletionItemKind, MarkupKind, Range, TextEdit, type Connection, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CompletionItem, CompletionItemKind, InsertTextFormat, MarkupKind, Range, TextEdit, type Connection, type DocumentFormattingParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { LanguageServer, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
@@ -63,7 +63,16 @@ export abstract class VDFLanguageServer<
 					{
 						label: "#base",
 						kind: CompletionItemKind.Keyword,
-					},
+						textEdit: {
+							range: new VDFRange(position.with({ character: 0 }), position),
+							newText: `#base\t"$0"`
+						},
+						insertTextFormat: InsertTextFormat.Snippet,
+						command: {
+							title: "Trigger Suggest",
+							command: "editor.action.triggerSuggest"
+						}
+					} satisfies CompletionItem,
 					...schema.completion.root.filter((item) => !documentSymbols.some((i) => i.key == item.label))
 				]
 			}
