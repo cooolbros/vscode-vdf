@@ -10,7 +10,7 @@ mod tokeniser;
 
 #[serde_as]
 #[derive(Debug, Serialize, Tsify)]
-#[tsify(into_wasm_abi)]
+#[tsify(into_wasm_abi, hashmap_as_object)]
 pub struct Entities(
     #[serde_as(as = "Vec<HashMap<_, OneOrMany<_, PreferOne>>>")]
     #[tsify(type = "Array<Record<string, string | string[]>>")]
