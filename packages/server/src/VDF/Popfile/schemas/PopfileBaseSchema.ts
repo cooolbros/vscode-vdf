@@ -549,7 +549,6 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 					{
 						label: "WaveSchedule",
 						kind: CompletionItemKind.Class,
-						preselect: true,
 						insertText: "WaveSchedule\n{\n\t$0\n}",
 						insertTextFormat: InsertTextFormat.Snippet
 					}
