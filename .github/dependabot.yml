@@ -12,6 +12,9 @@ updates:
           - nextra
           - nextra-theme-docs
     ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    ignore:
       - dependency-name: "@types/vscode"
     schedule:
       interval: weekly
