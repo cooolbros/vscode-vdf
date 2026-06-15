@@ -388,7 +388,7 @@ export class MissionPopfile extends PopfileBase {
 	}
 }
 
-export class BasePopfile extends PopfileBase {
+class BasePopfile extends PopfileBase {
 	protected getTemplatesMap(templatesBlocks: VDFDocumentSymbol[]): Map<string, TemplateBuilder> {
 		const map = new Map<string, TemplateBuilder>()
 
