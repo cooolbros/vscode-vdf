@@ -7,6 +7,7 @@ import { EndOfLine, type TextEditor, window, workspace, WorkspaceEdit } from "vs
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
 import { MissionPopfile } from "../Popfile"
 import { VSCodeDocumentGetTextSchema } from "../VSCodeSchemas"
+import { VirtualFileSystem } from "../VirtualFileSystem/VirtualFileSystem"
 
 class Table {
 
@@ -49,14 +50,18 @@ class Table {
 	}
 }
 
-export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
+export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document, selection }: TextEditor) => {
 		if (document.languageId != "popfile") {
 			window.showWarningMessage(document.languageId)
 			return
 		}
 
-		await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
+		await using fileSystem = await VirtualFileSystem([
+			fileSystemMountPointFactory.get({ type: "bsp", uri: new Uri(document.uri) }),
+			fileSystemMountPointFactory.get({ type: "tf2" }),
+		])
+
 		const popfile = new MissionPopfile(
 			new Uri(document.uri),
 			of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),

@@ -6,8 +6,16 @@ import vscode from "vscode"
 /**
  * @class
  */
-export function VirtualFileSystem(fileSystems: FileSystemMountPoint[]): FileSystemMountPoint {
+export async function VirtualFileSystem(promises: Promise<FileSystemMountPoint>[]): Promise<FileSystemMountPoint> {
+
+	const fileSystems = (await Promise.allSettled(promises))
+		.values()
+		.filter((result) => result.status == "fulfilled")
+		.map((result) => result.value)
+		.toArray()
+
 	const observables = new Map<string, Observable<Uri | null>>()
+
 	return {
 		resolveFile: (path) => {
 			let observable$ = observables.get(path)

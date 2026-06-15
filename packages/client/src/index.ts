@@ -34,7 +34,7 @@ export class Client<T extends BaseLanguageClient> {
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		teamFortress2Folder$: Observable<Uri>,
-		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
+		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
 		fileSystemWatcherFactory: FileSystemWatcherFactory,
 		client: T,
 	) {

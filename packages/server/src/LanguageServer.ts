@@ -79,7 +79,7 @@ export abstract class LanguageServer<
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
 	protected readonly workspaceUris: Promise<Uri[]>
-	protected readonly fileSystems: RefCountAsyncDisposableFactory<({ type: "tf2" } | { type: "folder", uri: Uri })[], FileSystemMountPoint>
+	protected readonly fileSystems: RefCountAsyncDisposableFactory<({ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri })[], FileSystemMountPoint>
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
 	private readonly diagnostic = { id: 0 }

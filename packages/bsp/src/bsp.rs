@@ -13,7 +13,10 @@ use derive_more::Display;
 use thiserror::Error;
 use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
 
-use crate::{Entities, entities::SyntaxError};
+use crate::{
+    entities::{Entities, SyntaxError},
+    pakfile::{PakError, Pakfile},
+};
 
 #[wasm_bindgen]
 #[derive(Debug, Decode)]
@@ -126,6 +129,22 @@ impl From<EntitiesError> for JsValue {
     }
 }
 
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub enum PakfileError {
+    #[error(transparent)]
+    BSPError(#[from] BSPError),
+
+    #[error(transparent)]
+    PakError(#[from] PakError),
+}
+
+impl From<PakfileError> for JsValue {
+    fn from(value: PakfileError) -> Self {
+        JsValue::from(JsError::new(&format!("{:?}", value)))
+    }
+}
+
 #[wasm_bindgen]
 impl BSP {
     #[wasm_bindgen(constructor)]
@@ -177,5 +196,13 @@ impl BSP {
         let entities = Entities::new(text)?;
 
         Ok(entities)
+    }
+
+    #[wasm_bindgen]
+    pub fn pakfile(&self) -> Result<Pakfile, PakfileError> {
+        let buf = self.lump(40)?;
+        let pakfile = Pakfile::new(buf)?;
+
+        Ok(pakfile)
     }
 }

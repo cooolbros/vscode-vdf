@@ -8,11 +8,16 @@ import { commands, EndOfLine, Position, window, workspace, WorkspaceEdit, type T
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
 import { MissionPopfile, PopfileBase, UriSyntaxError } from "../Popfile"
 import { VSCodeDocumentGetTextSchema, VSCodePositionSchema, VSCodeRangeSchema } from "../VSCodeSchemas"
+import { VirtualFileSystem } from "../VirtualFileSystem/VirtualFileSystem"
 
-export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
+export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document }: TextEditor) => {
 		try {
-			await using fileSystem = await fileSystemMountPointFactory.get({ type: "tf2" })
+			await using fileSystem = await VirtualFileSystem([
+				fileSystemMountPointFactory.get({ type: "bsp", uri: new Uri(document.uri) }),
+				fileSystemMountPointFactory.get({ type: "tf2" }),
+			])
+
 			const popfile = new MissionPopfile(
 				new Uri(document.uri),
 				of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),

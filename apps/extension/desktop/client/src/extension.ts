@@ -24,6 +24,8 @@ import { VDF } from "vdf"
 import { commands, ConfigurationTarget, Disposable, FileSystemError, FileType, languages, LanguageStatusSeverity, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { z } from "zod"
+import { BSPFileSystemProvider } from "./BSP/BSPFileSystemProvider"
+import { BSPFactory } from "./BSPFactory"
 import { FileSystemMountPointFactory } from "./FileSystemMountPointFactory"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 
@@ -255,6 +257,7 @@ export function activate(context: ExtensionContext): void {
 
 	const fileSystemMountPointFactory = new FileSystemMountPointFactory(context, teamFortress2Folder$)
 	const fileSystemWatcherFactory = new FileSystemWatcherFactory()
+	const bspFactory = new BSPFactory(context)
 
 	// https://code.visualstudio.com/api/references/contribution-points#contributes
 	// https://code.visualstudio.com/api/references/vscode-api
@@ -269,7 +272,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(fileSystemMountPointFactory, fileSystemWatcherFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory, bspFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
@@ -277,6 +280,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, context.subscriptions)))
 
 	// Workspace
+	context.subscriptions.push(workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory), { isCaseSensitive: false, isReadonly: true }))
 	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server

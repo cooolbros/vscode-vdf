@@ -6,6 +6,7 @@
     },
     "devDependencies": {
         "@types/node": "^22.9.0",
+        "bsp": "workspace:*",
         "client": "workspace:*",
         "common": "workspace:*",
         "tsconfig": "workspace:*",

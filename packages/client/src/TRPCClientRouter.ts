@@ -17,7 +17,6 @@ import { searchForHUDRoot } from "./searchForHUDRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
 import { VTFDocument } from "./VTF/VTFDocument"
-import { initBSP } from "./wasm/bsp"
 import { initVTFPNG } from "./wasm/vtf"
 
 const URISchema = z.object({
@@ -31,8 +30,9 @@ export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>,
 	context: ExtensionContext,
 	teamFortress2Folder$: Observable<Uri>,
-	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>,
+	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
+	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP>,
 ) {
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
@@ -94,22 +94,14 @@ export function TRPCClientRouter(
 								z.discriminatedUnion("type", [
 									z.object({ type: z.literal("tf2") }),
 									z.object({ type: z.literal("folder"), uri: Uri.schema }),
+									z.object({ type: z.literal("bsp"), uri: Uri.schema }),
 								])
 							)
 						})
 					)
 					.mutation(async ({ input }) => {
-
 						const key = crypto.randomUUID()
-						const results = await Promise.allSettled(input.paths.map(async (path) => await fileSystemMountPointFactory.get(path)))
-
-						fileSystems.set(key, VirtualFileSystem(
-							results
-								.values()
-								.filter((result) => result.status == "fulfilled")
-								.map((result) => result.value)
-								.toArray()
-						))
+						fileSystems.set(key, await VirtualFileSystem(input.paths.map(async (path) => await fileSystemMountPointFactory.get(path))))
 						return {
 							key: key,
 							paths: input.paths
@@ -239,9 +231,7 @@ export function TRPCClientRouter(
 					)
 					.query(async ({ input }) => {
 						try {
-							await initBSP(context)
-							const buf = await workspace.fs.readFile(input.uri)
-							const bsp = new BSP(buf)
+							await using bsp = await bspFactory.get(input.uri)
 							return z.array(
 								z.looseObject({
 									classname: z.string(),

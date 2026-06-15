@@ -45,6 +45,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 					init,
 					documentConfiguration$,
 					await this.fileSystems.get([
+						{ type: "bsp", uri: init.uri },
 						{ type: "tf2" },
 						...workspaceUris.map((uri) => ({ type: <const>"folder", uri: uri })),
 					]),

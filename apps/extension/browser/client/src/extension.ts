@@ -29,7 +29,7 @@ export function activate(context: ExtensionContext): void {
 
 	const teamFortress2Folder$ = of(new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" }))
 
-	const fileSystemMountPointFactory = new RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>(
+	const fileSystemMountPointFactory = new RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>(
 		(paths) => JSON.stringify(paths),
 		async (path, factory) => {
 			switch (path.type) {
@@ -44,6 +44,9 @@ export function activate(context: ExtensionContext): void {
 						watch: false,
 						resolvePath: (path) => root.joinPath(path)
 					})
+				}
+				case "bsp": {
+					throw new Error("bsp")
 				}
 			}
 		}

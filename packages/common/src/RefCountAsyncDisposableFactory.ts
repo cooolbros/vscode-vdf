@@ -1,4 +1,4 @@
-export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable> {
+export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable | Disposable> {
 
 	protected readonly map: Map<string, { count: { value: number }, value: Promise<TValue> }>
 
@@ -23,7 +23,12 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 									count.value--
 									if (count.value == 0) {
 										this.map.delete(k)
-										await target[Symbol.asyncDispose]()
+										if (Symbol.asyncDispose in target) {
+											await target[Symbol.asyncDispose]()
+										}
+										else {
+											target[Symbol.dispose]()
+										}
 									}
 								}
 							}

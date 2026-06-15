@@ -11,7 +11,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, combineLatest, concat, concatMap, filter, firstValueFrom, from, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, take, withLatestFrom, type ObservedValueOf } from "rxjs"
+import { catchError, combineLatest, concat, concatMap, defer, filter, firstValueFrom, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, take, withLatestFrom, type ObservedValueOf } from "rxjs"
 import type { RangeLike } from "vdf"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -22,8 +22,8 @@ import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
 import { MissionPopfile } from "../Popfile"
 import { TRPCImageRouter } from "../TRPCImageRouter"
 import { TRPCWebViewRequestHandler } from "../TRPCWebViewRequestHandler"
+import { VirtualFileSystem } from "../VirtualFileSystem/VirtualFileSystem"
 import { VSCodeDocumentGetTextSchema } from "../VSCodeSchemas"
-import { initBSP } from "../wasm/bsp"
 import { initVTFPNG } from "../wasm/vtf"
 
 function transformDifficulty(arg: string): string {
@@ -69,8 +69,12 @@ const enum Type {
 	Mission,
 }
 
-export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
-
+export function showWaveStatusPreviewToSide(
+	context: ExtensionContext,
+	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
+	fileSystemWatcherFactory: FileSystemWatcherFactory,
+	bspFactory?: RefCountAsyncDisposableFactory<Uri, BSP>
+) {
 	const webviewPanels = new Map<string, WebviewPanel>()
 
 	function send(command: string) {
@@ -134,7 +138,12 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 			shareReplayUntilDisposed()
 		)
 
-		const fileSystem$ = usingAsync(async () => await fileSystemMountPointFactory.get({ type: "tf2" })).pipe(
+		const fileSystem$ = usingAsync(async () => {
+			return await VirtualFileSystem([
+				fileSystemMountPointFactory.get({ type: "bsp", uri: new Uri(document.uri) }),
+				fileSystemMountPointFactory.get({ type: "tf2" }),
+			])
+		}).pipe(
 			shareReplayUntilDisposed()
 		)
 
@@ -744,37 +753,38 @@ export function showWaveStatusPreviewToSide(context: ExtensionContext, fileSyste
 					.procedure
 					.subscription(async ({ signal }) => {
 						return observableToAsyncIterable<ObservedValueOf<ReturnType<typeof vtf>> | null>(
-							combineLatest({
-								meta: meta$,
-								fileSystem: fileSystem$,
-								init: from(initBSP(context))
-							}).pipe(
-								concatMap(async ({ meta, fileSystem }) => {
-									if (!meta.map) {
-										return of(null)
-									}
+							defer(() => {
+								if (!bspFactory) {
+									return of(null)
+								}
 
-									const uri = await firstValueFrom(fileSystem.resolveFile(`maps/mvm_${meta.map}.bsp`))
-									if (uri == null) {
-										return of(null)
-									}
+								return combineLatest({
+									meta: meta$,
+									fileSystem: fileSystem$,
+								}).pipe(
+									concatMap(async ({ meta, fileSystem }) => {
+										if (!meta.map) {
+											return of(null)
+										}
 
-									const [buf] = await Promise.all([
-										workspace.fs.readFile(uri),
-										initBSP(context)
-									])
+										const uri = await firstValueFrom(fileSystem.resolveFile(`maps/mvm_${meta.map}.bsp`))
+										if (uri == null) {
+											return of(null)
+										}
 
-									const entities = new BSP(buf).entities()
-									const skyname = entities[0]["skyname"]
+										await using bsp = await bspFactory.get(uri)
+										const entities = bsp.entities()
+										const skyname = entities[0]["skyname"]
 
-									// bk
-									// ft
-									// lf
-									// rt
-									return vtf(fileSystem, `materials/skybox/${skyname}ft.vmt`)
-								}),
-								switchAll()
-							),
+										// bk
+										// ft
+										// lf
+										// rt
+										return vtf(fileSystem, `materials/skybox/${skyname}ft.vmt`)
+									}),
+									switchAll()
+								)
+							}),
 							signal!
 						)
 					}),

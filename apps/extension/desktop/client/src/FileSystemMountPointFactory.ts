@@ -5,6 +5,7 @@ import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { usingAsync } from "common/operators/usingAsync"
+import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { BehaviorSubject, distinctUntilChanged, finalize, firstValueFrom, map, shareReplay, switchMap, type Observable } from "rxjs"
@@ -22,6 +23,19 @@ async function VPKFileSystem(root: Uri): Promise<FileSystemMountPoint> {
 		type: vscode.FileType.File,
 		watch: false,
 		resolvePath: (path) => new Uri({ scheme: "vpk", authority: "", path: `/${path}`, query: query, fragment: "" })
+	})
+}
+
+/**
+ * @class
+ */
+async function BSPFileSystem(root: Uri): Promise<FileSystemMountPoint> {
+	const query = `?root=${JSON.stringify(root)}`
+	return await VSCodeFileSystem({
+		root: root,
+		type: vscode.FileType.File,
+		watch: false,
+		resolvePath: (path) => new Uri({ scheme: "bsp", authority: "", path: `/${path}`, query: query, fragment: "" })
 	})
 }
 
@@ -161,7 +175,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 	}
 }
 
-export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri }, FileSystemMountPoint> {
+export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint> {
 
 	constructor(context: vscode.ExtensionContext, teamFortress2Folder$: Observable<Uri>) {
 		super(
@@ -204,39 +218,32 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 												return teamFortress2Folder.joinPath(relativePath)
 											})
 
-										const fileSystems = (
-											await Promise.allSettled(
-												uris
-													.filter((uri, index) => uris.findIndex((u) => Uri.equals(u, uri)) == index)
-													.map(async (uri) => {
-														try {
-															const basename = uri.basename()
+										return VirtualFileSystem(uris
+											.filter((uri, index) => uris.findIndex((u) => Uri.equals(u, uri)) == index)
+											.map(async (uri) => {
+												try {
+													const basename = uri.basename()
 
-															if (basename == "*") {
-																return await WildcardFileSystem(uri, factory)
-															}
+													if (basename == "*") {
+														return await WildcardFileSystem(uri, factory)
+													}
 
-															if (basename.endsWith(".vpk")) {
-																const vpk = uri.dirname().joinPath(basename.replace(".vpk", "_dir.vpk"))
-																return await VPKFileSystem(vpk)
-															}
+													if (basename.endsWith(".vpk")) {
+														const vpk = uri.dirname().joinPath(basename.replace(".vpk", "_dir.vpk"))
+														return await VPKFileSystem(vpk)
+													}
 
-															return await factory.get({ type: "folder", uri: uri })
-														}
-														catch (error) {
-															if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
-																console.error(error)
-															}
+													return await factory.get({ type: "folder", uri: uri })
+												}
+												catch (error) {
+													if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
+														console.error(error)
+													}
 
-															throw error
-														}
-													})
-											)
+													throw error
+												}
+											})
 										)
-											.filter((result) => result.status == "fulfilled")
-											.map((result) => result.value)
-
-										return VirtualFileSystem(fileSystems)
 									}
 									case RemoteResourceFileSystemProvider.scheme: {
 										const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
@@ -275,6 +282,20 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 							[Symbol.asyncDispose]: async () => {
 							}
 						} satisfies FileSystemMountPoint
+					}
+					case "bsp": {
+						await using teamFortress2FileSystem = await factory.get({ type: "tf2" })
+						const bsp = await findMap(path.uri, teamFortress2FileSystem)
+						if (!bsp) {
+							throw new Error()
+						}
+
+						const bspUri = await firstValueFrom(teamFortress2FileSystem.resolveFile(`maps/${bsp}`))
+						if (!bspUri) {
+							throw new Error()
+						}
+
+						return await BSPFileSystem(bspUri)
 					}
 				}
 			}
