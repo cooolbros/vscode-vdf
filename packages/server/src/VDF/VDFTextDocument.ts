@@ -833,7 +833,7 @@ export abstract class VDFTextDocument<
 		return [
 			...base
 				.values()
-				.filter((documentSymbol) => documentSymbol.detail != undefined)
+				.filter((documentSymbol) => documentSymbol.detail?.trim().length)
 				.map((documentSymbol) => ({
 					range: documentSymbol.detailRange!,
 					data: {
