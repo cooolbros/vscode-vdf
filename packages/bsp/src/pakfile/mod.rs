@@ -66,7 +66,7 @@ impl Pakfile {
                 .ok_or(PakError::InvalidName)?
                 .to_str()
                 .ok_or(PakError::InvalidName)?
-                .to_string();
+                .to_lowercase();
 
             let len = file.size() as usize;
 

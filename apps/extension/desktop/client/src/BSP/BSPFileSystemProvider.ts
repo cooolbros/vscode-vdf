@@ -56,7 +56,7 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 			}
 		}
 
-		for (const folder of path.split("/")) {
+		for (const folder of path.toLowerCase().split("/")) {
 
 			if (tree.type == "File") {
 				return { bsp: bsp, entry: null }
