@@ -478,14 +478,6 @@ export function showWaveStatusPreviewToSide(
 							support: <HUDEnemyData[]>[],
 						}
 
-						for (const spawner of missionSpawns) {
-							addSpawner({
-								type: Type.Mission,
-								spawner: spawner,
-								totalCount: 1
-							})
-						}
-
 						let expected = 0
 						let actual = 0
 
@@ -651,6 +643,14 @@ export function showWaveStatusPreviewToSide(
 									totalCount: totalCount,
 								})
 							}
+						}
+
+						for (const spawner of missionSpawns) {
+							addSpawner({
+								type: Type.Mission,
+								spawner: spawner,
+								totalCount: 1
+							})
 						}
 
 						const { miniboss = [], normal = [] } = Object.groupBy(icons.normal, (item) => item.miniboss ? "miniboss" : "normal")
