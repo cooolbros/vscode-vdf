@@ -1,5 +1,13 @@
 # Change Log
 
+## [5.11.0]
+ - Fix `#base` key autocompletion inserting `##base` when accepting partial completion
+ - Fix error in empty `#base` document links
+ - Popfile:
+   - Add file system support for BSP packed assets
+   - Wave Status Preview:
+     - Fix placement of mission support icons
+
 ## [5.10.3]
  - Improve performance of `#base` autocompletion
  - [Popfile] Fix `ClassIcon` partial autocompletion not working
