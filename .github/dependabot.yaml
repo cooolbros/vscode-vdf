@@ -3,6 +3,14 @@ updates:
   - package-ecosystem: npm
     directory: /
     groups:
+      vscode-languageserver-node:
+        patterns:
+          - vscode-languageclient
+          - vscode-languageserver
+      trpc:
+        patterns:
+          - "@trpc/client"
+          - "@trpc/server"
       react:
         patterns:
           - react
