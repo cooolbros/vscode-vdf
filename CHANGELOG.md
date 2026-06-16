@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.11.1]
+ - [Popfile] Fix entities loading
+
 ## [5.11.0]
  - Fix `#base` key autocompletion inserting `##base` when accepting partial completion
  - Fix error in empty `#base` document links
