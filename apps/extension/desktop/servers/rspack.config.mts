@@ -2,6 +2,7 @@ import { defineConfig } from "@rspack/cli"
 import type { SwcLoaderOptions } from "@rspack/core"
 import { readdirSync } from "fs"
 import { posix } from "path"
+import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 
 export default defineConfig({
 	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, [import.meta.resolve("common/stackTraceLimit"), `./src/${name}`]])),
@@ -17,6 +18,9 @@ export default defineConfig({
 	resolve: {
 		extensions: [".js", ".ts"]
 	},
+	plugins: [
+		new TsCheckerRspackPlugin()
+	],
 	module: {
 		rules: [
 			{

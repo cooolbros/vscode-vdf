@@ -1,5 +1,6 @@
 import { defineConfig } from "@rspack/cli"
 import type { SwcLoaderOptions } from "@rspack/core"
+import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 import { fileURLToPath } from "url"
 
 export default defineConfig({
@@ -22,6 +23,9 @@ export default defineConfig({
 		},
 		extensions: [".js", ".json", ".wasm", ".ts"]
 	},
+	plugins: [
+		new TsCheckerRspackPlugin()
+	],
 	module: {
 		rules: [
 			{
