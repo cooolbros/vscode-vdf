@@ -32,7 +32,7 @@ export function TRPCClientRouter(
 	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
-	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP>,
+	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
 ) {
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
@@ -230,6 +230,10 @@ export function TRPCClientRouter(
 						})
 					)
 					.query(async ({ input }) => {
+						if (!bspFactory) {
+							return null
+						}
+
 						try {
 							await using bsp = await bspFactory.get(input.uri)
 							return z.array(

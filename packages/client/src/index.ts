@@ -1,4 +1,5 @@
 import { initTRPC } from "@trpc/server"
+import type { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -36,6 +37,7 @@ export class Client<T extends BaseLanguageClient> {
 		teamFortress2Folder$: Observable<Uri>,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
 		fileSystemWatcherFactory: FileSystemWatcherFactory,
+		bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
 		client: T,
 	) {
 		this.client = client
@@ -57,7 +59,8 @@ export class Client<T extends BaseLanguageClient> {
 			context,
 			teamFortress2Folder$,
 			fileSystemMountPointFactory,
-			fileSystemWatcherFactory
+			fileSystemWatcherFactory,
+			bspFactory
 		)
 
 		const stack = this.stack = new DisposableStack()

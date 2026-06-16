@@ -66,7 +66,7 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(fileSystemMountPointFactory, fileSystemWatcherFactory)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory, null)))
 	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
@@ -112,6 +112,7 @@ export function activate(context: ExtensionContext): void {
 			teamFortress2Folder$,
 			fileSystemMountPointFactory,
 			fileSystemWatcherFactory,
+			null,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,

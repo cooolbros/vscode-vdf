@@ -348,6 +348,7 @@ export function activate(context: ExtensionContext): void {
 			teamFortress2Folder$,
 			fileSystemMountPointFactory,
 			fileSystemWatcherFactory,
+			bspFactory,
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,

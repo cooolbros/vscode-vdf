@@ -73,7 +73,7 @@ export function showWaveStatusPreviewToSide(
 	context: ExtensionContext,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
-	bspFactory?: RefCountAsyncDisposableFactory<Uri, BSP>
+	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null
 ) {
 	const webviewPanels = new Map<string, WebviewPanel>()
 
