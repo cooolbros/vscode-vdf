@@ -116,13 +116,13 @@ export function activate(context: ExtensionContext): void {
 			new LanguageClient(
 				`${languageId}-language-server`,
 				`${name} Language Server`,
-				new Worker(serverModule),
 				{
 					documentSelector: [
 						languageId
 					],
 					middleware: middleware[languageId],
-				} satisfies LanguageClientOptions
+				} satisfies LanguageClientOptions,
+				new Worker(serverModule),
 			)
 		)
 
