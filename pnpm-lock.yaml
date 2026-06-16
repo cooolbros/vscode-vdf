@@ -25,8 +25,8 @@ catalogs:
       specifier: ^10.0.0
       version: 10.0.0
     vscode-languageserver:
-      specifier: ^9.0.1
-      version: 9.0.1
+      specifier: ^10.0.0
+      version: 10.0.0
 
 importers:
 
@@ -169,7 +169,7 @@ importers:
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
         specifier: 'catalog:'
-        version: 9.0.1
+        version: 10.0.0
 
   apps/extension/desktop/client:
     devDependencies:
@@ -211,7 +211,7 @@ importers:
         version: link:../../../../packages/tsconfig
       vscode-languageserver:
         specifier: 'catalog:'
-        version: 9.0.1
+        version: 10.0.0
 
   apps/vtf-editor:
     devDependencies:
@@ -331,7 +331,7 @@ importers:
         version: link:../vdf
       vscode-languageserver:
         specifier: 'catalog:'
-        version: 9.0.1
+        version: 10.0.0
 
   packages/hudanimations-format:
     devDependencies:
@@ -385,7 +385,7 @@ importers:
         version: link:../vdf-format
       vscode-languageserver:
         specifier: 'catalog:'
-        version: 9.0.1
+        version: 10.0.0
     publishDirectory: src
 
   packages/syntaxes:
@@ -419,7 +419,7 @@ importers:
         version: link:../vdf
       vscode-languageserver:
         specifier: 'catalog:'
-        version: 9.0.1
+        version: 10.0.0
 
   packages/vdf-format:
     devDependencies:
@@ -4705,6 +4705,10 @@ packages:
 
   vscode-languageserver-types@3.18.0:
     resolution: {integrity: sha512-8TsGPNMIMiiBdkORgRSvLjuiEIiAFtO+KssmYWxQ+uSVvlf7RjK8YKCOjPzZ+YA04jXEV7+7LvkSmHkhpNS99g==}
+
+  vscode-languageserver@10.0.0:
+    resolution: {integrity: sha512-KOdOVuBnNO5EZSejlEDdRPJWpJn/X87vR2TmOXneHsxSYY7mYjgc1SxeZPMoHICcBKTUnM0V19+WP4J92zDd1w==}
+    hasBin: true
 
   vscode-languageserver@9.0.1:
     resolution: {integrity: sha512-woByF3PDpkHFUreUa7Hos7+pUWdeWMXRd26+ZX2A8cFx6v/JPTtd4/uN0/jB6XQHYaOlHbio03NTHCqrgG5n7g==}
@@ -9703,6 +9707,10 @@ snapshots:
   vscode-languageserver-types@3.17.5: {}
 
   vscode-languageserver-types@3.18.0: {}
+
+  vscode-languageserver@10.0.0:
+    dependencies:
+      vscode-languageserver-protocol: 3.18.0
 
   vscode-languageserver@9.0.1:
     dependencies:
