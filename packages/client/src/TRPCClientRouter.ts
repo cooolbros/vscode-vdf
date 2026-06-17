@@ -262,7 +262,6 @@ export function TRPCClientRouter(
 									switchAll(),
 									filter((event) => event.type == "change"),
 									concatMap(flags),
-									distinctUntilChanged(),
 								)
 							).pipe(
 								distinctUntilChanged(),
