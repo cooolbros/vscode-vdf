@@ -1,6 +1,7 @@
 import type { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { Uri } from "common/Uri"
 import { map, shareReplay } from "rxjs"
@@ -31,7 +32,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			servers: new Set(["hudanimations"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const paths: ({ type: "tf2" } | { type: "folder", uri: Uri })[] = []
+				const paths: FileSystemKey[] = []
 
 				const [workspaceUris, hudRoot] = await Promise.all([
 					this.workspaceUris,

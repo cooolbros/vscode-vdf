@@ -3,7 +3,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
-import { combineLatest, defer, from, map, type Observable } from "rxjs"
+import { combineLatest, defer, finalize, from, map, of, ReplaySubject, share, Subject, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Definitions } from "../../DefinitionReferences"
 import { type TextDocumentInit } from "../../TextDocumentBase"
@@ -19,9 +19,14 @@ export interface PopfileTextDocumentDependencies extends VDFTextDocumentDependen
 	game_sounds: Definitions
 }
 
+type GetClassIconFlags = (uri: Uri, fileSystem: FileSystemMountPoint) => Observable<{ uri: Uri, flags: number } | null>
+
 export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, PopfileTextDocumentDependencies> {
 
 	public readonly workspace: PopfileWorkspace
+	public readonly classIcons: Map<string, ReturnType<GetClassIconFlags>>
+	private readonly getClassIconFlags: GetClassIconFlags
+	public readonly disposeClassIcons$: Subject<void>
 	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
 
 	constructor(
@@ -30,7 +35,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		fileSystem: FileSystemMountPoint,
 		watch: (uri: Uri) => Observable<WatchEvent>,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
-		workspace: PopfileWorkspace
+		workspace: PopfileWorkspace,
+		getClassIconFlags: GetClassIconFlags,
 	) {
 		super(init, documentConfiguration, fileSystem, watch, documents, {
 			relativeFolderPath: "scripts/population",
@@ -82,6 +88,9 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 		})
 
 		this.workspace = workspace
+		this.classIcons = new Map()
+		this.getClassIconFlags = getClassIconFlags
+		this.disposeClassIcons$ = new Subject<void>()
 
 		this.decorations$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {
@@ -121,5 +130,30 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				)
 			})
 		)
+	}
+
+	public classIconFlags(classIcon: string): Observable<{ uri: Uri, flags: number } | null> {
+		let observable$ = this.classIcons.get(classIcon)
+		if (!observable$) {
+			observable$ = this.fileSystem.resolveFile(`materials/hud/leaderboard_class_${classIcon}.vmt`).pipe(
+				switchMap((uri) => {
+					if (uri == null) {
+						return of(null)
+					}
+
+					return this.getClassIconFlags(uri, this.fileSystem)
+				}),
+				finalize(() => {
+					this.classIcons.delete(classIcon)
+				}),
+				share({
+					connector: () => new ReplaySubject(1),
+					resetOnRefCountZero: () => this.disposeClassIcons$
+				})
+			)
+			this.classIcons.set(classIcon, observable$)
+		}
+
+		return observable$
 	}
 }

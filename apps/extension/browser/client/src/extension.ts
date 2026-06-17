@@ -16,6 +16,7 @@ import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSyste
 import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import { VTFEditor } from "client/VTF/VTFEditor"
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -29,7 +30,7 @@ export function activate(context: ExtensionContext): void {
 
 	const teamFortress2Folder$ = of(new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" }))
 
-	const fileSystemMountPointFactory = new RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>(
+	const fileSystemMountPointFactory = new RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>(
 		(paths) => JSON.stringify(paths),
 		async (path, factory) => {
 			switch (path.type) {
@@ -45,6 +46,8 @@ export function activate(context: ExtensionContext): void {
 						resolvePath: (path) => root.joinPath(path)
 					})
 				}
+				case "popfile:bsp":
+					throw new Error("popfile:bsp")
 				case "bsp": {
 					throw new Error("bsp")
 				}

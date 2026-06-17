@@ -1,3 +1,4 @@
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -10,11 +11,11 @@ import { MissionPopfile, PopfileBase, UriSyntaxError } from "../Popfile"
 import { VSCodeDocumentGetTextSchema, VSCodePositionSchema, VSCodeRangeSchema } from "../VSCodeSchemas"
 import { VirtualFileSystem } from "../VirtualFileSystem/VirtualFileSystem"
 
-export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
+export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document }: TextEditor) => {
 		try {
 			await using fileSystem = await VirtualFileSystem([
-				fileSystemMountPointFactory.get({ type: "bsp", uri: new Uri(document.uri) }),
+				fileSystemMountPointFactory.get({ type: "popfile:bsp", uri: new Uri(document.uri) }),
 				fileSystemMountPointFactory.get({ type: "tf2" }),
 			])
 

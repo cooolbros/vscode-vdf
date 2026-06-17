@@ -2,6 +2,7 @@ import type { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { BSP } from "bsp"
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -30,7 +31,7 @@ export function TRPCClientRouter(
 	t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>,
 	context: ExtensionContext,
 	teamFortress2Folder$: Observable<Uri>,
-	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
+	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
 ) {
@@ -94,6 +95,7 @@ export function TRPCClientRouter(
 								z.discriminatedUnion("type", [
 									z.object({ type: z.literal("tf2") }),
 									z.object({ type: z.literal("folder"), uri: Uri.schema }),
+									z.object({ type: z.literal("popfile:bsp"), uri: Uri.schema }),
 									z.object({ type: z.literal("bsp"), uri: Uri.schema }),
 								])
 							)
@@ -224,11 +226,7 @@ export function TRPCClientRouter(
 			bsp: t.router({
 				entities: t
 					.procedure
-					.input(
-						z.object({
-							uri: Uri.schema
-						})
-					)
+					.input(URISchema)
 					.query(async ({ input }) => {
 						if (!bspFactory) {
 							return null

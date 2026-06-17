@@ -2,12 +2,14 @@ import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSyste
 import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VirtualFileSystem } from "client/VirtualFileSystem/VirtualFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
+import { posix } from "path"
 import { BehaviorSubject, distinctUntilChanged, finalize, firstValueFrom, map, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDF } from "vdf"
 import vscode from "vscode"
@@ -175,7 +177,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 	}
 }
 
-export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint> {
+export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint> {
 
 	constructor(context: vscode.ExtensionContext, teamFortress2Folder$: Observable<Uri>) {
 		super(
@@ -283,7 +285,12 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 							}
 						} satisfies FileSystemMountPoint
 					}
-					case "bsp": {
+					case "popfile:bsp":
+						const extname = posix.extname(path.uri.basename())
+						if (extname != ".pop") {
+							throw new Error(extname)
+						}
+
 						await using teamFortress2FileSystem = await factory.get({ type: "tf2" })
 						const bsp = await findMap(path.uri, teamFortress2FileSystem)
 						if (!bsp) {
@@ -295,7 +302,14 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 							throw new Error()
 						}
 
-						return await BSPFileSystem(bspUri)
+						return await factory.get({ type: "bsp", uri: bspUri })
+					case "bsp": {
+						const extname = posix.extname(path.uri.basename())
+						if (extname != ".bsp") {
+							throw new Error(extname)
+						}
+
+						return await BSPFileSystem(path.uri)
 					}
 				}
 			}

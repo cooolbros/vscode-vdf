@@ -2,6 +2,7 @@ import { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
@@ -71,7 +72,7 @@ const enum Type {
 
 export function showWaveStatusPreviewToSide(
 	context: ExtensionContext,
-	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
+	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null
 ) {
@@ -140,7 +141,7 @@ export function showWaveStatusPreviewToSide(
 
 		const fileSystem$ = usingAsync(async () => {
 			return await VirtualFileSystem([
-				fileSystemMountPointFactory.get({ type: "bsp", uri: new Uri(document.uri) }),
+				fileSystemMountPointFactory.get({ type: "popfile:bsp", uri: new Uri(document.uri) }),
 				fileSystemMountPointFactory.get({ type: "tf2" }),
 			])
 		}).pipe(

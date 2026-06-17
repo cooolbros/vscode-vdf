@@ -1,10 +1,9 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
-import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { finalize, firstValueFrom, map, Observable, of, ReplaySubject, share, Subject, switchMap } from "rxjs"
+import { firstValueFrom, Observable, of } from "rxjs"
 import type { VDFRange } from "vdf"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver"
@@ -41,8 +40,6 @@ export class PopfileWorkspace extends WorkspaceBase {
 			}
 		} | null>
 	>
-	private readonly classIcons: Map<string, Observable<{ uri: Uri, flags: number } | null>>
-	public readonly disposeClassIcons$: Subject<void>
 
 	constructor(
 		public readonly fileSystem: FileSystemMountPoint,
@@ -335,8 +332,6 @@ export class PopfileWorkspace extends WorkspaceBase {
 		})
 
 		this.maps = new Map()
-		this.classIcons = new Map()
-		this.disposeClassIcons$ = new Subject<void>()
 	}
 
 	public async entities(uri: Uri) {
@@ -467,39 +462,5 @@ export class PopfileWorkspace extends WorkspaceBase {
 		}
 
 		return await this.maps.get(bsp)!
-	}
-
-	public classIconFlags(icon: string): Observable<{ uri: Uri, flags: number } | null> {
-		let classIcon$ = this.classIcons.get(icon)
-		if (!classIcon$) {
-			classIcon$ = this.fileSystem.resolveFile(`materials/hud/leaderboard_class_${icon}.vmt`).pipe(
-				switchMap((uri) => {
-					if (uri == null) {
-						return of(null)
-					}
-
-					return fromTRPCSubscription(this.server.trpc.servers.vmt.baseTexture, { uri }).pipe(
-						switchMap((uri) => {
-							if (uri == null) {
-								return of(null)
-							}
-
-							return fromTRPCSubscription(this.server.trpc.client.popfile.classIcon.flags, { uri }).pipe(
-								map((flags) => ({ uri, flags }))
-							)
-						})
-					)
-				}),
-				finalize(() => this.classIcons.delete(icon)),
-				share({
-					connector: () => new ReplaySubject(1),
-					resetOnRefCountZero: () => this.disposeClassIcons$
-				})
-			)
-
-			this.classIcons.set(icon, classIcon$)
-		}
-
-		return classIcon$
 	}
 }

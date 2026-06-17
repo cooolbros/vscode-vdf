@@ -1,5 +1,5 @@
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
-import { defer, firstValueFrom, shareReplay, Subscription } from "rxjs"
+import { defer, firstValueFrom, map, of, shareReplay, Subscription, switchMap } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import type { DiagnosticCodeAction } from "../../TextDocumentBase"
@@ -45,13 +45,32 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 					init,
 					documentConfiguration$,
 					await this.fileSystems.get([
-						{ type: "bsp", uri: init.uri },
+						{ type: "popfile:bsp", uri: init.uri },
 						{ type: "tf2" },
 						...workspaceUris.map((uri) => ({ type: <const>"folder", uri: uri })),
 					]),
 					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,
-					workspace
+					workspace,
+					(uri, fileSystem) => fromTRPCSubscription(this.trpc.servers.vmt.baseTexture, { uri }).pipe(
+						switchMap((result) => {
+							if (!result) {
+								return of(null)
+							}
+
+							return fileSystem.resolveFile(result.path).pipe(
+								switchMap((uri) => {
+									if (uri == null) {
+										return of(null)
+									}
+
+									return fromTRPCSubscription(this.trpc.client.popfile.classIcon.flags, { uri }).pipe(
+										map((flags) => ({ uri, flags }))
+									)
+								})
+							)
+						})
+					)
 				)
 			}
 		})
@@ -114,7 +133,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 
 	protected sendDiagnostics(document: PopfileTextDocument, diagnostics: DiagnosticCodeAction[]) {
 		super.sendDiagnostics(document, diagnostics)
-		document.workspace.disposeClassIcons$.next()
+		document.disposeClassIcons$.next()
 	}
 
 	protected async onCodeLens(params: TextDocumentRequestParams<CodeLensParams>) {

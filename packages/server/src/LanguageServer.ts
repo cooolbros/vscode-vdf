@@ -3,6 +3,7 @@ import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -12,7 +13,7 @@ import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
-import { BehaviorSubject, catchError, combineLatest, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, shareReplay, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
@@ -79,7 +80,7 @@ export abstract class LanguageServer<
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
 	protected readonly workspaceUris: Promise<Uri[]>
-	protected readonly fileSystems: RefCountAsyncDisposableFactory<({ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri })[], FileSystemMountPoint>
+	protected readonly fileSystems: RefCountAsyncDisposableFactory<FileSystemKey[], FileSystemMountPoint>
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
 	private readonly diagnostic = { id: 0 }
@@ -396,13 +397,18 @@ export abstract class LanguageServer<
 		})
 	}
 
-	private async VTFToPNGBase64(uri: Uri) {
-		return await firstValueFrom(
-			fromTRPCSubscription(this.trpc.servers.vmt.baseTexture, { uri }).pipe(
-				concatMap(async (uri) => uri != null ? this.trpc.client.VTFToPNGBase64.query({ uri }) : null),
-				catchError(() => of(null))
-			)
-		)
+	private async VTFToPNGBase64(uri: Uri, fileSystem: FileSystemMountPoint) {
+		const baseTexture = await firstValueFrom(fromTRPCSubscription(this.trpc.servers.vmt.baseTexture, { uri }))
+		if (!baseTexture) {
+			return null
+		}
+
+		const vtf = await firstValueFrom(fileSystem.resolveFile(baseTexture.path))
+		if (!vtf) {
+			return null
+		}
+
+		return await this.trpc.client.VTFToPNGBase64.query({ uri: vtf })
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
@@ -622,7 +628,7 @@ export abstract class LanguageServer<
 			await using document = await this.documents.get(image.uri)
 			const uri = await firstValueFrom(document.fileSystem.resolveFile(image.path))
 			if (uri != null) {
-				const value = await this.VTFToPNGBase64(uri)
+				const value = await this.VTFToPNGBase64(uri, document.fileSystem)
 				if (value) {
 					item.documentation = {
 						kind: MarkupKind.Markdown,
@@ -672,7 +678,7 @@ export abstract class LanguageServer<
 			if (range.contains(params.position)) {
 				const target = await data.resolve()
 				if (target != null && posix.extname(target.path) == ".vmt") {
-					const value = await this.VTFToPNGBase64(target)
+					const value = await this.VTFToPNGBase64(target, document.fileSystem)
 					if (value) {
 						return {
 							contents: value,

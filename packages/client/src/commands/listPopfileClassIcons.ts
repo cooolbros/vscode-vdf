@@ -1,3 +1,4 @@
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -50,7 +51,7 @@ class Table {
 	}
 }
 
-export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
+export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document, selection }: TextEditor) => {
 		if (document.languageId != "popfile") {
 			window.showWarningMessage(document.languageId)
@@ -58,7 +59,7 @@ export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsync
 		}
 
 		await using fileSystem = await VirtualFileSystem([
-			fileSystemMountPointFactory.get({ type: "bsp", uri: new Uri(document.uri) }),
+			fileSystemMountPointFactory.get({ type: "popfile:bsp", uri: new Uri(document.uri) }),
 			fileSystemMountPointFactory.get({ type: "tf2" }),
 		])
 

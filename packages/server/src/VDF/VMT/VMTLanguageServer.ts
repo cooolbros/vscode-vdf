@@ -1,11 +1,12 @@
 import type { initTRPC } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { of, switchMap } from "rxjs"
+import { map, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -27,7 +28,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 			servers: new Set(),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const paths: ({ type: "tf2" } | { type: "folder", uri: Uri })[] = []
+				const paths: FileSystemKey[] = []
 
 				const [workspaceUris, hudRoot] = await Promise.all([
 					this.workspaceUris,
@@ -36,6 +37,10 @@ export class VMTLanguageServer extends VDFLanguageServer<
 
 				if (hudRoot != null) {
 					paths.push({ type: "folder", uri: hudRoot })
+				}
+
+				if (init.uri.scheme == "bsp") {
+					paths.push({ type: "bsp", uri: new Uri(JSON.parse(new URLSearchParams(init.uri.query).get("root")!)) })
 				}
 
 				paths.push({ type: "tf2" })
@@ -73,19 +78,19 @@ export class VMTLanguageServer extends VDFLanguageServer<
 						})
 					)
 					.subscription(({ input, signal }) => {
-						return observableToAsyncIterable<Uri | null>(
+						return observableToAsyncIterable<{ path: string } | null>(
 							usingAsync(async () => await this.documents.get(input.uri)).pipe(
 								switchMap((document) => {
 									return document.documentSymbols$.pipe(
-										switchMap((documentSymbols) => {
+										map((documentSymbols) => {
 											const header = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children
 											if (!header) {
-												return of(null)
+												return null
 											}
 
 											let baseTexture = header.find((documentSymbol) => documentSymbol.key.toLowerCase() == "$baseTexture".toLowerCase())?.detail
 											if (!baseTexture) {
-												return of(null)
+												return null
 											}
 
 											baseTexture = baseTexture.replaceAll(/[/\\]+/g, "/")
@@ -93,8 +98,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 												baseTexture += ".vtf"
 											}
 
-											const path = posix.resolve(`/materials/${baseTexture}`).substring(1)
-											return document.fileSystem.resolveFile(path)
+											return { path: posix.resolve(`/materials/${baseTexture}`).substring(1) }
 										})
 									)
 								}),

@@ -384,9 +384,9 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 
 				for (const [classIcon, ranges] of params.dependencies.classIcons) {
 					diagnostics.push(
-						document.workspace.classIconFlags(classIcon).pipe(
+						document.classIconFlags(classIcon).pipe(
 							map((vtf) => {
-								if (vtf == null) {
+								if (!vtf) {
 									return {
 										severity: DiagnosticSeverity.Warning,
 										code: "missing-file",

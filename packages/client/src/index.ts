@@ -1,6 +1,7 @@
 import { initTRPC } from "@trpc/server"
 import type { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
+import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
@@ -35,7 +36,7 @@ export class Client<T extends BaseLanguageClient> {
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		teamFortress2Folder$: Observable<Uri>,
-		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<{ type: "tf2" } | { type: "folder", uri: Uri } | { type: "bsp", uri: Uri }, FileSystemMountPoint>,
+		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 		fileSystemWatcherFactory: FileSystemWatcherFactory,
 		bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
 		client: T,
