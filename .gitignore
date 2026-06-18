@@ -1,13 +1,7 @@
 .env
-.next
 .turbo
 .vscode-test
 .vscode-test-web
-*.db
-*.db-shm
-*.db-wal
-bin
 dist
 node_modules
-obj
 target
