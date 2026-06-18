@@ -12,11 +12,11 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, combineLatest, concat, concatMap, defer, filter, firstValueFrom, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, take, withLatestFrom, type ObservedValueOf } from "rxjs"
+import { catchError, combineLatest, concat, concatMap, defer, filter, firstValueFrom, from, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, take, withLatestFrom, type ObservedValueOf } from "rxjs"
 import type { RangeLike } from "vdf"
-import type { VDFDocumentSymbol } from "vdf-documentsymbols"
+import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import vscode, { commands, DocumentSymbol, ThemeIcon, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
+import vscode, { commands, ThemeIcon, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
@@ -689,11 +689,24 @@ export function showWaveStatusPreviewToSide(
 						return of(null)
 					}
 
-					return onDidChangeTextDocument$.pipe(
-						filter((event) => Uri.equals(uri, new Uri(event.document.uri))),
-						map(() => undefined),
-						startWith(undefined),
-						concatMap(async () => await commands.executeCommand<DocumentSymbol[]>("vscode.executeDocumentSymbolProvider", vscode.Uri.from(uri))),
+					return concat(
+						from(Promise.try(async () => new TextDecoder("utf-8").decode(await workspace.fs.readFile(uri)))),
+						onDidChangeTextDocument$.pipe(
+							filter((event) => Uri.equals(uri, new Uri(event.document.uri))),
+							map((event) => event.document.getText())
+						)
+					).pipe(
+						map((text, index) => {
+							try {
+								return getVDFDocumentSymbols(text, { multilineStrings: false })
+							}
+							catch (error) {
+								return index != 0
+									? null
+									: new VDFDocumentSymbols()
+							}
+						}),
+						filter((documentSymbols) => documentSymbols != null),
 						switchMap((documentSymbols) => {
 							const header = documentSymbols?.values().map((documentSymbol) => documentSymbol.children).find((children) => children != undefined)
 							if (!header) {
