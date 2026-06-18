@@ -1,2 +1,4 @@
+# https://nextjs.org/docs/app/api-reference/config/typescript#next-envdts
+
 .next
 next-env.d.ts
