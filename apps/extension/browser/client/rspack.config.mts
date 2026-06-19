@@ -24,7 +24,7 @@ export default defineConfig({
 		extensions: [".js", ".json", ".wasm", ".ts"]
 	},
 	plugins: [
-		new TsCheckerRspackPlugin()
+		process.env["npm_lifecycle_event"] == "build" ? new TsCheckerRspackPlugin() : null
 	],
 	module: {
 		rules: [
