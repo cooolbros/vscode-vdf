@@ -40,10 +40,10 @@ importers:
         version: 2.0.1(@swc/helpers@0.5.17)
       '@trpc/client':
         specifier: ^11.11.0
-        version: 11.11.0(@trpc/server@11.11.0(typescript@5.9.3))(typescript@5.9.3)
+        version: 11.11.0(@trpc/server@11.11.0(typescript@6.0.3))(typescript@6.0.3)
       '@trpc/server':
         specifier: ^11.11.0
-        version: 11.11.0(typescript@5.9.3)
+        version: 11.11.0(typescript@6.0.3)
       '@types/path-browserify':
         specifier: ^1.0.2
         version: 1.0.3
@@ -64,13 +64,13 @@ importers:
         version: 7.8.2
       ts-checker-rspack-plugin:
         specifier: ^1.4.0
-        version: 1.4.0(@rspack/core@2.0.1(@swc/helpers@0.5.17))(tslib@2.8.1)(typescript@5.9.3)
+        version: 1.4.0(@rspack/core@2.0.1(@swc/helpers@0.5.17))(tslib@2.8.1)(typescript@6.0.3)
       turbo:
         specifier: ^2.9.18
         version: 2.9.18
       typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
+        specifier: ^6.0.3
+        version: 6.0.3
       vscode-languageserver-textdocument:
         specifier: ^1.0.11
         version: 1.0.12
@@ -106,10 +106,10 @@ importers:
         version: 15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       nextra:
         specifier: ^4.6.1
-        version: 4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
+        version: 4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
       nextra-theme-docs:
         specifier: ^4.6.1
-        version: 4.6.1(@types/react@19.2.17)(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(nextra@4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
+        version: 4.6.1(@types/react@19.2.17)(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(nextra@4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
       pagefind:
         specifier: ^1.5.2
         version: 1.5.2
@@ -4460,8 +4460,8 @@ packages:
   typed-rest-client@1.8.11:
     resolution: {integrity: sha512-5UvfMpd1oelmUPRbbaVnq+rHP7ng2cE4qoQkQeAqxRL6PklkxsM0g32/HL0yfvruK6ojQ5x8EE+HF4YV6DtuCA==}
 
-  typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -5660,12 +5660,12 @@ snapshots:
     dependencies:
       '@shikijs/types': 4.1.0
 
-  '@shikijs/twoslash@3.20.0(typescript@5.9.3)':
+  '@shikijs/twoslash@3.20.0(typescript@6.0.3)':
     dependencies:
       '@shikijs/core': 3.20.0
       '@shikijs/types': 3.20.0
-      twoslash: 0.3.4(typescript@5.9.3)
-      typescript: 5.9.3
+      twoslash: 0.3.4(typescript@6.0.3)
+      typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
 
@@ -5764,14 +5764,14 @@ snapshots:
       npm-to-yarn: 3.0.1
       unist-util-visit: 5.0.0
 
-  '@trpc/client@11.11.0(@trpc/server@11.11.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@trpc/client@11.11.0(@trpc/server@11.11.0(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
-      '@trpc/server': 11.11.0(typescript@5.9.3)
-      typescript: 5.9.3
+      '@trpc/server': 11.11.0(typescript@6.0.3)
+      typescript: 6.0.3
 
-  '@trpc/server@11.11.0(typescript@5.9.3)':
+  '@trpc/server@11.11.0(typescript@6.0.3)':
     dependencies:
-      typescript: 5.9.3
+      typescript: 6.0.3
 
   '@ts-morph/common@0.28.1':
     dependencies:
@@ -5977,10 +5977,10 @@ snapshots:
 
   '@types/vscode@1.110.0': {}
 
-  '@typescript/vfs@1.6.2(typescript@5.9.3)':
+  '@typescript/vfs@1.6.2(typescript@6.0.3)':
     dependencies:
       debug: 4.4.3
-      typescript: 5.9.3
+      typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
 
@@ -8237,13 +8237,13 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  nextra-theme-docs@4.6.1(@types/react@19.2.17)(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(nextra@4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)):
+  nextra-theme-docs@4.6.1(@types/react@19.2.17)(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(nextra@4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7)):
     dependencies:
       '@headlessui/react': 2.2.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       clsx: 2.1.1
       next: 15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      nextra: 4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)
+      nextra: 4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
       react: 19.2.7
       react-compiler-runtime: 19.1.0-rc.3(react@19.2.7)
       react-dom: 19.2.7(react@19.2.7)
@@ -8255,13 +8255,13 @@ snapshots:
       - immer
       - use-sync-external-store
 
-  nextra@4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3):
+  nextra@4.6.1(next@15.5.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3):
     dependencies:
       '@formatjs/intl-localematcher': 0.6.2
       '@headlessui/react': 2.2.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@mdx-js/mdx': 3.1.1
       '@napi-rs/simple-git': 0.1.22
-      '@shikijs/twoslash': 3.20.0(typescript@5.9.3)
+      '@shikijs/twoslash': 3.20.0(typescript@6.0.3)
       '@theguild/remark-mermaid': 0.3.0(react@19.2.7)
       '@theguild/remark-npm2yarn': 0.3.3
       better-react-mathjax: 2.3.0(react@19.2.7)
@@ -9359,13 +9359,13 @@ snapshots:
 
   trough@2.2.0: {}
 
-  ts-checker-rspack-plugin@1.4.0(@rspack/core@2.0.1(@swc/helpers@0.5.17))(tslib@2.8.1)(typescript@5.9.3):
+  ts-checker-rspack-plugin@1.4.0(@rspack/core@2.0.1(@swc/helpers@0.5.17))(tslib@2.8.1)(typescript@6.0.3):
     dependencies:
       '@rspack/lite-tapable': 1.1.2
       chokidar: 3.6.0
       memfs: 4.57.7(tslib@2.8.1)
       picocolors: 1.1.1
-      typescript: 5.9.3
+      typescript: 6.0.3
     optionalDependencies:
       '@rspack/core': 2.0.1(@swc/helpers@0.5.17)
     transitivePeerDependencies:
@@ -9402,11 +9402,11 @@ snapshots:
 
   twoslash-protocol@0.3.4: {}
 
-  twoslash@0.3.4(typescript@5.9.3):
+  twoslash@0.3.4(typescript@6.0.3):
     dependencies:
-      '@typescript/vfs': 1.6.2(typescript@5.9.3)
+      '@typescript/vfs': 1.6.2(typescript@6.0.3)
       twoslash-protocol: 0.3.4
-      typescript: 5.9.3
+      typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
 
@@ -9424,7 +9424,7 @@ snapshots:
       tunnel: 0.0.6
       underscore: 1.13.7
 
-  typescript@5.9.3: {}
+  typescript@6.0.3: {}
 
   uc.micro@2.1.0: {}
 

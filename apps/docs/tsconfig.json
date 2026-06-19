@@ -2,22 +2,12 @@
     "extends": "tsconfig",
     "compilerOptions": {
         "target": "ES2017",
-        "lib": [
-            "DOM",
-            "DOM.Iterable",
-            "ESNext"
-        ],
         "allowJs": true,
-        "skipLibCheck": true,
         "strict": false,
-        "noEmit": true,
         "incremental": true,
-        "module": "esnext",
-        "esModuleInterop": true,
-        "moduleResolution": "bundler",
-        "resolveJsonModule": true,
         "isolatedModules": true,
         "jsx": "preserve",
+        "noUncheckedSideEffectImports": false,
         "plugins": [
             {
                 "name": "next"

@@ -285,7 +285,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 							}
 						} satisfies FileSystemMountPoint
 					}
-					case "popfile:bsp":
+					case "popfile:bsp": {
 						const extname = posix.extname(path.uri.basename())
 						if (extname != ".pop") {
 							throw new Error(extname)
@@ -303,6 +303,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						}
 
 						return await factory.get({ type: "bsp", uri: bspUri })
+					}
 					case "bsp": {
 						const extname = posix.extname(path.uri.basename())
 						if (extname != ".bsp") {
