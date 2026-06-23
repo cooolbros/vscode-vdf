@@ -1,3 +1,4 @@
+import { EntryType } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { WatchEvent } from "common/WatchEvent"
@@ -19,7 +20,7 @@ class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSub
 
 	private readonly stack: DisposableStack
 
-	constructor(private readonly dirname: Uri) {
+	constructor(dirname: Uri) {
 		super(
 			(basename) => basename,
 			async (basename, factory) => { throw new Error("unreachable") }
@@ -30,14 +31,31 @@ class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSub
 		const pattern = new RelativePattern(vscode.Uri.parse(dirname.toString()), "*")
 		const watcher = this.stack.adopt(workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
 
+		const onStat = async (type: Exclude<WatchEvent["type"], "delete">, event: vscode.Uri) => {
+			const uri = new Uri(event)
+			switch ((await vscode.workspace.fs.stat(event)).type) {
+				case vscode.FileType.File:
+					next(uri, { type: type, entry: { type: <const>EntryType.File, uri: uri } })
+					break
+				case vscode.FileType.Directory:
+					next(uri, { type: type, entry: { type: <const>EntryType.Directory, uri: uri } })
+					break
+			}
+		}
+
+		const onDelete = (event: vscode.Uri) => {
+			const uri = new Uri(event)
+			next(uri, { type: "delete", entry: { type: EntryType.None, uri: null } })
+		}
+
 		const next = (uri: Uri, event: WatchEvent) => {
 			const basename = dirname.relative(uri)
 			return this.map.get(basename)?.value.then((subject) => subject.next(event))
 		}
 
-		this.stack.adopt(watcher.onDidChange((event) => next(new Uri(event), { type: "change" })), (disposable) => disposable.dispose())
-		this.stack.adopt(watcher.onDidCreate((event) => next(new Uri(event), { type: "create", exists: true })), (disposable) => disposable.dispose())
-		this.stack.adopt(watcher.onDidDelete((event) => next(new Uri(event), { type: "delete", exists: false })), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidCreate((event) => onStat("create", event)), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidChange((event) => onStat("change", event)), (disposable) => disposable.dispose())
+		this.stack.adopt(watcher.onDidDelete((event) => onDelete(event)), (disposable) => disposable.dispose())
 	}
 
 	public async [Symbol.asyncDispose](): Promise<void> {

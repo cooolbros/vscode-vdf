@@ -3,12 +3,12 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { BSP } from "bsp"
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { Entry, FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { WatchEvent } from "common/WatchEvent"
-import { concat, concatMap, distinctUntilChanged, filter, from, map, Observable, switchAll } from "rxjs"
+import { concat, concatMap, distinctUntilChanged, filter, from, Observable, switchAll } from "rxjs"
 import vscode, { commands, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
@@ -65,15 +65,19 @@ export function TRPCClientRouter(
 				.subscription(async ({ input, signal }) => {
 					return observableToAsyncIterable<WatchEvent>(
 						concat(
-							from(workspace.fs.stat(input.uri).then(() => true, () => false)).pipe(
-								map((exists) => {
-									return (
-										exists
-											? { type: "create", exists: true }
-											: { type: "delete", exists: false }
-									) satisfies WatchEvent
-								})
-							),
+							from(vscode.workspace.fs.stat(input.uri).then(
+								(stat) => {
+									switch (stat.type) {
+										case vscode.FileType.File:
+											return { type: <const>"create", entry: { type: <const>EntryType.File, uri: input.uri } }
+										case vscode.FileType.Directory:
+											return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: input.uri } }
+										default:
+											return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }
+									}
+								},
+								() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
+							)),
 							usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(
 								switchAll()
 							)

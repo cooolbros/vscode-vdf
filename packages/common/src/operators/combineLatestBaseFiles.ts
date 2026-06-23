@@ -181,51 +181,63 @@ export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) 
 			switchMap((event) => {
 				switch (event.type) {
 					case "create":
-						return usingAsync(async () => await documentSelector(uri)).pipe(
-							switchMap((document) => {
-								return document.base$.pipe(
-									map((base) => ({ base: base, value: undefined })),
-									combineLatestBaseFiles({
-										stack: [...stack, { path: self, uri: current }],
-										open: ambient({
-											current: document.uri,
-											documentSelector,
-											observableSelector,
-											watch,
-										}),
-									}),
-									switchMap(({ base: results }) => {
-										if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-											return observableSelector(document).pipe(
-												map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
-											)
-										}
+						switch (event.entry.type) {
+							case EntryType.File:
+								return usingAsync(async () => await documentSelector(event.entry.uri)).pipe(
+									switchMap((document) => {
+										return document.base$.pipe(
+											map((base) => ({ base: base, value: undefined })),
+											combineLatestBaseFiles({
+												stack: [...stack, { path: self, uri: current }],
+												open: ambient({
+													current: document.uri,
+													documentSelector,
+													observableSelector,
+													watch,
+												}),
+											}),
+											switchMap(({ base: results }) => {
+												if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+													return observableSelector(document).pipe(
+														map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
+													)
+												}
 
-										return of<BaseResult<T>>({
-											type: <const>BaseResultType.Error,
-											self: self,
-											errors: results
-												.values()
-												.map((result) => {
-													switch (result.type) {
-														case BaseResultType.None:
-														case BaseResultType.Success:
-															return null
-														case BaseResultType.Error:
-															return {
-																type: <const>BaseErrorType.Base,
-																path: result.self,
-																errors: result.errors
+												return of<BaseResult<T>>({
+													type: <const>BaseResultType.Error,
+													self: self,
+													errors: results
+														.values()
+														.map((result) => {
+															switch (result.type) {
+																case BaseResultType.None:
+																case BaseResultType.Success:
+																	return null
+																case BaseResultType.Error:
+																	return {
+																		type: <const>BaseErrorType.Base,
+																		path: result.self,
+																		errors: result.errors
+																	}
 															}
-													}
+														})
+														.filter((error) => error != null)
+														.toArray()
 												})
-												.filter((error) => error != null)
-												.toArray()
-										})
-									}),
+											}),
+										)
+									})
 								)
-							})
-						)
+							case EntryType.Directory:
+								return concat(
+									of<BaseResult<T>>({
+										type: <const>BaseResultType.Error,
+										self: self,
+										errors: [{ type: <const>BaseErrorType.Directory, self: self, detail: detail, uri: current }]
+									}),
+									NEVER
+								)
+						}
 					case "delete":
 						return concat(of({ type: <const>BaseResultType.None }), NEVER)
 				}
