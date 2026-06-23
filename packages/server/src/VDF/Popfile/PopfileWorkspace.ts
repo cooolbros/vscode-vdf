@@ -364,7 +364,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 					return null
 				}
 
-				const entities = await this.server.trpc.client.popfile.bsp.entities.query({ uri }).then((entities) => entities && Map.groupBy(entities, (item) => item.classname))
+				const entities = await this.server.trpc.client.popfile.bsp.entities.query(entry).then((entities) => entities && Map.groupBy(entities, (item) => item.classname))
 				if (!entities) {
 					return null
 				}
