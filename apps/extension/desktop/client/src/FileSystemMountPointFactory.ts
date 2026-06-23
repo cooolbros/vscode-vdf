@@ -165,18 +165,13 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		},
 		readDirectory: async (path, options) => {
 			const results = await Promise.allSettled(fileSystems$.value.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))
-
-			return results
-				.values()
-				.filter((result) => result.status == "fulfilled")
-				.map((result) => result.value)
-				.flatMap((value) => value)
-				.reduce((a, b) => {
-					if (!a.some(([n]) => n == b[0])) {
-						a.push(b)
-					}
-					return a
-				}, <[string, vscode.FileType][]>[])
+			const map = new Map<string, vscode.FileType>()
+			for (const result of results.values().filter((result) => result.status == "fulfilled")) {
+				for (const [name, type] of result.value) {
+					map.getOrInsert(name, type)
+				}
+			}
+			return map.entries().toArray()
 		},
 		[Symbol.asyncDispose]: async () => {
 			await stack.disposeAsync()
