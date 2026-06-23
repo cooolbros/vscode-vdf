@@ -158,7 +158,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 			firstValueFrom(this.clientScheme$),
 
 			// hudanimations_manifest
-			fileSystem.resolve("scripts/hudanimations_manifest.txt").pipe(map((entry) => documents.get(entry.uri!)))
+			firstValueFrom(fileSystem.resolve("scripts/hudanimations_manifest.txt").pipe(map((entry) => documents.get(entry.uri!))))
 		])
 
 		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
