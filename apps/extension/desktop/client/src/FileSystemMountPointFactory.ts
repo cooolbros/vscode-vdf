@@ -108,35 +108,42 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		}
 	})
 
-	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(dirname), "*"), false, true, false)
+	const watcher = stack.adopt(
+		vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(dirname), "*"), false, true, false),
+		(disposable) => disposable.dispose()
+	)
 
-	watcher.onDidCreate(async (event) => {
-		const uri = new Uri(event)
-		const basename = uri.basename()
-		const type = (await vscode.workspace.fs.stat(uri)).type
+	stack.adopt(
+		watcher.onDidCreate(async (event) => {
+			const uri = new Uri(event)
+			const basename = uri.basename()
+			const type = (await vscode.workspace.fs.stat(uri)).type
 
-		if (!fileSystems$.value.some(({ name }) => name == basename)) {
-			const fileSystem = await create(basename, type)
-			if (fileSystem) {
-				fileSystems$.value.push(fileSystem)
-				fileSystems$.next(fileSystems$.value)
+			if (!fileSystems$.value.some(({ name }) => name == basename)) {
+				const fileSystem = await create(basename, type)
+				if (fileSystem) {
+					fileSystems$.value.push(fileSystem)
+					fileSystems$.next(fileSystems$.value)
+				}
 			}
-		}
-	})
+		}),
+		(disposable) => disposable.dispose()
+	)
 
-	watcher.onDidDelete(async (event) => {
-		const uri = new Uri(event)
-		const basename = uri.basename()
-		const fileSystem = fileSystems$.value.find(({ name }) => name == basename)
+	stack.adopt(
+		watcher.onDidDelete(async (event) => {
+			const uri = new Uri(event)
+			const basename = uri.basename()
+			const fileSystem = fileSystems$.value.find(({ name }) => name == basename)
 
-		if (fileSystem != undefined) {
-			fileSystems$.value.splice(fileSystems$.value.indexOf(fileSystem), 1)
-			fileSystems$.next(fileSystems$.value)
-			fileSystem.fileSystem[Symbol.asyncDispose]()
-		}
-	})
-
-	stack.defer(() => watcher.dispose())
+			if (fileSystem != undefined) {
+				fileSystems$.value.splice(fileSystems$.value.indexOf(fileSystem), 1)
+				fileSystems$.next(fileSystems$.value)
+				fileSystem.fileSystem[Symbol.asyncDispose]()
+			}
+		}),
+		(disposable) => disposable.dispose()
+	)
 
 	const observables = new Map<string, Observable<Entry>>()
 
