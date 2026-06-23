@@ -1,6 +1,6 @@
 import { posix } from "path"
 import { concat, filter, map, NEVER, Observable, of, Subscription, switchMap } from "rxjs"
-import type { FileSystemMountPoint } from "../FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "../FileSystemMountPoint"
 import { Uri } from "../Uri"
 import type { WatchEvent } from "../WatchEvent"
 import { usingAsync } from "./usingAsync"
@@ -51,13 +51,15 @@ export type BaseResult<T> = (
 
 export const enum BaseErrorType {
 	Self,
+	Directory,
 	Cyclic,
 	Base,
 }
 
 export type BaseError = (
-	| { type: BaseErrorType.Cyclic, stack: Stack }
 	| { type: BaseErrorType.Self, self: string, detail: string, uri: Uri }
+	| { type: BaseErrorType.Directory, self: string, detail: string, uri: Uri }
+	| { type: BaseErrorType.Cyclic, stack: Stack }
 	| { type: BaseErrorType.Base, path: string, errors: BaseError[] }
 )
 
@@ -85,59 +87,64 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 			)
 		}
 
-		return fileSystem.resolveFile(path).pipe(
-			switchMap((uri) => {
-				if (uri != null) {
-					return usingAsync(async () => await documentSelector(uri)).pipe(
-						switchMap((document) => {
-							return document.base$.pipe(
-								map((base) => ({ base: base, value: undefined })),
-								combineLatestBaseFiles({
-									stack: [...stack, { path: path, uri: current }],
-									open: fs({
-										current: document.uri,
-										documentSelector,
-										observableSelector,
-										watch,
-										fileSystem,
-										relativeFolderPath
-									})
-								}),
-								switchMap(({ base: results }) => {
-									if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-										return observableSelector(document).pipe(
-											map((value) => ({ type: <const>BaseResultType.Success, ambient: false, value: value })),
-										)
-									}
+		return fileSystem.resolve(path).pipe(
+			switchMap((entry) => {
+				switch (entry.type) {
+					case EntryType.None:
+						return external({ stack, detail })
+					case EntryType.File:
+						return usingAsync(async () => await documentSelector(entry.uri)).pipe(
+							switchMap((document) => {
+								return document.base$.pipe(
+									map((base) => ({ base: base, value: undefined })),
+									combineLatestBaseFiles({
+										stack: [...stack, { path: path, uri: current }],
+										open: fs({
+											current: document.uri,
+											documentSelector,
+											observableSelector,
+											watch,
+											fileSystem,
+											relativeFolderPath
+										})
+									}),
+									switchMap(({ base: results }) => {
+										if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
+											return observableSelector(document).pipe(
+												map((value) => ({ type: <const>BaseResultType.Success, ambient: false, value: value })),
+											)
+										}
 
-									return of<BaseResult<T>>({
-										type: <const>BaseResultType.Error,
-										self: self,
-										errors: results
-											.values()
-											.map((result) => {
-												switch (result.type) {
-													case BaseResultType.None:
-													case BaseResultType.Success:
-														return null
-													case BaseResultType.Error:
-														return {
-															type: <const>BaseErrorType.Base,
-															path: result.self,
-															errors: result.errors
-														}
-												}
-											})
-											.filter((error) => error != null)
-											.toArray()
+										return of<BaseResult<T>>({
+											type: <const>BaseResultType.Error,
+											self: self,
+											errors: results
+												.values()
+												.map((result) => {
+													switch (result.type) {
+														case BaseResultType.None:
+														case BaseResultType.Success:
+															return null
+														case BaseResultType.Error:
+															return {
+																type: <const>BaseErrorType.Base,
+																path: result.self,
+																errors: result.errors
+															}
+													}
+												})
+												.filter((error) => error != null)
+												.toArray()
+										})
 									})
-								})
-							)
-						})
-					)
-				}
-				else {
-					return external({ stack, detail })
+								)
+							})
+						)
+					case EntryType.Directory:
+						return concat(
+							of<BaseResult<T>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Directory, self: self, detail: detail, uri: current }] }),
+							NEVER
+						)
 				}
 			})
 		)

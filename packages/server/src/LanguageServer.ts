@@ -4,7 +4,7 @@ import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
@@ -120,13 +120,13 @@ export abstract class LanguageServer<
 			(paths) => JSON.stringify(paths),
 			async (paths, factory) => {
 				const { key } = await this.trpc.client.teamFortress2FileSystem.open.mutate({ paths })
-				const files = new Map<string, Observable<Uri | null>>()
+				const files = new Map<string, Observable<Entry>>()
 				return {
-					resolveFile: (path) => {
+					resolve: (path) => {
 						let file$ = files.get(path)
 						if (!file$) {
-							file$ = fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.resolveFile, { key, path }).pipe(
-								distinctUntilChanged((a, b) => Uri.equals(a, b)),
+							file$ = fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.resolve, { key, path }).pipe(
+								distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 								finalize(() => files.delete(path)),
 								shareReplay({ bufferSize: 1, refCount: true })
 							)
@@ -403,12 +403,12 @@ export abstract class LanguageServer<
 			return null
 		}
 
-		const vtf = await firstValueFrom(fileSystem.resolveFile(baseTexture.path))
-		if (!vtf) {
+		const vtf = await firstValueFrom(fileSystem.resolve(baseTexture.path))
+		if (vtf.type != EntryType.File) {
 			return null
 		}
 
-		return await this.trpc.client.VTFToPNGBase64.query({ uri: vtf })
+		return await this.trpc.client.VTFToPNGBase64.query({ uri: vtf.uri })
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
@@ -626,9 +626,9 @@ export abstract class LanguageServer<
 		if (result.success) {
 			const { image } = result.data
 			await using document = await this.documents.get(image.uri)
-			const uri = await firstValueFrom(document.fileSystem.resolveFile(image.path))
-			if (uri != null) {
-				const value = await this.VTFToPNGBase64(uri, document.fileSystem)
+			const entry = await firstValueFrom(document.fileSystem.resolve(image.path))
+			if (entry.type == EntryType.File) {
+				const value = await this.VTFToPNGBase64(entry.uri, document.fileSystem)
 				if (value) {
 					item.documentation = {
 						kind: MarkupKind.Markdown,

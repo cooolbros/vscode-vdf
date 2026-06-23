@@ -1,5 +1,5 @@
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
@@ -28,8 +28,8 @@ export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyn
 			)
 
 			const { robotTemplates, popfile: { documentSymbols, base, waveSchedule, templates, referencedTemplates } } = await firstValueFrom(combineLatest({
-				robotTemplates: combineLatest(PopfileBase.robot.values().map((path) => fileSystem.resolveFile(path)).toArray()).pipe(
-					map((uris) => new Set(uris.values().filter((uri) => uri != null).map((uri) => uri.toString()).toArray()))
+				robotTemplates: combineLatest(PopfileBase.robot.values().map((path) => fileSystem.resolve(path)).toArray()).pipe(
+					map((uris) => new Set(uris.values().filter((entry) => entry.type == EntryType.File).map((entry) => entry.uri.toString()).toArray()))
 				),
 				popfile: combineLatest({
 					documentSymbols: popfile.documentSymbols$,

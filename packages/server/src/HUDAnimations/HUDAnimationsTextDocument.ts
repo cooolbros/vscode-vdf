@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
@@ -429,16 +429,26 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 						if ("sound" in statement) {
 							const path = posix.resolve(`/sound`, statement.sound.replaceAll(/[/\\]+/g, "/")).substring(1)
 							diagnostics.push(
-								fileSystem.resolveFile(path).pipe(
-									map((uri) => {
-										return uri != null
-											? null
-											: {
-												range: statement.soundRange,
-												severity: DiagnosticSeverity.Warning,
-												source: "hudanimations",
-												message: `Cannot find sound file '${statement.sound}'.`,
-											}
+								fileSystem.resolve(path).pipe(
+									map((entry) => {
+										switch (entry.type) {
+											case EntryType.None:
+												return {
+													range: statement.soundRange,
+													severity: DiagnosticSeverity.Warning,
+													source: "hudanimations",
+													message: `Cannot find sound file '${statement.sound}'.`,
+												}
+											case EntryType.File:
+												return null
+											case EntryType.Directory:
+												return {
+													range: statement.soundRange,
+													severity: DiagnosticSeverity.Warning,
+													source: "hudanimations",
+													message: `Sound file '${statement.sound}' references a directory.`,
+												}
+										}
 									})
 								)
 							)
@@ -490,7 +500,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 							data: {
 								resolve: async () => {
 									const path = posix.resolve(`/sound/${statement.sound.replaceAll(/[/\\]+/g, "/")}`).substring(1)
-									return await firstValueFrom(this.fileSystem.resolveFile(path))
+									return (await firstValueFrom(this.fileSystem.resolve(path))).uri
 								}
 							}
 						})

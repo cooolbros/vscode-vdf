@@ -58,7 +58,7 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 							data: {
 								resolve: async () => {
 									const path = resolve(documentSymbol.detail!)
-									return await firstValueFrom(document.fileSystem.resolveFile(path))
+									return (await firstValueFrom(document.fileSystem.resolve(path))).uri
 										?? document.workspace?.uri.joinPath(path)
 										?? null
 								}

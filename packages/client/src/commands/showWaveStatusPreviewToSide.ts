@@ -3,7 +3,7 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { populationSpawnerKeys } from "common/popfile/populationSpawnerKeys"
@@ -156,9 +156,18 @@ export function showWaveStatusPreviewToSide(
 					"traditional_chinese": "tchinese",
 					"latam_spanish": "latam"
 				}
-				return fileSystem.resolveFile(`resource/tf_${files[configuration.language] ?? configuration.language}.txt`)
+
+				const path = `resource/tf_${files[configuration.language] ?? configuration.language}.txt`
+				return fileSystem.resolve(path).pipe(
+					map((entry) => {
+						if (entry.type != EntryType.File) {
+							throw new Error(path)
+						}
+						return entry.uri
+					})
+				)
 			}),
-			concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri!))),
+			concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri))),
 			map((text) => {
 				const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
 
@@ -184,8 +193,12 @@ export function showWaveStatusPreviewToSide(
 		const meta$ = fileSystem$.pipe(
 			concatMap(async (fileSystem) => {
 				const items_game = await Promise.try(async () => {
-					const uri = await firstValueFrom(fileSystem.resolveFile("scripts/items/items_game.txt"))
-					const buf = await workspace.fs.readFile(uri!)
+					const entry = await firstValueFrom(fileSystem.resolve("scripts/items/items_game.txt"))
+					if (entry.type != EntryType.File) {
+						throw new Error("scripts/items/items_game.txt")
+					}
+
+					const buf = await workspace.fs.readFile(entry.uri)
 					const text = new TextDecoder("utf-8").decode(buf)
 					const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: false })
 					return documentSymbols[0].children!
@@ -683,16 +696,16 @@ export function showWaveStatusPreviewToSide(
 		)
 
 		function vtf(fileSystem: FileSystemMountPoint, path: string) {
-			return fileSystem.resolveFile(path).pipe(
-				switchMap((uri) => {
-					if (!uri) {
+			return fileSystem.resolve(path).pipe(
+				switchMap((entry) => {
+					if (entry.type != EntryType.File) {
 						return of(null)
 					}
 
 					return concat(
-						from(Promise.try(async () => new TextDecoder("utf-8").decode(await workspace.fs.readFile(uri)))),
+						from(Promise.try(async () => new TextDecoder("utf-8").decode(await workspace.fs.readFile(entry.uri)))),
 						onDidChangeTextDocument$.pipe(
-							filter((event) => Uri.equals(uri, new Uri(event.document.uri))),
+							filter((event) => Uri.equals(entry.uri, new Uri(event.document.uri))),
 							map((event) => event.document.getText())
 						)
 					).pipe(
@@ -718,14 +731,14 @@ export function showWaveStatusPreviewToSide(
 								return of(null)
 							}
 
-							return fileSystem.resolveFile(`materials/${baseTexture.replaceAll("\\", "/")}.vtf`).pipe(
-								concatMap(async (uri) => {
-									if (!uri) {
+							return fileSystem.resolve(`materials/${baseTexture.replaceAll("\\", "/")}.vtf`).pipe(
+								concatMap(async (entry) => {
+									if (entry.type != EntryType.File) {
 										return null
 									}
 
 									const [buf] = await Promise.all([
-										await workspace.fs.readFile(uri),
+										await workspace.fs.readFile(entry.uri),
 										initVTFPNG(context)
 									])
 
@@ -781,12 +794,12 @@ export function showWaveStatusPreviewToSide(
 											return of(null)
 										}
 
-										const uri = await firstValueFrom(fileSystem.resolveFile(`maps/mvm_${meta.map}.bsp`))
-										if (uri == null) {
+										const entry = await firstValueFrom(fileSystem.resolve(`maps/mvm_${meta.map}.bsp`))
+										if (entry.type != EntryType.File) {
 											return of(null)
 										}
 
-										await using bsp = await bspFactory.get(uri)
+										await using bsp = await bspFactory.get(entry.uri)
 										const entities = bsp.entities()
 										const skyname = entities[0]["skyname"]
 
@@ -828,8 +841,12 @@ export function showWaveStatusPreviewToSide(
 						return observableToAsyncIterable<Uint8Array | null>(
 							fileSystem$.pipe(
 								switchMap((fileSystem) => {
-									return fileSystem.resolveFile(input.path).pipe(
-										concatMap(async (uri) => uri && new Uint8Array(await workspace.fs.readFile(uri)))
+									return fileSystem.resolve(input.path).pipe(
+										concatMap(async (entry) => {
+											return entry.type == EntryType.File
+												? new Uint8Array(await workspace.fs.readFile(entry.uri))
+												: null
+										})
 									)
 								})
 							),

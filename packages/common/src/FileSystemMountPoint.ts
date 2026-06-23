@@ -3,6 +3,18 @@ import type { FileType } from "vscode"
 import type { Uri } from "./Uri"
 
 export interface FileSystemMountPoint extends AsyncDisposable {
-	resolveFile(path: string): Observable<Uri | null>
+	resolve(path: string): Observable<Entry>
 	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, FileType][]>
 }
+
+export const enum EntryType {
+	None,
+	File,
+	Directory,
+}
+
+export type Entry = (
+	| { type: EntryType.None, uri: null }
+	| { type: EntryType.File, uri: Uri }
+	| { type: EntryType.Directory, uri: Uri }
+)

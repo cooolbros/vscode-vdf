@@ -3,7 +3,7 @@ import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VirtualFileSystem } from "client/VirtualFileSystem/VirtualFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
@@ -138,17 +138,17 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 	stack.defer(() => watcher.dispose())
 
-	const observables = new Map<string, Observable<Uri | null>>()
+	const observables = new Map<string, Observable<Entry>>()
 
 	return {
-		resolveFile: (path) => {
+		resolve: (path) => {
 			let observable = observables.get(path)
 			if (!observable) {
 				observable = fileSystems$.pipe(
-					map((fileSystems) => fileSystems.map(({ fileSystem }) => fileSystem.resolveFile(path))),
+					map((fileSystems) => fileSystems.map(({ fileSystem }) => fileSystem.resolve(path))),
 					combineLatestPersistent(),
-					map((uris) => uris.find((uri) => uri != null) ?? null),
-					distinctUntilChanged((a, b) => Uri.equals(a, b)),
+					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? { type: <const>EntryType.None, uri: null } as Entry),
+					distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 					finalize(() => observables.delete(path)),
 					shareReplay({ bufferSize: 1, refCount: true })
 				)
@@ -273,9 +273,9 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						)
 
 						return {
-							resolveFile: (path) => {
+							resolve: (path) => {
 								return fileSystem$.pipe(
-									switchMap((fileSystem) => fileSystem.resolveFile(path))
+									switchMap((fileSystem) => fileSystem.resolve(path))
 								)
 							},
 							readDirectory: async (path, options) => {
@@ -297,12 +297,12 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 							throw new Error()
 						}
 
-						const bspUri = await firstValueFrom(teamFortress2FileSystem.resolveFile(`maps/${bsp}`))
-						if (!bspUri) {
+						const bspEntry = await firstValueFrom(teamFortress2FileSystem.resolve(`maps/${bsp}`))
+						if (bspEntry.type != EntryType.File) {
 							throw new Error()
 						}
 
-						return await factory.get({ type: "bsp", uri: bspUri })
+						return await factory.get({ type: "bsp", uri: bspEntry.uri })
 					}
 					case "bsp": {
 						const extname = posix.extname(path.uri.basename())

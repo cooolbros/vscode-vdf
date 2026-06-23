@@ -219,7 +219,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 							links.push({
 								range: documentSymbol.detailRange!,
 								data: {
-									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!)))
+									resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(documentSymbol.detail!)))).uri
 								}
 							})
 						}
@@ -235,7 +235,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 										return {
 											range: documentSymbol.detailRange!,
 											data: {
-												resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`materials/vgui/${documentSymbol.detail!}`, ".vmt")))
+												resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(`materials/vgui/${documentSymbol.detail!}`, ".vmt")))).uri
 											}
 										}
 									})
@@ -253,7 +253,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 										return {
 											range: documentSymbol.detailRange!,
 											data: {
-												resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!)))
+												resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(documentSymbol.detail!)))).uri
 											}
 										}
 									})
@@ -264,7 +264,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 							links.push({
 								range: documentSymbol.detailRange!,
 								data: {
-									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!)))
+									resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(documentSymbol.detail!)))).uri
 								}
 							})
 						}

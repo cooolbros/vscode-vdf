@@ -256,7 +256,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 						links.push({
 							range: documentSymbol.detailRange!,
 							data: {
-								resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`materials/vgui/${documentSymbol.detail}`, ".vmt")))
+								resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(`materials/vgui/${documentSymbol.detail}`, ".vmt")))).uri
 							}
 						})
 						return
@@ -266,7 +266,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 						links.push({
 							range: documentSymbol.detailRange!,
 							data: {
-								resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`sound/${documentSymbol.detail}`)))
+								resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(`sound/${documentSymbol.detail}`)))).uri
 							}
 						})
 						return
@@ -276,7 +276,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 						links.push({
 							range: documentSymbol.detailRange!,
 							data: {
-								resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(documentSymbol.detail!, ".mdl")))
+								resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(documentSymbol.detail!, ".mdl")))).uri
 							}
 						})
 						return

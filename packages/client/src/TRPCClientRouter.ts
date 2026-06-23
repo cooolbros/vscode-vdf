@@ -3,7 +3,7 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { BSP } from "bsp"
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { Entry, FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -109,7 +109,7 @@ export function TRPCClientRouter(
 							paths: input.paths
 						}
 					}),
-				resolveFile: t
+				resolve: t
 					.procedure
 					.input(
 						z.object({
@@ -118,7 +118,7 @@ export function TRPCClientRouter(
 						})
 					)
 					.subscription(({ input, signal }) => {
-						return observableToAsyncIterable<Uri | null>(fileSystems.get(input.key)!.resolveFile(input.path), signal!)
+						return observableToAsyncIterable<Entry>(fileSystems.get(input.key)!.resolve(input.path), signal!)
 					}),
 				readDirectory: t
 					.procedure

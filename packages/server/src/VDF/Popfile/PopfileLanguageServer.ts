@@ -1,3 +1,4 @@
+import { EntryType } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { defer, firstValueFrom, map, of, shareReplay, Subscription, switchMap } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
@@ -58,14 +59,14 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 								return of(null)
 							}
 
-							return fileSystem.resolveFile(result.path).pipe(
-								switchMap((uri) => {
-									if (uri == null) {
+							return fileSystem.resolve(result.path).pipe(
+								switchMap((entry) => {
+									if (entry.type != EntryType.File) {
 										return of(null)
 									}
 
-									return fromTRPCSubscription(this.trpc.client.popfile.classIcon.flags, { uri }).pipe(
-										map((flags) => ({ uri, flags }))
+									return fromTRPCSubscription(this.trpc.client.popfile.classIcon.flags, { uri: entry.uri }).pipe(
+										map((flags) => ({ uri: entry.uri, flags }))
 									)
 								})
 							)

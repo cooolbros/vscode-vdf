@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
@@ -135,13 +135,13 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 	public classIconFlags(classIcon: string): Observable<{ uri: Uri, flags: number } | null> {
 		let observable$ = this.classIcons.get(classIcon)
 		if (!observable$) {
-			observable$ = this.fileSystem.resolveFile(`materials/hud/leaderboard_class_${classIcon}.vmt`).pipe(
-				switchMap((uri) => {
-					if (uri == null) {
+			observable$ = this.fileSystem.resolve(`materials/hud/leaderboard_class_${classIcon}.vmt`).pipe(
+				switchMap((entry) => {
+					if (entry.type != EntryType.File) {
 						return of(null)
 					}
 
-					return this.getClassIconFlags(uri, this.fileSystem)
+					return this.getClassIconFlags(entry.uri, this.fileSystem)
 				}),
 				finalize(() => {
 					this.classIcons.delete(classIcon)

@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -49,8 +49,12 @@ export class PopfileWorkspace extends WorkspaceBase {
 		super(new Uri({ scheme: "file", path: "/" }))
 
 		const items_game = Promise.try(async () => {
-			const uri = await firstValueFrom(this.fileSystem.resolveFile("scripts/items/items_game.txt"))
-			await using document = await documents.get(uri!)
+			const entry = await firstValueFrom(this.fileSystem.resolve("scripts/items/items_game.txt"))
+			if (entry.type != EntryType.File) {
+				throw new Error("scripts/items/items_game.txt")
+			}
+
+			await using document = await documents.get(entry.uri)
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
 			const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")?.children
 			if (!items_game) {
@@ -61,8 +65,12 @@ export class PopfileWorkspace extends WorkspaceBase {
 		})
 
 		const tf_english = Promise.try(async () => {
-			const uri = await firstValueFrom(this.fileSystem.resolveFile("resource/tf_english.txt"))
-			await using document = await documents.get(uri!)
+			const entry = await firstValueFrom(this.fileSystem.resolve("resource/tf_english.txt"))
+			if (entry.type != EntryType.File) {
+				throw new Error("resource/tf_english.txt")
+			}
+
+			await using document = await documents.get(entry.uri)
 			const documentSymbols = getVDFDocumentSymbols(document.text$.value, { multilineStrings: true })
 
 			const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
@@ -165,8 +173,12 @@ export class PopfileWorkspace extends WorkspaceBase {
 		})
 
 		this.game_sounds = Promise.try(async () => {
-			const uri = await firstValueFrom(this.fileSystem.resolveFile("scripts/game_sounds_manifest.txt"))
-			await using document = await documents.get(uri!)
+			const entry = await firstValueFrom(this.fileSystem.resolve("scripts/game_sounds_manifest.txt"))
+			if (entry.type != EntryType.File) {
+				throw new Error("scripts/game_sounds_manifest.txt")
+			}
+
+			await using document = await documents.get(entry.uri)
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
 			const game_sounds_manifest = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "game_sounds_manifest")?.children
 			if (!game_sounds_manifest) {
@@ -181,17 +193,17 @@ export class PopfileWorkspace extends WorkspaceBase {
 			const collection = new Collection<Definition>()
 
 			const results = await Promise.all(files.map(async (file) => {
-				const uri = await firstValueFrom(this.fileSystem.resolveFile(file))
-				if (!uri) {
+				const entry = await firstValueFrom(this.fileSystem.resolve(file))
+				if (entry.type != EntryType.File) {
 					return []
 				}
 
-				await using document = await documents.get(uri)
+				await using document = await documents.get(entry.uri)
 				const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
 				return documentSymbols.map((documentSymbol) => {
 					return {
-						uri: uri,
+						uri: entry.uri,
 						key: documentSymbol.key,
 						range: documentSymbol.range,
 						keyRange: documentSymbol.nameRange,
@@ -347,8 +359,8 @@ export class PopfileWorkspace extends WorkspaceBase {
 
 		if (!this.maps.has(bsp)) {
 			this.maps.set(bsp, Promise.try(async () => {
-				const uri = await firstValueFrom(this.fileSystem.resolveFile(`maps/${bsp}`))
-				if (!uri) {
+				const entry = await firstValueFrom(this.fileSystem.resolve(`maps/${bsp}`))
+				if (entry.type != EntryType.File) {
 					return null
 				}
 

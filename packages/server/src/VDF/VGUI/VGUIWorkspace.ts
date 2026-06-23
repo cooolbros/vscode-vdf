@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -103,13 +103,13 @@ export class VGUIWorkspace extends WorkspaceBase {
 		this.documents = documents
 
 		const files = (path: string): Observable<string[]> => {
-			return fileSystem.resolveFile(path).pipe(
-				switchMap((uri) => {
-					if (uri == null) {
+			return fileSystem.resolve(path).pipe(
+				switchMap((entry) => {
+					if (entry.type != EntryType.File) {
 						return of([path])
 					}
 
-					return usingAsync(async () => await documents.get(uri)).pipe(
+					return usingAsync(async () => await documents.get(entry.uri)).pipe(
 						switchMap((document) => document.documentSymbols$),
 						map((documentSymbols) => {
 							return documentSymbols
@@ -131,13 +131,13 @@ export class VGUIWorkspace extends WorkspaceBase {
 		}
 
 		const definitions = (path: string): Observable<DefinitionReferences> => {
-			return fileSystem.resolveFile(path).pipe(
-				concatMap(async (uri) => {
-					if (!uri) {
+			return fileSystem.resolve(path).pipe(
+				concatMap(async (entry) => {
+					if (entry.type != EntryType.File) {
 						throw new Error(path)
 					}
 
-					return await documents.get(uri)
+					return await documents.get(entry.uri)
 				}),
 				switchMap((document) => document.definitionReferences$),
 				distinctUntilChanged((previous, current) => {
@@ -158,7 +158,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 			firstValueFrom(this.clientScheme$),
 
 			// hudanimations_manifest
-			fileSystem.resolveFile("scripts/hudanimations_manifest.txt").pipe(map((uri) => documents.get(uri!)))
+			fileSystem.resolve("scripts/hudanimations_manifest.txt").pipe(map((entry) => documents.get(entry.uri!)))
 		])
 
 		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
@@ -227,9 +227,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 						continue
 					}
 
-					const uri = await firstValueFrom(fileSystem.resolveFile(path))
-					if (uri) {
-						await using document = await documents.get(uri)
+					const entry = await firstValueFrom(fileSystem.resolve(path))
+					if (entry.type == EntryType.File) {
+						await using document = await documents.get(entry.uri)
 						await firstValueFrom(document.definitionReferences$)
 					}
 				}
@@ -274,10 +274,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public getVDFDocumentSymbols(path: string): Observable<VDFDocumentSymbols | null> {
 		let documentSymbols$ = this.documentSymbols.get(path)
 		if (!documentSymbols$) {
-			documentSymbols$ = this.fileSystem.resolveFile(path).pipe(
-				switchMap((uri) => {
-					return uri != null
-						? usingAsync(async () => await this.documents.get(uri))
+			documentSymbols$ = this.fileSystem.resolve(path).pipe(
+				switchMap((entry) => {
+					return entry.type == EntryType.File
+						? usingAsync(async () => await this.documents.get(entry.uri))
 						: of(null)
 				}),
 				switchMap((document) => {
@@ -293,16 +293,16 @@ export class VGUIWorkspace extends WorkspaceBase {
 	}
 
 	public getDefinitionReferences(path: string) {
-		return this.fileSystem.resolveFile(path).pipe(
-			switchMap((uri) => {
-				if (uri == null) {
+		return this.fileSystem.resolve(path).pipe(
+			switchMap((entry) => {
+				if (entry.type != EntryType.File) {
 					return of(null)
 				}
 
-				return usingAsync(async () => await this.documents.get(uri)).pipe(
+				return usingAsync(async () => await this.documents.get(entry.uri)).pipe(
 					switchMap((document) => {
 						return document.definitionReferences$.pipe(
-							map((definitionReferences) => ({ uri: uri, definitions: definitionReferences.definitions }))
+							map((definitionReferences) => ({ uri: entry.uri, definitions: definitionReferences.definitions }))
 						)
 					})
 				)
@@ -315,8 +315,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 		if (!fileReferences) {
 			fileReferences = {
 				references$: new BehaviorSubject(new Map()),
-				document$: this.fileSystem.resolveFile(path).pipe(
-					switchMap((uri) => uri != null ? usingAsync(async () => await this.documents.get(uri)) : of(null)),
+				document$: this.fileSystem.resolve(path).pipe(
+					switchMap((entry) => entry.type == EntryType.File ? usingAsync(async () => await this.documents.get(entry.uri)) : of(null)),
 					startWith(null),
 					pairwise(),
 					map(([previous, current]) => {

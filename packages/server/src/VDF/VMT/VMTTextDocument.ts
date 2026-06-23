@@ -106,7 +106,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 							links.push({
 								range: documentSymbol.detailRange!,
 								data: {
-									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`materials/${documentSymbol.detail}`, ".vtf")))
+									resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(`materials/${documentSymbol.detail}`, ".vtf")))).uri
 								}
 							})
 						}

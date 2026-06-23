@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { ambient, BaseErrorType, BaseResultType, combineLatestBaseFiles, fs, type BaseError, type BaseResult, type BaseValue } from "common/operators/combineLatestBaseFiles"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
@@ -468,18 +468,27 @@ export abstract class VDFTextDocument<
 				const file = posix.resolve(`/${folder ?? ""}/${extension != undefined && posix.extname(value) == "" ? `${value}${extension}` : value}`).substring(1)
 
 				diagnostics.push(
-					this.fileSystem.resolveFile(file).pipe(
-						map((uri) => {
-							if (uri != null) {
-								return null
-							}
-
-							return {
-								range: detailRange,
-								severity: DiagnosticSeverity.Warning,
-								code: "missing-file",
-								source: this.languageId,
-								message: `Cannot find ${name} '${detail}'. (Resolved to "${file}")`,
+					this.fileSystem.resolve(file).pipe(
+						map((entry) => {
+							switch (entry.type) {
+								case EntryType.None:
+									return {
+										range: detailRange,
+										severity: DiagnosticSeverity.Warning,
+										code: "file-not-found",
+										source: this.languageId,
+										message: `Cannot find ${name} '${detail}'. (Resolved to "${file}")`,
+									}
+								case EntryType.File:
+									return null
+								case EntryType.Directory:
+									return {
+										range: detailRange,
+										severity: DiagnosticSeverity.Warning,
+										code: "file-is-directory",
+										source: this.languageId,
+										message: `${name} references a directory. (Resolved to "${file}")`,
+									}
 							}
 						})
 					)
@@ -663,6 +672,22 @@ export abstract class VDFTextDocument<
 							},
 						}
 					}]
+				case BaseErrorType.Directory:
+					return [{
+						range: documentSymbol.detailRange!,
+						severity: DiagnosticSeverity.Error,
+						code: "base-directory",
+						source: "vdf",
+						message: `#base directive '${error.detail}' #bases a directory.`,
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: "Remove directory #base",
+									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
+								}
+							},
+						}
+					}]
 				case BaseErrorType.Cyclic:
 					return [{
 						range: documentSymbol.detailRange!,
@@ -841,7 +866,7 @@ export abstract class VDFTextDocument<
 							if (this.configuration.relativeFolderPath) {
 								const relativePath = posix.resolve(`/${this.configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
 
-								const target = await firstValueFrom(this.fileSystem.resolveFile(relativePath))
+								const target = (await firstValueFrom(this.fileSystem.resolve(relativePath))).uri
 								if (target) {
 									return target
 								}

@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
@@ -84,10 +84,10 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 				return combineLatest(
 					files.map((file) => {
-						return fileSystem.resolveFile(file).pipe(
-							switchMap((uri) => {
-								return uri != null
-									? usingAsync(async () => await documents.get(uri))
+						return fileSystem.resolve(file).pipe(
+							switchMap((entry) => {
+								return entry.type == EntryType.File
+									? usingAsync(async () => await documents.get(entry.uri))
 									: of(null)
 							}),
 						)

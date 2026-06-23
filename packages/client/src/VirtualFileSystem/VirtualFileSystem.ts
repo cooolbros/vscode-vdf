@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { Uri } from "common/Uri"
 import { combineLatest, defer, distinctUntilChanged, finalize, map, Observable, of, shareReplay } from "rxjs"
 import vscode from "vscode"
@@ -14,19 +14,19 @@ export async function VirtualFileSystem(promises: Promise<FileSystemMountPoint>[
 		.map((result) => result.value)
 		.toArray()
 
-	const observables = new Map<string, Observable<Uri | null>>()
+	const observables = new Map<string, Observable<Entry>>()
 
 	return {
-		resolveFile: (path) => {
+		resolve: (path) => {
 			let observable$ = observables.get(path)
 			if (!observable$) {
 				observable$ = defer(() => {
 					return fileSystems.length != 0
-						? combineLatest(fileSystems.map((fileSystem) => fileSystem.resolveFile(path)))
+						? combineLatest(fileSystems.map((fileSystem) => fileSystem.resolve(path)))
 						: of([])
 				}).pipe(
-					map((uris) => uris.find((uri) => uri != null) ?? null),
-					distinctUntilChanged((a, b) => Uri.equals(a, b)),
+					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? { type: <const>EntryType.None, uri: null } as Entry),
+					distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 					finalize(() => observables.delete(path)),
 					shareReplay({ bufferSize: 1, refCount: true })
 				)

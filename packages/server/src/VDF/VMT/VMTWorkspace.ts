@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import type { Uri } from "common/Uri"
 import { usingAsync } from "common/operators/usingAsync"
@@ -12,13 +12,13 @@ export class VMTWorkspace extends WorkspaceBase {
 
 	constructor(uri: Uri, fileSystem: FileSystemMountPoint, documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>) {
 		super(uri)
-		this.surfaceProperties$ = fileSystem.resolveFile("scripts/surfaceproperties_manifest.txt").pipe(
-			switchMap((uri) => {
-				if (!uri) {
+		this.surfaceProperties$ = fileSystem.resolve("scripts/surfaceproperties_manifest.txt").pipe(
+			switchMap((entry) => {
+				if (entry.type != EntryType.File) {
 					return of(null)
 				}
 
-				return usingAsync(async () => await documents.get(uri)).pipe(
+				return usingAsync(async () => await documents.get(entry.uri)).pipe(
 					switchMap((document) => document.documentSymbols$),
 					map((documentSymbols) => {
 						const surfaceproperties_manifest = documentSymbols.find((documentSymbol) => documentSymbol.children != undefined)?.children ?? []
@@ -35,13 +35,13 @@ export class VMTWorkspace extends WorkspaceBase {
 
 						return combineLatest(
 							files.map((file) => {
-								return fileSystem.resolveFile(file).pipe(
-									switchMap((uri) => {
-										if (!uri) {
+								return fileSystem.resolve(file).pipe(
+									switchMap((entry) => {
+										if (entry.type != EntryType.File) {
 											return of([])
 										}
 
-										return usingAsync(async () => documents.get(uri)).pipe(
+										return usingAsync(async () => documents.get(entry.uri)).pipe(
 											switchMap((document) => {
 												return document.documentSymbols$.pipe(
 													map((documentSymbols) => {

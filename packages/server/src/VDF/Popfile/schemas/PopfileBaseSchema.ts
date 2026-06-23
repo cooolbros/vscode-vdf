@@ -449,7 +449,7 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 							links.push({
 								range: documentSymbol.detailRange!,
 								data: {
-									resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(`materials/hud/leaderboard_class_${documentSymbol.detail}.vmt`))
+									resolve: async () => (await firstValueFrom(document.fileSystem.resolve(`materials/hud/leaderboard_class_${documentSymbol.detail}.vmt`))).uri
 								}
 							})
 							return
@@ -464,7 +464,7 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 									links.push({
 										range: documentSymbol.detailRange!,
 										data: {
-											resolve: async () => await firstValueFrom(document.fileSystem.resolveFile(resolve(`sound/${removeSoundChars(documentSymbol.detail!).value}`)))
+											resolve: async () => (await firstValueFrom(document.fileSystem.resolve(resolve(`sound/${removeSoundChars(documentSymbol.detail!).value}`)))).uri
 										}
 									})
 								}
