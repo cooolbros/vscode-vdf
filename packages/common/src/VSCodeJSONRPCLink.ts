@@ -38,6 +38,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 				subject.next(opts.transformer.deserialize(notification.value))
 				break
 			case "E":
+				subjects.delete(id)
 				subject.error(TRPCClientError.from(notification.error))
 				break
 			case "C":
