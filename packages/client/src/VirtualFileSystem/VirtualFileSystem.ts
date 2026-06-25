@@ -44,6 +44,23 @@ export async function VirtualFileSystem(promises: Promise<FileSystemMountPoint>[
 			}
 			return map.entries().toArray()
 		},
+		watchDirectory: (path, options) => {
+			return defer(() => {
+				return fileSystems.length != 0
+					? combineLatest(fileSystems.map((fileSystem) => fileSystem.watchDirectory(path, options)))
+					: of([])
+			}).pipe(
+				map((results) => {
+					const map = new Map<string, vscode.FileType>()
+					for (const result of results) {
+						for (const [name, type] of result) {
+							map.getOrInsert(name, type)
+						}
+					}
+					return map.entries().toArray()
+				})
+			)
+		},
 		[Symbol.asyncDispose]: async () => {
 			await Promise.all(fileSystems.map((fileSystem) => fileSystem[Symbol.asyncDispose]()))
 		}

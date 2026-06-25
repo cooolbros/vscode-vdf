@@ -17,6 +17,7 @@ import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, distin
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
+import type vscode from "vscode"
 import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, InlayHint, InlayHintRequest, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type InlayHintParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { version } from "../../../package.json"
@@ -121,21 +122,28 @@ export abstract class LanguageServer<
 			async (paths, factory) => {
 				const { key } = await this.trpc.client.teamFortress2FileSystem.open.mutate({ paths })
 				const files = new Map<string, Observable<Entry>>()
+				const directories = new Map<string, Observable<[string, vscode.FileType][]>>()
 				return {
 					resolve: (path) => {
-						let file$ = files.get(path)
-						if (!file$) {
-							file$ = fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.resolve, { key, path }).pipe(
+						return files.getOrInsertComputed(path, () => {
+							return fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.resolve, { key, path }).pipe(
 								distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 								finalize(() => files.delete(path)),
 								shareReplay({ bufferSize: 1, refCount: true })
 							)
-							files.set(path, file$)
-						}
-						return file$
+						})
 					},
 					readDirectory: async (path, options) => {
 						return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
+					},
+					watchDirectory: (path, options) => {
+						const key = JSON.stringify({ path, options })
+						return directories.getOrInsertComputed(key, () => {
+							return fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.watchDirectory, { key, path, options }).pipe(
+								finalize(() => directories.delete(key)),
+								shareReplay({ bufferSize: 1, refCount: true })
+							)
+						})
 					},
 					[Symbol.asyncDispose]: async () => {
 						await this.trpc.client.teamFortress2FileSystem.dispose.mutate({ key })

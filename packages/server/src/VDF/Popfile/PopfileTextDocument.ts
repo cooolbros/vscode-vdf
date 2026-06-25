@@ -52,7 +52,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				}),
 				from(workspace.game_sounds),
 				from(workspace.dependencies),
-				from(workspace.entities(init.uri)),
+				workspace.entities(init.uri),
 			]).pipe(
 				map(([schema, game_sounds, workspace, entities]) => {
 					return {

@@ -1,35 +1,31 @@
 import { Observable, type Subscription } from "rxjs"
+import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 
-export function combineLatestPersistent<T>() {
-	const subscriptions = new Map<Observable<any>, Subscription>()
-	const values = { value: new Map<Observable<any>, { value?: T }>() }
-
-	return (source: Observable<Observable<T>[]>) => {
+export function combineLatestPersistent<T>(observableSelector: (fileSystem: FileSystemMountPoint) => Observable<T>) {
+	const subscriptions = new Map<string, Subscription>()
+	let map = new Map<string, T | undefined>()
+	return (source$: Observable<{ name: string, fileSystem: FileSystemMountPoint }[]>) => {
 		return new Observable<T[]>((subscriber) => {
-			const subscription = source.subscribe((observables) => {
+			const subscription = source$.subscribe((entries) => {
 
-				for (const [observable, subscription] of subscriptions.entries().filter(([observable]) => !observables.includes(observable))) {
+				for (const [observable, subscription] of subscriptions.entries().filter(([name]) => !entries.some((entry) => entry.name == name))) {
 					subscription.unsubscribe()
 					subscriptions.delete(observable)
 				}
 
-				values.value = new Map(observables.values().map((v) => [v, {
-					...((values.value.has(v) && "value" in values.value.get(v)!) && {
-						value: values.value.get(v)!.value
-					})
-				}]))
+				map = new Map(entries.values().map((entry) => [entry.name, map.get(entry.name)]))
 
-				if (observables.length == 0) {
+				if (entries.length == 0) {
 					subscriber.next([])
 				}
 				else {
-					for (const observable of observables.values().filter((observable) => !subscriptions.has(observable))) {
+					for (const entry of entries.values().filter((entry) => !subscriptions.has(entry.name))) {
 						subscriptions.set(
-							observable,
-							observable.subscribe((value) => {
-								values.value.get(observable)!.value = value
-								if (values.value.values().every((v) => "value" in v)) {
-									subscriber.next(values.value.values().map((v) => v.value!).toArray())
+							entry.name,
+							observableSelector(entry.fileSystem).subscribe((value) => {
+								map.set(entry.name, value)
+								if (map.values().every((value) => value != undefined)) {
+									subscriber.next(map.values().toArray() as T[])
 								}
 							})
 						)
@@ -43,7 +39,7 @@ export function combineLatestPersistent<T>() {
 					subscriptions.delete(observable)
 				}
 				subscription.unsubscribe()
-				values.value.clear()
+				map.clear()
 			}
 		})
 	}

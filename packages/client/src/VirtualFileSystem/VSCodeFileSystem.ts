@@ -2,7 +2,7 @@ import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSys
 import { Uri } from "common/Uri"
 import { Minimatch } from "minimatch"
 import { posix } from "path"
-import { catchError, concat, from, map, of, Subject } from "rxjs"
+import { catchError, concat, concatMap, defer, EMPTY, from, map, Observable, of, Subject } from "rxjs"
 import vscode, { FileType } from "vscode"
 
 interface VSCodeFileSystem {
@@ -146,6 +146,37 @@ export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCod
 			}
 
 			return paths
+		},
+		watchDirectory: (path, options) => {
+			const uri = resolvePath(path)
+			const match = options.pattern ? new Minimatch(options.pattern) : null
+
+			const next = async () => {
+				return await vscode.workspace.fs.readDirectory(uri).then(
+					(value) => value.filter(([name]) => !name.startsWith(".") && (match ? match.match(name) : true)),
+					() => []
+				)
+			}
+
+			return concat(
+				from(next()),
+				defer(() => {
+					if (!watch) {
+						return EMPTY
+					}
+
+					return new Observable<void>((subscriber) => {
+						const stack = new DisposableStack()
+						const pattern = new vscode.RelativePattern(vscode.Uri.from(uri), "*")
+						const watcher = stack.adopt(vscode.workspace.createFileSystemWatcher(pattern, false, true, false), (disposable) => disposable.dispose())
+						stack.adopt(watcher.onDidCreate(() => subscriber.next()), (disposable) => disposable.dispose())
+						stack.adopt(watcher.onDidDelete(() => subscriber.next()), (disposable) => disposable.dispose())
+						return () => stack.dispose()
+					}).pipe(
+						concatMap(next)
+					)
+				})
+			)
 		},
 		async [Symbol.asyncDispose]() {
 			watcher?.dispose()

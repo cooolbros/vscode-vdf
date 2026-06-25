@@ -139,6 +139,23 @@ export function TRPCClientRouter(
 					.query(async ({ input }) => {
 						return await fileSystems.get(input.key)!.readDirectory(input.path, input.options)
 					}),
+				watchDirectory: t
+					.procedure
+					.input(
+						z.object({
+							key: z.string(),
+							path: z.string(),
+							options: z.object({
+								pattern: z.string().optional()
+							})
+						})
+					)
+					.subscription(async ({ input, signal }) => {
+						return observableToAsyncIterable<[string, vscode.FileType][]>(
+							fileSystems.get(input.key)!.watchDirectory(input.path, input.options),
+							signal!
+						)
+					}),
 				dispose: t
 					.procedure
 					.input(

@@ -3,7 +3,7 @@ import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { firstValueFrom, Observable, of } from "rxjs"
+import { concatMap, firstValueFrom, Observable, of } from "rxjs"
 import type { VDFRange } from "vdf"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver"
@@ -346,133 +346,132 @@ export class PopfileWorkspace extends WorkspaceBase {
 		this.maps = new Map()
 	}
 
-	public async entities(uri: Uri) {
+	public entities(uri: Uri) {
 		const basename = uri.basename()
 		if (posix.extname(basename) != ".pop") {
-			return null
+			return of(null)
 		}
 
-		const bsp = await findMap(uri, this.fileSystem)
-		if (!bsp) {
-			return null
-		}
-
-		if (!this.maps.has(bsp)) {
-			this.maps.set(bsp, Promise.try(async () => {
-				const entry = await firstValueFrom(this.fileSystem.resolve(`maps/${bsp}`))
-				if (entry.type != EntryType.File) {
+		return findMap(uri, this.fileSystem).pipe(
+			concatMap(async (bsp) => {
+				if (!bsp) {
 					return null
 				}
 
-				const entities = await this.server.trpc.client.popfile.bsp.entities.query(entry).then((entities) => entities && Map.groupBy(entities, (item) => item.classname))
-				if (!entities) {
-					return null
-				}
+				return await this.maps.getOrInsertComputed(bsp, async () => {
+					const entry = await firstValueFrom(this.fileSystem.resolve(`maps/${bsp}`))
+					if (entry.type != EntryType.File) {
+						return null
+					}
 
-				console.log(`${bsp}:`)
-				console.log(JSON.stringify(Object.fromEntries(entities), null, 4))
+					const entities = await this.server.trpc.client.popfile.bsp.entities.query({ uri: entry.uri }).then((entities) => entities && Map.groupBy(entities, (item) => item.classname))
+					if (!entities) {
+						return null
+					}
 
-				// Where
-				const teamSpawns = [
-					...new Set(
-						entities
-							?.get("info_player_teamspawn")
-							?.toSorted((a, b) => (<string>b["TeamNum"])?.localeCompare(<string>a["TeamNum"]) || a.targetname?.localeCompare(b.targetname!) || 0)
-							.values()
-							.map((entity) => entity.targetname)
-							.filter((targetname) => targetname != undefined)
-					),
-					"Ahead",
-					"Behind",
-					"Anywhere",
-					""
-				]
+					console.log(`${bsp}:`)
+					console.log(JSON.stringify(Object.fromEntries(entities), null, 4))
 
-				// StartingPathTrackNode
-				const pathTracks = [
-					...new Set(
-						entities
-							?.get("path_track")
-							?.values()
-							.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity.targetname))
-							.map((entity) => entity.targetname)
-							.filter((targetname) => targetname != undefined)
-					)
-				].toSorted()
+					// Where
+					const teamSpawns = [
+						...new Set(
+							entities
+								?.get("info_player_teamspawn")
+								?.toSorted((a, b) => (<string>b["TeamNum"])?.localeCompare(<string>a["TeamNum"]) || a.targetname?.localeCompare(b.targetname!) || 0)
+								.values()
+								.map((entity) => entity.targetname)
+								.filter((targetname) => targetname != undefined)
+						),
+						"Ahead",
+						"Behind",
+						"Anywhere",
+						""
+					]
 
-				// Target
-				const targets = [
-					...new Set(
-						entities
-							?.values()
-							?.flatMap((value) => value)
-							.map((entity) => entity.targetname)
-							.filter((targetname) => targetname != undefined)
-							.filter((targetname) => !targetname.startsWith("//"))
-					),
-					"BigNet"
-				].toSorted()
+					// StartingPathTrackNode
+					const pathTracks = [
+						...new Set(
+							entities
+								?.get("path_track")
+								?.values()
+								.filter((entity) => !entities.get("path_track")!.some((e) => e["target"] == entity.targetname))
+								.map((entity) => entity.targetname)
+								.filter((targetname) => targetname != undefined)
+						)
+					].toSorted()
 
-				// EventChangeAttributes
-				const OnTriggerSchema = z.array(z.string())
-				const populator = entities.get("point_populator_interface")?.[0]?.targetname
-				const events = new Map([["default", "Default"]])
-				for (const logic_relay of entities.get("logic_relay") ?? []) {
-					for (const trigger of OnTriggerSchema.safeParse(logic_relay["OnTrigger"]).data ?? []) {
-						const [target, input, parameter, delay, once] = trigger.split(",")
-						if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes" || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
-							const key = parameter.toLowerCase()
-							if (!events.has(key)) {
-								events.set(parameter.toLowerCase(), parameter)
+					// Target
+					const targets = [
+						...new Set(
+							entities
+								?.values()
+								?.flatMap((value) => value)
+								.map((entity) => entity.targetname)
+								.filter((targetname) => targetname != undefined)
+								.filter((targetname) => !targetname.startsWith("//"))
+						),
+						"BigNet"
+					].toSorted()
+
+					// EventChangeAttributes
+					const OnTriggerSchema = z.array(z.string())
+					const populator = entities.get("point_populator_interface")?.[0]?.targetname
+					const events = new Map([["default", "Default"]])
+					for (const logic_relay of entities.get("logic_relay") ?? []) {
+						for (const trigger of OnTriggerSchema.safeParse(logic_relay["OnTrigger"]).data ?? []) {
+							const [target, input, parameter, delay, once] = trigger.split(",")
+							if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes" || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
+								const key = parameter.toLowerCase()
+								if (!events.has(key)) {
+									events.set(parameter.toLowerCase(), parameter)
+								}
 							}
 						}
 					}
-				}
 
-				return {
-					bsp: bsp,
-					events: events,
-					schema: {
-						keys: {
-							[`${"EventChangeAttributes".toLowerCase()}`]: {
-								values: events.values().map((event) => ({ label: event, kind: CompletionItemKind.Class })).toArray()
+					return {
+						bsp: bsp,
+						events: events,
+						schema: {
+							keys: {
+								[`${"EventChangeAttributes".toLowerCase()}`]: {
+									values: events.values().map((event) => ({ label: event, kind: CompletionItemKind.Class })).toArray()
+								},
+								...Object.fromEntries(
+									events.keys().map((key) => [key, {
+										values: [
+											{ label: "CharacterAttributes", kind: CompletionItemKind.Class },
+											{ label: "ItemAttributes", kind: CompletionItemKind.Class, multiple: true },
+											{ label: "Attributes", kind: CompletionItemKind.Field, multiple: true },
+											{ label: "BehaviorModifiers", kind: CompletionItemKind.Field },
+											{ label: "Item", kind: CompletionItemKind.Field, multiple: true },
+											{ label: "MaxVisionRange", kind: CompletionItemKind.Field },
+											{ label: "Skill", kind: CompletionItemKind.Field },
+											{ label: "WeaponRestrictions", kind: CompletionItemKind.Field }
+										]
+									}])
+								)
 							},
-							...Object.fromEntries(
-								events.keys().map((key) => [key, {
-									values: [
-										{ label: "CharacterAttributes", kind: CompletionItemKind.Class },
-										{ label: "ItemAttributes", kind: CompletionItemKind.Class, multiple: true },
-										{ label: "Attributes", kind: CompletionItemKind.Field, multiple: true },
-										{ label: "BehaviorModifiers", kind: CompletionItemKind.Field },
-										{ label: "Item", kind: CompletionItemKind.Field, multiple: true },
-										{ label: "MaxVisionRange", kind: CompletionItemKind.Field },
-										{ label: "Skill", kind: CompletionItemKind.Field },
-										{ label: "WeaponRestrictions", kind: CompletionItemKind.Field }
-									]
-								}])
-							)
-						},
-						values: {
-							[`${"ClosestPoint".toLowerCase()}`]: {
-								kind: CompletionItemKind.Enum,
-								values: teamSpawns
-							},
-							[`${"Where".toLowerCase()}`]: {
-								kind: CompletionItemKind.Enum,
-								values: teamSpawns
-							}
-						},
-						completion: {
 							values: {
-								[`${"StartingPathTrackNode".toLowerCase()}`]: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
-								[`${"Target".toLowerCase()}`]: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+								[`${"ClosestPoint".toLowerCase()}`]: {
+									kind: CompletionItemKind.Enum,
+									values: teamSpawns
+								},
+								[`${"Where".toLowerCase()}`]: {
+									kind: CompletionItemKind.Enum,
+									values: teamSpawns
+								}
+							},
+							completion: {
+								values: {
+									[`${"StartingPathTrackNode".toLowerCase()}`]: pathTracks.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+									[`${"Target".toLowerCase()}`]: targets.map((value) => ({ label: value, kind: CompletionItemKind.Enum })),
+								}
 							}
 						}
 					}
-				}
-			}))
-		}
-
-		return await this.maps.get(bsp)!
+				})
+			})
+		)
 	}
 }
