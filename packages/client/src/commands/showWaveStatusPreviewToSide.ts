@@ -12,7 +12,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { posix } from "path"
-import { catchError, combineLatest, concat, concatMap, defer, filter, firstValueFrom, from, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, take, withLatestFrom, type ObservedValueOf } from "rxjs"
+import { catchError, combineLatest, concat, concatMap, defer, filter, firstValueFrom, from, map, Observable, of, ReplaySubject, share, startWith, switchAll, switchMap, withLatestFrom, type ObservedValueOf } from "rxjs"
 import type { RangeLike } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -217,76 +217,79 @@ export function showWaveStatusPreviewToSide(
 
 						const difficulty = difficultySchema.safeParse(mission.find((documentSymbol) => documentSymbol.key.toLowerCase() == "difficulty")?.detail!).data
 						const language = await firstValueFrom(language$)
-						return {
+						return of({
 							map: map.key.substring("mvm_".length),
 							reverse: false,
 							difficulty: difficulty ?? null,
 							mission: language.get(display_name.toLowerCase() as Lowercase<string>) ?? name
+						})
+					}
+				}
+
+				return findMap(new Uri(document.uri), fileSystem).pipe(
+					map((bsp) => {
+						const label = (value: string) => {
+							return value.split("_").map((value) => `${value.at(0)?.toUpperCase() ?? ""}${value.substring(1).toLowerCase()}`).join(" ")
 						}
-					}
-				}
 
-				const label = (value: string) => {
-					return value.split("_").map((value) => `${value.at(0)?.toUpperCase() ?? ""}${value.substring(1).toLowerCase()}`).join(" ")
-				}
-
-				const bsp = await findMap(new Uri(document.uri), fileSystem)
-				if (bsp != null) {
-					const pattern = /^((?<reverse>rev)_)?((?<difficulty>nor(mal)?|int(ermediate)?|adv(anced)?|exp(ert)?)_)?(?<mission>.+)$/gmi
-					const string = name.substring(posix.parse(bsp).name.length + "_".length)
-					const { reverse, difficulty, mission } = pattern.exec(string)?.groups ?? {}
-					return {
-						map: posix.parse(bsp).name.substring("mvm_".length),
-						reverse: reverse != undefined,
-						difficulty: difficulty != undefined
-							? difficultySchema.safeParse(transformDifficulty(difficulty)).data ?? null
-							: null,
-						mission: mission != undefined
-							? label(mission)
-							: name,
-					}
-				}
-				else {
-					let mapSegments: string[] | null = null
-					let reverse: boolean | null = null
-					let difficulty: z.infer<typeof difficultySchema> | null = null
-					let missionSegments: string[] | null = null
-
-					let mapCompleted = false
-
-					for (const segment of name.substring("mvm_".length).split("_")) {
-						let str = segment.toLowerCase()
-						if (str == "rev") {
-							mapCompleted = true
-							if (reverse == null) {
-								reverse = true
+						if (bsp != null) {
+							const pattern = /^((?<reverse>rev)_)?((?<difficulty>nor(mal)?|int(ermediate)?|adv(anced)?|exp(ert)?)_)?(?<mission>.+)$/gmi
+							const string = name.substring(posix.parse(bsp).name.length + "_".length)
+							const { reverse, difficulty, mission } = pattern.exec(string)?.groups ?? {}
+							return {
+								map: posix.parse(bsp).name.substring("mvm_".length),
+								reverse: reverse != undefined,
+								difficulty: difficulty != undefined
+									? difficultySchema.safeParse(transformDifficulty(difficulty)).data ?? null
+									: null,
+								mission: mission != undefined
+									? label(mission)
+									: name,
 							}
-						}
-						else if (["nor", "normal", "int", "intermediate", "adv", "advanced", "exp", "expert"].includes(str)) {
-							mapCompleted = true
-							difficulty = difficultySchema.safeParse(transformDifficulty(segment)).data ?? null
 						}
 						else {
-							if (!mapCompleted) {
-								(mapSegments ??= []).push(segment)
+							let mapSegments: string[] | null = null
+							let reverse: boolean | null = null
+							let difficulty: z.infer<typeof difficultySchema> | null = null
+							let missionSegments: string[] | null = null
+
+							let mapCompleted = false
+
+							for (const segment of name.substring("mvm_".length).split("_")) {
+								let str = segment.toLowerCase()
+								if (str == "rev") {
+									mapCompleted = true
+									if (reverse == null) {
+										reverse = true
+									}
+								}
+								else if (["nor", "normal", "int", "intermediate", "adv", "advanced", "exp", "expert"].includes(str)) {
+									mapCompleted = true
+									difficulty = difficultySchema.safeParse(transformDifficulty(segment)).data ?? null
+								}
+								else {
+									if (!mapCompleted) {
+										(mapSegments ??= []).push(segment)
+									}
+									else {
+										(missionSegments ??= []).push(segment)
+									}
+								}
 							}
-							else {
-								(missionSegments ??= []).push(segment)
+
+							return {
+								map: mapSegments?.join("_") ?? null,
+								reverse: reverse ?? false,
+								difficulty: difficulty,
+								mission: missionSegments != null
+									? label(missionSegments.join("_"))
+									: name,
 							}
 						}
-					}
-
-					return {
-						map: mapSegments?.join("_") ?? null,
-						reverse: reverse ?? false,
-						difficulty: difficulty,
-						mission: missionSegments != null
-							? label(missionSegments.join("_"))
-							: name,
-					}
-				}
+					})
+				)
 			}),
-			take(1),
+			switchAll(),
 			shareReplayUntilDisposed()
 		)
 
