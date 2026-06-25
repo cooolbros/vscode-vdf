@@ -137,10 +137,10 @@ export abstract class LanguageServer<
 						return await this.trpc.client.teamFortress2FileSystem.readDirectory.query({ key, path, options })
 					},
 					watchDirectory: (path, options) => {
-						const key = JSON.stringify({ path, options })
-						return directories.getOrInsertComputed(key, () => {
+						const directoryKey = JSON.stringify({ path, options })
+						return directories.getOrInsertComputed(directoryKey, () => {
 							return fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.watchDirectory, { key, path, options }).pipe(
-								finalize(() => directories.delete(key)),
+								finalize(() => directories.delete(directoryKey)),
 								shareReplay({ bufferSize: 1, refCount: true })
 							)
 						})
