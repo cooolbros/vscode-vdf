@@ -607,7 +607,7 @@
         "path-browserify": "^1.0.1",
         "rxjs": "^7.8.2",
         "ts-checker-rspack-plugin": "^1.4.0",
-        "turbo": "^2.9.18",
+        "turbo": "^2.10.0",
         "typescript": "^6.0.3",
         "vscode-languageserver-textdocument": "^1.0.11",
         "zod": "^4.3.6"
