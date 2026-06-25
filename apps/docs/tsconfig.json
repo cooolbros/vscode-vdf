@@ -8,6 +8,7 @@
         "isolatedModules": true,
         "jsx": "preserve",
         "noUncheckedSideEffectImports": false,
+        "esModuleInterop": true,
         "plugins": [
             {
                 "name": "next"
