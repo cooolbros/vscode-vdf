@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, filter, firstValueFrom, isObservable, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, filter, firstValueFrom, isObservable, map, Observable, of, ReplaySubject, share, shareReplay, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
 import type { FileType } from "vscode"
 import { CodeAction, CodeLens, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
@@ -96,6 +96,9 @@ export abstract class TextDocumentBase<
 	public readonly definitionReferences$: Observable<DefinitionReferences>
 	public readonly diagnostics$: Observable<DiagnosticCodeAction[]>
 	public readonly codeLens$: Observable<CodeLens[]>
+
+	private readonly _dispose$: ReplaySubject<void>
+	public readonly dispose$: Observable<void>
 
 	public readonly definitions = {
 		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }, languageId = this.languageId) => {
@@ -190,7 +193,7 @@ export abstract class TextDocumentBase<
 					}
 				}
 			}),
-			shareReplay({ bufferSize: 1, refCount: true })
+			shareReplay(1)
 		)
 
 		this.documentSymbols$ = result$.pipe(
@@ -209,12 +212,18 @@ export abstract class TextDocumentBase<
 		)
 
 		const data$ = configuration.definitionReferences$.pipe(
-			shareReplay({ bufferSize: 1, refCount: true })
+			share({
+				connector: () => new ReplaySubject(1),
+				resetOnRefCountZero: () => this.dispose$,
+			})
 		)
 
 		this.definitionReferences$ = data$.pipe(
 			map(({ definitionReferences }) => definitionReferences),
-			shareReplay({ bufferSize: 1, refCount: true })
+			share({
+				connector: () => new ReplaySubject(1),
+				resetOnRefCountZero: () => this.dispose$,
+			})
 		)
 
 		this.diagnostics$ = result$.pipe(
@@ -310,9 +319,11 @@ export abstract class TextDocumentBase<
 						},
 						<CodeLens[]>[]
 					)
-			}),
-			shareReplay({ bufferSize: 1, refCount: true })
+			})
 		)
+
+		this._dispose$ = new ReplaySubject(1)
+		this.dispose$ = this._dispose$.asObservable()
 	}
 
 	public update(changes: TextDocumentContentChangeEvent[], version: number) {
@@ -339,6 +350,7 @@ export abstract class TextDocumentBase<
 
 	public async [Symbol.asyncDispose](): Promise<void> {
 		this.text$.complete()
+		this._dispose$.next()
 		await this.fileSystem[Symbol.asyncDispose]()
 	}
 

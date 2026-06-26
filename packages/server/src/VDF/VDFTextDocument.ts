@@ -5,7 +5,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, finalize, firstValueFrom, map, Observable, shareReplay, switchMap } from "rxjs"
+import { combineLatest, distinctUntilChanged, finalize, firstValueFrom, map, Observable, ReplaySubject, share, shareReplay, switchMap } from "rxjs"
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -652,7 +652,17 @@ export abstract class VDFTextDocument<
 			),
 		})
 
-		this.configuration = configuration
+		const { dependencies$, ...rest } = configuration
+
+		this.configuration = {
+			...rest,
+			dependencies$: dependencies$.pipe(
+				share({
+					connector: () => new ReplaySubject(1),
+					resetOnRefCountZero: () => this.dispose$,
+				})
+			)
+		}
 
 		const getBaseDiagnostics = (documentSymbol: VDFDocumentSymbol, error: BaseError): DiagnosticCodeAction[] => {
 			switch (error.type) {
