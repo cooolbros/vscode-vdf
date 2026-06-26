@@ -1,5 +1,16 @@
 # Change Log
 
+## [5.12.0]
+ - Add `#base` referencing directory diagnostic
+ - Improve file system directory reading performance
+ - VMT:
+   - Add file system support for BSP packed assets
+ - Popfile:
+   - Add BSP packed assets support for `ClassIcon` diagnostics
+   - Update Popfile entities when adding or removing BSP files
+   - Wave Status Preview:
+     - Improve load time
+
 ## [5.11.1]
  - [Popfile] Fix entities loading
 
