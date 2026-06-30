@@ -336,19 +336,13 @@ export abstract class PopfileBase implements AsyncDisposable {
 					watch: (uri) => usingAsync(async () => this.fileSystemWatcherFactory.get(uri)).pipe(switchAll()),
 					relativeFolderPath: "scripts/population",
 				}),
-
 			}),
 			map(({ base: results, value }) => {
 				const map = this.getTemplatesMap(value)
 
 				for (const baseMap of results.values().filter((result) => result.type == BaseResultType.Success)) {
 					for (const [key, base] of baseMap.value) {
-						let builder = map.get(key)
-						if (!builder) {
-							builder = { name: base.name, uri: base.uri, documentSymbols: [] }
-							map.set(key, builder)
-						}
-
+						const builder = map.getOrInsertComputed(key, () => ({ name: base.name, uri: base.uri, documentSymbols: [] }))
 						BaseMerge(builder.documentSymbols, base.documentSymbols)
 					}
 				}
@@ -402,12 +396,7 @@ class BasePopfile extends PopfileBase {
 				seen.add(key)
 
 				if (template.children != undefined && template.children.length > 0) {
-					let builder = map.get(key)
-					if (!builder) {
-						builder = { name: template.key, uri: this.uri, documentSymbols: [] }
-						map.set(key, builder)
-					}
-
+					const builder = map.getOrInsertComputed(key, () => ({ name: template.key, uri: this.uri, documentSymbols: [] }))
 					BaseMerge(builder.documentSymbols, template.children)
 				}
 			}
