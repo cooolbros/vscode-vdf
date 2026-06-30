@@ -19,16 +19,13 @@ export function combineLatestPersistent<T>(observableSelector: (fileSystem: File
 					subscriber.next([])
 				}
 				else {
-					for (const entry of entries.values().filter((entry) => !subscriptions.has(entry.name))) {
-						subscriptions.set(
-							entry.name,
-							observableSelector(entry.fileSystem).subscribe((value) => {
-								map.set(entry.name, value)
-								if (map.values().every((value) => value != undefined)) {
-									subscriber.next(map.values().toArray() as T[])
-								}
-							})
-						)
+					for (const entry of entries) {
+						subscriptions.getOrInsertComputed(entry.name, () => observableSelector(entry.fileSystem).subscribe((value) => {
+							map.set(entry.name, value)
+							if (map.values().every((value) => value != undefined)) {
+								subscriber.next(map.values().toArray() as T[])
+							}
+						}))
 					}
 				}
 			})

@@ -127,20 +127,17 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 							})
 						)
 						.mutation(async ({ input }) => {
-							if (!this.workspaces.has(input.uri.toString())) {
-								this.workspaces.set(
-									input.uri.toString(),
-									Promise.try(async () => new HUDAnimationsWorkspace({
-										uri: input.uri,
-										fileSystem: await this.fileSystems.get([
-											{ type: "folder", uri: input.uri },
-											{ type: "tf2" }
-										]),
-										server: this,
-										documents: this.documents,
-									}))
-								)
-							}
+							this.workspaces.getOrInsertComputed(input.uri.toString(), async () => {
+								return new HUDAnimationsWorkspace({
+									uri: input.uri,
+									fileSystem: await this.fileSystems.get([
+										{ type: "folder", uri: input.uri },
+										{ type: "tf2" }
+									]),
+									server: this,
+									documents: this.documents,
+								})
+							})
 						})
 				}
 			})

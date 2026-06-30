@@ -94,20 +94,17 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.mutation(async ({ input }) => {
-							if (!this.workspaces.has(input.uri.toString())) {
-								this.workspaces.set(
-									input.uri.toString(),
-									Promise.try(async () => new VGUIWorkspace({
-										uri: input.uri,
-										fileSystem: await this.fileSystems.get([
-											{ type: "folder", uri: input.uri },
-											{ type: "tf2" }
-										]),
-										documents: this.documents,
-										request: Promise.resolve()
-									}))
-								)
-							}
+							this.workspaces.getOrInsertComputed(input.uri.toString(), async () => {
+								return new VGUIWorkspace({
+									uri: input.uri,
+									fileSystem: await this.fileSystems.get([
+										{ type: "folder", uri: input.uri },
+										{ type: "tf2" }
+									]),
+									documents: this.documents,
+									request: Promise.resolve()
+								})
+							})
 						}),
 					documentSymbol: t
 						.procedure

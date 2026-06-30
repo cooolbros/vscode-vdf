@@ -300,12 +300,10 @@ export function combineLatestBaseFiles<T, R>(config: CombineLatestBaseFilesConfi
 					}
 
 					for (const detail of base) {
-						if (!subscriptions.has(detail)) {
-							subscriptions.set(detail, open({ stack, detail }).subscribe((result) => {
-								current.base.map.set(detail, { result })
-								next()
-							}))
-						}
+						subscriptions.getOrInsertComputed(detail, () => open({ stack, detail }).subscribe((result) => {
+							current.base.map.set(detail, { result })
+							next()
+						}))
 					}
 
 					next()

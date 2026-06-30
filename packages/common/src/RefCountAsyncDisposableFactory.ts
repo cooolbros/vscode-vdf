@@ -8,9 +8,9 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 
 	public async get(key: TKey, factory = this.factory): Promise<TValue> {
 		const k = this.keyHash(key)
-		if (!this.map.has(k)) {
+		const value = this.map.getOrInsertComputed(k, () => {
 			const count = { value: 0 }
-			this.map.set(k, {
+			return {
 				count: count,
 				value: factory(key, this).then((target) => {
 					return new Proxy(target, {
@@ -35,10 +35,9 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 						},
 					})
 				})
-			})
-		}
+			}
+		})
 
-		const value = this.map.get(k)!
 		value.count.value++
 		return value.value
 	}
