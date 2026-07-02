@@ -597,7 +597,7 @@
     },
     "devDependencies": {
         "@rspack/cli": "^2.0.5",
-        "@rspack/core": "^2.0.1",
+        "@rspack/core": "^2.1.2",
         "@trpc/client": "^11.11.0",
         "@trpc/server": "^11.11.0",
         "@types/path-browserify": "^1.0.2",
