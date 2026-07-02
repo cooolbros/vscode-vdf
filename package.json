@@ -598,8 +598,8 @@
     "devDependencies": {
         "@rspack/cli": "^2.0.5",
         "@rspack/core": "^2.0.1",
-        "@trpc/client": "^11.11.0",
-        "@trpc/server": "^11.11.0",
+        "@trpc/client": "^11.18.0",
+        "@trpc/server": "^11.18.0",
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.110.0",
         "@vscode/test-web": "^0.0.81",
