@@ -1,4 +1,4 @@
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { BaseResultType, combineLatestBaseFiles, fs, type Stack } from "common/operators/combineLatestBaseFiles"
 import { usingAsync } from "common/operators/usingAsync"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
@@ -8,7 +8,7 @@ import { VDFSyntaxError, type RangeLike } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { quote } from "vdf-format"
-import { commands, workspace, type TextDocumentChangeEvent } from "vscode"
+import { commands, FileType, workspace, type TextDocumentChangeEvent } from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { VSCodeDocumentGetTextSchema } from "./VSCodeSchemas"
@@ -333,7 +333,24 @@ export abstract class PopfileBase implements AsyncDisposable {
 					),
 					observableSelector: (popfile) => popfile.getTemplates([...stack, { path: `scripts/population/${this.uri.basename()}`, uri: this.uri }]),
 					fileSystem: this.fileSystem,
-					watch: (uri) => usingAsync(async () => this.fileSystemWatcherFactory.get(uri)).pipe(switchAll()),
+					watch: (uri) => concat(
+						from(workspace.fs.stat(uri).then(
+							(stat) => {
+								switch (stat.type) {
+									case FileType.File:
+										return { type: <const>"create", entry: { type: <const>EntryType.File, uri: uri } }
+									case FileType.Directory:
+										return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: uri } }
+									default:
+										return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }
+								}
+							},
+							() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
+						)),
+						usingAsync(async () => await this.fileSystemWatcherFactory.get(uri)).pipe(
+							switchAll()
+						)
+					),
 					relativeFolderPath: "scripts/population",
 				}),
 			}),
