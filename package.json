@@ -31,7 +31,7 @@
         "url": "https://github.com/cooolbros/vscode-vdf"
     },
     "engines": {
-        "vscode": "^1.110.0"
+        "vscode": "^1.123.0"
     },
     "activationEvents": [
         "onFileSystem:vpk"
