@@ -25,16 +25,9 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 		type: z.enum(procedureTypes),
 		input: z.unknown().optional().transform((arg) => transformer.input.deserialize(arg) as {}),
 		path: z.string(),
-		context: z.record(z.string(), z.unknown()),
+		context: z.object({ client: opts.schema }),
 		signal: z.instanceof(AbortSignal).nullable().default(null),
 	})
-
-	const link = experimental_localLink<AnyTRPCRouter>({
-		router: opts.router,
-		createContext: async () => ({}),
-		onError: (opts) => console.dir(opts),
-		transformer: transformer,
-	})({})
 
 	const subscriptions = new Map<z.infer<z.ZodEnum<T>>, Map<number, Unsubscribable>>()
 
@@ -60,6 +53,14 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 
 	return async (param: unknown) => {
 		const op = opSchema.parse(param)
+
+		const link = experimental_localLink({
+			router: opts.router,
+			createContext: async () => op.context,
+			onError: (opts) => console.dir(opts),
+			transformer: transformer,
+		})({})
+
 		const observable = link({ op, next })
 		switch (op.type) {
 			case "query":
@@ -80,7 +81,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 						return { error: transformer.output.serialize(error) }
 					})
 			case "subscription":
-				const client = opts.schema.parse(op.context.client)
+				const client = op.context.client
 				let clientSubscriptions = subscriptions.get(client)
 				if (!clientSubscriptions) {
 					clientSubscriptions = new Map()

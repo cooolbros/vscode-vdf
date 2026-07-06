@@ -1,4 +1,4 @@
-import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import type { DataTransformer } from "@trpc/server"
 import * as devalue from "devalue"
 
 export interface Options {

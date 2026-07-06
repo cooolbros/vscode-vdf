@@ -6,7 +6,13 @@ import * as z from "zod/mini"
 import { devalueTransformer } from "../devalueTransformer"
 import { VSCodeJSONRPCLink } from "../VSCodeJSONRPCLink"
 
-export function createTRPCClient<T extends AnyTRPCRouter>(vscode: WebviewApi<any>) {
+export interface CreateTRPCClientOptions {
+	name: string
+	vscode: WebviewApi<any>
+}
+
+export function createTRPCClient<T extends AnyTRPCRouter>(opts: CreateTRPCClientOptions) {
+	const { name, vscode } = opts
 	const requests = new Map<number, { resolve: (value: any) => void }>()
 
 	const messageSchema = z.discriminatedUnion("type", [
@@ -50,7 +56,7 @@ export function createTRPCClient<T extends AnyTRPCRouter>(vscode: WebviewApi<any
 	const trpc = _createTRPCClient<T>({
 		links: [
 			VSCodeJSONRPCLink({
-				client: { name: "webview" },
+				client: { name: `${name}-webview` },
 				transformer: devalueTransformer({ reducers: {}, revivers: {} }),
 				onNotification: (type, handler) => {
 					onNotification$.subscribe((notification) => {

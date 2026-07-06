@@ -9,8 +9,14 @@ const messageSchema = z.object({
 	param: z.any()
 })
 
-export function TRPCWebViewRequestHandler<T extends AnyTRPCRouter>(webview: Webview, router: T): Disposable {
+export interface TRPCWebViewRequestHandlerOptions<T extends z.util.EnumLike> {
+	webview: Webview
+	router: AnyTRPCRouter
+	schema: z.ZodEnum<T>
+}
 
+export function TRPCWebViewRequestHandler<T extends z.util.EnumLike>(opts: TRPCWebViewRequestHandlerOptions<T>): Disposable {
+	const { webview, router, schema } = opts
 	const stack = new DisposableStack()
 
 	const handlers = {
@@ -26,7 +32,7 @@ export function TRPCWebViewRequestHandler<T extends AnyTRPCRouter>(webview: Webv
 
 	const trpc = TRPCRequestHandler({
 		router: router,
-		schema: z.enum(["webview"]),
+		schema: schema,
 		signal: controller.signal,
 		onRequest: (method, handler) => {
 			handlers.request.set(method, handler)

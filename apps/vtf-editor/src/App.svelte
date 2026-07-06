@@ -25,7 +25,7 @@
 	const vscode = acquireVsCodeApi<State>()
 	const initial = vscode.getState()
 
-	const { trpc, contextMenu$ } = createTRPCClient<AppRouter>(vscode)
+	const { trpc, contextMenu$ } = createTRPCClient<AppRouter>({ name: "vtf-editor", vscode: vscode })
 
 	const vtf = await Promise.all([trpc.buf.query(), init()]).then(([buf]) => new VTF(buf))
 	const { width, height } = vtf.header

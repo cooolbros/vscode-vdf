@@ -1,12 +1,12 @@
-import type { initTRPC } from "@trpc/server"
+import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
-import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import { BSP } from "bsp"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
+import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { WatchEvent } from "common/WatchEvent"
 import { concat, concatMap, distinctUntilChanged, filter, from, Observable, switchAll } from "rxjs"
 import vscode, { commands, window, workspace, type ExtensionContext } from "vscode"
@@ -28,7 +28,7 @@ const UTF8Decoder = new TextDecoder("utf-8")
 const UTF16LEDecoder = new TextDecoder("utf-16le")
 
 export function TRPCClientRouter(
-	t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>,
+	t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>,
 	context: ExtensionContext,
 	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,

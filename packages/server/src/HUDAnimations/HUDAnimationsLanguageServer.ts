@@ -1,6 +1,6 @@
-import type { initTRPC } from "@trpc/server"
-import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { Uri } from "common/Uri"
+import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { generateTokens } from "common/generateTokens"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
@@ -114,7 +114,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 		this.workspaces = new Map()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
+	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
 		return t.mergeRouters(
 			super.router(t),
 			t.router({

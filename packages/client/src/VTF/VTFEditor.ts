@@ -13,6 +13,7 @@ import { VTFDocument } from "./VTFDocument"
 
 export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 
+	private static readonly schema = z.enum(["vtf-editor-webview"])
 	private static readonly decoder = new TextDecoder("utf-8")
 
 	private readonly extensionUri: vscode.Uri
@@ -119,7 +120,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 		)
 
 		const router = this.router(document)
-		stack.use(TRPCWebViewRequestHandler(webviewPanel.webview, router))
+		stack.use(TRPCWebViewRequestHandler({ webview: webviewPanel.webview, router: router, schema: VTFEditor.schema }))
 
 		const dist = vscode.Uri.joinPath(this.extensionUri, "apps/vtf-editor/dist")
 		const html = VTFEditor.decoder.decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
@@ -134,10 +135,12 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 	}
 
 	public router(document: VTFDocument) {
-		const t = initTRPC.create({
-			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
-			isDev: true
-		})
+		const t = initTRPC
+			.context<{ client: z.infer<typeof VTFEditor.schema> }>()
+			.create({
+				transformer: devalueTransformer({ reducers: {}, revivers: {} }),
+				isDev: true
+			})
 
 		return t.mergeRouters(
 			TRPCImageRouter(t),

@@ -1,10 +1,9 @@
-import type { initTRPC } from "@trpc/server"
-import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { Uri } from "common/Uri"
 import { commands, window, workspace } from "vscode"
 import { z } from "zod"
 
-export function TRPCImageRouter(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>,) {
+export function TRPCImageRouter<T extends string>(t: TRPCRootObject<{ client: T }, object, { transformer: DataTransformer }>) {
 	return t.router({
 		showSaveDialog: t
 			.procedure

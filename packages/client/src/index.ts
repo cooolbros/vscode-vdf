@@ -44,19 +44,21 @@ export class Client<T extends BaseLanguageClient> {
 		this.client = client
 		this.startServer = startServer
 		this.router = TRPCClientRouter(
-			initTRPC.create({
-				transformer: devalueTransformer({
-					reducers: {
-						Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
-					},
-					revivers: {
-						Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
-						VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
-						VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
-					}
+			initTRPC
+				.context<{ client: VSCodeVDFLanguageID }>()
+				.create({
+					transformer: devalueTransformer({
+						reducers: {
+							Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
+						},
+						revivers: {
+							Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
+							VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
+							VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
+						}
+					}),
+					isDev: true,
 				}),
-				isDev: true,
-			}),
 			context,
 			teamFortress2Folder$,
 			fileSystemMountPointFactory,

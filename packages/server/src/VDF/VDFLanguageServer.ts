@@ -1,5 +1,4 @@
-import type { initTRPC } from "@trpc/server"
-import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
+import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { generateTokens } from "common/generateTokens"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
@@ -41,7 +40,7 @@ export abstract class VDFLanguageServer<
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
+	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
 		return super.router(t)
 	}
 

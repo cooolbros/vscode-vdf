@@ -26,7 +26,7 @@
 	const WAVE_HEIGHT = 70 * SCALE
 
 	const vscode = acquireVsCodeApi()
-	const { trpc, contextMenu$ } = createTRPCClient<AppRouter>(vscode)
+	const { trpc, contextMenu$ } = createTRPCClient<AppRouter>({ name: "wavestatus-preview", vscode: vscode })
 	const images = new Map<string, Observable<ImageBitmap | null>>()
 
 	let canvas: HTMLCanvasElement = $state()!

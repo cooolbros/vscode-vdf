@@ -1,7 +1,7 @@
 import { TRPCClientError, type TRPCLink } from "@trpc/client"
-import type { AnyTRPCRouter } from "@trpc/server"
+import type { AnyTRPCRouter, DataTransformer } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
-import { transformResult, type DataTransformer, type TRPCResponse } from '@trpc/server/unstable-core-do-not-import'
+import { transformResult, type TRPCResponse } from '@trpc/server/unstable-core-do-not-import'
 import { finalize, Subject } from "rxjs"
 import * as z from "zod/mini"
 
@@ -53,6 +53,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 				return observable((observer) => {
 					op.id = id++
 					op.input = opts.transformer.serialize(op.input)
+					op.context.client = opts.client.name
 					switch (op.type) {
 						case "query":
 						case "mutation":
@@ -72,7 +73,6 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions) {
 							})
 							break
 						case "subscription":
-							op.context.client = opts.client.name
 							const subject = new Subject<any>()
 							subjects.set(op.id, subject)
 							sendRequest("vscode-vdf/trpc", op)

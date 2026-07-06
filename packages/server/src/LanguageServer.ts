@@ -1,6 +1,6 @@
 import { createTRPCClient, type CreateTRPCClientOptions, type TRPCClient } from "@trpc/client"
+import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
-import type { DataTransformer } from "@trpc/server/unstable-core-do-not-import"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
@@ -319,10 +319,12 @@ export abstract class LanguageServer<
 
 		this.connection.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
 			router: this.router(
-				initTRPC.create({
-					transformer: transformer,
-					isDev: true,
-				})
+				initTRPC
+					.context<{ client: VSCodeVDFLanguageID }>()
+					.create({
+						transformer: transformer,
+						isDev: true,
+					})
 			),
 			schema: VSCodeVDFLanguageIDSchema,
 			onRequest: (method, handler) => this.connection.onRequest(method, handler),
@@ -360,7 +362,7 @@ export abstract class LanguageServer<
 		this.connection.listen()
 	}
 
-	protected router(t: ReturnType<typeof initTRPC.create<{ transformer: DataTransformer }>>) {
+	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
 		return t.router({
 			textDocument: {
 				rename: t

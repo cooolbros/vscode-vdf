@@ -27,6 +27,8 @@ import { VirtualFileSystem } from "../VirtualFileSystem/VirtualFileSystem"
 import { VSCodeDocumentGetTextSchema } from "../VSCodeSchemas"
 import { initVTFPNG } from "../wasm/vtf"
 
+const schema = z.enum(["wavestatus-preview-webview"])
+
 function transformDifficulty(arg: string): string {
 	switch (arg.toLowerCase()) {
 		case "nor": return "normal"
@@ -763,10 +765,12 @@ export function showWaveStatusPreviewToSide(
 			)
 		}
 
-		const t = initTRPC.create({
-			transformer: devalueTransformer({ reducers: {}, revivers: {} }),
-			isDev: true
-		})
+		const t = initTRPC
+			.context<{ client: z.infer<typeof schema> }>()
+			.create({
+				transformer: devalueTransformer({ reducers: {}, revivers: {} }),
+				isDev: true
+			})
 
 		const router = t.mergeRouters(
 			TRPCImageRouter(t),
@@ -878,7 +882,7 @@ export function showWaveStatusPreviewToSide(
 			})
 		)
 
-		stack.use(TRPCWebViewRequestHandler(webviewPanel.webview, router))
+		stack.use(TRPCWebViewRequestHandler({ webview: webviewPanel.webview, router: router, schema: schema }))
 
 		const dist = vscode.Uri.joinPath(context.extensionUri, "apps/wavestatus-preview/dist")
 		const html = new TextDecoder("utf-8").decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
