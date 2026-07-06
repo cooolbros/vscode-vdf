@@ -248,7 +248,8 @@ export abstract class LanguageServer<
 			workspaceUris.resolve(params.workspaceFolders?.map((workspaceFolder) => new Uri(workspaceFolder.uri)) ?? [])
 			return {
 				serverInfo: {
-					name: `${name} Language Server`
+					name: `${name} Language Server`,
+					version: version,
 				},
 				capabilities: {
 					// https://code.visualstudio.com/api/language-extensions/programmatic-language-features#language-features-listing
