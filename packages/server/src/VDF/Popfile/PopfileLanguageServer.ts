@@ -1,5 +1,6 @@
 import { EntryType } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { posix } from "path"
 import { defer, firstValueFrom, map, of, shareReplay, Subscription, switchMap } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
@@ -46,7 +47,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 					init,
 					documentConfiguration$,
 					await this.fileSystems.get([
-						{ type: "popfile:bsp", uri: init.uri },
+						...(posix.extname(init.uri.path) == ".pop" ? [{ type: <const>"popfile:bsp", uri: init.uri }] : []),
 						{ type: "tf2" },
 						...workspaceUris.map((uri) => ({ type: <const>"folder", uri: uri })),
 					]),
