@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.12.3]
+ - Fix extension activation failing in VSCodium
+ - Improve error logging
+
 ## [5.12.2]
  - Update minimum VSCode to `^1.110.0`
 
