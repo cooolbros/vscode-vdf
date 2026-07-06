@@ -1,5 +1,8 @@
 # Change Log
 
+## [5.12.2]
+ - Update minimum VSCode to `^1.110.0`
+
 ## [5.12.1]
  - Fix crash in VSCodium
  - [Popfile] Fix missing #base files preventing Wave Status Preview to load
@@ -286,7 +289,7 @@
  - Remove unnecessary files from bundle
 
 ## [5.3.0]
- - Update minimum VSCode version to 1.97.0
+ - Update minimum VSCode version to `^1.97.0`
  - Add image hovers
  - Add image autocompletion previews
  - Fix autocompletion returning incorrect files when searching parent directories (`..`)
