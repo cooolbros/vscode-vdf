@@ -1,5 +1,9 @@
 # Change Log
 
+## [5.12.1]
+ - Fix crash in VSCodium
+ - [Popfile] Fix missing #base files preventing Wave Status Preview to load
+
 ## [5.12.0]
  - Add `#base` referencing directory diagnostic
  - Improve file system directory reading performance
