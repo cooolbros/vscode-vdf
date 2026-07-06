@@ -5,7 +5,7 @@ import { fileURLToPath } from "url"
 
 export default defineConfig({
 	entry: {
-		extension: "./src/extension.ts"
+		extension: [import.meta.resolve("common/getOrInsert"), "./src/extension.ts"]
 	},
 	output: {
 		clean: true,
