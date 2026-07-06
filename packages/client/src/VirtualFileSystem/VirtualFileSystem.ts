@@ -8,11 +8,21 @@ import vscode from "vscode"
  */
 export async function VirtualFileSystem(promises: Promise<FileSystemMountPoint>[]): Promise<FileSystemMountPoint> {
 
-	const fileSystems = (await Promise.allSettled(promises))
-		.values()
-		.filter((result) => result.status == "fulfilled")
-		.map((result) => result.value)
-		.toArray()
+	const results = await Promise.allSettled(promises)
+	const fileSystems: FileSystemMountPoint[] = []
+
+	for (const result of results) {
+		switch (result.status) {
+			case "fulfilled":
+				fileSystems.push(result.value)
+				break
+			case "rejected":
+				// Some errors such as missing .vpk stat errors are already logged by the VSCode extension host,
+				// so use console.log to differentiate from previous log and signal that these errors are non-fatal
+				console.log(result.reason)
+				break
+		}
+	}
 
 	const observables = new Map<string, Observable<Entry>>()
 
