@@ -6,7 +6,7 @@ import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 import { fileURLToPath } from "url"
 
 export default defineConfig({
-	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, [import.meta.resolve("common/stackTraceLimit"), `./src/${name}`]])),
+	entry: Object.fromEntries(readdirSync("src").map((name) => [posix.parse(name).name, [import.meta.resolve("common/stackTraceLimit"), import.meta.resolve("common/getOrInsert"), `./src/${name}`]])),
 	output: {
 		clean: true,
 		library: {
