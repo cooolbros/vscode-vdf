@@ -87,6 +87,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 					op.id,
 					observable.subscribe({
 						next: (value) => {
+							// Don't check (value.result.type == "data") because tRPC doesn't include { type: "data" } in "data" results
 							if ("data" in value.result) {
 								opts.sendNotification(client, "vscode-vdf/trpc/subscription/next", { id: op.id, notification: { kind: "N", value: transformer.output.serialize(value) } })
 							}
