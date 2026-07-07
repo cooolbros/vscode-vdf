@@ -41,7 +41,7 @@ export class VMTWorkspace extends WorkspaceBase {
 											return of([])
 										}
 
-										return usingAsync(async () => documents.get(entry.uri)).pipe(
+										return usingAsync(async () => await documents.get(entry.uri)).pipe(
 											switchMap((document) => {
 												return document.documentSymbols$.pipe(
 													map((documentSymbols) => {

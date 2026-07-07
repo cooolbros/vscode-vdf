@@ -201,7 +201,7 @@ export class VTFEditor implements CustomEditorProvider<VTFDocument> {
 						})
 					)
 					.query(async ({ input }) => {
-						window.showErrorMessage(input.message, ...input.items)
+						await window.showErrorMessage(input.message, ...input.items)
 					}),
 				unsupportedVTFFormat: t
 					.procedure

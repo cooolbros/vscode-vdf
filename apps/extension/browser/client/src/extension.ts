@@ -83,7 +83,7 @@ export function activate(context: ExtensionContext): void {
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
 		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
 		if (result.success) {
-			startServer(result.data)
+			await startServer(result.data)
 		}
 	}
 

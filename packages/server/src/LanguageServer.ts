@@ -179,7 +179,7 @@ export abstract class LanguageServer<
 
 			const stack = new AsyncDisposableStack()
 
-			const document = stack.use(await this.documents.get(uri, async (uri) => languageServerConfiguration.createDocument(
+			const document = stack.use(await this.documents.get(uri, async (uri) => await languageServerConfiguration.createDocument(
 				{
 					uri: uri,
 					languageId: this.languageId,
@@ -343,8 +343,8 @@ export abstract class LanguageServer<
 			links: [
 				link({
 					sendRequest: server != null
-						? async (method, param) => this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
-						: async (method, param) => this.connection.sendRequest(method, param)
+						? async (method, param) => await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
+						: async (method, param) => await this.connection.sendRequest(method, param)
 				})
 			]
 		} satisfies CreateTRPCClientOptions<AnyTRPCRouter>)

@@ -40,7 +40,7 @@ export function TRPCClientRouter(
 		searchForHUDRoot: t
 			.procedure
 			.input(URISchema)
-			.query(async ({ input }) => searchForHUDRoot(input.uri)),
+			.query(async ({ input }) => await searchForHUDRoot(input.uri)),
 		workspace: t.router({
 			openTextDocument: t
 				.procedure
@@ -78,7 +78,7 @@ export function TRPCClientRouter(
 								},
 								() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
 							)),
-							usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(
+							usingAsync(async () => await fileSystemWatcherFactory.get(input.uri)).pipe(
 								switchAll()
 							)
 						),
@@ -277,7 +277,7 @@ export function TRPCClientRouter(
 						return observableToAsyncIterable<number>(
 							concat(
 								from(Promise.try(flags)),
-								usingAsync(async () => fileSystemWatcherFactory.get(input.uri)).pipe(
+								usingAsync(async () => await fileSystemWatcherFactory.get(input.uri)).pipe(
 									switchAll(),
 									filter((event) => event.type == "change"),
 									concatMap(flags),
