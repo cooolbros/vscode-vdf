@@ -19,7 +19,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 	VMTTextDocumentDependencies
 > {
 
-	private readonly workspaces: Map<string, VMTWorkspace>
+	private readonly workspaces: Map<string, Promise<VMTWorkspace>>
 
 	constructor(languageId: "vmt", name: "VMT", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -46,12 +46,9 @@ export class VMTLanguageServer extends VDFLanguageServer<
 				paths.push({ type: "tf2" })
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
 
-				const key = hudRoot?.toString() ?? "tf2"
-				let workspace = this.workspaces.get(key)
-				if (!workspace) {
-					workspace = new VMTWorkspace(hudRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)
-					this.workspaces.set(key, workspace)
-				}
+				const workspace = this.workspaces.getOrInsertComputed(hudRoot?.toString() ?? "tf2", async () => {
+					return new VMTWorkspace(hudRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)
+				})
 
 				return new VMTTextDocument(
 					init,
@@ -59,7 +56,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 					await this.fileSystems.get(paths),
 					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,
-					workspace,
+					await workspace,
 				)
 			}
 		})

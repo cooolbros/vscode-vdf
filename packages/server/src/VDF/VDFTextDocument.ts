@@ -573,15 +573,12 @@ export abstract class VDFTextDocument<
 										combineLatestBaseFiles({
 											stack: [],
 											open: ({ stack, detail }) => {
-												let observable$ = this.context.get(detail)
-												if (!observable$) {
-													observable$ = open({ stack, detail }).pipe(
+												return this.context.getOrInsertComputed(detail, () => {
+													return open({ stack, detail }).pipe(
 														finalize(() => this.context.delete(detail)),
 														shareReplay({ bufferSize: 1, refCount: true }),
 													)
-													this.context.set(detail, observable$)
-												}
-												return observable$
+												})
 											},
 										}),
 										map(({ base: results, value }) => {

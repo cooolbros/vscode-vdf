@@ -134,13 +134,8 @@ export function activate(context: ExtensionContext): void {
 									throw new Error()
 								}
 
-								let map = result.get(active)
-								if (!map) {
-									map = new Map()
-									result.set(active, map)
-								}
-
 								const [key, type, value] = line.trim().split(TAB)
+								const map = result.getOrInsertComputed(active, () => new Map())
 								map.set(key, value)
 							}
 							else {

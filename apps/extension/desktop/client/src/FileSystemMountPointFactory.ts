@@ -191,18 +191,15 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 	return {
 		resolve: (path) => {
-			let observable = observables.get(path)
-			if (!observable) {
-				observable = fileSystems$.pipe(
+			return observables.getOrInsertComputed(path, () => {
+				return fileSystems$.pipe(
 					combineLatestPersistent((fileSystem) => fileSystem.resolve(path)),
 					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? { type: <const>EntryType.None, uri: null } as Entry),
 					distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 					finalize(() => observables.delete(path)),
 					shareReplay({ bufferSize: 1, refCount: true })
 				)
-				observables.set(path, observable)
-			}
-			return observable
+			})
 		},
 		readDirectory: async (path, options) => {
 			const results = await Promise.allSettled(fileSystems$.value.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))

@@ -47,20 +47,13 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
 
 				let workspace: Promise<VGUIWorkspace> | null
-
 				if (hudRoot != null) {
-					const key = hudRoot.toString()
-					let w = this.workspaces.get(key)
-					if (!w) {
-						w = Promise.resolve(new VGUIWorkspace({
-							uri: hudRoot,
-							fileSystem: await this.fileSystems.get(paths),
-							documents: this.documents,
-							request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: hudRoot })
-						}))
-						this.workspaces.set(key, w)
-					}
-					workspace = w
+					workspace = this.workspaces.getOrInsertComputed(hudRoot.toString(), async () => new VGUIWorkspace({
+						uri: hudRoot,
+						fileSystem: await this.fileSystems.get(paths),
+						documents: this.documents,
+						request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: hudRoot })
+					}))
 				}
 				else {
 					workspace = null

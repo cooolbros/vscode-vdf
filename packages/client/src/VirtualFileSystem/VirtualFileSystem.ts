@@ -28,9 +28,8 @@ export async function VirtualFileSystem(promises: Promise<FileSystemMountPoint>[
 
 	return {
 		resolve: (path) => {
-			let observable$ = observables.get(path)
-			if (!observable$) {
-				observable$ = defer(() => {
+			return observables.getOrInsertComputed(path, () => {
+				return defer(() => {
 					return fileSystems.length != 0
 						? combineLatest(fileSystems.map((fileSystem) => fileSystem.resolve(path)))
 						: of([])
@@ -40,9 +39,7 @@ export async function VirtualFileSystem(promises: Promise<FileSystemMountPoint>[
 					finalize(() => observables.delete(path)),
 					shareReplay({ bufferSize: 1, refCount: true })
 				)
-				observables.set(path, observable$)
-			}
-			return observable$
+			})
 		},
 		readDirectory: async (path, options) => {
 			const results = await Promise.allSettled(fileSystems.map((fileSystem) => fileSystem.readDirectory(path, options)))

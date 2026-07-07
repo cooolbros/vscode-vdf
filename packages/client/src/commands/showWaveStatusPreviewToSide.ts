@@ -686,11 +686,7 @@ export function showWaveStatusPreviewToSide(
 							},
 						}
 
-						let map = cache.get(index)
-						if (!map) {
-							map = new Map()
-							cache.set(index, map)
-						}
+						const map = cache.getOrInsertComputed(index, () => new Map())
 						map.clear()
 						map.set(key, wave)
 

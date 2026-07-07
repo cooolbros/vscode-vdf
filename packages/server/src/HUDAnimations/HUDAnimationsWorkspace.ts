@@ -53,15 +53,12 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 		const fileDefinitions = new Map<string, Observable<{ uri: Uri, definitions: Definitions } | null>>()
 		this.getDefinitions = (path: string) => {
-			let definitions = fileDefinitions.get(path)
-			if (!definitions) {
-				definitions = concat(
+			return fileDefinitions.getOrInsertComputed(path, () => {
+				return concat(
 					ready$,
 					fromTRPCSubscription(server.trpc.servers.vgui.workspace.definitions, { key: uri, path: path })
 				)
-				fileDefinitions.set(path, definitions)
-			}
-			return definitions
+			})
 		}
 
 		this.manifest$ = getVDFDocumentSymbols("scripts/hudanimations_manifest.txt").pipe(
@@ -256,48 +253,38 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 	}
 
 	public getEventDefinitions(event: string) {
-
-		let definitions$ = this.files.get(event)
-
-		// null = no definitions
-		if (definitions$ === undefined) {
-
+		return this.files.getOrInsertComputed(event, () => {
 			// @ts-ignore
 			const eventFile: string | string[] | undefined = eventFiles[event]
-			if (eventFile) {
-				const paths = typeof eventFile == "string" ? [eventFile] : eventFile
-				definitions$ = combineLatest(
-					paths.map((path) => this.getDefinitions(path))
-				).pipe(
-					map((documents) => documents.filter((document) => document != null)),
-					map((documents) => {
-						return {
-							uris: documents.map((document) => document.uri),
-							definitions: new Definitions({
-								version: documents.flatMap((document) => document.definitions.version),
-								collection: documents.reduce(
-									(collection, document) => {
-										for (const { key, value } of document.definitions) {
-											collection.set(null, Symbol.for(event), key, ...value)
-										}
-										return collection
-									},
-									new Collection<Definition>()
-								)
-							})
-						}
-					}),
-					shareReplay(1)
-				)
-			}
-			else {
-				definitions$ = null
+			if (!eventFile) {
+				return null
 			}
 
-			this.files.set(event, definitions$)
-		}
-
-		return definitions$
+			const paths = typeof eventFile == "string" ? [eventFile] : eventFile
+			return combineLatest(
+				paths.map((path) => this.getDefinitions(path))
+			).pipe(
+				map((documents) => documents.filter((document) => document != null)),
+				map((documents) => {
+					return {
+						uris: documents.map((document) => document.uri),
+						definitions: new Definitions({
+							version: documents.flatMap((document) => document.definitions.version),
+							collection: documents.reduce(
+								(collection, document) => {
+									for (const { key, value } of document.definitions) {
+										collection.set(null, Symbol.for(event), key, ...value)
+									}
+									return collection
+								},
+								new Collection<Definition>()
+							)
+						})
+					}
+				}),
+				shareReplay(1)
+			)
+		})
 	}
 
 	public static extractWorkspaceReferences(uri: Uri, references: References) {
@@ -341,19 +328,10 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			}
 
 			for (const path of target.paths) {
-				let pathReferences = workspaceFilesReferences.get(path)
-				if (!pathReferences) {
-					pathReferences = new Map<string, Collection<VDFRange>>()
-					workspaceFilesReferences.set(path, pathReferences)
-				}
-
-				let uriReferences = pathReferences.get(uri.toString())
-				if (!uriReferences) {
-					uriReferences = new Collection<VDFRange>()
-					pathReferences.set(uri.toString(), uriReferences)
-				}
-
-				uriReferences.set(null, target.type, key, ...ranges)
+				workspaceFilesReferences
+					.getOrInsertComputed(path, () => new Map<string, Collection<VDFRange>>())
+					.getOrInsertComputed(uri.toString(), () => new Collection<VDFRange>())
+					.set(null, target.type, key, ...ranges)
 			}
 		}
 

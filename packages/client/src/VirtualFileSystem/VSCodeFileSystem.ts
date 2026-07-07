@@ -49,12 +49,7 @@ export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCod
 	return {
 		resolve: (path) => {
 			const uri = resolvePath(path)
-
-			let subject = subjects.get(path)
-			if (!subject) {
-				subject = new Subject<Entry>()
-				subjects.set(path, subject)
-			}
+			const subject = subjects.getOrInsertComputed(path, () => new Subject<Entry>())
 
 			return concat(
 				from(vscode.workspace.fs.stat(uri)).pipe(

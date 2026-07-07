@@ -82,11 +82,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 					})
 			case "subscription":
 				const client = op.context.client
-				let clientSubscriptions = subscriptions.get(client)
-				if (!clientSubscriptions) {
-					clientSubscriptions = new Map()
-					subscriptions.set(client, clientSubscriptions)
-				}
+				const clientSubscriptions = subscriptions.getOrInsertComputed(client, () => new Map())
 				clientSubscriptions.set(
 					op.id,
 					observable.subscribe({

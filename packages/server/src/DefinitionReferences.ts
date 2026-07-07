@@ -27,28 +27,11 @@ export class Collection<T> {
 	}
 
 	public set(scope: number | null, type: symbol, key: string, ...value: T[]) {
-
-		let scopeMap = this.map.get(scope)
-		if (!scopeMap) {
-			scopeMap = new Map()
-			this.map.set(scope, scopeMap)
-		}
-
-		let typeMap = scopeMap.get(type)
-		if (!typeMap) {
-			typeMap = new Map()
-			scopeMap.set(type, typeMap)
-		}
-
-		const keyLower = key.toLowerCase()
-
-		let keyCollection = typeMap.get(keyLower)
-		if (!keyCollection) {
-			keyCollection = []
-			typeMap.set(keyLower, keyCollection)
-		}
-
-		keyCollection.push(...value)
+		this.map
+			.getOrInsertComputed(scope, () => new Map())
+			.getOrInsertComputed(type, () => new Map())
+			.getOrInsertComputed(key.toLowerCase(), () => [])
+			.push(...value)
 	}
 
 	public ofType(scope: number | null, type: symbol): ReadonlyMap<string, T[]> {

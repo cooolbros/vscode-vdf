@@ -133,9 +133,8 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 	}
 
 	public classIconFlags(classIcon: string): Observable<{ uri: Uri, flags: number } | null> {
-		let observable$ = this.classIcons.get(classIcon)
-		if (!observable$) {
-			observable$ = this.fileSystem.resolve(`materials/hud/leaderboard_class_${classIcon}.vmt`).pipe(
+		return this.classIcons.getOrInsertComputed(classIcon, () => {
+			return this.fileSystem.resolve(`materials/hud/leaderboard_class_${classIcon}.vmt`).pipe(
 				switchMap((entry) => {
 					if (entry.type != EntryType.File) {
 						return of(null)
@@ -151,9 +150,6 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 					resetOnRefCountZero: () => this.disposeClassIcons$
 				})
 			)
-			this.classIcons.set(classIcon, observable$)
-		}
-
-		return observable$
+		})
 	}
 }

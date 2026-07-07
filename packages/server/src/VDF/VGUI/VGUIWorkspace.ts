@@ -272,9 +272,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 	}
 
 	public getVDFDocumentSymbols(path: string): Observable<VDFDocumentSymbols | null> {
-		let documentSymbols$ = this.documentSymbols.get(path)
-		if (!documentSymbols$) {
-			documentSymbols$ = this.fileSystem.resolve(path).pipe(
+		return this.documentSymbols.getOrInsertComputed(path, () => {
+			return this.fileSystem.resolve(path).pipe(
 				switchMap((entry) => {
 					return entry.type == EntryType.File
 						? usingAsync(async () => await this.documents.get(entry.uri))
@@ -287,9 +286,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 				}),
 				shareReplay(1)
 			)
-			this.documentSymbols.set(path, documentSymbols$)
-		}
-		return documentSymbols$
+		})
 	}
 
 	public getDefinitionReferences(path: string) {
@@ -311,9 +308,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 	}
 
 	public async setFileReferences(path: string, references: Map<string, References | null>) {
-		let fileReferences = this.fileReferences.get(path)
-		if (!fileReferences) {
-			fileReferences = {
+		const fileReferences = this.fileReferences.getOrInsertComputed(path, () => {
+			const value = {
 				references$: new BehaviorSubject(new Map()),
 				document$: this.fileSystem.resolve(path).pipe(
 					switchMap((entry) => entry.type == EntryType.File ? usingAsync(async () => await this.documents.get(entry.uri)) : of(null)),
@@ -332,7 +328,6 @@ export class VGUIWorkspace extends WorkspaceBase {
 					})
 				)
 			}
-			this.fileReferences.set(path, fileReferences)
 
 			combineLatest({
 				references: fileReferences.references$,
@@ -342,7 +337,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 					document.setDocumentReferences(references)
 				}
 			})
-		}
+
+			return value
+		})
 
 		for (const [uri, documentReferences] of references) {
 			fileReferences.references$.value.set(uri, documentReferences)

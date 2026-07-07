@@ -1,4 +1,5 @@
 import type { DataTransformer, TRPCRootObject } from "@trpc/server"
+import type { FileSystemKey } from "common/FileSystemKey"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { generateTokens } from "common/generateTokens"
@@ -77,26 +78,19 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 			createDocument: async (init, documentConfiguration$) => {
 				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 
-				const fileSystem = await this.fileSystems.get([
+				const paths: FileSystemKey[] = [
 					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
 					{ type: "tf2" },
-				])
+				]
 
 				let workspace: Promise<HUDAnimationsWorkspace> | null
-
 				if (hudRoot != null) {
-					const key = hudRoot.toString()
-					let w = this.workspaces.get(key)
-					if (!w) {
-						w = Promise.resolve(new HUDAnimationsWorkspace({
-							uri: hudRoot,
-							fileSystem: fileSystem,
-							server: this,
-							documents: this.documents,
-						}))
-						this.workspaces.set(key, w)
-					}
-					workspace = w
+					workspace = this.workspaces.getOrInsertComputed(hudRoot.toString(), async () => new HUDAnimationsWorkspace({
+						uri: hudRoot,
+						fileSystem: await this.fileSystems.get(paths),
+						server: this,
+						documents: this.documents,
+					}))
 				}
 				else {
 					workspace = null
@@ -105,7 +99,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 				return new HUDAnimationsTextDocument(
 					init,
 					documentConfiguration$,
-					fileSystem,
+					await this.fileSystems.get(paths),
 					await workspace,
 				)
 			}
