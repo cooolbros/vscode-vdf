@@ -87,7 +87,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 					op.id,
 					observable.subscribe({
 						next: (value) => {
-							if ("data" in value.result) {
+							if (value.result.type == "data") {
 								opts.sendNotification(client, "vscode-vdf/trpc/subscription/next", { id: op.id, notification: { kind: "N", value: transformer.output.serialize(value) } })
 							}
 						},
