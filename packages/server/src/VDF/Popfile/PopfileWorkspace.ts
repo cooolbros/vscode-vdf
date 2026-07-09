@@ -347,9 +347,9 @@ export class PopfileWorkspace extends WorkspaceBase {
 	}
 
 	public entities(uri: Uri) {
-		const basename = uri.basename()
-		if (posix.extname(basename) != ".pop") {
-			return of(null)
+		const extname = posix.extname(uri.basename())
+		if (extname != ".pop") {
+			throw new Error(extname)
 		}
 
 		return findMap(uri, this.fileSystem).pipe(

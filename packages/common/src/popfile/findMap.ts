@@ -1,11 +1,12 @@
 import { posix } from "path"
-import { distinctUntilChanged, map, of, type Observable } from "rxjs"
+import { distinctUntilChanged, map, type Observable } from "rxjs"
 import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { Uri } from "../Uri"
 
 export function findMap(uri: Uri, fileSystem: FileSystemMountPoint): Observable<`mvm_${string}.bsp` | null> {
-	if (posix.extname(uri.basename()) != ".pop") {
-		return of(null)
+	const extname = posix.extname(uri.basename())
+	if (extname != ".pop") {
+		throw new Error(extname)
 	}
 
 	const basename = uri.basename()
