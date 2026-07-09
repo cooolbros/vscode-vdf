@@ -4,6 +4,7 @@ import { BSP } from "bsp"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { populationSpawnerKeys } from "common/popfile/populationSpawnerKeys"
@@ -123,11 +124,6 @@ export function showWaveStatusPreviewToSide(
 		const dispose$ = new ReplaySubject<void>(1)
 		stack.defer(() => dispose$.next())
 
-		const shareReplayUntilDisposed = <T>() => share<T>({
-			connector: () => new ReplaySubject(1),
-			resetOnRefCountZero: () => dispose$
-		})
-
 		const configuration$ = new Observable<ConfigurationChangeEvent>((subscriber) => {
 			const disposable = workspace.onDidChangeConfiguration((event) => {
 				subscriber.next(event)
@@ -138,7 +134,7 @@ export function showWaveStatusPreviewToSide(
 			map(() => null),
 			startWith(null),
 			map(() => VSCodeVDFConfigurationSchema.shape.popfile.shape.waveStatusPreview.parse(workspace.getConfiguration("vscode-vdf.popfile.waveStatusPreview"))),
-			shareReplayUntilDisposed()
+			shareReplayUntilDisposed(dispose$)
 		)
 
 		const fileSystem$ = usingAsync(async () => {
@@ -147,7 +143,7 @@ export function showWaveStatusPreviewToSide(
 				fileSystemMountPointFactory.get({ type: "tf2" }),
 			])
 		}).pipe(
-			shareReplayUntilDisposed()
+			shareReplayUntilDisposed(dispose$)
 		)
 
 		const language$ = combineLatest({ fileSystem: fileSystem$, configuration: configuration$ }).pipe(
@@ -189,7 +185,7 @@ export function showWaveStatusPreviewToSide(
 						.map((documentSymbol) => [documentSymbol.key.toLowerCase() as Lowercase<string>, documentSymbol.detail!])
 				)
 			}),
-			shareReplayUntilDisposed(),
+			shareReplayUntilDisposed(dispose$),
 		)
 
 		const meta$ = fileSystem$.pipe(
@@ -292,7 +288,7 @@ export function showWaveStatusPreviewToSide(
 				)
 			}),
 			switchAll(),
-			shareReplayUntilDisposed()
+			shareReplayUntilDisposed(dispose$)
 		)
 
 		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
