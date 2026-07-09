@@ -15,17 +15,60 @@ export const enum VGUIFileType {
 	SourceScheme,
 	ChatScheme,
 	LanguageTokens,
+	ItemsGame,
 	HUDAnimationsManifest,
+	GameSoundsManifest,
 	SurfacePropertiesManifest,
+}
+
+interface VGUIFiles {
+	clientScheme: Set<string>
+	sourceScheme: Set<string>
+	chatScheme: Set<string>
+	languageTokens: Set<string>
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
 
-	private static readonly files = {
-		clientSchemeFiles: new Set(["resource/clientscheme.res"]),
-		sourceSchemeFiles: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
-		chatSchemeFiles: new Set(["resource/chatscheme.res"]),
-		languageTokensFiles: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
+	private static getFileType(files: VGUIFiles, path: string | null) {
+		if (!path) {
+			return VGUIFileType.None
+		}
+
+		if (files.clientScheme.has(path)) {
+			return VGUIFileType.ClientScheme
+		}
+		else if (files.sourceScheme.has(path)) {
+			return VGUIFileType.SourceScheme
+		}
+		else if (files.chatScheme.has(path)) {
+			return VGUIFileType.ChatScheme
+		}
+		else if (files.languageTokens.has(path)) {
+			return VGUIFileType.LanguageTokens
+		}
+		else if (path == "scripts/items/items_game.txt") {
+			return VGUIFileType.ItemsGame
+		}
+		else if (path == "scripts/hudanimations_manifest.txt") {
+			return VGUIFileType.HUDAnimationsManifest
+		}
+		else if (path == "scripts/game_sounds_manifest.txt") {
+			return VGUIFileType.GameSoundsManifest
+		}
+		else if (path == "scripts/surfaceproperties_manifest.txt") {
+			return VGUIFileType.SurfacePropertiesManifest
+		}
+		else {
+			return VGUIFileType.None
+		}
+	}
+
+	private static readonly files: VGUIFiles = {
+		clientScheme: new Set(["resource/clientscheme.res"]),
+		sourceScheme: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
+		chatScheme: new Set(["resource/chatscheme.res"]),
+		languageTokens: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
 	}
 
 	public static fileType(uri: Uri, teamFortress2Folder$: Observable<Uri>): Observable<VGUIFileType> {
@@ -35,37 +78,16 @@ export class VGUIWorkspace extends WorkspaceBase {
 					return teamFortress2Folder$.pipe(
 						map((teamFortress2Folder) => posix.relative(teamFortress2Folder.joinPath("tf").path, uri.path))
 					)
+				case "bsp":
 				case "vpk":
 					return of(uri.path.substring(1))
 				default:
 					// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
 					console.warn(`Unknown Uri.scheme: ${uri}`)
-					return of(uri.path.substring(1))
+					return of(null)
 			}
 		}).pipe(
-			map((path) => {
-				const { clientSchemeFiles, sourceSchemeFiles, chatSchemeFiles, languageTokensFiles } = VGUIWorkspace.files
-				if (path != null) {
-					if (clientSchemeFiles.has(path)) {
-						return VGUIFileType.ClientScheme
-					}
-					else if (sourceSchemeFiles.has(path)) {
-						return VGUIFileType.SourceScheme
-					}
-					else if (chatSchemeFiles.has(path)) {
-						return VGUIFileType.ChatScheme
-					}
-					else if (languageTokensFiles.has(path)) {
-						return VGUIFileType.LanguageTokens
-					}
-					else {
-						return VGUIFileType.None
-					}
-				}
-				else {
-					return VGUIFileType.None
-				}
-			}),
+			map((path) => VGUIWorkspace.getFileType(VGUIWorkspace.files, path)),
 			distinctUntilChanged()
 		)
 	}
@@ -240,32 +262,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public fileType(uri: Uri) {
 		const path = this.relative(uri)
 		return combineLatest({
-			clientSchemeFiles: this.clientSchemeFiles$,
-			sourceSchemeFiles: this.sourceSchemeFiles$,
-			chatSchemeFiles: this.chatSchemeFiles$,
-			languageTokensFiles: this.languageTokensFiles$
+			clientScheme: this.clientSchemeFiles$,
+			sourceScheme: this.sourceSchemeFiles$,
+			chatScheme: this.chatSchemeFiles$,
+			languageTokens: this.languageTokensFiles$
 		}).pipe(
-			map(({ clientSchemeFiles, sourceSchemeFiles, chatSchemeFiles, languageTokensFiles }) => {
-				if (clientSchemeFiles.has(path)) {
-					return VGUIFileType.ClientScheme
-				}
-				else if (sourceSchemeFiles.has(path)) {
-					return VGUIFileType.SourceScheme
-				}
-				else if (chatSchemeFiles.has(path)) {
-					return VGUIFileType.ChatScheme
-				}
-				else if (languageTokensFiles.has(path)) {
-					return VGUIFileType.LanguageTokens
-				}
-				else if (path == "scripts/hudanimations_manifest.txt") {
-					return VGUIFileType.HUDAnimationsManifest
-				}
-				else if (path == "scripts/surfaceproperties_manifest.txt") {
-					return VGUIFileType.SurfacePropertiesManifest
-				}
-				return VGUIFileType.None
-			}),
+			map((files) => VGUIWorkspace.getFileType(files, path)),
 			distinctUntilChanged(),
 			shareReplay(1)
 		)
