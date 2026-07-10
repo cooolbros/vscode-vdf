@@ -12,7 +12,9 @@ import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocument
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
 import { ChatSchemeSchema } from "./schemas/ChatSchemeSchema"
 import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
+import { GameSoundsManifestSchema } from "./schemas/GameSoundsManifestSchema"
 import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
+import { ItemsGameSchema } from "./schemas/ItemsGameSchema"
 import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
 import { SourceSchemeSchema } from "./schemas/SourceSchemeSchema"
 import { SurfacePropertiesManifestSchema } from "./schemas/SurfacePropertiesManifestSchema"
@@ -106,8 +108,16 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 								schema = LanguageTokensSchema
 								globals$ = of([])
 								break
+							case VGUIFileType.ItemsGame:
+								schema = ItemsGameSchema
+								globals$ = workspace?.globals$ ?? of([])
+								break
 							case VGUIFileType.HUDAnimationsManifest:
 								schema = HUDAnimationsManifestSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.GameSoundsManifest:
+								schema = GameSoundsManifestSchema
 								globals$ = of([])
 								break
 							case VGUIFileType.SurfacePropertiesManifest:
