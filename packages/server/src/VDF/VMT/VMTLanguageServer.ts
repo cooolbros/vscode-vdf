@@ -30,13 +30,13 @@ export class VMTLanguageServer extends VDFLanguageServer<
 			createDocument: async (init, documentConfiguration$) => {
 				const paths: FileSystemKey[] = []
 
-				const [workspaceUris, hudRoot] = await Promise.all([
+				const [workspaceUris, workspaceRoot] = await Promise.all([
 					this.workspaceUris,
-					this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
+					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 				])
 
-				if (hudRoot != null) {
-					paths.push({ type: "folder", uri: hudRoot })
+				if (workspaceRoot != null) {
+					paths.push({ type: "folder", uri: workspaceRoot })
 				}
 
 				if (init.uri.scheme == "bsp") {
@@ -46,8 +46,8 @@ export class VMTLanguageServer extends VDFLanguageServer<
 				paths.push({ type: "tf2" })
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
 
-				const workspace = this.workspaces.getOrInsertComputed(hudRoot?.toString() ?? "tf2", async () => {
-					return new VMTWorkspace(hudRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)
+				const workspace = this.workspaces.getOrInsertComputed(workspaceRoot?.toString() ?? "tf2", async () => {
+					return new VMTWorkspace(workspaceRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)
 				})
 
 				return new VMTTextDocument(

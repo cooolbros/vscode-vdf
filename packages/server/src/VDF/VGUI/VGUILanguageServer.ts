@@ -34,25 +34,25 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			createDocument: async (init, documentConfiguration$) => {
 				const paths: FileSystemKey[] = []
 
-				const [workspaceUris, hudRoot] = await Promise.all([
+				const [workspaceUris, workspaceRoot] = await Promise.all([
 					this.workspaceUris,
-					this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
+					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 				])
 
-				if (hudRoot != null) {
-					paths.push({ type: "folder", uri: hudRoot })
+				if (workspaceRoot != null) {
+					paths.push({ type: "folder", uri: workspaceRoot })
 				}
 
 				paths.push({ type: "tf2" })
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
 
 				let workspace: Promise<VGUIWorkspace> | null
-				if (hudRoot != null) {
-					workspace = this.workspaces.getOrInsertComputed(hudRoot.toString(), async () => new VGUIWorkspace({
-						uri: hudRoot,
+				if (workspaceRoot != null) {
+					workspace = this.workspaces.getOrInsertComputed(workspaceRoot.toString(), async () => new VGUIWorkspace({
+						uri: workspaceRoot,
 						fileSystem: await this.fileSystems.get(paths),
 						documents: this.documents,
-						request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: hudRoot })
+						request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: workspaceRoot })
 					}))
 				}
 				else {

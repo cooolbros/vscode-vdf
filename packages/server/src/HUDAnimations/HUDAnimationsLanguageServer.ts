@@ -76,17 +76,17 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 			servers: new Set(["vdf"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const hudRoot = await this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
+				const workspaceRoot = await this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 
 				const paths: FileSystemKey[] = [
-					...(hudRoot ? [{ type: <const>"folder", uri: hudRoot }] : []),
+					...(workspaceRoot ? [{ type: <const>"folder", uri: workspaceRoot }] : []),
 					{ type: "tf2" },
 				]
 
 				let workspace: Promise<HUDAnimationsWorkspace> | null
-				if (hudRoot != null) {
-					workspace = this.workspaces.getOrInsertComputed(hudRoot.toString(), async () => new HUDAnimationsWorkspace({
-						uri: hudRoot,
+				if (workspaceRoot != null) {
+					workspace = this.workspaces.getOrInsertComputed(workspaceRoot.toString(), async () => new HUDAnimationsWorkspace({
+						uri: workspaceRoot,
 						fileSystem: await this.fileSystems.get(paths),
 						server: this,
 						documents: this.documents,

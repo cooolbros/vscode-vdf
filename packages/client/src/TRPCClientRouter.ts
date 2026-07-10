@@ -14,7 +14,7 @@ import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
-import { searchForHUDRoot } from "./searchForHUDRoot"
+import { searchForWorkspaceRoot } from "./searchForWorkspaceRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
 import { VTFDocument } from "./VTF/VTFDocument"
@@ -37,10 +37,10 @@ export function TRPCClientRouter(
 ) {
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
-		searchForHUDRoot: t
+		searchForWorkspaceRoot: t
 			.procedure
 			.input(URISchema)
-			.query(async ({ input }) => await searchForHUDRoot(input.uri)),
+			.query(async ({ input }) => await searchForWorkspaceRoot(input.uri)),
 		workspace: t.router({
 			openTextDocument: t
 				.procedure

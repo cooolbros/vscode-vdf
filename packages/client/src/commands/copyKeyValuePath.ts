@@ -3,7 +3,7 @@ import { posix } from "path"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { Position, env, window, type TextEditor } from "vscode"
-import { searchForHUDRoot } from "../searchForHUDRoot"
+import { searchForWorkspaceRoot } from "../searchForWorkspaceRoot"
 
 export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
@@ -14,9 +14,9 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
 	const filePath = await (async (): Promise<string> => {
 		const fsPath = editor.document.uri.fsPath
-		const hudRoot = await searchForHUDRoot(new Uri(editor.document.uri))
-		if (hudRoot) {
-			return posix.relative(hudRoot.fsPath, fsPath)
+		const workspaceRoot = await searchForWorkspaceRoot(new Uri(editor.document.uri))
+		if (workspaceRoot) {
+			return posix.relative(workspaceRoot.fsPath, fsPath)
 		}
 		return posix.basename(fsPath)
 	})()
