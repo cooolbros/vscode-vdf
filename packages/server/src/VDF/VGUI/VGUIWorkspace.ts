@@ -332,8 +332,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 			}
 
 			combineLatest({
-				references: fileReferences.references$,
-				document: fileReferences.document$,
+				references: value.references$,
+				document: value.document$,
 			}).subscribe(({ references, document }) => {
 				if (document) {
 					document.setDocumentReferences(references)
