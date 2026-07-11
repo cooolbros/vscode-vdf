@@ -82,7 +82,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 		return {
 			keys: keys,
 			values: values,
-			getDefinitionReferences(params) {
+			getDefinitionReferences: (params) => {
 				const scopes = new Map<symbol, Map<number, VDFRange>>()
 				const definitions = new Collection<Definition>()
 				const references = new Collection<VDFRange>()

@@ -29,7 +29,7 @@ export const HUDAnimationsManifestSchema = (document: VGUITextDocument): VDFText
 			}
 		},
 		values: {},
-		getDefinitionReferences(params) {
+		getDefinitionReferences: (params) => {
 			const scopes = new Map<symbol, Map<number, VDFRange>>()
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()

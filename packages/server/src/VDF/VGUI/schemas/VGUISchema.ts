@@ -204,7 +204,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 	return {
 		keys: keys,
 		values: values,
-		getDefinitionReferences({ documentSymbols }) {
+		getDefinitionReferences: ({ documentSymbols }) => {
 			const element = Symbol.for("element")
 
 			const scopes = new Map<symbol, Map<number, VDFRange>>()
