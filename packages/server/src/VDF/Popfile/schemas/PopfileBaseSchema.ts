@@ -224,10 +224,13 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 		return {
 			keys,
 			values,
-			getDefinitionReferences: ({ dependencies, documentSymbols }) => {
+			getDefinitionReferences: (params) => {
 				const wavespawn = Symbol.for("wavespawn")
 				const template = Symbol.for("template")
 				const item = Symbol.for("item")
+
+				const dependencies = params.dependencies
+				const documentSymbols = params.getHeader()
 
 				const scopes = new Map<symbol, Map<number, VDFRange>>([
 					[

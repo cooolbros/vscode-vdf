@@ -17,7 +17,7 @@ export const ItemsGameSchema = (document: VGUITextDocument): VDFTextDocumentSche
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()
 
-			const map = Map.groupBy(params.documentSymbols, (documentSymbol) => documentSymbol.key.toLowerCase())
+			const map = Map.groupBy(params.getHeader(), (documentSymbol) => documentSymbol.key.toLowerCase())
 
 			const string = (documentSymbol: VDFDocumentSymbol) => {
 				if (documentSymbol?.detail != undefined) {

@@ -19,14 +19,14 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 	return {
 		keys: {},
 		values: {},
-		getDefinitionReferences: ({ documentSymbols }) => {
+		getDefinitionReferences: (params) => {
 			const string = Symbol.for("string")
 
 			const scopes = new Map<symbol, Map<number, VDFRange>>()
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()
 
-			const tokens = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children ?? []
+			const tokens = params.getHeader().find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children ?? []
 			for (const documentSymbol of tokens) {
 				if (documentSymbol.detail != undefined) {
 					definitions.set(null, string, documentSymbol.key, {

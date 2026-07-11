@@ -204,14 +204,14 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 	return {
 		keys: keys,
 		values: values,
-		getDefinitionReferences: ({ documentSymbols }) => {
+		getDefinitionReferences: (params) => {
 			const element = Symbol.for("element")
 
 			const scopes = new Map<symbol, Map<number, VDFRange>>()
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()
 
-			documentSymbols.forAll((documentSymbol) => {
+			params.getHeader().forAll((documentSymbol) => {
 				if (documentSymbol.detail != undefined) {
 					const referenceKey = VGUITextDocument.keyTransform(documentSymbol.key.toLowerCase())
 					for (const [type, reference] of definitionReferences) {

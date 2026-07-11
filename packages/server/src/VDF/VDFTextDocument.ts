@@ -53,7 +53,8 @@ export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDepe
 
 export interface DefinitionReferencesHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
 	dependencies: TDependencies
-	documentSymbols: VDFDocumentSymbols
+	getDocumentSymbols: () => VDFDocumentSymbols
+	getHeader: () => VDFDocumentSymbols
 }
 
 export interface DiagnosticsHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
@@ -536,7 +537,8 @@ export abstract class VDFTextDocument<
 											documentSymbols,
 											definitionReferences: dependencies.schema.getDefinitionReferences({
 												dependencies: dependencies,
-												documentSymbols: documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children ?? new VDFDocumentSymbols(),
+												getDocumentSymbols: () => documentSymbols,
+												getHeader: () => documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children ?? new VDFDocumentSymbols(),
 											}),
 										}
 									}

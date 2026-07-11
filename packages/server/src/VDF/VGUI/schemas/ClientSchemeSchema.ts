@@ -121,7 +121,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 				]
 			}
 		},
-		getDefinitionReferences: ({ documentSymbols }) => {
+		getDefinitionReferences: (params) => {
 			const scopes = new Map<symbol, Map<number, VDFRange>>()
 			const definitions = new Collection<Definition>()
 			const references = new Collection<VDFRange>()
@@ -162,7 +162,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 			const color = SchemeDefinitionMatcher(Symbol.for("color"), false, colorDocumentation)
 			const font = SchemeDefinitionMatcher(Symbol.for("font"), true, () => ({ kind: CompletionItemKind.Text }))
 
-			SchemeForEach(documentSymbols, {
+			SchemeForEach(params.getHeader(), {
 				Colors: (documentSymbol) => color(documentSymbol),
 				BaseSettings: (documentSymbol) => {
 					color(documentSymbol)
