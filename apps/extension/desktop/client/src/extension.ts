@@ -33,6 +33,8 @@ const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageC
 
 export function activate(context: ExtensionContext): void {
 
+	const subscriptions = context.subscriptions
+
 	type TeamFortress2FolderResult = (
 		| { type: "success", uri: Uri }
 		| { type: "empty" }
@@ -258,25 +260,25 @@ export function activate(context: ExtensionContext): void {
 	// https://code.visualstudio.com/api/references/vscode-api
 
 	// Commands
-	context.subscriptions.push(commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
-	context.subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
-	context.subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory, fileSystemWatcherFactory)))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(fileSystemMountPointFactory, fileSystemWatcherFactory)))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory, bspFactory)))
-	context.subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
+	subscriptions.push(commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
+	subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
+	subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory, bspFactory)))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
-	context.subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
-	context.subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, context.subscriptions)))
+	subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
+	subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
 
 	// Workspace
-	context.subscriptions.push(workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory), { isCaseSensitive: false, isReadonly: true }))
-	context.subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
+	subscriptions.push(workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory), { isCaseSensitive: false, isReadonly: true }))
+	subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
 	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
@@ -298,7 +300,7 @@ export function activate(context: ExtensionContext): void {
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
 		const languageStatusItem = languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
-		context.subscriptions.push(languageStatusItem)
+		subscriptions.push(languageStatusItem)
 		languageStatusItem.busy = true
 
 		const subscription = teamFortress2FolderConfiguration$.subscribe((result) => {
@@ -323,7 +325,7 @@ export function activate(context: ExtensionContext): void {
 			languageStatusItem.busy = false
 		})
 
-		context.subscriptions.push(new Disposable(() => subscription.unsubscribe()))
+		subscriptions.push(new Disposable(() => subscription.unsubscribe()))
 
 		const options = {
 			execArgv: ["--enable-source-maps"]
@@ -373,7 +375,7 @@ export function activate(context: ExtensionContext): void {
 			)
 		)
 
-		context.subscriptions.push(
+		subscriptions.push(
 			client,
 			commands.registerCommand(`vscode-vdf.restart${name.replaceAll(" ", "")}LanguageServer`, () => {
 				client.client.restart()
@@ -384,5 +386,5 @@ export function activate(context: ExtensionContext): void {
 	}
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)
-	context.subscriptions.push(workspace.onDidOpenTextDocument(onDidOpenTextDocument))
+	subscriptions.push(workspace.onDidOpenTextDocument(onDidOpenTextDocument))
 }
