@@ -20,7 +20,7 @@ import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { of } from "rxjs"
+import { firstValueFrom, of } from "rxjs"
 import { commands, FileType, languages, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
@@ -110,11 +110,12 @@ export function activate(context: ExtensionContext): void {
 			arguments: [RemoteResourceFileSystemProvider.base]
 		}
 
+		let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+
 		const client = languageClients[languageId] = new Client(
 			context,
 			languageClients,
 			startServer,
-			teamFortress2Folder$,
 			fileSystemMountPointFactory,
 			fileSystemWatcherFactory,
 			null,
@@ -125,6 +126,9 @@ export function activate(context: ExtensionContext): void {
 					documentSelector: [
 						languageId
 					],
+					initializationOptions: () => ({
+						teamFortress2Folder: teamFortress2Folder.toJSON()
+					}),
 					middleware: middleware[languageId],
 				} satisfies LanguageClientOptions,
 				new Worker(serverModule),

@@ -19,7 +19,7 @@ import { createMiddleware } from "client/middleware"
 import { Uri } from "common/Uri"
 import { homedir } from "os"
 import { join, posix, win32 } from "path"
-import { concat, concatMap, defer, distinctUntilChanged, filter, map, Observable, shareReplay } from "rxjs"
+import { concat, concatMap, defer, distinctUntilChanged, filter, firstValueFrom, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
 import { commands, ConfigurationTarget, Disposable, FileSystemError, FileType, languages, LanguageStatusSeverity, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
@@ -303,7 +303,7 @@ export function activate(context: ExtensionContext): void {
 		subscriptions.push(languageStatusItem)
 		languageStatusItem.busy = true
 
-		const subscription = teamFortress2FolderConfiguration$.subscribe((result) => {
+		const languageStatusItemSubscription = teamFortress2FolderConfiguration$.subscribe((result) => {
 			switch (result.type) {
 				case "success":
 					languageStatusItem.text = `$(folder-active) ${result.uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
@@ -325,7 +325,7 @@ export function activate(context: ExtensionContext): void {
 			languageStatusItem.busy = false
 		})
 
-		subscriptions.push(new Disposable(() => subscription.unsubscribe()))
+		subscriptions.push(new Disposable(() => languageStatusItemSubscription.unsubscribe()))
 
 		const options = {
 			execArgv: ["--enable-source-maps"]
@@ -338,11 +338,12 @@ export function activate(context: ExtensionContext): void {
 			)
 		}
 
+		let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+
 		const client = languageClients[languageId] = new Client<LanguageClient>(
 			context,
 			languageClients,
 			startServer,
-			teamFortress2Folder$,
 			fileSystemMountPointFactory,
 			fileSystemWatcherFactory,
 			bspFactory,
@@ -365,6 +366,9 @@ export function activate(context: ExtensionContext): void {
 					documentSelector: [
 						languageId
 					],
+					initializationOptions: () => ({
+						teamFortress2Folder: teamFortress2Folder.toJSON()
+					}),
 					middleware: middleware[languageId],
 					...(process.env.NODE_ENV != "production" && {
 						connectionOptions: {
@@ -382,7 +386,17 @@ export function activate(context: ExtensionContext): void {
 			})
 		)
 
-		await client.start()
+		const result = await client.start()
+
+		const { teamFortress2Folder: teamFortress2FolderReturned } = z.object({ teamFortress2Folder: Uri.schema.optional() }).parse(result)
+		if (teamFortress2FolderReturned) {
+			const teamFortress2FolderSubscription = teamFortress2Folder$.subscribe((value) => {
+				teamFortress2Folder = value
+				client.client.restart()
+			})
+
+			subscriptions.push(new Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
+		}
 	}
 
 	workspace.textDocuments.forEach(onDidOpenTextDocument)

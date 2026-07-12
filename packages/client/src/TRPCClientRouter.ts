@@ -8,7 +8,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { WatchEvent } from "common/WatchEvent"
-import { concat, concatMap, distinctUntilChanged, filter, from, Observable, switchAll } from "rxjs"
+import { concat, concatMap, distinctUntilChanged, filter, from, switchAll } from "rxjs"
 import vscode, { commands, window, workspace, type ExtensionContext } from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
@@ -30,7 +30,6 @@ const UTF16LEDecoder = new TextDecoder("utf-16le")
 export function TRPCClientRouter(
 	t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>,
 	context: ExtensionContext,
-	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
@@ -88,9 +87,6 @@ export function TRPCClientRouter(
 		}),
 		teamFortress2FileSystem: t
 			.router({
-				teamFortress2Folder: t
-					.procedure
-					.subscription(({ signal }) => observableToAsyncIterable<Uri>(teamFortress2Folder$, signal!)),
 				open: t
 					.procedure
 					.input(

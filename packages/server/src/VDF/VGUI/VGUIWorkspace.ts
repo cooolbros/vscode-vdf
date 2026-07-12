@@ -3,7 +3,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, defer, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
@@ -71,25 +71,24 @@ export class VGUIWorkspace extends WorkspaceBase {
 		languageTokens: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
 	}
 
-	public static fileType(uri: Uri, teamFortress2Folder$: Observable<Uri>): Observable<VGUIFileType> {
-		return defer(() => {
-			switch (uri.scheme) {
-				case "file":
-					return teamFortress2Folder$.pipe(
-						map((teamFortress2Folder) => posix.relative(teamFortress2Folder.joinPath("tf").path, uri.path))
-					)
-				case "bsp":
-				case "vpk":
-					return of(uri.path.substring(1))
-				default:
-					// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
-					console.warn(`Unknown Uri.scheme: ${uri}`)
-					return of(null)
-			}
-		}).pipe(
-			map((path) => VGUIWorkspace.getFileType(VGUIWorkspace.files, path)),
-			distinctUntilChanged()
-		)
+	public static fileType(uri: Uri, teamFortress2Folder: Uri): VGUIFileType {
+		let path: string | null
+		switch (uri.scheme) {
+			case "file":
+				path = posix.relative(teamFortress2Folder.joinPath("tf").path, uri.path)
+				break
+			case "bsp":
+			case "vpk":
+				path = uri.path.substring(1)
+				break
+			default:
+				// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
+				console.warn(`Unknown Uri.scheme: ${uri}`)
+				path = null
+				break
+		}
+
+		return VGUIWorkspace.getFileType(VGUIWorkspace.files, path)
 	}
 
 	private readonly fileSystem: FileSystemMountPoint

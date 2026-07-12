@@ -4,9 +4,9 @@ import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { map, shareReplay } from "rxjs"
+import { map } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { type Connection } from "vscode-languageserver"
+import { type Connection, type InitializeParams } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "../../DefinitionReferences"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -19,11 +19,8 @@ export class VGUILanguageServer extends VDFLanguageServer<
 	VGUITextDocumentDependencies
 > {
 
+	private readonly teamFortress2Folder: PromiseWithResolvers<Uri>
 	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
-
-	private readonly teamFortress2Folder$ = fromTRPCSubscription(this.trpc.client.teamFortress2FileSystem.teamFortress2Folder, undefined).pipe(
-		shareReplay({ bufferSize: 1, refCount: true })
-	)
 
 	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -62,7 +59,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
-					this.teamFortress2Folder$,
+					this.teamFortress2Folder.promise,
 					await this.fileSystems.get(paths),
 					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,
@@ -71,6 +68,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			}
 		})
 
+		this.teamFortress2Folder = Promise.withResolvers<Uri>()
 		this.workspaces = new Map()
 	}
 
@@ -175,5 +173,15 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				}
 			})
 		)
+	}
+
+	protected async onInitialize(params: InitializeParams) {
+		const { teamFortress2Folder } = z.object({ teamFortress2Folder: Uri.schema }).parse(params.initializationOptions)
+		this.teamFortress2Folder.resolve(teamFortress2Folder)
+
+		return {
+			...await super.onInitialize(params),
+			teamFortress2Folder
+		}
 	}
 }

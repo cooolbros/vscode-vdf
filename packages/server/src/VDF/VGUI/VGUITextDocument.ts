@@ -4,7 +4,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
-import { defer, map, of, shareReplay, startWith, type Observable } from "rxjs"
+import { defer, from, map, of, shareReplay, startWith, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type DefinitionReferences } from "../../DefinitionReferences"
 import type { TextDocumentInit } from "../../TextDocumentBase"
@@ -31,7 +31,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
-		teamFortress2Folder$: Observable<Uri>,
+		teamFortress2Folder: Promise<Uri>,
 		fileSystem: FileSystemMountPoint,
 		watch: (uri: Uri) => Observable<WatchEvent>,
 		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
@@ -68,7 +68,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 				return (
 					workspace != null
 						? workspace.fileType(init.uri)
-						: VGUIWorkspace.fileType(init.uri, teamFortress2Folder$)
+						: from(teamFortress2Folder).pipe(map((teamFortress2Folder) => VGUIWorkspace.fileType(init.uri, teamFortress2Folder)))
 				).pipe(
 					map((type) => {
 						let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocumentDependencies>

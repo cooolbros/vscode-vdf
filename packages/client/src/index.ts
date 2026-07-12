@@ -7,7 +7,6 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import type { Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import type { ExtensionContext } from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
@@ -35,7 +34,6 @@ export class Client<T extends BaseLanguageClient> {
 		context: ExtensionContext,
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
-		teamFortress2Folder$: Observable<Uri>,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 		fileSystemWatcherFactory: FileSystemWatcherFactory,
 		bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
@@ -60,7 +58,6 @@ export class Client<T extends BaseLanguageClient> {
 					isDev: true,
 				}),
 			context,
-			teamFortress2Folder$,
 			fileSystemMountPointFactory,
 			fileSystemWatcherFactory,
 			bspFactory
@@ -98,18 +95,18 @@ export class Client<T extends BaseLanguageClient> {
 		)
 	}
 
-	public async start(): Promise<void> {
-		return this.client.start().then(() => {
-			const result = z.array(VSCodeVDFLanguageIDSchema).transform((arg) => new Set(arg)).safeParse(this.client.initializeResult?.["servers"])
-			if (result.success) {
-				for (const languageId of result.data) {
-					this.startServer(languageId)
-				}
-			}
-			else {
-				this.client.warn(result.error.message)
-			}
-		})
+	public async start(): Promise<Record<string, unknown>> {
+		await this.client.start()
+
+		const { servers, ...rest } = z.looseObject({
+			servers: z.array(VSCodeVDFLanguageIDSchema).transform((arg) => new Set(arg))
+		}).parse(this.client.initializeResult?.["data"])
+
+		for (const languageId of servers) {
+			this.startServer(languageId)
+		}
+
+		return rest
 	}
 
 	public dispose() {
