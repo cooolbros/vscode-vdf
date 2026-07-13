@@ -1,4 +1,5 @@
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
+import { removeSoundChars } from "common/soundChars"
 import { combineLatest, firstValueFrom, map } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
@@ -29,33 +30,6 @@ const sounds = new Set([
 	"Sound".toLowerCase(),
 	"StartWaveWarningSound".toLowerCase(),
 ])
-
-const soundChars = new Set([
-	"*" /* CHAR_STREAM */,
-	"?" /* CHAR_USERVOX */,
-	"!" /* CHAR_SENTENCE */,
-	"#" /* CHAR_DRYMIX */,
-	">" /* CHAR_DOPPLER */,
-	"<" /* CHAR_DIRECTIONAL */,
-	"^" /* CHAR_DISTVARIANT */,
-	"@" /* CHAR_OMNI */,
-	")" /* CHAR_SPATIALSTEREO */,
-	"}" /* CHAR_FAST_PITCH */,
-])
-
-const removeSoundChars = (value: string): { chars: string, value: string } => {
-	let i = 0
-	while (i < value.length) {
-		if (!soundChars.has(value[i])) {
-			break
-		}
-		i += 1
-	}
-
-	const chars = value.slice(0, i)
-	value = value.slice(i)
-	return { chars, value }
-}
 
 function collectTFBotItems(path: VDFDocumentSymbol[], definitionReferences: DefinitionReferences) {
 	const collectTemplateAttributes = (detail: string, definitionReferences: DefinitionReferences, seen: Set<string>): { TFClass?: string, items: string[] } => {

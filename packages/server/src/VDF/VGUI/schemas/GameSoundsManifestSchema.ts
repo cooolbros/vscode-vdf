@@ -9,6 +9,8 @@ export const GameSoundsManifestSchema = (document: VGUITextDocument): VDFTextDoc
 
 	const { header, documentSymbols, string, file } = document.diagnostics
 
+	const keys = new Set(["precache_file", "preload_file"])
+
 	const getDiagnostics = header(
 		documentSymbols(KeyDistinct.None)({
 			"precache_file": [string(file("precache_file", null, null))],
@@ -19,7 +21,7 @@ export const GameSoundsManifestSchema = (document: VGUITextDocument): VDFTextDoc
 
 	return {
 		keys: {
-			surfaceproperties_manifest: {
+			game_sounds_manifest: {
 				values: [
 					{
 						label: "precache_file",
@@ -58,7 +60,7 @@ export const GameSoundsManifestSchema = (document: VGUITextDocument): VDFTextDoc
 
 					return documentSymbol.children
 						.values()
-						.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "precache_file" && documentSymbol.detail?.trim() != "")
+						.filter((documentSymbol) => keys.has(documentSymbol.key.toLowerCase()) && documentSymbol.detail?.trim() != "")
 						.map((documentSymbol) => ({
 							range: documentSymbol.detailRange!,
 							data: {

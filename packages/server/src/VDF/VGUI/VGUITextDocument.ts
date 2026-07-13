@@ -13,6 +13,7 @@ import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
 import { ChatSchemeSchema } from "./schemas/ChatSchemeSchema"
 import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
 import { GameSoundsManifestSchema } from "./schemas/GameSoundsManifestSchema"
+import { GameSoundsSchema } from "./schemas/GameSoundsSchema"
 import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
 import { ItemsGameSchema } from "./schemas/ItemsGameSchema"
 import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
@@ -106,6 +107,10 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 								break
 							case VGUIFileType.LanguageTokens:
 								schema = LanguageTokensSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.GameSounds:
+								schema = GameSoundsSchema
 								globals$ = of([])
 								break
 							case VGUIFileType.ItemsGame:

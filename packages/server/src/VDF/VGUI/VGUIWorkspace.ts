@@ -15,6 +15,7 @@ export const enum VGUIFileType {
 	SourceScheme,
 	ChatScheme,
 	LanguageTokens,
+	GameSounds,
 	ItemsGame,
 	HUDAnimationsManifest,
 	GameSoundsManifest,
@@ -26,6 +27,7 @@ interface VGUIFiles {
 	sourceScheme: Set<string>
 	chatScheme: Set<string>
 	languageTokens: Set<string>
+	gameSounds: Set<string>
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
@@ -46,6 +48,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 		}
 		else if (files.languageTokens.has(path)) {
 			return VGUIFileType.LanguageTokens
+		}
+		else if (files.gameSounds.has(path)) {
+			return VGUIFileType.GameSounds
 		}
 		else if (path == "scripts/items/items_game.txt") {
 			return VGUIFileType.ItemsGame
@@ -68,7 +73,25 @@ export class VGUIWorkspace extends WorkspaceBase {
 		clientScheme: new Set(["resource/clientscheme.res"]),
 		sourceScheme: new Set(["resource/sourcescheme.res", "resource/SourceSchemeBase.res"]),
 		chatScheme: new Set(["resource/chatscheme.res"]),
-		languageTokens: new Set(["resource/chat_english.txt", "resource/tf_english.txt"])
+		languageTokens: new Set(["resource/chat_english.txt", "resource/tf_english.txt"]),
+		gameSounds: new Set([
+			"scripts/game_sounds.txt",
+			"scripts/game_sounds_physics.txt",
+			"scripts/game_sounds_weapons.txt",
+			"scripts/game_sounds_vo.txt",
+			"scripts/game_sounds_vo_handmade.txt",
+			"scripts/game_sounds_music.txt",
+			"scripts/game_sounds_player.txt",
+			"scripts/game_sounds_mvm.txt",
+			"scripts/game_sounds_vo_mvm_handmade.txt",
+			"scripts/game_sounds_vo_rd_robots.txt",
+			"scripts/game_sounds_vo_taunts.txt",
+			"scripts/game_sounds_taunt_workshop.txt",
+			"scripts/game_sounds_vo_pauling.txt",
+			"scripts/game_sounds_vo_merasmus.txt",
+			"scripts/game_sounds_vo_tough_break.txt",
+			"scripts/game_sounds_passtime.txt",
+		])
 	}
 
 	public static fileType(uri: Uri, teamFortress2Folder: Uri): VGUIFileType {
@@ -102,6 +125,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 	public readonly languageTokensFiles$: Observable<Set<string>>
 	public readonly languageTokens$: Observable<DefinitionReferences>
+
+	public readonly gameSoundsFiles$: Observable<Set<string>>
 
 	public readonly globals$: Observable<DefinitionReferences[]>
 
@@ -214,6 +239,30 @@ export class VGUIWorkspace extends WorkspaceBase {
 			shareReplay(1)
 		)
 
+		this.gameSoundsFiles$ = this.fileSystem.resolve("scripts/game_sounds_manifest.txt").pipe(
+			switchMap((entry) => {
+				if (entry.type != EntryType.File) {
+					throw new Error("scripts/game_sounds_manifest.txt")
+				}
+
+				return usingAsync(async () => await documents.get(entry.uri))
+			}),
+			switchMap((document) => document.documentSymbols$),
+			map((documentSymbols) => {
+				const keys = new Set(["precache_file", "preload_file"])
+				const game_sounds_manifest = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "game_sounds_manifest")?.children ?? []
+				return new Set(
+					game_sounds_manifest
+						.values()
+						.filter((documentSymbol) => keys.has(documentSymbol.key.toLowerCase()))
+						.map((documentSymbol) => documentSymbol.detail)
+						.filter((detail) => detail != undefined)
+						.map((detail) => posix.resolve(`/${detail}`).substring(1))
+				)
+			}),
+			shareReplay(1)
+		)
+
 		this.globals$ = combineLatest([this.clientScheme$, this.languageTokens$]).pipe(
 			shareReplay(1)
 		)
@@ -262,7 +311,8 @@ export class VGUIWorkspace extends WorkspaceBase {
 			clientScheme: this.clientSchemeFiles$,
 			sourceScheme: this.sourceSchemeFiles$,
 			chatScheme: this.chatSchemeFiles$,
-			languageTokens: this.languageTokensFiles$
+			languageTokens: this.languageTokensFiles$,
+			gameSounds: this.gameSoundsFiles$,
 		}).pipe(
 			map((files) => VGUIWorkspace.getFileType(files, path)),
 			distinctUntilChanged(),
