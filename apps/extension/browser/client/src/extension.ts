@@ -67,11 +67,11 @@ export function activate(context: ExtensionContext): void {
 	subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
 	subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
 	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
 	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
 	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, fileSystemMountPointFactory, fileSystemWatcherFactory, null)))
+	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory, null)))
 	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window

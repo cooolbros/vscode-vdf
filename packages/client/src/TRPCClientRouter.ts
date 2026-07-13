@@ -93,9 +93,9 @@ export function TRPCClientRouter(
 						z.object({
 							paths: z.array(
 								z.discriminatedUnion("type", [
-									z.object({ type: z.literal("tf2") }),
+									z.object({ type: z.literal("tf2"), teamFortress2Folder: Uri.schema }),
 									z.object({ type: z.literal("folder"), folder: Uri.schema }),
-									z.object({ type: z.literal("popfile:bsp"), popfile: Uri.schema }),
+									z.object({ type: z.literal("popfile:bsp"), teamFortress2Folder: Uri.schema, popfile: Uri.schema }),
 									z.object({ type: z.literal("bsp"), bsp: Uri.schema }),
 								])
 							)

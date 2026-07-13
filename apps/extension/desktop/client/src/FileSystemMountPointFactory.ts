@@ -233,7 +233,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint> {
 
-	constructor(context: vscode.ExtensionContext, teamFortress2Folder$: Observable<Uri>) {
+	constructor(context: vscode.ExtensionContext) {
 		super(
 			(path) => JSON.stringify(path),
 			async (path, factory) => {
@@ -242,92 +242,84 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						return await FolderFileSystem(path.folder)
 					}
 					case "tf2": {
-						return ObservableFileSystem(
-							teamFortress2Folder$.pipe(
-								switchMap((teamFortress2Folder) => {
-									return usingAsync<FileSystemMountPoint>(async () => {
-										switch (teamFortress2Folder.scheme) {
-											case "file": {
-												const gameInfo = VDF.parse(new TextDecoder("utf-8").decode(await vscode.workspace.fs.readFile(teamFortress2Folder.joinPath("tf/gameinfo.txt"))))
+						switch (path.teamFortress2Folder.scheme) {
+							case "file": {
+								const gameInfo = VDF.parse(new TextDecoder("utf-8").decode(await vscode.workspace.fs.readFile(path.teamFortress2Folder.joinPath("tf/gameinfo.txt"))))
 
-												const result = z.object({
-													GameInfo: z.object({
-														FileSystem: z.object({
-															SearchPaths: z.record(z.string(), z.union([z.string(), z.array(z.string())]))
-														})
-													})
-												}).safeParse(gameInfo)
-
-												if (!result.success) {
-													console.error(result.error)
-													throw new Error("Invalid gameinfo.txt", { cause: result.error })
-												}
-
-												const { GameInfo: { FileSystem: { SearchPaths: searchPaths } } } = result.data
-
-												const uris = Object
-													.values(searchPaths)
-													.flatMap((i) => Array.isArray(i) ? i : [i])
-													.map((value) => {
-														const relativePath = value
-															.replace("|all_source_engine_paths|", "")
-															.replace("|gameinfo_path|", "tf/")
-
-														return teamFortress2Folder.joinPath(relativePath)
-													})
-
-												return VirtualFileSystem(
-													uris
-														.filter((uri, index) => uris.findIndex((u) => Uri.equals(u, uri)) == index)
-														.map(async (uri) => {
-															try {
-																const basename = uri.basename()
-
-																if (basename == "*") {
-																	return await WildcardFileSystem(uri, factory)
-																}
-
-																if (basename.endsWith(".vpk")) {
-																	const vpk = uri.dirname().joinPath(basename.replace(".vpk", "_dir.vpk"))
-																	return await VPKFileSystem(vpk)
-																}
-
-																return await factory.get({ type: "folder", folder: uri })
-															}
-															catch (error) {
-																if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
-																	console.error(error)
-																}
-
-																throw error
-															}
-														})
-												)
-											}
-											case RemoteResourceFileSystemProvider.scheme: {
-												const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
-
-												try {
-													await vscode.workspace.fs.stat(root)
-												}
-												catch (error) {
-													context.subscriptions.push(vscode.workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
-												}
-
-												return await VSCodeFileSystem({
-													root: root,
-													type: vscode.FileType.Directory,
-													watch: false,
-													resolvePath: (path) => root.joinPath(path)
-												})
-											}
-											default:
-												throw new Error(teamFortress2Folder.scheme)
-										}
+								const result = z.object({
+									GameInfo: z.object({
+										FileSystem: z.object({
+											SearchPaths: z.record(z.string(), z.union([z.string(), z.array(z.string())]))
+										})
 									})
+								}).safeParse(gameInfo)
+
+								if (!result.success) {
+									console.error(result.error)
+									throw new Error("Invalid gameinfo.txt", { cause: result.error })
+								}
+
+								const { GameInfo: { FileSystem: { SearchPaths: searchPaths } } } = result.data
+
+								const uris = Object
+									.values(searchPaths)
+									.flatMap((i) => Array.isArray(i) ? i : [i])
+									.map((value) => {
+										const relativePath = value
+											.replace("|all_source_engine_paths|", "")
+											.replace("|gameinfo_path|", "tf/")
+
+										return path.teamFortress2Folder.joinPath(relativePath)
+									})
+
+								return VirtualFileSystem(
+									uris
+										.filter((uri, index) => uris.findIndex((u) => Uri.equals(u, uri)) == index)
+										.map(async (uri) => {
+											try {
+												const basename = uri.basename()
+
+												if (basename == "*") {
+													return await WildcardFileSystem(uri, factory)
+												}
+
+												if (basename.endsWith(".vpk")) {
+													const vpk = uri.dirname().joinPath(basename.replace(".vpk", "_dir.vpk"))
+													return await VPKFileSystem(vpk)
+												}
+
+												return await factory.get({ type: "folder", folder: uri })
+											}
+											catch (error) {
+												if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
+													console.error(error)
+												}
+
+												throw error
+											}
+										})
+								)
+							}
+							case RemoteResourceFileSystemProvider.scheme: {
+								const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
+
+								try {
+									await vscode.workspace.fs.stat(root)
+								}
+								catch (error) {
+									context.subscriptions.push(vscode.workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
+								}
+
+								return await VSCodeFileSystem({
+									root: root,
+									type: vscode.FileType.Directory,
+									watch: false,
+									resolvePath: (path) => root.joinPath(path)
 								})
-							)
-						)
+							}
+							default:
+								throw new Error(path.teamFortress2Folder.scheme)
+						}
 					}
 					case "popfile:bsp": {
 						const extname = posix.extname(path.popfile.basename())
@@ -336,7 +328,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						}
 
 						return ObservableFileSystem(
-							usingAsync(async () => await factory.get({ type: "tf2" })).pipe(
+							usingAsync(async () => await factory.get({ type: "tf2", teamFortress2Folder: path.teamFortress2Folder })).pipe(
 								switchMap((teamFortress2FileSystem) => {
 									return findMap(path.popfile, teamFortress2FileSystem).pipe(
 										switchMap((bsp) => {

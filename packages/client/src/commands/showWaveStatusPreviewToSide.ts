@@ -75,6 +75,7 @@ const enum Type {
 
 export function showWaveStatusPreviewToSide(
 	context: ExtensionContext,
+	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null
@@ -137,12 +138,15 @@ export function showWaveStatusPreviewToSide(
 			shareReplayUntilDisposed(dispose$)
 		)
 
-		const fileSystem$ = usingAsync(async () => {
-			return await VirtualFileSystem([
-				fileSystemMountPointFactory.get({ type: "popfile:bsp", popfile: new Uri(document.uri) }),
-				fileSystemMountPointFactory.get({ type: "tf2" }),
-			])
-		}).pipe(
+		const fileSystem$ = teamFortress2Folder$.pipe(
+			switchMap((teamFortress2Folder) => {
+				return usingAsync(async () => {
+					return await VirtualFileSystem([
+						fileSystemMountPointFactory.get({ type: "popfile:bsp", teamFortress2Folder: teamFortress2Folder, popfile: new Uri(document.uri) }),
+						fileSystemMountPointFactory.get({ type: "tf2", teamFortress2Folder: teamFortress2Folder }),
+					])
+				})
+			}),
 			shareReplayUntilDisposed(dispose$)
 		)
 

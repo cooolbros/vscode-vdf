@@ -76,11 +76,14 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 			servers: new Set(["vdf"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const workspaceRoot = await this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
+				const [{ teamFortress2Folder, workspaceUris }, workspaceRoot] = await Promise.all([
+					this.workspaceUris.promise,
+					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
+				])
 
 				const paths: FileSystemKey[] = [
 					...(workspaceRoot ? [{ type: <const>"folder", folder: workspaceRoot }] : []),
-					{ type: "tf2" },
+					{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
 				]
 
 				let workspace: Promise<HUDAnimationsWorkspace> | null
@@ -126,7 +129,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 									uri: input.uri,
 									fileSystem: await this.fileSystems.get([
 										{ type: "folder", folder: input.uri },
-										{ type: "tf2" }
+										{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
 									]),
 									server: this,
 									documents: this.documents,

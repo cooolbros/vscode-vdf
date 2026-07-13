@@ -2,7 +2,7 @@ import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { EMPTY, firstValueFrom, of } from "rxjs"
+import { EMPTY, firstValueFrom, Observable, of } from "rxjs"
 import type { RangeLike } from "vdf"
 import { EndOfLine, type TextEditor, window, workspace, WorkspaceEdit } from "vscode"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
@@ -51,16 +51,18 @@ class Table {
 	}
 }
 
-export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
+export function listPopfileClassIcons(teamFortress2Folder$: Observable<Uri>, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
 	return async ({ document, selection }: TextEditor) => {
 		if (document.languageId != "popfile") {
 			window.showWarningMessage(document.languageId)
 			return
 		}
 
+		const teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+
 		await using fileSystem = await VirtualFileSystem([
-			fileSystemMountPointFactory.get({ type: "popfile:bsp", popfile: new Uri(document.uri) }),
-			fileSystemMountPointFactory.get({ type: "tf2" }),
+			fileSystemMountPointFactory.get({ type: "popfile:bsp", teamFortress2Folder: teamFortress2Folder, popfile: new Uri(document.uri) }),
+			fileSystemMountPointFactory.get({ type: "tf2", teamFortress2Folder: teamFortress2Folder }),
 		])
 
 		const popfile = new MissionPopfile(

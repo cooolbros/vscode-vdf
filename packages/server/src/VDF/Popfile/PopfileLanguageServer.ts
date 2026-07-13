@@ -16,7 +16,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 > {
 
 	private readonly workspace$ = defer(async () => new PopfileWorkspace(
-		await this.fileSystems.get([{ type: "tf2" }]),
+		await this.fileSystems.get([{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }]),
 		this,
 		this.documents,
 	)).pipe(
@@ -38,7 +38,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 				foldingRangeProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$) => {
-				const [workspaceUris, workspace] = await Promise.all([
+				const [{ teamFortress2Folder, workspaceUris }, workspace] = await Promise.all([
 					this.workspaceUris.promise,
 					firstValueFrom(this.workspace$)
 				])
@@ -47,8 +47,8 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 					init,
 					documentConfiguration$,
 					await this.fileSystems.get([
-						...(posix.extname(init.uri.path) == ".pop" ? [{ type: <const>"popfile:bsp", popfile: init.uri }] : []),
-						{ type: "tf2" },
+						...(posix.extname(init.uri.path) == ".pop" ? [{ type: <const>"popfile:bsp", teamFortress2Folder: teamFortress2Folder, popfile: init.uri }] : []),
+						{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
 						...workspaceUris.map((uri) => ({ type: <const>"folder", folder: uri })),
 					]),
 					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),

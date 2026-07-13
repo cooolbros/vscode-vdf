@@ -6,7 +6,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { map } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { type Connection, type InitializeParams } from "vscode-languageserver"
+import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "../../DefinitionReferences"
 import { VDFLanguageServer } from "../VDFLanguageServer"
@@ -19,7 +19,6 @@ export class VGUILanguageServer extends VDFLanguageServer<
 	VGUITextDocumentDependencies
 > {
 
-	private readonly teamFortress2Folder: PromiseWithResolvers<Uri>
 	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
 
 	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
@@ -31,7 +30,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			createDocument: async (init, documentConfiguration$) => {
 				const paths: FileSystemKey[] = []
 
-				const [workspaceUris, workspaceRoot] = await Promise.all([
+				const [{ teamFortress2Folder, workspaceUris }, workspaceRoot] = await Promise.all([
 					this.workspaceUris.promise,
 					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 				])
@@ -40,7 +39,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 					paths.push({ type: "folder", folder: workspaceRoot })
 				}
 
-				paths.push({ type: "tf2" })
+				paths.push({ type: "tf2", teamFortress2Folder: teamFortress2Folder })
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", folder: workspaceUri })))
 
 				let workspace: Promise<VGUIWorkspace> | null
@@ -59,7 +58,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				return new VGUITextDocument(
 					init,
 					documentConfiguration$,
-					this.teamFortress2Folder.promise,
+					teamFortress2Folder,
 					await this.fileSystems.get(paths),
 					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,
@@ -68,7 +67,6 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			}
 		})
 
-		this.teamFortress2Folder = Promise.withResolvers<Uri>()
 		this.workspaces = new Map()
 	}
 
@@ -90,7 +88,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 									uri: input.uri,
 									fileSystem: await this.fileSystems.get([
 										{ type: "folder", folder: input.uri },
-										{ type: "tf2" }
+										{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
 									]),
 									documents: this.documents,
 									request: Promise.resolve()
@@ -173,15 +171,5 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				}
 			})
 		)
-	}
-
-	protected async onInitialize(params: InitializeParams) {
-		const { teamFortress2Folder } = z.object({ teamFortress2Folder: Uri.schema }).parse(params.initializationOptions)
-		this.teamFortress2Folder.resolve(teamFortress2Folder)
-
-		return {
-			...await super.onInitialize(params),
-			teamFortress2Folder: true
-		}
 	}
 }
