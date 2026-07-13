@@ -32,7 +32,6 @@ export const ItemsGameSchema = (document: VGUITextDocument): VDFTextDocumentSche
 						case "styles": {
 							for (const index of documentSymbol.children ?? []) {
 								for (const documentSymbol of index.children ?? []) {
-									console.log(documentSymbol.key)
 									switch (documentSymbol.key.toLowerCase()) {
 										case "name": {
 											string(documentSymbol)
