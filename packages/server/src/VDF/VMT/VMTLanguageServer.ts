@@ -31,7 +31,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 				const paths: FileSystemKey[] = []
 
 				const [workspaceUris, workspaceRoot] = await Promise.all([
-					this.workspaceUris,
+					this.workspaceUris.promise,
 					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 				])
 
