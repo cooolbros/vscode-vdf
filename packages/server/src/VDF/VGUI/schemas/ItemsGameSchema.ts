@@ -207,27 +207,29 @@ export const ItemsGameSchema = (document: VGUITextDocument): VDFTextDocumentSche
 			}
 
 			// "items"
-			for (const item of map.get("items")?.[0].children?.values() ?? []) {
-				const name = item.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "name")!
+			for (const [index, item] of map.get("items")?.[0].children?.entries() ?? []) {
+				if (index != 0 /* "default" */) {
+					const name = item.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "name")!
 
-				const image_inventory = item.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "image_inventory")?.detail
-				const data = image_inventory != undefined
-					? { image: { uri: document.uri, path: posix.join("materials", `${image_inventory}.vmt`) } }
-					: undefined
+					const image_inventory = item.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "image_inventory")?.detail
+					const data = image_inventory != undefined
+						? { image: { uri: document.uri, path: posix.join("materials", `${image_inventory}.vmt`) } }
+						: undefined
 
-				definitions.set(null, Symbol.for("item"), name.detail!, {
-					uri: document.uri,
-					key: name.detail!,
-					range: item.range,
-					keyRange: item.nameRange,
-					nameRange: undefined,
-					detail: undefined,
-					documentation: document.definitions.documentation(item, "vdf"),
-					conditional: item.conditional ?? undefined,
-					completionItem: {
-						data: data
-					}
-				})
+					definitions.set(null, Symbol.for("item"), name.detail!, {
+						uri: document.uri,
+						key: name.detail!,
+						range: item.range,
+						keyRange: item.nameRange,
+						nameRange: undefined,
+						detail: undefined,
+						documentation: document.definitions.documentation(item, "vdf"),
+						conditional: item.conditional ?? undefined,
+						completionItem: {
+							data: data
+						}
+					})
+				}
 
 				for (const documentSymbol of item.children ?? []) {
 					switch (documentSymbol.key.toLowerCase()) {
