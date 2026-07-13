@@ -39,7 +39,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 			},
 			createDocument: async (init, documentConfiguration$) => {
 				const [workspaceUris, workspace] = await Promise.all([
-					this.workspaceUris,
+					this.workspaceUris.promise,
 					firstValueFrom(this.workspace$)
 				])
 
