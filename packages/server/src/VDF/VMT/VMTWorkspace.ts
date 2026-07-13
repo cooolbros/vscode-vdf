@@ -10,7 +10,15 @@ export class VMTWorkspace extends WorkspaceBase {
 
 	public readonly surfaceProperties$: Observable<string[] | null>
 
-	constructor(uri: Uri, fileSystem: FileSystemMountPoint, documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>) {
+	constructor({
+		uri,
+		fileSystem,
+		documents,
+	}: {
+		uri: Uri,
+		fileSystem: FileSystemMountPoint,
+		documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>,
+	}) {
 		super(uri)
 		this.surfaceProperties$ = fileSystem.resolve("scripts/surfaceproperties_manifest.txt").pipe(
 			switchMap((entry) => {

@@ -1,11 +1,14 @@
 import type { DataTransformer, TRPCRootObject } from "@trpc/server"
+import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
+import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { generateTokens } from "common/generateTokens"
+import { usingAsync } from "common/operators/usingAsync"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
-import { firstValueFrom, Subscription } from "rxjs"
+import { firstValueFrom, ignoreElements, Subscription } from "rxjs"
 import { VDFPosition } from "vdf"
 import { CompletionItem, CompletionItemKind, InsertTextFormat, Range, TextEdit, type Connection, type DocumentFormattingParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
@@ -68,7 +71,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 		"Bias",
 	]
 
-	private readonly workspaces: Map<string, Promise<HUDAnimationsWorkspace>>
+	private readonly workspaces: RefCountAsyncDisposableFactory<Uri, HUDAnimationsWorkspace>
 
 	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -86,18 +89,9 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 					{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
 				]
 
-				let workspace: Promise<HUDAnimationsWorkspace> | null
-				if (workspaceRoot != null) {
-					workspace = this.workspaces.getOrInsertComputed(workspaceRoot.toString(), async () => new HUDAnimationsWorkspace({
-						uri: workspaceRoot,
-						fileSystem: await this.fileSystems.get(paths),
-						server: this,
-						documents: this.documents,
-					}))
-				}
-				else {
-					workspace = null
-				}
+				const workspace = workspaceRoot != null
+					? this.workspaces.get(workspaceRoot)
+					: null
 
 				return new HUDAnimationsTextDocument(
 					init,
@@ -108,7 +102,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 			}
 		})
 
-		this.workspaces = new Map()
+		this.workspaces = new RefCountAsyncDisposableFactory(
+			(uri) => uri.toString(),
+			async (uri) => new HUDAnimationsWorkspace({
+				uri: uri,
+				fileSystem: await this.fileSystems.get([
+					{ type: "folder", folder: uri },
+					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
+				]),
+				server: this,
+				documents: this.documents,
+			})
+		)
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
@@ -123,18 +128,13 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 								uri: Uri.schema,
 							})
 						)
-						.mutation(async ({ input }) => {
-							this.workspaces.getOrInsertComputed(input.uri.toString(), async () => {
-								return new HUDAnimationsWorkspace({
-									uri: input.uri,
-									fileSystem: await this.fileSystems.get([
-										{ type: "folder", folder: input.uri },
-										{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
-									]),
-									server: this,
-									documents: this.documents,
-								})
-							})
+						.subscription(({ input, signal }) => {
+							return observableToAsyncIterable(
+								usingAsync(async () => await this.workspaces.get(input.uri)).pipe(
+									ignoreElements()
+								),
+								signal!
+							)
 						})
 				}
 			})

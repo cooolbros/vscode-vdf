@@ -3,6 +3,7 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { usingAsync } from "common/operators/usingAsync"
+import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
@@ -19,7 +20,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 	VMTTextDocumentDependencies
 > {
 
-	private readonly workspaces: Map<string, Promise<VMTWorkspace>>
+	private readonly workspaces: RefCountAsyncDisposableFactory<Uri, VMTWorkspace>
 
 	constructor(languageId: "vmt", name: "VMT", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -46,9 +47,9 @@ export class VMTLanguageServer extends VDFLanguageServer<
 				paths.push({ type: "tf2", teamFortress2Folder: teamFortress2Folder })
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", folder: workspaceUri })))
 
-				const workspace = this.workspaces.getOrInsertComputed(workspaceRoot?.toString() ?? "tf2", async () => {
-					return new VMTWorkspace(workspaceRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)
-				})
+				const workspace = workspaceRoot != null
+					? this.workspaces.get(workspaceRoot)
+					: null
 
 				return new VMTTextDocument(
 					init,
@@ -61,7 +62,17 @@ export class VMTLanguageServer extends VDFLanguageServer<
 			}
 		})
 
-		this.workspaces = new Map()
+		this.workspaces = new RefCountAsyncDisposableFactory(
+			(uri) => uri.toString(),
+			async (uri) => new VMTWorkspace({
+				uri: uri,
+				fileSystem: await this.fileSystems.get([
+					{ type: "folder", folder: uri },
+					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
+				]),
+				documents: this.documents
+			})
+		)
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {

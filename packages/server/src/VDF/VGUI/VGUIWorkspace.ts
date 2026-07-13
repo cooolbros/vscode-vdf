@@ -112,12 +112,10 @@ export class VGUIWorkspace extends WorkspaceBase {
 		uri,
 		fileSystem,
 		documents,
-		request
 	}: {
 		uri: Uri,
 		fileSystem: FileSystemMountPoint,
 		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
-		request: Promise<void>,
 	}) {
 		super(uri)
 		this.fileSystem = fileSystem

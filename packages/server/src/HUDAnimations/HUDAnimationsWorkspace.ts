@@ -4,7 +4,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concat, firstValueFrom, from, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concat, firstValueFrom, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -44,7 +44,9 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		super(uri)
 		this.files = new Map()
 
-		const ready$ = from(server.trpc.servers.vgui.workspace.open.mutate({ uri })).pipe(ignoreElements())
+		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri }).pipe(
+			ignoreElements()
+		)
 
 		const getVDFDocumentSymbols = (path: string) => concat(
 			ready$,

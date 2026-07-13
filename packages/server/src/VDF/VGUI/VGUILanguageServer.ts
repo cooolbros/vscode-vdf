@@ -2,9 +2,11 @@ import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { usingAsync } from "common/operators/usingAsync"
+import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { map } from "rxjs"
+import { ignoreElements, map, switchMap } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
@@ -19,7 +21,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 	VGUITextDocumentDependencies
 > {
 
-	private readonly workspaces: Map<string, Promise<VGUIWorkspace>>
+	private readonly workspaces: RefCountAsyncDisposableFactory<Uri, VGUIWorkspace>
 
 	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -42,18 +44,9 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				paths.push({ type: "tf2", teamFortress2Folder: teamFortress2Folder })
 				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", folder: workspaceUri })))
 
-				let workspace: Promise<VGUIWorkspace> | null
-				if (workspaceRoot != null) {
-					workspace = this.workspaces.getOrInsertComputed(workspaceRoot.toString(), async () => new VGUIWorkspace({
-						uri: workspaceRoot,
-						fileSystem: await this.fileSystems.get(paths),
-						documents: this.documents,
-						request: this.trpc.servers.hudanimations.workspace.open.mutate({ uri: workspaceRoot })
-					}))
-				}
-				else {
-					workspace = null
-				}
+				const workspace = workspaceRoot != null
+					? this.workspaces.get(workspaceRoot)
+					: null
 
 				return new VGUITextDocument(
 					init,
@@ -67,7 +60,17 @@ export class VGUILanguageServer extends VDFLanguageServer<
 			}
 		})
 
-		this.workspaces = new Map()
+		this.workspaces = new RefCountAsyncDisposableFactory(
+			(uri) => uri.toString(),
+			async (uri) => new VGUIWorkspace({
+				uri: uri,
+				fileSystem: await this.fileSystems.get([
+					{ type: "folder", folder: uri },
+					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
+				]),
+				documents: this.documents,
+			})
+		)
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
@@ -82,18 +85,13 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								uri: Uri.schema,
 							})
 						)
-						.mutation(async ({ input }) => {
-							this.workspaces.getOrInsertComputed(input.uri.toString(), async () => {
-								return new VGUIWorkspace({
-									uri: input.uri,
-									fileSystem: await this.fileSystems.get([
-										{ type: "folder", folder: input.uri },
-										{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
-									]),
-									documents: this.documents,
-									request: Promise.resolve()
-								})
-							})
+						.subscription(({ input, signal }) => {
+							return observableToAsyncIterable(
+								usingAsync(async () => await this.workspaces.get(input.uri)).pipe(
+									ignoreElements()
+								),
+								signal!
+							)
 						}),
 					documentSymbol: t
 						.procedure
@@ -104,12 +102,14 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.subscription(async ({ input, signal }) => {
-							const workspace = await this.workspaces.get(input.key.toString())
-							if (!workspace) {
-								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
-							}
-
-							return observableToAsyncIterable<VDFDocumentSymbols | null>(workspace.getVDFDocumentSymbols(input.path), signal!)
+							return observableToAsyncIterable<VDFDocumentSymbols | null>(
+								usingAsync(async () => await this.workspaces.get(input.key)).pipe(
+									switchMap((workspace) => {
+										return workspace.getVDFDocumentSymbols(input.path)
+									})
+								),
+								signal!
+							)
 						}),
 					clientScheme: t
 						.procedure
@@ -119,14 +119,13 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.subscription(async ({ input, signal }) => {
-							const workspace = await this.workspaces.get(input.key.toString())
-							if (!workspace) {
-								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
-							}
-
 							return observableToAsyncIterable<Definitions>(
-								workspace.clientScheme$.pipe(
-									map((definitionReferences) => definitionReferences.definitions)
+								usingAsync(async () => await this.workspaces.get(input.key)).pipe(
+									switchMap((workspace) => {
+										return workspace.clientScheme$.pipe(
+											map((definitionReferences) => definitionReferences.definitions)
+										)
+									})
 								),
 								signal!
 							)
@@ -140,13 +139,12 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.subscription(async ({ input, signal }) => {
-							const workspace = await this.workspaces.get(input.key.toString())
-							if (!workspace) {
-								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
-							}
-
 							return observableToAsyncIterable<{ uri: Uri, definitions: Definitions } | null>(
-								workspace.getDefinitionReferences(input.path),
+								usingAsync(async () => await this.workspaces.get(input.key)).pipe(
+									switchMap((workspace) => {
+										return workspace.getDefinitionReferences(input.path)
+									})
+								),
 								signal!
 							)
 						}),
@@ -159,10 +157,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.mutation(async ({ input }) => {
-							const workspace = await this.workspaces.get(input.key.toString())
-							if (!workspace) {
-								throw new Error(`VGUIWorkspace "${input.key.toString()}" does not exist.`)
-							}
+							await using workspace = await this.workspaces.get(input.key, async () => Promise.reject(`VGUIWorkspace "${input.key.toString()}" does not exist.`))
 
 							for (const [path, documentReferences] of input.references) {
 								workspace.setFileReferences(path, documentReferences)
