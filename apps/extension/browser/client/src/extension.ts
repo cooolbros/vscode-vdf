@@ -37,7 +37,7 @@ export function activate(context: ExtensionContext): void {
 		async (path, factory) => {
 			switch (path.type) {
 				case "folder": {
-					return await FolderFileSystem(path.uri)
+					return await FolderFileSystem(path.folder)
 				}
 				case "tf2": {
 					const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })

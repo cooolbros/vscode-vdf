@@ -124,7 +124,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 	async function create(name: string, type: vscode.FileType) {
 		if (type == vscode.FileType.Directory) {
-			return { name: name, fileSystem: await factory.get({ type: "folder", uri: dirname.joinPath(name) }) }
+			return { name: name, fileSystem: await factory.get({ type: "folder", folder: dirname.joinPath(name) }) }
 		}
 		else if (name.endsWith(".vpk")) {
 			return { name: name, fileSystem: await VPKFileSystem(dirname.joinPath(name)) }
@@ -239,7 +239,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 			async (path, factory) => {
 				switch (path.type) {
 					case "folder": {
-						return await FolderFileSystem(path.uri)
+						return await FolderFileSystem(path.folder)
 					}
 					case "tf2": {
 						return ObservableFileSystem(
@@ -292,7 +292,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 																	return await VPKFileSystem(vpk)
 																}
 
-																return await factory.get({ type: "folder", uri: uri })
+																return await factory.get({ type: "folder", folder: uri })
 															}
 															catch (error) {
 																if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
@@ -330,7 +330,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						)
 					}
 					case "popfile:bsp": {
-						const extname = posix.extname(path.uri.basename())
+						const extname = posix.extname(path.popfile.basename())
 						if (extname != ".pop") {
 							throw new Error(extname)
 						}
@@ -338,7 +338,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						return ObservableFileSystem(
 							usingAsync(async () => await factory.get({ type: "tf2" })).pipe(
 								switchMap((teamFortress2FileSystem) => {
-									return findMap(path.uri, teamFortress2FileSystem).pipe(
+									return findMap(path.popfile, teamFortress2FileSystem).pipe(
 										switchMap((bsp) => {
 											return bsp != null
 												? teamFortress2FileSystem.resolve(`maps/${bsp}`)
@@ -346,7 +346,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 										}),
 										switchMap((entry) => {
 											return entry.type == EntryType.File
-												? usingAsync(async () => await factory.get({ type: "bsp", uri: entry.uri }))
+												? usingAsync(async () => await factory.get({ type: "bsp", bsp: entry.uri }))
 												: of(EmptyFileSystem())
 										})
 									)
@@ -355,12 +355,12 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						)
 					}
 					case "bsp": {
-						const extname = posix.extname(path.uri.basename())
+						const extname = posix.extname(path.bsp.basename())
 						if (extname != ".bsp") {
 							throw new Error(extname)
 						}
 
-						return await BSPFileSystem(path.uri)
+						return await BSPFileSystem(path.bsp)
 					}
 				}
 			}

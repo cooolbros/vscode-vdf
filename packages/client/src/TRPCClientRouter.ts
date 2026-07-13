@@ -94,9 +94,9 @@ export function TRPCClientRouter(
 							paths: z.array(
 								z.discriminatedUnion("type", [
 									z.object({ type: z.literal("tf2") }),
-									z.object({ type: z.literal("folder"), uri: Uri.schema }),
-									z.object({ type: z.literal("popfile:bsp"), uri: Uri.schema }),
-									z.object({ type: z.literal("bsp"), uri: Uri.schema }),
+									z.object({ type: z.literal("folder"), folder: Uri.schema }),
+									z.object({ type: z.literal("popfile:bsp"), popfile: Uri.schema }),
+									z.object({ type: z.literal("bsp"), bsp: Uri.schema }),
 								])
 							)
 						})

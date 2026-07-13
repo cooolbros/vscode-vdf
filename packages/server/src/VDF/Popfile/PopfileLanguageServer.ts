@@ -47,9 +47,9 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 					init,
 					documentConfiguration$,
 					await this.fileSystems.get([
-						...(posix.extname(init.uri.path) == ".pop" ? [{ type: <const>"popfile:bsp", uri: init.uri }] : []),
+						...(posix.extname(init.uri.path) == ".pop" ? [{ type: <const>"popfile:bsp", popfile: init.uri }] : []),
 						{ type: "tf2" },
-						...workspaceUris.map((uri) => ({ type: <const>"folder", uri: uri })),
+						...workspaceUris.map((uri) => ({ type: <const>"folder", folder: uri })),
 					]),
 					(uri) => fromTRPCSubscription(this.trpc.client.workspace.createFileSystemWatcher, { uri }),
 					this.documents,

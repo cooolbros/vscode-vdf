@@ -139,7 +139,7 @@ export function showWaveStatusPreviewToSide(
 
 		const fileSystem$ = usingAsync(async () => {
 			return await VirtualFileSystem([
-				fileSystemMountPointFactory.get({ type: "popfile:bsp", uri: new Uri(document.uri) }),
+				fileSystemMountPointFactory.get({ type: "popfile:bsp", popfile: new Uri(document.uri) }),
 				fileSystemMountPointFactory.get({ type: "tf2" }),
 			])
 		}).pipe(

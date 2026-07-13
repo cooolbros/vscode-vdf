@@ -36,15 +36,15 @@ export class VMTLanguageServer extends VDFLanguageServer<
 				])
 
 				if (workspaceRoot != null) {
-					paths.push({ type: "folder", uri: workspaceRoot })
+					paths.push({ type: "folder", folder: workspaceRoot })
 				}
 
 				if (init.uri.scheme == "bsp") {
-					paths.push({ type: "bsp", uri: new Uri(JSON.parse(new URLSearchParams(init.uri.query).get("root")!)) })
+					paths.push({ type: "bsp", bsp: new Uri(JSON.parse(new URLSearchParams(init.uri.query).get("root")!)) })
 				}
 
 				paths.push({ type: "tf2" })
-				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
+				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", folder: workspaceUri })))
 
 				const workspace = this.workspaces.getOrInsertComputed(workspaceRoot?.toString() ?? "tf2", async () => {
 					return new VMTWorkspace(workspaceRoot ?? new Uri({ scheme: "file", path: "/" }), await this.fileSystems.get(paths), this.documents)

@@ -15,7 +15,7 @@ export function importPopfileTemplates(fileSystemMountPointFactory: RefCountAsyn
 	return async ({ document }: TextEditor) => {
 		try {
 			await using fileSystem = await VirtualFileSystem([
-				fileSystemMountPointFactory.get({ type: "popfile:bsp", uri: new Uri(document.uri) }),
+				fileSystemMountPointFactory.get({ type: "popfile:bsp", popfile: new Uri(document.uri) }),
 				fileSystemMountPointFactory.get({ type: "tf2" }),
 			])
 

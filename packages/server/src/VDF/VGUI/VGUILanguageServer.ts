@@ -37,11 +37,11 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				])
 
 				if (workspaceRoot != null) {
-					paths.push({ type: "folder", uri: workspaceRoot })
+					paths.push({ type: "folder", folder: workspaceRoot })
 				}
 
 				paths.push({ type: "tf2" })
-				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", uri: workspaceUri })))
+				paths.push(...workspaceUris.map((workspaceUri) => ({ type: <const>"folder", folder: workspaceUri })))
 
 				let workspace: Promise<VGUIWorkspace> | null
 				if (workspaceRoot != null) {
@@ -89,7 +89,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								return new VGUIWorkspace({
 									uri: input.uri,
 									fileSystem: await this.fileSystems.get([
-										{ type: "folder", uri: input.uri },
+										{ type: "folder", folder: input.uri },
 										{ type: "tf2" }
 									]),
 									documents: this.documents,

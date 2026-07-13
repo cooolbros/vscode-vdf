@@ -59,7 +59,7 @@ export function listPopfileClassIcons(fileSystemMountPointFactory: RefCountAsync
 		}
 
 		await using fileSystem = await VirtualFileSystem([
-			fileSystemMountPointFactory.get({ type: "popfile:bsp", uri: new Uri(document.uri) }),
+			fileSystemMountPointFactory.get({ type: "popfile:bsp", popfile: new Uri(document.uri) }),
 			fileSystemMountPointFactory.get({ type: "tf2" }),
 		])
 

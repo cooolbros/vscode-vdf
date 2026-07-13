@@ -79,7 +79,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 				const workspaceRoot = await this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 
 				const paths: FileSystemKey[] = [
-					...(workspaceRoot ? [{ type: <const>"folder", uri: workspaceRoot }] : []),
+					...(workspaceRoot ? [{ type: <const>"folder", folder: workspaceRoot }] : []),
 					{ type: "tf2" },
 				]
 
@@ -125,7 +125,7 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 								return new HUDAnimationsWorkspace({
 									uri: input.uri,
 									fileSystem: await this.fileSystems.get([
-										{ type: "folder", uri: input.uri },
+										{ type: "folder", folder: input.uri },
 										{ type: "tf2" }
 									]),
 									server: this,
