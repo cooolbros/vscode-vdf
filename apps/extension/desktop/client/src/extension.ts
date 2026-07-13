@@ -388,7 +388,13 @@ export function activate(context: ExtensionContext): void {
 
 		const result = await client.start()
 
-		const { teamFortress2Folder: teamFortress2FolderReturned } = z.object({ teamFortress2Folder: Uri.schema.optional() }).parse(result)
+		const initializeResultSchema = z.object({
+			teamFortress2Folder: z.boolean().default(false),
+			workspaceFolders: z.boolean().default(false),
+		})
+
+		const { teamFortress2Folder: teamFortress2FolderReturned, workspaceFolders: workspaceFoldersReturned } = initializeResultSchema.parse(result)
+
 		if (teamFortress2FolderReturned) {
 			const teamFortress2FolderSubscription = teamFortress2Folder$.subscribe((value) => {
 				teamFortress2Folder = value
@@ -396,6 +402,12 @@ export function activate(context: ExtensionContext): void {
 			})
 
 			subscriptions.push(new Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
+		}
+
+		if (workspaceFoldersReturned) {
+			subscriptions.push(workspace.onDidChangeWorkspaceFolders(() => {
+				client.client.restart()
+			}))
 		}
 	}
 

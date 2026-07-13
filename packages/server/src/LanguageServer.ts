@@ -18,7 +18,7 @@ import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import type vscode from "vscode"
-import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, InlayHint, InlayHintRequest, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type InitializeParams, type InlayHintParams, type LSPAny, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
+import { CodeAction, CodeActionKind, CodeLensRefreshRequest, Color, CompletionItem, CompletionItemKind, Diagnostic, DidChangeConfigurationNotification, DocumentLink, DocumentSymbol, Hover, InlayHint, InlayHintRequest, MarkupKind, TextDocumentSyncKind, TextEdit, type CodeActionParams, type CodeLensParams, type ColorPresentationParams, type CompletionParams, type Connection, type DefinitionParams, type DidSaveTextDocumentParams, type DocumentColorParams, type DocumentFormattingParams, type DocumentLinkParams, type DocumentSymbolParams, type GenericRequestHandler, type HoverParams, type InitializeParams, type InitializeResult, type InlayHintParams, type PrepareRenameParams, type ReferenceParams, type RenameParams, type ServerCapabilities, type TextDocumentChangeEvent } from "vscode-languageserver"
 import { z } from "zod"
 import { version } from "../../../package.json"
 import { Definitions, References } from "./DefinitionReferences"
@@ -80,7 +80,7 @@ export abstract class LanguageServer<
 	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
-	protected readonly workspaceUris: Promise<Uri[]>
+	protected readonly workspaceUris: PromiseWithResolvers<Uri[]>
 	protected readonly fileSystems: RefCountAsyncDisposableFactory<FileSystemKey[], FileSystemMountPoint>
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
@@ -111,9 +111,7 @@ export abstract class LanguageServer<
 		this.languageId = languageId
 		this.connection = connection
 		this.languageServerConfiguration = languageServerConfiguration
-
-		const workspaceUris = Promise.withResolvers<Uri[]>()
-		this.workspaceUris = workspaceUris.promise
+		this.workspaceUris = Promise.withResolvers<Uri[]>()
 
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
@@ -245,7 +243,6 @@ export abstract class LanguageServer<
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server v${version}`)
 			this.connection.console.log(languageServerConfiguration.platform)
-			workspaceUris.resolve(params.workspaceFolders?.map((workspaceFolder) => new Uri(workspaceFolder.uri)) ?? [])
 			const result = await this.onInitialize(params)
 
 			return {
@@ -427,8 +424,11 @@ export abstract class LanguageServer<
 		return await this.trpc.client.VTFToPNGBase64.query({ uri: vtf.uri })
 	}
 
-	protected async onInitialize(params: InitializeParams): Promise<Record<string, LSPAny>> {
-		return {}
+	protected async onInitialize(params: InitializeParams): Promise<InitializeResult[string]> {
+		this.workspaceUris.resolve(params.workspaceFolders?.map((workspaceFolder) => new Uri(workspaceFolder.uri)) ?? [])
+		return {
+			workspaceFolders: true
+		}
 	}
 
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {

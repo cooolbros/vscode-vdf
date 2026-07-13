@@ -32,7 +32,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 				const paths: FileSystemKey[] = []
 
 				const [workspaceUris, workspaceRoot] = await Promise.all([
-					this.workspaceUris,
+					this.workspaceUris.promise,
 					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
 				])
 
@@ -181,7 +181,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 
 		return {
 			...await super.onInitialize(params),
-			teamFortress2Folder
+			teamFortress2Folder: true
 		}
 	}
 }
