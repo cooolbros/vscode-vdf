@@ -42,11 +42,12 @@ export class PopfileWorkspace extends WorkspaceBase {
 	>
 
 	constructor(
+		teamFortress2Folder: Uri,
 		public readonly fileSystem: FileSystemMountPoint,
 		private readonly server: PopfileLanguageServer,
 		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 	) {
-		super(new Uri({ scheme: "file", path: "/" }))
+		super(teamFortress2Folder)
 
 		const items_game = Promise.try(async () => {
 			const entry = await firstValueFrom(this.fileSystem.resolve("scripts/items/items_game.txt"))
