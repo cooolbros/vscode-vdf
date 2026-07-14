@@ -1,7 +1,7 @@
 import { Uri } from "common/Uri"
 import { BehaviorSubject } from "rxjs"
 import { VDFRange } from "vdf"
-import { CompletionItem, MarkupKind, type CompletionItemKind } from "vscode-languageserver"
+import { MarkupKind, type CompletionItemKind } from "vscode-languageserver"
 import { z } from "zod"
 
 export class Collection<T> {
