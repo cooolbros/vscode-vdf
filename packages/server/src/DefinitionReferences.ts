@@ -87,8 +87,6 @@ export const definitionSchema = z.object({
 	data: z.any().optional(),
 })
 
-CompletionItem
-
 export type Definition = Readonly<z.infer<typeof definitionSchema>>
 
 export class Definitions {
