@@ -5,7 +5,7 @@ import { Uri } from "common/Uri"
 import { posix } from "path"
 import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
-import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../../DefinitionReferences"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import { VGUITextDocument } from "./VGUITextDocument"
 
@@ -118,17 +118,18 @@ export class VGUIWorkspace extends WorkspaceBase {
 	private readonly documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>
 
 	public readonly clientSchemeFiles$: Observable<Set<string>>
-	public readonly clientScheme$: Observable<DefinitionReferences>
+	public readonly clientScheme$: Observable<GlobalDefinitionReferences>
 
 	public readonly sourceSchemeFiles$: Observable<Set<string>>
 	public readonly chatSchemeFiles$: Observable<Set<string>>
 
 	public readonly languageTokensFiles$: Observable<Set<string>>
-	public readonly languageTokens$: Observable<DefinitionReferences>
+	public readonly languageTokens$: Observable<GlobalDefinitionReferences>
 
 	public readonly gameSoundsFiles$: Observable<Set<string>>
+	public readonly gameSounds$: Observable<GlobalDefinitionReferences>
 
-	public readonly globals$: Observable<DefinitionReferences[]>
+	public readonly globals$: Observable<GlobalDefinitionReferences[]>
 
 	private readonly documentSymbols: Map<string, Observable<VDFDocumentSymbols | null>>
 	public readonly fileReferences: Map<string, { references$: BehaviorSubject<Map<string, References | null>>, document$: Observable<VGUITextDocument | null> }>
@@ -174,7 +175,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 			)
 		}
 
-		const definitions = (path: string): Observable<DefinitionReferences> => {
+		const definitions = (path: string): Observable<GlobalDefinitionReferences> => {
 			return fileSystem.resolve(path).pipe(
 				concatMap(async (entry) => {
 					if (entry.type != EntryType.File) {

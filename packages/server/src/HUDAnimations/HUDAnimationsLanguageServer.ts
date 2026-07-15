@@ -162,19 +162,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 			}
 		})
 
-		const workspace = event.document.workspace
-
-		if (workspace) {
-			subscriptions.push(
-				event.document.definitionReferences$.subscribe(async (documentDefinitionReferences) => {
-					await this.trpc.servers.vgui.workspace.setFilesReferences.mutate({
-						key: workspace.uri,
-						references: HUDAnimationsWorkspace.extractWorkspaceReferences(event.document.uri, documentDefinitionReferences.references)
-					})
-				})
-			)
-		}
-
 		subscriptions.push(
 			event.document.decorations$.subscribe((decorations) => {
 				this.trpc.client.textDocument.decoration.mutate({

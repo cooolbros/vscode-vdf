@@ -11,7 +11,7 @@ import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import type { FileType } from "vscode"
 import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
-import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
+import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
 
 export interface VDFTextDocumentConfiguration<TDependencies extends VDFTextDocumentDependencies> {
@@ -23,7 +23,7 @@ export interface VDFTextDocumentConfiguration<TDependencies extends VDFTextDocum
 
 export interface VDFTextDocumentDependencies {
 	schema: VDFTextDocumentSchema<this>
-	globals$: Observable<DefinitionReferences[]>
+	globals$: Observable<GlobalDefinitionReferences[]>
 }
 
 export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDependencies> {
@@ -618,8 +618,11 @@ export abstract class VDFTextDocument<
 							)
 						}).pipe(
 							map(({ globals, value }) => {
+								const map = new Map<string, References | null>()
+								map.set(this.uri.toString(), new References(this.uri, value.definitionReferences.references, []))
+
 								for (const global of globals) {
-									global.references.setDocumentReferences(this.uri, new References(this.uri, value.definitionReferences.references, []), true)
+									global.references.setDocumentReferences(map, true)
 								}
 
 								return {
@@ -630,7 +633,7 @@ export abstract class VDFTextDocument<
 										definitions: new Definitions({
 											version: [this.version, ...value.base.flatMap(({ definitions }) => definitions.version)],
 											collection: value.definitionReferences.definitions,
-											globals: globals.map(({ definitions }) => definitions)
+											globals: globals
 										}),
 										references: new References(this.uri, value.definitionReferences.references, value.base.map(({ references }) => references), this.references$)
 									} satisfies DefinitionReferences

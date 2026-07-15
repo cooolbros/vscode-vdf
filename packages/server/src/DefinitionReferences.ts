@@ -98,9 +98,9 @@ export class Definitions {
 
 	public readonly version: number[]
 	private readonly collection: Collection<Definition>
-	private readonly globals: Definitions[]
+	private readonly globals: GlobalDefinitionReferences[]
 
-	constructor({ version, collection = new Collection(), globals = [] }: { version: number[], collection?: Collection<Definition>, globals?: Definitions[] }) {
+	constructor({ version, collection = new Collection(), globals = [] }: { version: number[], collection?: Collection<Definition>, globals?: GlobalDefinitionReferences[] }) {
 		this.version = version
 		this.collection = collection
 		this.globals = globals
@@ -113,7 +113,7 @@ export class Definitions {
 		}
 
 		for (const global of this.globals) {
-			const definitions = global.get(scope, type, key)
+			const definitions = global.definitions.get(scope, type, key)
 			if (definitions != null) {
 				return definitions
 			}
@@ -129,8 +129,8 @@ export class Definitions {
 			return map
 		}
 
-		for (const definitions of this.globals) {
-			const map = definitions.ofType(scope, type)
+		for (const global of this.globals) {
+			const map = global.definitions.ofType(scope, type)
 			if (map.size) {
 				return map
 			}
@@ -151,7 +151,11 @@ export class Definitions {
 	}
 }
 
-export class References {
+export interface SetDocumentReferences {
+	setDocumentReferences(references: Map<string /* Uri */, References | null>, notify: boolean): void
+}
+
+export class References implements SetDocumentReferences {
 
 	public static readonly schema: z.ZodType<References> = z.object({
 		uri: Uri.schema,
@@ -168,14 +172,14 @@ export class References {
 
 	public readonly uri: Uri
 	public readonly collection: Collection<VDFRange>
-	private readonly dependencies: References[]
+	private readonly dependencies: SetDocumentReferences[]
 
 	public readonly references$: BehaviorSubject<Map<string, References>>
 
 	constructor(
 		uri: Uri,
 		collection = new Collection<VDFRange>(),
-		dependencies: References[],
+		dependencies: SetDocumentReferences[],
 		references$ = new BehaviorSubject(new Map<string, References>())
 	) {
 		this.uri = uri
@@ -183,8 +187,11 @@ export class References {
 		this.dependencies = dependencies
 		this.references$ = references$
 
+		const map = new Map<string, References | null>()
+		map.set(this.uri.toString(), this)
+
 		for (const dependency of this.dependencies) {
-			dependency.setDocumentReferences(this.uri, this, false)
+			dependency.setDocumentReferences(map, false)
 		}
 	}
 
@@ -196,16 +203,21 @@ export class References {
 		return this.collection[Symbol.iterator]()
 	}
 
-	public setDocumentReferences(uri: Uri, references: References | null, notify: boolean) {
-		if (references != null) {
-			this.references$.value.set(uri.toString(), references)
-		}
-		else {
-			this.references$.value.delete(uri.toString())
+	public setDocumentReferences(references: Map<string, References | null>, notify: boolean): void {
+		for (const [uri, documentReferences] of references) {
+			if (documentReferences != null) {
+				this.references$.value.set(uri, documentReferences)
+			}
+			else {
+				this.references$.value.delete(uri)
+			}
 		}
 
+		const map = new Map<string, References | null>()
+		map.set(this.uri.toString(), this)
+
 		for (const dependency of this.dependencies) {
-			dependency.setDocumentReferences(this.uri, this, notify)
+			dependency.setDocumentReferences(map, notify)
 		}
 
 		if (notify) {
@@ -241,4 +253,9 @@ export interface DefinitionReferences {
 	readonly scopes: Map<symbol, Map<number, VDFRange>>
 	readonly definitions: Definitions
 	readonly references: References
+}
+
+export interface GlobalDefinitionReferences {
+	readonly definitions: Definitions
+	readonly references: SetDocumentReferences
 }

@@ -6,7 +6,7 @@ import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
 import { defer, map, of, shareReplay, startWith, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
-import { Collection, Definitions, References, type DefinitionReferences } from "../../DefinitionReferences"
+import { Collection, Definitions, References, type DefinitionReferences, type GlobalDefinitionReferences } from "../../DefinitionReferences"
 import type { TextDocumentInit } from "../../TextDocumentBase"
 import { VDFTextDocument, type VDFTextDocumentDependencies, type VDFTextDocumentSchema } from "../VDFTextDocument"
 import { VGUIFileType, VGUIWorkspace } from "./VGUIWorkspace"
@@ -73,7 +73,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 				).pipe(
 					map((type) => {
 						let schema: (document: VGUITextDocument) => VDFTextDocumentSchema<VGUITextDocumentDependencies>
-						let globals$: Observable<DefinitionReferences[]>
+						let globals$: Observable<GlobalDefinitionReferences[]>
 
 						switch (type) {
 							case VGUIFileType.None:

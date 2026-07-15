@@ -113,6 +113,59 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 												: of([])
 										).pipe(
 											map((elements) => {
+												const color = Symbol.for("color")
+												const font = Symbol.for("font")
+												const element = Symbol.for("element")
+
+												const workspaceFilesReferences = new Map<string, Map<string, Collection<VDFRange> | null>>()
+
+												for (const { scope, type, key, value: ranges } of references) {
+													if (scope != null) {
+														continue
+													}
+
+													let target: { paths: string[], type: symbol } | null
+
+													if (type == color || type == font) {
+														target = { paths: ["resource/clientscheme.res"], type: type }
+													}
+													else {
+														const key = Symbol.keyFor(type)!
+														if (((key): key is keyof typeof eventFiles => key in eventFiles)(key)) {
+															const eventFile = eventFiles[key]
+															target = { paths: typeof eventFile == "string" ? [eventFile] : eventFile, type: element }
+														}
+														else {
+															target = null
+														}
+													}
+
+													if (target == null) {
+														continue
+													}
+
+													for (const path of target.paths) {
+														workspaceFilesReferences
+															.getOrInsertComputed(path, () => new Map<string, Collection<VDFRange>>())
+															.getOrInsertComputed(this.uri.toString(), () => new Collection<VDFRange>())!
+															.set(null, target.type, key, ...ranges)
+													}
+												}
+
+												workspaceFilesReferences.getOrInsertComputed("resource/clientscheme.res", () => new Map<string, null>([[this.uri.toString(), null]]))
+
+												for (const event in eventFiles) {
+													// @ts-ignore
+													const eventFile: string | string[] = eventFiles[event]
+													for (const path of typeof eventFile == "string" ? [eventFile] : eventFile) {
+														workspaceFilesReferences
+															.getOrInsertComputed(path, () => new Map<string, Collection<VDFRange>>())
+															.getOrInsertComputed(this.uri.toString(), () => null)
+													}
+												}
+
+												workspace.setWorkspaceReferences(workspaceFilesReferences)
+
 												return {
 													dependencies: {},
 													documentConfiguration: documentConfiguration,
@@ -123,7 +176,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 															version: [this.version],
 															collection: definitions,
 															globals: [
-																...elements.map(({ definitions }) => definitions),
+																...elements.map((element) => element.definitions),
 																clientScheme
 															]
 														}),
@@ -143,7 +196,6 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 						documentConfiguration: this.documentConfiguration$,
 						documentSymbols: this.documentSymbols$
 					}).pipe(
-
 						map(({ documentConfiguration, documentSymbols }) => {
 							const definitions = new Collection<Definition>()
 							const references = new Collection<VDFRange>()

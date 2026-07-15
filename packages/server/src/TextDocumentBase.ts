@@ -8,7 +8,7 @@ import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
 import type { FileType } from "vscode"
 import { CodeAction, CodeLens, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
-import { References, type DefinitionReferences } from "./DefinitionReferences"
+import { References, type DefinitionReferences, type SetDocumentReferences } from "./DefinitionReferences"
 import type { TextDocumentRequestParams } from "./LanguageServer"
 
 export interface TextDocumentInit {
@@ -40,7 +40,7 @@ export type ColourInformationStringify = (ColorInformation & { stringify(colour:
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
-> implements AsyncDisposable {
+> implements SetDocumentReferences, AsyncDisposable {
 
 	public static readonly conditionals = new Set([
 		"[$DECK]",
@@ -86,7 +86,7 @@ export abstract class TextDocumentBase<
 	}
 
 	protected readonly document: TextDocument
-	protected readonly references$: BehaviorSubject<Map<string, References>>
+	protected readonly references$: BehaviorSubject<Map<string /* Uri */, References>>
 
 	public readonly documentConfiguration$: Observable<VSCodeVDFConfiguration>
 	public readonly fileSystem: FileSystemMountPoint
@@ -335,7 +335,7 @@ export abstract class TextDocumentBase<
 		return this.document.getText(range)
 	}
 
-	public setDocumentReferences(references: Map<string, References | null>) {
+	public setDocumentReferences(references: Map<string /* Uri */, References | null>) {
 		for (const [uri, documentReferences] of references) {
 			if (documentReferences != null) {
 				this.references$.value.set(uri, documentReferences)

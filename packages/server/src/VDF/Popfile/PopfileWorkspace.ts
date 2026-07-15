@@ -25,7 +25,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 			values: VDFTextDocumentSchema<PopfileTextDocumentDependencies>["values"],
 		},
 		completion: Pick<VDFTextDocumentSchema<PopfileTextDocumentDependencies>["completion"], "values">,
-		globals$: Observable<DefinitionReferences[]>
+		globals$: Observable<GlobalDefinitionReferences[]>
 	}>
 
 	private readonly maps: Map<
