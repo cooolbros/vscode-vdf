@@ -126,7 +126,7 @@
     "questitem_collapse": "resource/ui/quests/questitempanel_base.res",
     "questitem_expand": "resource/ui/quests/questitempanel_base.res",
     "questitem_operation2_expand": "resource/ui/econ/questitempanel.res",
-    "QuestItem_Operation2_Collapse": "resource/ui/econ/questitempanel.res",
+    "questitem_operation2_collapse": "resource/ui/econ/questitempanel.res",
     "questitem_reset": "resource/ui/quests/questitempanel_base.res",
     "questitem_staticphoto_reveal": "resource/ui/quests/questitempanel_base.res",
     "questitem_turningin": "resource/ui/quests/questitempanel_base.res",
