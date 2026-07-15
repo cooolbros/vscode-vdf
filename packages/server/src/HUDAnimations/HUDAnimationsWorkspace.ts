@@ -4,7 +4,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concat, firstValueFrom, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, concat, firstValueFrom, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap, take } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -47,6 +47,8 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		this.files = new Map()
 
 		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri }).pipe(
+			shareReplay(1),
+			take(1),
 			ignoreElements()
 		)
 
@@ -324,7 +326,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			shareReplay(1)
 		)
 
-		this.ready = Promise.all([firstValueFrom(ready$), firstValueFrom(this.definitionReferences$)]).then(() => undefined)
+		this.ready = Promise.all([lastValueFrom(ready$, { defaultValue: undefined }), firstValueFrom(this.definitionReferences$)]).then(() => undefined)
 	}
 
 	public getEventDefinitions(event: string) {

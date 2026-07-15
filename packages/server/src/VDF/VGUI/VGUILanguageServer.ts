@@ -6,7 +6,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { ignoreElements, map, switchMap } from "rxjs"
+import { map, switchMap } from "rxjs"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
@@ -86,9 +86,9 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.subscription(({ input, signal }) => {
-							return observableToAsyncIterable(
+							return observableToAsyncIterable<void>(
 								usingAsync(async () => await this.workspaces.get(input.uri)).pipe(
-									ignoreElements()
+									map(() => undefined),
 								),
 								signal!
 							)
