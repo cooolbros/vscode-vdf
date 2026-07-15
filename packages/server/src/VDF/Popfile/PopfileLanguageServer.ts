@@ -33,7 +33,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 		super(languageId, name, connection, {
 			name: "popfile",
 			platform: platform,
-			servers: new Set(),
+			servers: new Set(["vdf"]),
 			capabilities: {
 				signatureHelpProvider: {
 					// Squirrel

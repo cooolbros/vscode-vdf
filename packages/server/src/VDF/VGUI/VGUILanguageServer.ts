@@ -130,6 +130,25 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								signal!
 							)
 						}),
+					gameSounds: t
+						.procedure
+						.input(
+							z.object({
+								key: Uri.schema,
+							})
+						)
+						.subscription(async ({ input, signal }) => {
+							return observableToAsyncIterable<Definitions>(
+								usingAsync(async () => await this.workspaces.get(input.key)).pipe(
+									switchMap((workspace) => {
+										return workspace.gameSounds$.pipe(
+											map((definitionReferences) => definitionReferences.definitions)
+										)
+									})
+								),
+								signal!
+							)
+						}),
 					definitions: t
 						.procedure
 						.input(

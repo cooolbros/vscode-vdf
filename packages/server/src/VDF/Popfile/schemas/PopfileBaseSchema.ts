@@ -202,6 +202,7 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 				const wavespawn = Symbol.for("wavespawn")
 				const template = Symbol.for("template")
 				const item = Symbol.for("item")
+				const game_sound = Symbol.for("game_sound")
 
 				const dependencies = params.dependencies
 				const documentSymbols = params.getHeader()
@@ -276,8 +277,8 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 
 						if (key == "Sound".toLowerCase() && documentSymbol.detail != undefined) {
 							const { value } = removeSoundChars(documentSymbol.detail)
-							if (dependencies.game_sounds.get(null, Symbol.for("sound"), value)?.length) {
-								references.set(null, Symbol.for("sound"), value, documentSymbol.detailRange!)
+							if (dependencies.gameSounds.definitions.get(null, game_sound, value)?.length) {
+								references.set(null, game_sound, value, documentSymbol.detailRange!)
 							}
 						}
 
@@ -335,8 +336,8 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 							for (const sound of values.get("sound") ?? []) {
 								if (sound.detail) {
 									const { value } = removeSoundChars(sound.detail)
-									if (dependencies.game_sounds.get(null, Symbol.for("sound"), value)?.length) {
-										references.set(null, Symbol.for("sound"), value, sound.detailRange!)
+									if (dependencies.gameSounds.definitions.get(null, game_sound, value)?.length) {
+										references.set(null, game_sound, value, sound.detailRange!)
 									}
 								}
 							}

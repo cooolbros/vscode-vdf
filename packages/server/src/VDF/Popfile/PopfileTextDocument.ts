@@ -5,7 +5,7 @@ import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { combineLatest, defer, finalize, from, map, of, ReplaySubject, share, Subject, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
-import { Definitions } from "../../DefinitionReferences"
+import { type GlobalDefinitionReferences } from "../../DefinitionReferences"
 import { type TextDocumentInit } from "../../TextDocumentBase"
 import { VDFTextDocument, type VDFTextDocumentDependencies } from "../VDFTextDocument"
 import type { PopfileWorkspace } from "./PopfileWorkspace"
@@ -16,7 +16,7 @@ export interface PopfileTextDocumentDependencies extends VDFTextDocumentDependen
 	classIcons: Map<string, VDFRange[]>
 	bsp: `mvm_${string}.bsp` | null
 	events: Map<string, string>
-	game_sounds: Definitions
+	gameSounds: GlobalDefinitionReferences
 }
 
 type GetClassIconFlags = (uri: Uri, fileSystem: FileSystemMountPoint) => Observable<{ uri: Uri, flags: number } | null>
@@ -50,11 +50,11 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 
 					return schema(this)
 				}),
-				from(workspace.game_sounds),
+				workspace.gameSounds$,
 				from(workspace.dependencies),
 				workspace.entities(init.uri),
 			]).pipe(
-				map(([schema, game_sounds, workspace, entities]) => {
+				map(([schema, gameSounds, workspace, entities]) => {
 					return {
 						schema: {
 							...schema,
@@ -81,7 +81,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 						classIcons: new Map(),
 						bsp: entities?.bsp ?? null,
 						events: entities?.events ?? new Map([["default", "Default"]]),
-						game_sounds: game_sounds.definitions,
+						gameSounds: gameSounds,
 					} satisfies PopfileTextDocumentDependencies
 				})
 			)

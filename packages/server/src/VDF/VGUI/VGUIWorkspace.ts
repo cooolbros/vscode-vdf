@@ -4,6 +4,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { posix } from "path"
 import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
+import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
@@ -260,6 +261,48 @@ export class VGUIWorkspace extends WorkspaceBase {
 						.filter((detail) => detail != undefined)
 						.map((detail) => posix.resolve(`/${detail}`).substring(1))
 				)
+			}),
+			shareReplay(1)
+		)
+
+		this.gameSounds$ = this.gameSoundsFiles$.pipe(
+			switchMap((paths) => {
+				return combineLatest(
+					[...paths].map((path) => this.fileSystem.resolve(path).pipe(
+						switchMap((entry) => {
+							if (entry.type != EntryType.File) {
+								return of(null)
+							}
+
+							return usingAsync(async () => await documents.get(entry.uri)).pipe(
+								switchMap((document) => document.definitionReferences$),
+							)
+						})
+					))
+				)
+			}),
+			map((results) => {
+				const version: number[] = []
+				const collection = new Collection<Definition>()
+				const dependencies: SetDocumentReferences[] = []
+
+				for (const fileDefinitionReferences of results.values().filter((result) => result != null)) {
+					version.push(...fileDefinitionReferences.definitions.version)
+
+					for (const { scope, type, key, value: baseDefinitions } of fileDefinitionReferences.definitions) {
+						if (scope == null) {
+							collection.set(null, type, key, ...baseDefinitions)
+						}
+					}
+
+					dependencies.push(fileDefinitionReferences.references)
+				}
+
+				return {
+					scopes: new Map(),
+					definitions: new Definitions({ version: version, collection: collection }),
+					references: new References(this.uri, new Collection<VDFRange>(), dependencies)
+				} satisfies DefinitionReferences
 			}),
 			shareReplay(1)
 		)

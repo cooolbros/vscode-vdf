@@ -16,7 +16,7 @@ import type { PopfileTextDocument, PopfileTextDocumentDependencies } from "./Pop
 
 export class PopfileWorkspace extends WorkspaceBase {
 
-	public readonly game_sounds: Promise<DefinitionReferences>
+	public readonly gameSounds$: Observable<GlobalDefinitionReferences>
 	public readonly paints: Promise<Map<string, string>>
 	public readonly effects: Promise<Map<string, string>>
 	public readonly dependencies: Promise<{
@@ -173,61 +173,24 @@ export class PopfileWorkspace extends WorkspaceBase {
 			}
 		})
 
-		this.game_sounds = Promise.try(async () => {
-			const entry = await firstValueFrom(this.fileSystem.resolve("scripts/game_sounds_manifest.txt"))
-			if (entry.type != EntryType.File) {
-				throw new Error("scripts/game_sounds_manifest.txt")
-			}
+		this.gameSounds$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.gameSounds, { key: teamFortress2Folder }).pipe(
+			map((definitions) => {
+				return {
+					definitions: definitions,
+					references: {
+						setDocumentReferences: (references, notify) => {
+							const map = new Map<string, Map<string, References | null>>()
+							map.set("scripts/game_sounds_manifest.txt", references)
 
-			await using document = await documents.get(entry.uri)
-			const documentSymbols = await firstValueFrom(document.documentSymbols$)
-			const game_sounds_manifest = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "game_sounds_manifest")?.children
-			if (!game_sounds_manifest) {
-				throw new Error("game_sounds_manifest")
-			}
-
-			const files = game_sounds_manifest
-				.values()
-				.map((documentSymbol) => documentSymbol.detail)
-				.filter((detail) => detail != undefined)
-
-			const collection = new Collection<Definition>()
-
-			const results = await Promise.all(files.map(async (file) => {
-				const entry = await firstValueFrom(this.fileSystem.resolve(file))
-				if (entry.type != EntryType.File) {
-					return []
-				}
-
-				await using document = await documents.get(entry.uri)
-				const documentSymbols = await firstValueFrom(document.documentSymbols$)
-
-				return documentSymbols.map((documentSymbol) => {
-					return {
-						uri: entry.uri,
-						key: documentSymbol.key,
-						range: documentSymbol.range,
-						keyRange: documentSymbol.nameRange,
-						nameRange: undefined,
-						detail: undefined,
-						documentation: document.definitions.documentation(documentSymbol, "vdf"),
-						conditional: documentSymbol.conditional ?? undefined,
-					} satisfies Definition
-				})
-			}))
-
-			for (const result of results) {
-				for (const definition of result) {
-					collection.set(null, Symbol.for("sound"), definition.key, definition)
-				}
-			}
-
-			return {
-				scopes: new Map(),
-				definitions: new Definitions({ version: [document.version], collection }),
-				references: new References(document.uri, new Collection<VDFRange>(), [])
-			} satisfies DefinitionReferences
-		})
+							server.trpc.servers.vgui.workspace.setFilesReferences.mutate({
+								key: teamFortress2Folder,
+								references: map
+							})
+						},
+					}
+				} satisfies GlobalDefinitionReferences
+			})
+		)
 
 		this.paints = Promise.all([items_game, tf_english]).then(([items_game, tf_english]) => {
 			const items = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key == "items")?.children
