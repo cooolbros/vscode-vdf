@@ -51,13 +51,14 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 					return workspace.manifest$.pipe(
 						combineLatestWith(defer(() => this.documentConfiguration$)),
 						switchMap(([documents, documentConfiguration]) => {
-							if (documents.includes(this)) {
+							// Do not use documents.includes(this) or documentSymbols.get(this)! because documents is a Proxy(HUDAnimationsTextDocument)[]
+							if (documents.some((document) => Uri.equals(document.uri, this.uri))) {
 								return workspace.definitionReferences$.pipe(
 									map(({ documentSymbols, definitionReferences }) => {
 										return {
 											dependencies: {},
 											documentConfiguration: documentConfiguration,
-											documentSymbols: documentSymbols.get(this)!,
+											documentSymbols: documentSymbols.get(this.uri.toString())!,
 											definitionReferences: definitionReferences,
 										}
 									})
