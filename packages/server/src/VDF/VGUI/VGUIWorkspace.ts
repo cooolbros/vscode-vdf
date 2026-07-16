@@ -200,15 +200,6 @@ export class VGUIWorkspace extends WorkspaceBase {
 		)
 		this.clientScheme$ = definitions("resource/clientscheme.res")
 
-		// Preload
-		Promise.allSettled([
-			// clientscheme
-			firstValueFrom(this.clientScheme$),
-
-			// hudanimations_manifest
-			firstValueFrom(fileSystem.resolve("scripts/hudanimations_manifest.txt").pipe(map((entry) => documents.get(entry.uri!))))
-		])
-
 		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(
 			map((paths) => new Set(paths)),
 			shareReplayUntilDisposed(this.dispose$),
