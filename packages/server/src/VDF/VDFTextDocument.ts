@@ -1,11 +1,12 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { ambient, BaseErrorType, BaseResultType, combineLatestBaseFiles, fs, type BaseError, type BaseResult, type BaseValue } from "common/operators/combineLatestBaseFiles"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, finalize, firstValueFrom, map, Observable, ReplaySubject, share, shareReplay, switchMap } from "rxjs"
+import { combineLatest, distinctUntilChanged, finalize, firstValueFrom, map, Observable, shareReplay, switchMap } from "rxjs"
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -659,10 +660,7 @@ export abstract class VDFTextDocument<
 		this.configuration = {
 			...rest,
 			dependencies$: dependencies$.pipe(
-				share({
-					connector: () => new ReplaySubject(1),
-					resetOnRefCountZero: () => this.dispose$,
-				})
+				shareReplayUntilDisposed(this.dispose$)
 			)
 		}
 

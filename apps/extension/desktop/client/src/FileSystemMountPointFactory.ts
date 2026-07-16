@@ -5,12 +5,13 @@ import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, distinctUntilChanged, finalize, firstValueFrom, map, of, ReplaySubject, share, shareReplay, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, distinctUntilChanged, finalize, firstValueFrom, map, of, ReplaySubject, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDF } from "vdf"
 import vscode from "vscode"
 import { z } from "zod"
@@ -49,10 +50,7 @@ function ObservableFileSystem(fileSystem$: Observable<FileSystemMountPoint>): Fi
 	const dispose$ = new ReplaySubject<void>(1)
 
 	const inner$ = fileSystem$.pipe(
-		share({
-			connector: () => new ReplaySubject(1),
-			resetOnRefCountZero: () => dispose$,
-		})
+		shareReplayUntilDisposed(dispose$)
 	)
 
 	return {

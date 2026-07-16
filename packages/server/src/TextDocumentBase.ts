@@ -1,9 +1,10 @@
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, filter, firstValueFrom, isObservable, map, Observable, of, ReplaySubject, share, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, defer, filter, firstValueFrom, isObservable, map, Observable, of, ReplaySubject, shareReplay, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
 import type { FileType } from "vscode"
 import { CodeAction, CodeLens, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
@@ -212,18 +213,12 @@ export abstract class TextDocumentBase<
 		)
 
 		const data$ = configuration.definitionReferences$.pipe(
-			share({
-				connector: () => new ReplaySubject(1),
-				resetOnRefCountZero: () => this.dispose$,
-			})
+			shareReplayUntilDisposed(defer(() => this.dispose$))
 		)
 
 		this.definitionReferences$ = data$.pipe(
 			map(({ definitionReferences }) => definitionReferences),
-			share({
-				connector: () => new ReplaySubject(1),
-				resetOnRefCountZero: () => this.dispose$,
-			})
+			shareReplayUntilDisposed(defer(() => this.dispose$))
 		)
 
 		this.diagnostics$ = result$.pipe(

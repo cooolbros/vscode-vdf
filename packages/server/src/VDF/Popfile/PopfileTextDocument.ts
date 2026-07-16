@@ -1,9 +1,10 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
-import { combineLatest, defer, finalize, from, map, of, ReplaySubject, share, Subject, switchMap, type Observable } from "rxjs"
+import { combineLatest, defer, finalize, from, map, of, Subject, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { type GlobalDefinitionReferences } from "../../DefinitionReferences"
 import { type TextDocumentInit } from "../../TextDocumentBase"
@@ -145,10 +146,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 				finalize(() => {
 					this.classIcons.delete(classIcon)
 				}),
-				share({
-					connector: () => new ReplaySubject(1),
-					resetOnRefCountZero: () => this.disposeClassIcons$
-				})
+				shareReplayUntilDisposed(this.disposeClassIcons$)
 			)
 		})
 	}
