@@ -132,6 +132,9 @@
         "configurationDefaults": {
             "[popfile]": {
                 "editor.foldingStrategy": "indentation"
+            },
+            "files.readonlyInclude": {
+                "**/items_game.txt": true
             }
         },
         "configuration": [
