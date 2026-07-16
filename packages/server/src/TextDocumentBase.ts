@@ -1,10 +1,11 @@
+import { AsyncDisposableBase } from "common/AsyncDisposableBase"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, defer, filter, firstValueFrom, isObservable, map, Observable, of, ReplaySubject, shareReplay, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, filter, firstValueFrom, isObservable, map, Observable, of, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
 import type { FileType } from "vscode"
 import { CodeAction, CodeLens, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
@@ -41,7 +42,7 @@ export type ColourInformationStringify = (ColorInformation & { stringify(colour:
 export abstract class TextDocumentBase<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
-> implements SetDocumentReferences, AsyncDisposable {
+> extends AsyncDisposableBase implements SetDocumentReferences {
 
 	public static readonly conditionals = new Set([
 		"[$DECK]",
@@ -97,9 +98,6 @@ export abstract class TextDocumentBase<
 	public readonly definitionReferences$: Observable<DefinitionReferences>
 	public readonly diagnostics$: Observable<DiagnosticCodeAction[]>
 	public readonly codeLens$: Observable<CodeLens[]>
-
-	private readonly _dispose$: ReplaySubject<void>
-	public readonly dispose$: Observable<void>
 
 	public readonly definitions = {
 		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }, languageId = this.languageId) => {
@@ -165,15 +163,18 @@ export abstract class TextDocumentBase<
 		fileSystem: FileSystemMountPoint,
 		configuration: TextDocumentBaseConfiguration<TDocumentSymbols, TDependencies>,
 	) {
+		super()
+
 		this.uri = init.uri
 		this.languageId = init.languageId
 		this.document = TextDocument.create(init.uri.toString(), init.languageId, init.version, init.content)
 		this.references$ = new BehaviorSubject(new Map())
 
 		this.documentConfiguration$ = documentConfiguration$
-		this.fileSystem = fileSystem
+		this.fileSystem = this.stack.use(fileSystem)
 
 		this.text$ = new BehaviorSubject(this.document.getText())
+		this.stack.defer(() => this.text$.complete())
 
 		type Result = { success: true, value: TDocumentSymbols } | { success: false, value: VDFSyntaxError }
 
@@ -194,7 +195,7 @@ export abstract class TextDocumentBase<
 					}
 				}
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$)
 		)
 
 		this.documentSymbols$ = result$.pipe(
@@ -209,16 +210,16 @@ export abstract class TextDocumentBase<
 				}
 			}),
 			filter((documentSymbols): documentSymbols is TDocumentSymbols => documentSymbols != null),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$)
 		)
 
 		const data$ = configuration.definitionReferences$.pipe(
-			shareReplayUntilDisposed(defer(() => this.dispose$))
+			shareReplayUntilDisposed(this.dispose$)
 		)
 
 		this.definitionReferences$ = data$.pipe(
 			map(({ definitionReferences }) => definitionReferences),
-			shareReplayUntilDisposed(defer(() => this.dispose$))
+			shareReplayUntilDisposed(this.dispose$)
 		)
 
 		this.diagnostics$ = result$.pipe(
@@ -316,9 +317,6 @@ export abstract class TextDocumentBase<
 					)
 			})
 		)
-
-		this._dispose$ = new ReplaySubject(1)
-		this.dispose$ = this._dispose$.asObservable()
 	}
 
 	public update(changes: TextDocumentContentChangeEvent[], version: number) {
@@ -341,12 +339,6 @@ export abstract class TextDocumentBase<
 		}
 
 		this.references$.next(this.references$.value)
-	}
-
-	public async [Symbol.asyncDispose](): Promise<void> {
-		this.text$.complete()
-		this._dispose$.next()
-		await this.fileSystem[Symbol.asyncDispose]()
 	}
 
 	protected abstract getDiagnostics(dependencies: TDependencies, documentConfiguration: VSCodeVDFConfiguration, documentSymbols: TDocumentSymbols, definitionReferences: DefinitionReferences): DiagnosticCodeActions

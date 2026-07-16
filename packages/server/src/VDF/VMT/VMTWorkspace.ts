@@ -19,7 +19,7 @@ export class VMTWorkspace extends WorkspaceBase {
 		fileSystem: FileSystemMountPoint,
 		documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>,
 	}) {
-		super(uri)
+		super(uri, fileSystem)
 		this.surfaceProperties$ = fileSystem.resolve("scripts/surfaceproperties_manifest.txt").pipe(
 			switchMap((entry) => {
 				if (entry.type != EntryType.File) {

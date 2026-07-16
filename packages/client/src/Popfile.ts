@@ -1,5 +1,7 @@
+import { AsyncDisposableBase } from "common/AsyncDisposableBase"
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { BaseResultType, combineLatestBaseFiles, fs, type Stack } from "common/operators/combineLatestBaseFiles"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import { Uri } from "common/Uri"
@@ -54,7 +56,7 @@ const BaseMerge = (array: VDFDocumentSymbol[], documentSymbols: VDFDocumentSymbo
 	array.push(...documentSymbols.filter((documentSymbol) => !ArrayLowKeyIncludes(array, documentSymbol.key.toLowerCase())))
 }
 
-export abstract class PopfileBase implements AsyncDisposable {
+export abstract class PopfileBase extends AsyncDisposableBase {
 
 	public static readonly robot = new Set([
 		"scripts/population/robot_standard.pop",
@@ -83,10 +85,11 @@ export abstract class PopfileBase implements AsyncDisposable {
 	public readonly classIcons$: Observable<string[]>
 
 	constructor(uri: Uri, document$: Observable<VSCodeDocumentLike>, fileSystem: FileSystemMountPoint, fileSystemWatcherFactory: FileSystemWatcherFactory, onDidChangeTextDocument$: Observable<TextDocumentChangeEvent>) {
+		super()
 
 		this.uri = uri
-		this.document$ = document$.pipe(shareReplay(1))
-		this.fileSystem = fileSystem
+		this.document$ = document$.pipe(shareReplayUntilDisposed(this.dispose$))
+		this.fileSystem = fileSystem // Do not add to this.stack because fileSystem is passed into #base files and BasePopfile extends PopfileBase
 		this.fileSystemWatcherFactory = fileSystemWatcherFactory
 		this.onDidChangeTextDocument$ = onDidChangeTextDocument$
 
@@ -128,7 +131,7 @@ export abstract class PopfileBase implements AsyncDisposable {
 					.toArray()
 			}),
 			distinctUntilChanged((previous, current) => previous.length == current.length && previous.every((detail, index) => detail == current[index])),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.waveSchedule$ = this.documentSymbols$.pipe(
@@ -139,7 +142,7 @@ export abstract class PopfileBase implements AsyncDisposable {
 					waveSchedule: Map.groupBy(documentSymbol?.children ?? [], (documentSymbol) => documentSymbol.key.toLowerCase())
 				}
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.startingCurrency$ = this.waveSchedule$.pipe(
@@ -189,7 +192,7 @@ export abstract class PopfileBase implements AsyncDisposable {
 						.filter((children) => children != undefined)
 				]
 			}),
-			shareReplay({ bufferSize: 1, refCount: true })
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.referencedTemplates$ = spawns$.pipe(
@@ -370,9 +373,6 @@ export abstract class PopfileBase implements AsyncDisposable {
 	}
 
 	protected abstract getTemplatesMap(templatesBlocks: VDFDocumentSymbol[]): Map<string, TemplateBuilder>
-
-	public async [Symbol.asyncDispose](): Promise<void> {
-	}
 }
 
 export class MissionPopfile extends PopfileBase {

@@ -65,7 +65,7 @@ export function listPopfileClassIcons(teamFortress2Folder$: Observable<Uri>, fil
 			fileSystemMountPointFactory.get({ type: "tf2", teamFortress2Folder: teamFortress2Folder }),
 		])
 
-		const popfile = new MissionPopfile(
+		await using popfile = new MissionPopfile(
 			new Uri(document.uri),
 			of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
 			fileSystem,

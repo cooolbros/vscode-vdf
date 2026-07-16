@@ -3,6 +3,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { posix } from "path"
 import { defer, map, of, shareReplay, startWith, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
@@ -90,7 +91,7 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 											references: new References(this.uri, new Collection<VDFRange>(), [])
 										} satisfies DefinitionReferences),
 										map((definitionReferences) => [definitionReferences]),
-										shareReplay(1)
+										shareReplayUntilDisposed(this.dispose$),
 									)
 								}
 								else {
@@ -144,6 +145,6 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 			),
 		})
 
-		this.workspace = workspace
+		this.workspace = this.stack.use(workspace)
 	}
 }

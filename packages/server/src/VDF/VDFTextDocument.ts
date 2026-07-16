@@ -845,7 +845,7 @@ export abstract class VDFTextDocument<
 		this.base$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => VDFTextDocument.base(documentSymbols)),
 			distinctUntilChanged((previous, current) => previous.length == current.length && previous.every((detail, index) => detail == current[index])),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 	}
 

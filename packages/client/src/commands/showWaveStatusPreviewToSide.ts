@@ -308,20 +308,22 @@ export function showWaveStatusPreviewToSide(
 		const waveStatus$ = combineLatest({
 			meta: meta$,
 			popfile: fileSystem$.pipe(
-				map((fileSystem) => {
-					return new MissionPopfile(
-						new Uri(document.uri),
-						concat(
-							of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
-							onDidChangeTextDocument$.pipe(
-								filter((event) => event.document == document),
-								map((event) => ({ getText: (range?: RangeLike) => event.document.getText(VSCodeDocumentGetTextSchema.parse(range)) }))
-							)
-						),
-						fileSystem,
-						fileSystemWatcherFactory,
-						onDidChangeTextDocument$
-					)
+				switchMap((fileSystem) => {
+					return usingAsync(async () => {
+						return new MissionPopfile(
+							new Uri(document.uri),
+							concat(
+								of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
+								onDidChangeTextDocument$.pipe(
+									filter((event) => event.document == document),
+									map((event) => ({ getText: (range?: RangeLike) => event.document.getText(VSCodeDocumentGetTextSchema.parse(range)) }))
+								)
+							),
+							fileSystem,
+							fileSystemWatcherFactory,
+							onDidChangeTextDocument$
+						)
+					})
 				}),
 				switchMap((popfile) => {
 					return combineLatest({

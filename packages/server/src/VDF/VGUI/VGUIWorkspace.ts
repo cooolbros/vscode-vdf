@@ -1,9 +1,10 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
@@ -115,7 +116,6 @@ export class VGUIWorkspace extends WorkspaceBase {
 		return VGUIWorkspace.getFileType(VGUIWorkspace.files, path)
 	}
 
-	private readonly fileSystem: FileSystemMountPoint
 	private readonly documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>
 
 	public readonly clientSchemeFiles$: Observable<Set<string>>
@@ -144,8 +144,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 		fileSystem: FileSystemMountPoint,
 		documents: RefCountAsyncDisposableFactory<Uri, VGUITextDocument>,
 	}) {
-		super(uri)
-		this.fileSystem = fileSystem
+		super(uri, fileSystem)
 		this.documents = documents
 
 		const files = (path: string): Observable<string[]> => {
@@ -191,11 +190,14 @@ export class VGUIWorkspace extends WorkspaceBase {
 						&& previous.definitions.version.length == current.definitions.version.length
 						&& previous.definitions.version.every((value, index) => value == current.definitions.version[index])
 				}),
-				shareReplay(1)
+				shareReplayUntilDisposed(this.dispose$),
 			)
 		}
 
-		this.clientSchemeFiles$ = files("resource/clientscheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
+		this.clientSchemeFiles$ = files("resource/clientscheme.res").pipe(
+			map((paths) => new Set(paths)),
+			shareReplayUntilDisposed(this.dispose$),
+		)
 		this.clientScheme$ = definitions("resource/clientscheme.res")
 
 		// Preload
@@ -207,12 +209,18 @@ export class VGUIWorkspace extends WorkspaceBase {
 			firstValueFrom(fileSystem.resolve("scripts/hudanimations_manifest.txt").pipe(map((entry) => documents.get(entry.uri!))))
 		])
 
-		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
-		this.chatSchemeFiles$ = files("resource/chatscheme.res").pipe(map((paths) => new Set(paths)), shareReplay(1))
+		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(
+			map((paths) => new Set(paths)),
+			shareReplayUntilDisposed(this.dispose$),
+		)
+		this.chatSchemeFiles$ = files("resource/chatscheme.res").pipe(
+			map((paths) => new Set(paths)),
+			shareReplayUntilDisposed(this.dispose$),
+		)
 
 		this.languageTokensFiles$ = combineLatest([files("resource/chat_english.txt"), files("resource/tf_english.txt")]).pipe(
 			map((paths) => new Set(paths.flat())),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.languageTokens$ = combineLatest([
@@ -238,7 +246,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 					references: new References(this.uri, undefined, dependencies.map(({ references }) => references))
 				} satisfies DefinitionReferences
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.gameSoundsFiles$ = this.fileSystem.resolve("scripts/game_sounds_manifest.txt").pipe(
@@ -262,7 +270,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 						.map((detail) => posix.resolve(`/${detail}`).substring(1))
 				)
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.gameSounds$ = this.gameSoundsFiles$.pipe(
@@ -304,11 +312,11 @@ export class VGUIWorkspace extends WorkspaceBase {
 					references: new References(this.uri, new Collection<VDFRange>(), dependencies)
 				} satisfies DefinitionReferences
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.globals$ = combineLatest([this.clientScheme$, this.languageTokens$]).pipe(
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.documentSymbols = new Map()
@@ -360,7 +368,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 		}).pipe(
 			map((files) => VGUIWorkspace.getFileType(files, path)),
 			distinctUntilChanged(),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 	}
 
@@ -377,7 +385,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 						? document.documentSymbols$
 						: of(null)
 				}),
-				shareReplay(1)
+				shareReplayUntilDisposed(this.dispose$),
 			)
 		})
 	}

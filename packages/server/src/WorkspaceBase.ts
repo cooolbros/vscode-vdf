@@ -1,21 +1,19 @@
+import { AsyncDisposableBase } from "common/AsyncDisposableBase"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { Uri } from "common/Uri"
-import { ReplaySubject } from "rxjs"
 
-export abstract class WorkspaceBase implements AsyncDisposable {
+export abstract class WorkspaceBase extends AsyncDisposableBase {
 
 	public readonly uri: Uri
-	public readonly dispose$: ReplaySubject<void>
+	protected readonly fileSystem: FileSystemMountPoint
 
-	constructor(uri: Uri) {
+	constructor(uri: Uri, fileSystem: FileSystemMountPoint) {
+		super()
 		this.uri = uri
-		this.dispose$ = new ReplaySubject(1)
+		this.fileSystem = this.stack.use(fileSystem)
 	}
 
 	public relative(uri: Uri) {
 		return this.uri.relative(uri)
-	}
-
-	public async [Symbol.asyncDispose](): Promise<void> {
-		this.dispose$.next()
 	}
 }

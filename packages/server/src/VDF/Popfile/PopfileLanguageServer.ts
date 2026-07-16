@@ -17,12 +17,12 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 
 	private readonly workspace$ = defer(async () => {
 		const teamFortress2Folder = (await this.workspaceUris.promise).teamFortress2Folder
-		return new PopfileWorkspace(
-			teamFortress2Folder,
-			await this.fileSystems.get([{ type: "tf2", teamFortress2Folder: teamFortress2Folder }]),
-			this,
-			this.documents,
-		)
+		return new PopfileWorkspace({
+			teamFortress2Folder: teamFortress2Folder,
+			fileSystem: await this.fileSystems.get([{ type: "tf2", teamFortress2Folder: teamFortress2Folder }]),
+			server: this,
+			documents: this.documents,
+		})
 	}).pipe(
 		shareReplay(1)
 	)

@@ -234,7 +234,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 			})
 		})
 
-		this.workspace = workspace
+		this.workspace = this.stack.use(workspace)
 
 		this.getDiagnostics = (dependencies, documentConfiguration, documentSymbols, definitionReferences) => {
 			return documentSymbols.reduce(

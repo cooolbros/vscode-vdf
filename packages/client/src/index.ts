@@ -1,5 +1,6 @@
 import { initTRPC } from "@trpc/server"
 import type { BSP } from "bsp"
+import { AsyncDisposableBase } from "common/AsyncDisposableBase"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
 import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
@@ -16,7 +17,7 @@ import { TRPCClientRouter } from "./TRPCClientRouter"
 
 export * from "common/VSCodeVDFLanguageID"
 
-export class Client<T extends BaseLanguageClient> {
+export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 
 	private static readonly sendSchema = z.object({
 		server: VSCodeVDFLanguageIDSchema,
@@ -28,7 +29,6 @@ export class Client<T extends BaseLanguageClient> {
 
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
 	private readonly router: ReturnType<typeof TRPCClientRouter>
-	private readonly stack: DisposableStack
 
 	constructor(
 		context: ExtensionContext,
@@ -39,7 +39,9 @@ export class Client<T extends BaseLanguageClient> {
 		bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
 		client: T,
 	) {
-		this.client = client
+		super()
+
+		this.client = this.stack.adopt(client, (disposable) => disposable.dispose())
 		this.startServer = startServer
 		this.router = TRPCClientRouter(
 			initTRPC
@@ -63,14 +65,11 @@ export class Client<T extends BaseLanguageClient> {
 			bspFactory
 		)
 
-		const stack = this.stack = new DisposableStack()
-		stack.adopt(this.client, (disposable) => disposable.dispose())
-
-		stack.adopt(
+		this.stack.adopt(
 			this.client.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
 				router: this.router,
 				schema: VSCodeVDFLanguageIDSchema,
-				onRequest: (method, handler) => stack.adopt(this.client.onRequest(method, handler), (disposable) => disposable.dispose()),
+				onRequest: (method, handler) => this.stack.adopt(this.client.onRequest(method, handler), (disposable) => disposable.dispose()),
 				sendNotification: async (server, method, param) => {
 					await languageClients[server]!.client.sendNotification(method, param)
 				}
@@ -78,7 +77,7 @@ export class Client<T extends BaseLanguageClient> {
 			(disposable) => disposable.dispose()
 		)
 
-		stack.adopt(
+		this.stack.adopt(
 			this.client.onRequest("vscode-vdf/sendRequest", async (...params) => {
 				const { server, method, param } = Client.sendSchema.parse(params[0])
 				return await languageClients[server]!.client.sendRequest(method, param)
@@ -86,7 +85,7 @@ export class Client<T extends BaseLanguageClient> {
 			(disposable) => disposable.dispose()
 		)
 
-		stack.adopt(
+		this.stack.adopt(
 			this.client.onNotification("vscode-vdf/sendNotification", async (...params) => {
 				const { server, method, param } = Client.sendSchema.parse(params[0])
 				await languageClients[server]!.client.sendNotification(method, param)
@@ -107,9 +106,5 @@ export class Client<T extends BaseLanguageClient> {
 		}
 
 		return rest
-	}
-
-	public dispose() {
-		this.stack.dispose()
 	}
 }

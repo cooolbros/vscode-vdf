@@ -88,7 +88,7 @@ export class PopfileTextDocument extends VDFTextDocument<PopfileTextDocument, Po
 			)
 		})
 
-		this.workspace = workspace
+		this.workspace = this.stack.use(workspace)
 		this.classIcons = new Map()
 		this.getClassIconFlags = getClassIconFlags
 		this.disposeClassIcons$ = new Subject<void>()

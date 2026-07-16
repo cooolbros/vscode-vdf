@@ -1,10 +1,11 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concat, firstValueFrom, ignoreElements, lastValueFrom, map, Observable, of, shareReplay, switchMap, take } from "rxjs"
+import { BehaviorSubject, combineLatest, concat, firstValueFrom, ignoreElements, lastValueFrom, map, Observable, of, switchMap, take } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -42,12 +43,12 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		server: HUDAnimationsLanguageServer,
 		documents: RefCountAsyncDisposableFactory<Uri, HUDAnimationsTextDocument>,
 	}) {
-		super(uri)
+		super(uri, fileSystem)
 		this.server = server
 		this.files = new Map()
 
 		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri }).pipe(
-			shareReplay(1),
+			shareReplayUntilDisposed(this.dispose$),
 			take(1),
 			ignoreElements()
 		)
@@ -100,7 +101,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			map((documents) => {
 				return documents.filter((document) => document != null)
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.clientScheme$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.clientScheme, { key: uri }).pipe(
@@ -141,7 +142,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 					}
 				} satisfies GlobalDefinitionReferences
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.definitionReferences$ = combineLatest({
@@ -323,7 +324,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 					documentSymbols: new Map(files.map(({ document, documentSymbols }) => [document.uri.toString(), documentSymbols]))
 				}
 			}),
-			shareReplay(1)
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.ready = Promise.all([lastValueFrom(ready$, { defaultValue: undefined }), firstValueFrom(this.definitionReferences$)]).then(() => undefined)
@@ -366,7 +367,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						}
 					}
 				}),
-				shareReplay(1)
+				shareReplayUntilDisposed(this.dispose$),
 			)
 		})
 	}
