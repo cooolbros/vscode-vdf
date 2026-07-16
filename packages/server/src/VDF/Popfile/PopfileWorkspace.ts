@@ -391,10 +391,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 						for (const trigger of OnTriggerSchema.safeParse(logic_relay["OnTrigger"]).data ?? []) {
 							const [target, input, parameter, delay, once] = trigger.split(",")
 							if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes" || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
-								const key = parameter.toLowerCase()
-								if (!events.has(key)) {
-									events.set(parameter.toLowerCase(), parameter)
-								}
+								events.getOrInsert(parameter.toLowerCase(), parameter)
 							}
 						}
 					}
