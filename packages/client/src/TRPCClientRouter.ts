@@ -40,7 +40,7 @@ export function TRPCClientRouter(
 			.procedure
 			.input(URISchema)
 			.query(async ({ input }) => await searchForWorkspaceRoot(input.uri)),
-		workspace: t.router({
+		workspace: {
 			openTextDocument: t
 				.procedure
 				.input(URISchema.extend({ languageId: z.string() }))
@@ -84,89 +84,88 @@ export function TRPCClientRouter(
 						signal!,
 					)
 				})
-		}),
-		teamFortress2FileSystem: t
-			.router({
-				open: t
-					.procedure
-					.input(
-						z.object({
-							paths: z.array(
-								z.discriminatedUnion("type", [
-									z.object({ type: z.literal("tf2"), teamFortress2Folder: Uri.schema }),
-									z.object({ type: z.literal("folder"), folder: Uri.schema }),
-									z.object({ type: z.literal("popfile:bsp"), teamFortress2Folder: Uri.schema, popfile: Uri.schema }),
-									z.object({ type: z.literal("bsp"), bsp: Uri.schema }),
-								])
-							)
-						})
-					)
-					.mutation(async ({ input }) => {
-						const key = crypto.randomUUID()
-						fileSystems.set(key, await VirtualFileSystem(input.paths.map(async (path) => await fileSystemMountPointFactory.get(path))))
-						return {
-							key: key,
-							paths: input.paths
-						}
-					}),
-				resolve: t
-					.procedure
-					.input(
-						z.object({
-							key: z.string(),
-							path: z.string(),
-						})
-					)
-					.subscription(({ input, signal }) => {
-						return observableToAsyncIterable<Entry>(fileSystems.get(input.key)!.resolve(input.path), signal!)
-					}),
-				readDirectory: t
-					.procedure
-					.input(
-						z.object({
-							key: z.string(),
-							path: z.string(),
-							options: z.object({
-								recursive: z.boolean().optional(),
-								pattern: z.string().optional()
-							})
-						})
-					)
-					.query(async ({ input }) => {
-						return await fileSystems.get(input.key)!.readDirectory(input.path, input.options)
-					}),
-				watchDirectory: t
-					.procedure
-					.input(
-						z.object({
-							key: z.string(),
-							path: z.string(),
-							options: z.object({
-								pattern: z.string().optional()
-							})
-						})
-					)
-					.subscription(async ({ input, signal }) => {
-						return observableToAsyncIterable<[string, vscode.FileType][]>(
-							fileSystems.get(input.key)!.watchDirectory(input.path, input.options),
-							signal!
+		},
+		teamFortress2FileSystem: {
+			open: t
+				.procedure
+				.input(
+					z.object({
+						paths: z.array(
+							z.discriminatedUnion("type", [
+								z.object({ type: z.literal("tf2"), teamFortress2Folder: Uri.schema }),
+								z.object({ type: z.literal("folder"), folder: Uri.schema }),
+								z.object({ type: z.literal("popfile:bsp"), teamFortress2Folder: Uri.schema, popfile: Uri.schema }),
+								z.object({ type: z.literal("bsp"), bsp: Uri.schema }),
+							])
 						)
-					}),
-				dispose: t
-					.procedure
-					.input(
-						z.object({
-							key: z.string(),
-						})
-					)
-					.mutation(async ({ input }) => {
-						const fileSystem = fileSystems.get(input.key)
-						fileSystems.delete(input.key)
-						if (fileSystem) {
-							await fileSystem[Symbol.asyncDispose]()
-						}
 					})
-			}),
+				)
+				.mutation(async ({ input }) => {
+					const key = crypto.randomUUID()
+					fileSystems.set(key, await VirtualFileSystem(input.paths.map(async (path) => await fileSystemMountPointFactory.get(path))))
+					return {
+						key: key,
+						paths: input.paths
+					}
+				}),
+			resolve: t
+				.procedure
+				.input(
+					z.object({
+						key: z.string(),
+						path: z.string(),
+					})
+				)
+				.subscription(({ input, signal }) => {
+					return observableToAsyncIterable<Entry>(fileSystems.get(input.key)!.resolve(input.path), signal!)
+				}),
+			readDirectory: t
+				.procedure
+				.input(
+					z.object({
+						key: z.string(),
+						path: z.string(),
+						options: z.object({
+							recursive: z.boolean().optional(),
+							pattern: z.string().optional()
+						})
+					})
+				)
+				.query(async ({ input }) => {
+					return await fileSystems.get(input.key)!.readDirectory(input.path, input.options)
+				}),
+			watchDirectory: t
+				.procedure
+				.input(
+					z.object({
+						key: z.string(),
+						path: z.string(),
+						options: z.object({
+							pattern: z.string().optional()
+						})
+					})
+				)
+				.subscription(async ({ input, signal }) => {
+					return observableToAsyncIterable<[string, vscode.FileType][]>(
+						fileSystems.get(input.key)!.watchDirectory(input.path, input.options),
+						signal!
+					)
+				}),
+			dispose: t
+				.procedure
+				.input(
+					z.object({
+						key: z.string(),
+					})
+				)
+				.mutation(async ({ input }) => {
+					const fileSystem = fileSystems.get(input.key)
+					fileSystems.delete(input.key)
+					if (fileSystem) {
+						await fileSystem[Symbol.asyncDispose]()
+					}
+				})
+		},
 		VTFToPNGBase64: t
 			.procedure
 			.input(
@@ -178,7 +177,7 @@ export function TRPCClientRouter(
 				using vtf = new VTF(await workspace.fs.readFile(input.uri))
 				return VTFToPNGBase64(vtf, 256)
 			}),
-		window: t.router({
+		window: {
 			createTextEditorDecorationType: t
 				.procedure
 				.input(
@@ -196,8 +195,8 @@ export function TRPCClientRouter(
 					decorationTypes.set(decorationType.key, decorationType)
 					return decorationType.key
 				}),
-		}),
-		textDocument: t.router({
+		},
+		textDocument: {
 			decoration: t
 				.procedure
 				.input(
@@ -238,9 +237,9 @@ export function TRPCClientRouter(
 						)
 					}
 				})
-		}),
-		popfile: t.router({
-			bsp: t.router({
+		},
+		popfile: {
+			bsp: {
 				entities: t
 					.procedure
 					.input(URISchema)
@@ -263,8 +262,8 @@ export function TRPCClientRouter(
 							return null
 						}
 					})
-			}),
-			classIcon: t.router({
+			},
+			classIcon: {
 				flags: t
 					.procedure
 					.input(URISchema)
@@ -284,8 +283,8 @@ export function TRPCClientRouter(
 							signal!
 						)
 					})
-			}),
-			vscript: t.router({
+			},
+			vscript: {
 				install: t
 					.procedure
 					.input(
@@ -313,7 +312,7 @@ export function TRPCClientRouter(
 							}
 						}
 					})
-			})
-		})
+			}
+		}
 	})
 }
