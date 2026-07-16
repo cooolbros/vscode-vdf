@@ -4,7 +4,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, firstValueFrom, map, of, pairwise, startWith, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
@@ -177,12 +177,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 		const definitions = (path: string): Observable<GlobalDefinitionReferences> => {
 			return fileSystem.resolve(path).pipe(
-				concatMap(async (entry) => {
+				switchMap((entry) => {
 					if (entry.type != EntryType.File) {
 						throw new Error(path)
 					}
 
-					return await documents.get(entry.uri)
+					return usingAsync(async () => await documents.get(entry.uri))
 				}),
 				switchMap((document) => document.definitionReferences$),
 				distinctUntilChanged((previous, current) => {
