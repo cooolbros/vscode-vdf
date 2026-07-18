@@ -48,7 +48,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 			defaultDocumentSymbols: new HUDAnimationsDocumentSymbols(),
 			definitionReferences$: defer(() => {
 				if (workspace != null) {
-					return workspace.manifest$.pipe(
+					return workspace.hudanimations_manifest$.pipe(
 						combineLatestWith(defer(() => this.documentConfiguration$)),
 						switchMap(([documents, documentConfiguration]) => {
 							// Do not use documents.includes(this) or documentSymbols.get(this)! because documents is a Proxy(HUDAnimationsTextDocument)[]

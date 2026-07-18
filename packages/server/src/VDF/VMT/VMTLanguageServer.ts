@@ -26,7 +26,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 		super(languageId, name, connection, {
 			name: "vmt",
 			platform: platform,
-			servers: new Set(),
+			servers: new Set(["vdf"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
 				const paths: FileSystemKey[] = []
@@ -70,7 +70,7 @@ export class VMTLanguageServer extends VDFLanguageServer<
 					{ type: "folder", folder: uri },
 					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
 				]),
-				documents: this.documents
+				server: this,
 			})
 		)
 	}

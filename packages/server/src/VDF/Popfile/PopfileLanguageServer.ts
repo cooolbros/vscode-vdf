@@ -21,7 +21,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 			teamFortress2Folder: teamFortress2Folder,
 			fileSystem: await this.fileSystems.get([{ type: "tf2", teamFortress2Folder: teamFortress2Folder }]),
 			server: this,
-			documents: this.documents,
 		})
 	}).pipe(
 		shareReplay(1)

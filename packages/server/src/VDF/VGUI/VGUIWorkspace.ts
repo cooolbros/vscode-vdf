@@ -1,12 +1,12 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, startWith, switchMap, type Observable } from "rxjs"
+import { BehaviorSubject, combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
-import type { VDFDocumentSymbols } from "vdf-documentsymbols"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import { VGUITextDocument } from "./VGUITextDocument"
@@ -18,6 +18,7 @@ export const enum VGUIFileType {
 	ChatScheme,
 	LanguageTokens,
 	GameSounds,
+	SurfaceProperties,
 	ItemsGame,
 	HUDAnimationsManifest,
 	GameSoundsManifest,
@@ -30,6 +31,7 @@ interface VGUIFiles {
 	chatScheme: Set<string>
 	languageTokens: Set<string>
 	gameSounds: Set<string>
+	surfaceProperties: Set<string>
 }
 
 export class VGUIWorkspace extends WorkspaceBase {
@@ -53,6 +55,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 		}
 		else if (files.gameSounds.has(path)) {
 			return VGUIFileType.GameSounds
+		}
+		else if (files.surfaceProperties.has(path)) {
+			return VGUIFileType.SurfaceProperties
 		}
 		else if (path == "scripts/items/items_game.txt") {
 			return VGUIFileType.ItemsGame
@@ -93,6 +98,11 @@ export class VGUIWorkspace extends WorkspaceBase {
 			"scripts/game_sounds_vo_merasmus.txt",
 			"scripts/game_sounds_vo_tough_break.txt",
 			"scripts/game_sounds_passtime.txt",
+		]),
+		surfaceProperties: new Set([
+			"scripts/surfaceproperties.txt",
+			"scripts/surfaceproperties_hl2.txt",
+			"scripts/surfaceproperties_tf.txt",
 		])
 	}
 
@@ -127,12 +137,20 @@ export class VGUIWorkspace extends WorkspaceBase {
 	public readonly languageTokensFiles$: Observable<Set<string>>
 	public readonly languageTokens$: Observable<GlobalDefinitionReferences>
 
+	public readonly hudanimations_manifest$: Observable<string[]>
+
+	public readonly game_sounds_manifest$: Observable<string[]>
 	public readonly gameSoundsFiles$: Observable<Set<string>>
 	public readonly gameSounds$: Observable<GlobalDefinitionReferences>
 
+	public readonly surfaceproperties_manifest$: Observable<string[]>
+	public readonly surfacePropertiesFiles$: Observable<Set<string>>
+	public readonly surfaceProperties$: Observable<GlobalDefinitionReferences>
+
+	public readonly itemsGame$: Observable<VGUITextDocument>
+
 	public readonly globals$: Observable<GlobalDefinitionReferences[]>
 
-	private readonly documentSymbols: Map<string, Observable<VDFDocumentSymbols | null>>
 	public readonly fileReferences: Map<string, { references$: BehaviorSubject<Map<string, References | null>>, document$: Observable<VGUITextDocument | null> }>
 
 	constructor({
@@ -189,8 +207,27 @@ export class VGUIWorkspace extends WorkspaceBase {
 					return true
 						&& previous.definitions.version.length == current.definitions.version.length
 						&& previous.definitions.version.every((value, index) => value == current.definitions.version[index])
+				})
+			)
+		}
+
+		const manifest = (path: string, keys: Set<string>) => {
+			return fileSystem.resolve(path).pipe(
+				switchMap((entry) => {
+					if (entry.type != EntryType.File) {
+						throw new Error(path)
+					}
+
+					return usingAsync(async () => await documents.get(entry.uri))
 				}),
-				shareReplayUntilDisposed(this.dispose$),
+				switchMap((document) => document.documentSymbols$),
+				map((documentSymbols) => {
+					const manifest = documentSymbols.find((documentSymbol) => documentSymbol.children != undefined)?.children ?? []
+
+					return manifest
+						.filter((documentSymbol) => keys.has(documentSymbol.key.toLowerCase()) && documentSymbol.detail != undefined)
+						.map((documentSymbol) => posix.resolve(`/${documentSymbol.detail!}`).substring(1))
+				})
 			)
 		}
 
@@ -198,7 +235,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 			map((paths) => new Set(paths)),
 			shareReplayUntilDisposed(this.dispose$),
 		)
-		this.clientScheme$ = definitions("resource/clientscheme.res")
+		this.clientScheme$ = definitions("resource/clientscheme.res").pipe(
+			shareReplayUntilDisposed(this.dispose$),
+		)
 
 		this.sourceSchemeFiles$ = files("resource/sourcescheme.res").pipe(
 			map((paths) => new Set(paths)),
@@ -240,44 +279,34 @@ export class VGUIWorkspace extends WorkspaceBase {
 			shareReplayUntilDisposed(this.dispose$),
 		)
 
-		this.gameSoundsFiles$ = this.fileSystem.resolve("scripts/game_sounds_manifest.txt").pipe(
-			switchMap((entry) => {
-				if (entry.type != EntryType.File) {
-					throw new Error("scripts/game_sounds_manifest.txt")
-				}
+		this.hudanimations_manifest$ = manifest("scripts/hudanimations_manifest.txt", new Set(["file"]))
 
-				return usingAsync(async () => await documents.get(entry.uri))
-			}),
-			switchMap((document) => document.documentSymbols$),
-			map((documentSymbols) => {
-				const keys = new Set(["precache_file", "preload_file"])
-				const game_sounds_manifest = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "game_sounds_manifest")?.children ?? []
-				return new Set(
-					game_sounds_manifest
-						.values()
-						.filter((documentSymbol) => keys.has(documentSymbol.key.toLowerCase()))
-						.map((documentSymbol) => documentSymbol.detail)
-						.filter((detail) => detail != undefined)
-						.map((detail) => posix.resolve(`/${detail}`).substring(1))
-				)
-			}),
+		this.game_sounds_manifest$ = manifest("scripts/game_sounds_manifest.txt", new Set(["precache_file", "preload_file"]))
+
+		this.gameSoundsFiles$ = this.game_sounds_manifest$.pipe(
+			map((paths) => new Set(paths)),
 			shareReplayUntilDisposed(this.dispose$),
 		)
 
-		this.gameSounds$ = this.gameSoundsFiles$.pipe(
-			switchMap((paths) => {
-				return combineLatest(
-					[...paths].map((path) => this.fileSystem.resolve(path).pipe(
-						switchMap((entry) => {
-							if (entry.type != EntryType.File) {
-								return of(null)
-							}
+		this.gameSounds$ = this.game_sounds_manifest$.pipe(
+			map((paths) => {
+				if (paths.length == 0) {
+					console.warn(`hudanimations_manifest.length == 0`)
+				}
 
-							return usingAsync(async () => await documents.get(entry.uri)).pipe(
-								switchMap((document) => document.definitionReferences$),
-							)
-						})
-					))
+				return paths.map((path) => ({ key: path }))
+			}),
+			combineLatestPersistent(({ key: path }) => {
+				return fileSystem.resolve(path).pipe(
+					switchMap((entry) => {
+						if (entry.type != EntryType.File) {
+							return of(null)
+						}
+
+						return usingAsync(async () => await documents.get(entry.uri)).pipe(
+							switchMap((document) => document.definitionReferences$),
+						)
+					}),
 				)
 			}),
 			map((results) => {
@@ -302,15 +331,75 @@ export class VGUIWorkspace extends WorkspaceBase {
 					definitions: new Definitions({ version: version, collection: collection }),
 					references: new References(this.uri, new Collection<VDFRange>(), dependencies)
 				} satisfies DefinitionReferences
-			}),
+			})
+		)
+
+		this.surfaceproperties_manifest$ = manifest("scripts/surfaceproperties_manifest.txt", new Set(["file"]))
+
+		this.surfacePropertiesFiles$ = this.surfaceproperties_manifest$.pipe(
+			map((paths) => new Set(paths)),
 			shareReplayUntilDisposed(this.dispose$),
+		)
+
+		this.surfaceProperties$ = this.surfaceproperties_manifest$.pipe(
+			map((paths) => {
+				if (paths.length == 0) {
+					console.warn(`surfaceproperties_manifest.length == 0`)
+				}
+
+				return paths.map((path) => ({ key: path }))
+			}),
+			combineLatestPersistent(({ key: path }) => {
+				return fileSystem.resolve(path).pipe(
+					switchMap((entry) => {
+						if (entry.type != EntryType.File) {
+							return of(null)
+						}
+
+						return usingAsync(async () => await documents.get(entry.uri)).pipe(
+							switchMap((document) => document.definitionReferences$),
+						)
+					}),
+				)
+			}),
+			map((results) => {
+				const version: number[] = []
+				const collection = new Collection<Definition>()
+				const dependencies: SetDocumentReferences[] = []
+
+				for (const fileDefinitionReferences of results.values().filter((result) => result != null)) {
+					version.push(...fileDefinitionReferences.definitions.version)
+
+					for (const [key, baseDefinitions] of fileDefinitionReferences.definitions.ofType(null, Symbol.for("surfaceprop"))) {
+						collection.set(null, Symbol.for("surfaceprop"), key, ...baseDefinitions)
+					}
+
+					dependencies.push(fileDefinitionReferences.references)
+				}
+
+				return {
+					scopes: new Map(),
+					definitions: new Definitions({ version: version, collection: collection }),
+					references: new References(this.uri, new Collection<VDFRange>(), dependencies)
+				} satisfies DefinitionReferences
+			})
+		)
+
+		this.itemsGame$ = fileSystem.resolve("scripts/items/items_game.txt").pipe(
+			switchMap((entry) => {
+				if (entry.type != EntryType.File) {
+					throw new Error("scripts/items/items_game.txt")
+				}
+
+				return usingAsync(async () => await documents.get(entry.uri))
+			}),
+			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
 		this.globals$ = combineLatest([this.clientScheme$, this.languageTokens$]).pipe(
 			shareReplayUntilDisposed(this.dispose$),
 		)
 
-		this.documentSymbols = new Map()
 		this.fileReferences = new Map()
 
 		Promise.allSettled([
@@ -356,29 +445,12 @@ export class VGUIWorkspace extends WorkspaceBase {
 			chatScheme: this.chatSchemeFiles$,
 			languageTokens: this.languageTokensFiles$,
 			gameSounds: this.gameSoundsFiles$,
+			surfaceProperties: this.sourceSchemeFiles$
 		}).pipe(
 			map((files) => VGUIWorkspace.getFileType(files, path)),
 			distinctUntilChanged(),
 			shareReplayUntilDisposed(this.dispose$),
 		)
-	}
-
-	public getVDFDocumentSymbols(path: string): Observable<VDFDocumentSymbols | null> {
-		return this.documentSymbols.getOrInsertComputed(path, () => {
-			return this.fileSystem.resolve(path).pipe(
-				switchMap((entry) => {
-					return entry.type == EntryType.File
-						? usingAsync(async () => await this.documents.get(entry.uri))
-						: of(null)
-				}),
-				switchMap((document) => {
-					return document != null
-						? document.documentSymbols$
-						: of(null)
-				}),
-				shareReplayUntilDisposed(this.dispose$),
-			)
-		})
 	}
 
 	public getDefinitionReferences(path: string) {

@@ -1,4 +1,5 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import { usingAsync } from "common/operators/usingAsync"
@@ -23,10 +24,12 @@ interface HUDAnimationsWorkspaceDocumentDependencies {
 
 export class HUDAnimationsWorkspace extends WorkspaceBase {
 
+	private static readonly eventPaths: Set<string> = new Set(Object.values(eventFiles).flatMap((path) => typeof path == "string" ? [path] : path).toSorted())
+
 	private readonly server: HUDAnimationsLanguageServer
 	private readonly getDefinitions: (path: string) => Observable<{ uri: Uri, definitions: Definitions } | null>
 
-	public readonly manifest$: Observable<HUDAnimationsTextDocument[]>
+	public readonly hudanimations_manifest$: Observable<HUDAnimationsTextDocument[]>
 	public readonly clientScheme$: Observable<GlobalDefinitionReferences>
 	public readonly files: Map<string, Observable<{ uris: Uri[], definitions: GlobalDefinitionReferences }> | null>
 	public readonly definitionReferences$: Observable<{ documentSymbols: Map<string, HUDAnimationsDocumentSymbols>, definitionReferences: DefinitionReferences }>
@@ -53,11 +56,6 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			ignoreElements()
 		)
 
-		const getVDFDocumentSymbols = (path: string) => concat(
-			ready$,
-			fromTRPCSubscription(server.trpc.servers.vgui.workspace.documentSymbol, { key: uri, path })
-		)
-
 		const fileDefinitions = new Map<string, Observable<{ uri: Uri, definitions: Definitions } | null>>()
 		this.getDefinitions = (path: string) => {
 			return fileDefinitions.getOrInsertComputed(path, () => {
@@ -68,40 +66,30 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			})
 		}
 
-		this.manifest$ = getVDFDocumentSymbols("scripts/hudanimations_manifest.txt").pipe(
-			map((documentSymbols) => {
-				if (!documentSymbols) {
-					return []
-				}
+		this.hudanimations_manifest$ = concat(
+			ready$,
+			fromTRPCSubscription(server.trpc.servers.vgui.workspace.hudanimations_manifest, { key: uri }).pipe(
+				map((paths) => {
+					if (paths.length == 0) {
+						console.warn(`hudanimations_manifest.length == 0`)
+					}
 
-				const hudanimations_manifest = documentSymbols.find((documentSymbol) => documentSymbol.children != undefined)?.children ?? []
-
-				return hudanimations_manifest
-					.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "file" && documentSymbol.detail != undefined)
-					.map((documentSymbol) => documentSymbol.detail!)
-			}),
-			switchMap((files) => {
-				if (!files.length) {
-					console.warn(`hudanimations_manifest.length == 0`)
-					return new BehaviorSubject([])
-				}
-
-				return combineLatest(
-					files.map((file) => {
-						return fileSystem.resolve(file).pipe(
-							switchMap((entry) => {
-								return entry.type == EntryType.File
-									? usingAsync(async () => await documents.get(entry.uri))
-									: of(null)
-							}),
-						)
-					})
-				)
-			}),
-			map((documents) => {
-				return documents.filter((document) => document != null)
-			}),
-			shareReplayUntilDisposed(this.dispose$),
+					return paths.map((path) => ({ key: path }))
+				}),
+				combineLatestPersistent(({ key: path }) => {
+					return fileSystem.resolve(path).pipe(
+						switchMap((entry) => {
+							return entry.type == EntryType.File
+								? usingAsync(async () => await documents.get(entry.uri))
+								: of(null)
+						}),
+					)
+				}),
+				map((documents) => {
+					return documents.filter((document) => document != null)
+				}),
+				shareReplayUntilDisposed(this.dispose$),
+			)
 		)
 
 		this.clientScheme$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.clientScheme, { key: uri }).pipe(
@@ -147,7 +135,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 
 		this.definitionReferences$ = combineLatest({
 			clientScheme: this.clientScheme$,
-			manifest: this.manifest$.pipe(
+			manifest: this.hudanimations_manifest$.pipe(
 				switchMap((documents) => {
 					if (!documents.length) {
 						return of({
@@ -239,16 +227,13 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 				const workspaceFilesReferences = new Map<string, Map<string, Collection<VDFRange> | null>>()
 
 				workspaceFilesReferences.set("resource/clientscheme.res", new Map())
-
-				for (const event in eventFiles) {
-					// @ts-ignore
-					const eventFile: string | string[] = eventFiles[event]
-					for (const path of typeof eventFile == "string" ? [eventFile] : eventFile) {
-						workspaceFilesReferences.getOrInsertComputed(path, () => new Map<string, Collection<VDFRange>>())
-					}
+				for (const path of HUDAnimationsWorkspace.eventPaths) {
+					workspaceFilesReferences.set(path, new Map())
 				}
 
 				for (const file of files) {
+					const uri = file.document.uri.toString()
+
 					for (const { type, key, value } of file.definitions) {
 						definitions.set(null, type, key, ...value)
 					}
@@ -281,21 +266,19 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 						for (const path of target.paths) {
 							workspaceFilesReferences
 								.get(path)!
-								.getOrInsertComputed(file.document.uri.toString(), () => new Collection<VDFRange>())!
-								.set(null, target.type, key, ...ranges)
+								.getOrInsertComputed(uri, () => new Collection<VDFRange>())!
+								.set(scope, target.type, key, ...ranges)
 						}
+					}
 
-						workspaceFilesReferences.getOrInsertComputed("resource/clientscheme.res", () => new Map<string, null>([[file.document.uri.toString(), null]]))
+					workspaceFilesReferences
+						.get("resource/clientscheme.res")!
+						.getOrInsert(uri, null)
 
-						for (const event in eventFiles) {
-							// @ts-ignore
-							const eventFile: string | string[] = eventFiles[event]
-							for (const path of typeof eventFile == "string" ? [eventFile] : eventFile) {
-								workspaceFilesReferences
-									.get(path)!
-									.getOrInsertComputed(file.document.uri.toString(), () => null)
-							}
-						}
+					for (const path of HUDAnimationsWorkspace.eventPaths) {
+						workspaceFilesReferences
+							.get(path)!
+							.getOrInsert(uri, null)
 					}
 				}
 

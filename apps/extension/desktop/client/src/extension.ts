@@ -380,7 +380,7 @@ export function activate(context: ExtensionContext): void {
 		)
 
 		subscriptions.push(
-			client,
+			new Disposable(() => client[Symbol.asyncDispose]()),
 			commands.registerCommand(`vscode-vdf.restart${name.replaceAll(" ", "")}LanguageServer`, () => {
 				client.client.restart()
 			})

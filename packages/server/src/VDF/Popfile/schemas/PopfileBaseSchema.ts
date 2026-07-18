@@ -437,7 +437,7 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 							const value = documentSymbol.detail.trim()
 							if (value.length) {
 								const { value: sound } = removeSoundChars(documentSymbol.detail.trim())
-								const definitions = definitionReferences.definitions.get(null, Symbol.for("sound"), sound)
+								const definitions = definitionReferences.definitions.get(null, Symbol.for("game_sound"), sound)
 								if (!definitions || !definitions.length) {
 									links.push({
 										range: documentSymbol.detailRange!,
@@ -998,7 +998,7 @@ function createNewGetDiagnostics(diagnosticsSchema: DiagnosticsSchema) {
 
 		const validateSound: RefineString<PopfileTextDocumentDependencies> = (name, detail, detailRange, documentSymbol, path, context) => {
 			const { chars, value } = removeSoundChars(detail)
-			const definitions = context.definitionReferences.definitions.get(null, Symbol.for("sound"), value)
+			const definitions = context.definitionReferences.definitions.get(null, Symbol.for("game_sound"), value)
 			if (definitions?.length) {
 				return [TextDocumentBase.diagnostics.key(definitions[0].key, value, detailRange, { newText: (name) => `${chars}${name}` })]
 			}

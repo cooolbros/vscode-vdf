@@ -20,6 +20,7 @@ import { ItemsGameSchema } from "./schemas/ItemsGameSchema"
 import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
 import { SourceSchemeSchema } from "./schemas/SourceSchemeSchema"
 import { SurfacePropertiesManifestSchema } from "./schemas/SurfacePropertiesManifestSchema"
+import { SurfacePropertiesSchema } from "./schemas/SurfacePropertiesSchema"
 import { VGUISchema } from "./schemas/VGUISchema"
 
 export interface VGUITextDocumentDependencies extends VDFTextDocumentDependencies {
@@ -112,6 +113,10 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 								break
 							case VGUIFileType.GameSounds:
 								schema = GameSoundsSchema
+								globals$ = of([])
+								break
+							case VGUIFileType.SurfaceProperties:
+								schema = SurfacePropertiesSchema
 								globals$ = of([])
 								break
 							case VGUIFileType.ItemsGame:

@@ -4,7 +4,7 @@ import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
-import { firstValueFrom, map, of, type Observable } from "rxjs"
+import { defer, firstValueFrom, of, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { CompletionItemKind, DiagnosticSeverity, InsertTextFormat } from "vscode-languageserver"
 import { Collection, type Definition } from "../../DefinitionReferences"
@@ -49,6 +49,8 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 
 	public static readonly Schema = (document: VMTTextDocument): VDFTextDocumentSchema<VMTTextDocumentDependencies> => {
 
+		const surfaceprops = new Set(["$surfaceprop", "$surfaceprop2"])
+
 		const file = document.diagnostics.file("image", "materials", ".vtf")
 
 		const next = document.diagnostics.next({
@@ -83,9 +85,17 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 			keys: keys,
 			values: values,
 			getDefinitionReferences: (params) => {
+				const surfaceprop = Symbol.for("surfaceprop")
+
 				const scopes = new Map<symbol, Map<number, VDFRange>>()
 				const definitions = new Collection<Definition>()
 				const references = new Collection<VDFRange>()
+
+				params.getHeader().forAll((documentSymbol) => {
+					if (surfaceprops.has(documentSymbol.key.toLowerCase()) && documentSymbol.detail != undefined) {
+						references.set(null, surfaceprop, documentSymbol.detail, documentSymbol.detailRange!)
+					}
+				})
 
 				return {
 					scopes: scopes,
@@ -93,7 +103,9 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 					references: references,
 				}
 			},
-			definitionReferences: new Map(),
+			definitionReferences: new Map([
+				[Symbol.for("surfaceprop"), { keys: surfaceprops }],
+			]),
 			getDiagnostics: getDiagnostics,
 			getLinks: ({ documentSymbols, resolve }) => {
 				const links: DocumentLinkData[] = []
@@ -207,26 +219,12 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 			relativeFolderPath: workspace ? posix.dirname(workspace.relative(init.uri)) : null,
 			VDFParserOptions: { multilineStrings: false },
 			keyTransform: (key) => key,
-			dependencies$: (workspace?.surfaceProperties$ ?? of(null)).pipe(
-				map((surfaceProperties) => {
-					const schema = VMTTextDocument.Schema(this)
-					return {
-						schema: {
-							...schema,
-							values: {
-								...schema.values,
-								...(surfaceProperties != null && {
-									$surfaceprop: {
-										kind: CompletionItemKind.Constant,
-										values: surfaceProperties
-									}
-								})
-							},
-						},
-						globals$: of([])
-					} satisfies VMTTextDocumentDependencies
+			dependencies$: defer(() => {
+				return of({
+					schema: VMTTextDocument.Schema(this),
+					globals$: workspace?.globals$ ?? of([])
 				})
-			)
+			})
 		})
 
 		this.workspace = this.stack.use(workspace)

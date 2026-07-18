@@ -1,29 +1,28 @@
 import { Observable, type Subscription } from "rxjs"
-import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 
-export function combineLatestPersistent<T>(observableSelector: (fileSystem: FileSystemMountPoint) => Observable<T>) {
+export function combineLatestPersistent<T extends { key: string }, R>(observableSelector: (value: T) => Observable<R>) {
 	const subscriptions = new Map<string, Subscription>()
-	let map = new Map<string, T | undefined>()
-	return (source$: Observable<{ name: string, fileSystem: FileSystemMountPoint }[]>) => {
-		return new Observable<T[]>((subscriber) => {
+	let map = new Map<string, R | undefined>()
+	return (source$: Observable<T[]>) => {
+		return new Observable<R[]>((subscriber) => {
 			const subscription = source$.subscribe((entries) => {
 
-				for (const [observable, subscription] of subscriptions.entries().filter(([name]) => !entries.some((entry) => entry.name == name))) {
+				for (const [observable, subscription] of subscriptions.entries().filter(([key]) => !entries.some((entry) => entry.key == key))) {
 					subscription.unsubscribe()
 					subscriptions.delete(observable)
 				}
 
-				map = new Map(entries.values().map((entry) => [entry.name, map.get(entry.name)]))
+				map = new Map(entries.values().map((entry) => [entry.key, map.get(entry.key)]))
 
 				if (entries.length == 0) {
 					subscriber.next([])
 				}
 				else {
 					for (const entry of entries) {
-						subscriptions.getOrInsertComputed(entry.name, () => observableSelector(entry.fileSystem).subscribe((value) => {
-							map.set(entry.name, value)
+						subscriptions.getOrInsertComputed(entry.key, () => observableSelector(entry).subscribe((value) => {
+							map.set(entry.key, value)
 							if (map.values().every((value) => value != undefined)) {
-								subscriber.next(map.values().toArray() as T[])
+								subscriber.next(map.values().toArray() as R[])
 							}
 						}))
 					}

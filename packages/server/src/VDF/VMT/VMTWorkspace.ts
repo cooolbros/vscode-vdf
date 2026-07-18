@@ -1,73 +1,60 @@
-import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
-import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import type { Uri } from "common/Uri"
-import { usingAsync } from "common/operators/usingAsync"
-import { combineLatest, map, of, shareReplay, switchMap, type Observable } from "rxjs"
+import { concat, ignoreElements, map, take, type Observable } from "rxjs"
+import type { GlobalDefinitionReferences, References } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
-import type { VMTTextDocument } from "./VMTTextDocument"
+import type { VMTLanguageServer } from "./VMTLanguageServer"
 
 export class VMTWorkspace extends WorkspaceBase {
 
-	public readonly surfaceProperties$: Observable<string[] | null>
+	private readonly surfaceProperties$: Observable<GlobalDefinitionReferences>
+
+	public readonly globals$: Observable<GlobalDefinitionReferences[]>
 
 	constructor({
 		uri,
 		fileSystem,
-		documents,
+		server,
 	}: {
 		uri: Uri,
 		fileSystem: FileSystemMountPoint,
-		documents: RefCountAsyncDisposableFactory<Uri, VMTTextDocument>,
+		server: VMTLanguageServer,
 	}) {
 		super(uri, fileSystem)
-		this.surfaceProperties$ = fileSystem.resolve("scripts/surfaceproperties_manifest.txt").pipe(
-			switchMap((entry) => {
-				if (entry.type != EntryType.File) {
-					return of(null)
-				}
 
-				return usingAsync(async () => await documents.get(entry.uri)).pipe(
-					switchMap((document) => document.documentSymbols$),
-					map((documentSymbols) => {
-						const surfaceproperties_manifest = documentSymbols.find((documentSymbol) => documentSymbol.children != undefined)?.children ?? []
+		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri }).pipe(
+			shareReplayUntilDisposed(this.dispose$),
+			take(1),
+			ignoreElements()
+		)
 
-						return surfaceproperties_manifest
-							.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "file" && documentSymbol.detail != undefined)
-							.map((documentSymbol) => documentSymbol.detail!)
-					}),
-					switchMap((files) => {
-						if (!files.length) {
-							console.warn(`surfaceproperties_manifest.length == 0`)
-							return of(null)
+		this.surfaceProperties$ = concat(
+			ready$,
+			fromTRPCSubscription(server.trpc.servers.vgui.workspace.surfaceProperties, { key: uri }).pipe(
+				map((definitions) => {
+					return {
+						definitions: definitions,
+						references: {
+							setDocumentReferences: (references, notify) => {
+								const map = new Map<string, Map<string, References | null>>()
+								map.set("scripts/surfaceproperties_manifest.txt", references)
+
+								server.trpc.servers.vgui.workspace.setFilesReferences.mutate({
+									key: uri,
+									references: map
+								})
+							},
 						}
+					} satisfies GlobalDefinitionReferences
+				})
+			)
+		)
 
-						return combineLatest(
-							files.map((file) => {
-								return fileSystem.resolve(file).pipe(
-									switchMap((entry) => {
-										if (entry.type != EntryType.File) {
-											return of([])
-										}
-
-										return usingAsync(async () => await documents.get(entry.uri)).pipe(
-											switchMap((document) => {
-												return document.documentSymbols$.pipe(
-													map((documentSymbols) => {
-														return documentSymbols.map((documentSymbol) => documentSymbol.key)
-													})
-												)
-											}),
-										)
-									})
-								)
-							})
-						).pipe(
-							map((properties) => [...new Set(properties.flat())].toSorted()),
-						)
-					}),
-				)
-			}),
-			shareReplay({ bufferSize: 1, refCount: true })
+		this.globals$ = this.surfaceProperties$.pipe(
+			map((value) => [value]),
+			shareReplayUntilDisposed(this.dispose$),
 		)
 	}
 }

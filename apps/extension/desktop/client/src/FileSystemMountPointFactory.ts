@@ -122,10 +122,10 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 	async function create(name: string, type: vscode.FileType) {
 		if (type == vscode.FileType.Directory) {
-			return { name: name, fileSystem: await factory.get({ type: "folder", folder: dirname.joinPath(name) }) }
+			return { key: name, fileSystem: await factory.get({ type: "folder", folder: dirname.joinPath(name) }) }
 		}
 		else if (name.endsWith(".vpk")) {
-			return { name: name, fileSystem: await VPKFileSystem(dirname.joinPath(name)) }
+			return { key: name, fileSystem: await VPKFileSystem(dirname.joinPath(name)) }
 		}
 		else {
 			return null
@@ -134,8 +134,8 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 	const stack = new AsyncDisposableStack()
 
-	const fileSystems$ = new BehaviorSubject<SortedArray<{ name: string, fileSystem: FileSystemMountPoint }>>(new SortedArray(
-		(a, b) => a.name.localeCompare(b.name),
+	const fileSystems$ = new BehaviorSubject<SortedArray<{ key: string, fileSystem: FileSystemMountPoint }>>(new SortedArray(
+		(a, b) => a.key.localeCompare(b.key),
 		...(await Promise.all(
 			(await vscode.workspace.fs.readDirectory(dirname)).map(async ([name, type]) => await create(name, type))
 		)).filter((value) => value != null)
@@ -159,7 +159,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 			const basename = uri.basename()
 			const type = (await vscode.workspace.fs.stat(uri)).type
 
-			if (!fileSystems$.value.some(({ name }) => name == basename)) {
+			if (!fileSystems$.value.some(({ key }) => key == basename)) {
 				const fileSystem = await create(basename, type)
 				if (fileSystem) {
 					fileSystems$.value.push(fileSystem)
@@ -174,7 +174,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		watcher.onDidDelete(async (event) => {
 			const uri = new Uri(event)
 			const basename = uri.basename()
-			const fileSystem = fileSystems$.value.find(({ name }) => name == basename)
+			const fileSystem = fileSystems$.value.find(({ key }) => key == basename)
 
 			if (fileSystem != undefined) {
 				fileSystems$.value.splice(fileSystems$.value.indexOf(fileSystem), 1)
@@ -191,7 +191,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		resolve: (path) => {
 			return observables.getOrInsertComputed(path, () => {
 				return fileSystems$.pipe(
-					combineLatestPersistent((fileSystem) => fileSystem.resolve(path)),
+					combineLatestPersistent(({ fileSystem }) => fileSystem.resolve(path)),
 					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? { type: <const>EntryType.None, uri: null } as Entry),
 					distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 					finalize(() => observables.delete(path)),
@@ -211,7 +211,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		},
 		watchDirectory: (path, options) => {
 			return fileSystems$.pipe(
-				combineLatestPersistent((fileSystem) => fileSystem.watchDirectory(path, options)),
+				combineLatestPersistent(({ fileSystem }) => fileSystem.watchDirectory(path, options)),
 				map((results) => {
 					const map = new Map<string, vscode.FileType>()
 					for (const entries of results) {

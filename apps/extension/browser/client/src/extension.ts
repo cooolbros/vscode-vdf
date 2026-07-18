@@ -21,7 +21,7 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { firstValueFrom, of } from "rxjs"
-import { commands, FileType, languages, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import { commands, Disposable, FileType, languages, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
@@ -135,7 +135,7 @@ export function activate(context: ExtensionContext): void {
 			)
 		)
 
-		subscriptions.push(client)
+		subscriptions.push(new Disposable(() => client[Symbol.asyncDispose]()))
 		await client.start()
 	}
 

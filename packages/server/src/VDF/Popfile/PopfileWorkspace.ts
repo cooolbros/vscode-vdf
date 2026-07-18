@@ -1,21 +1,22 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
+import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
+import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
-import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { concatMap, firstValueFrom, map, Observable, of } from "rxjs"
-import type { VDFRange } from "vdf"
-import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { CompletionItem, CompletionItemKind } from "vscode-languageserver"
+import { combineLatest, concat, concatMap, firstValueFrom, ignoreElements, map, Observable, shareReplay, take } from "rxjs"
+import { CompletionItemKind, type CompletionItem } from "vscode-languageserver"
 import { z } from "zod"
-import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences } from "../../DefinitionReferences"
+import { References, type GlobalDefinitionReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
 import type { VDFTextDocumentSchema } from "../VDFTextDocument"
 import type { PopfileLanguageServer } from "./PopfileLanguageServer"
-import type { PopfileTextDocument, PopfileTextDocumentDependencies } from "./PopfileTextDocument"
+import type { PopfileTextDocumentDependencies } from "./PopfileTextDocument"
 
 export class PopfileWorkspace extends WorkspaceBase {
+
+	private readonly server: PopfileLanguageServer
 
 	public readonly gameSounds$: Observable<GlobalDefinitionReferences>
 	public readonly paints: Promise<Map<string, string>>
@@ -46,140 +47,24 @@ export class PopfileWorkspace extends WorkspaceBase {
 		teamFortress2Folder,
 		fileSystem,
 		server,
-		documents,
 	}: {
 		teamFortress2Folder: Uri,
 		fileSystem: FileSystemMountPoint,
 		server: PopfileLanguageServer,
-		documents: RefCountAsyncDisposableFactory<Uri, PopfileTextDocument>,
 	}) {
 		super(teamFortress2Folder, fileSystem)
+		this.server = server
 
-		const items_game = Promise.try(async () => {
-			const entry = await firstValueFrom(this.fileSystem.resolve("scripts/items/items_game.txt"))
-			if (entry.type != EntryType.File) {
-				throw new Error("scripts/items/items_game.txt")
-			}
+		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri: teamFortress2Folder }).pipe(
+			shareReplayUntilDisposed(this.dispose$),
+			take(1),
+			ignoreElements()
+		)
 
-			await using document = await documents.get(entry.uri)
-			const documentSymbols = await firstValueFrom(document.documentSymbols$)
-			const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key == "items_game")?.children
-			if (!items_game) {
-				throw new Error("items_game")
-			}
-
-			return { document: document, documentSymbols: items_game }
-		})
-
-		const tf_english = Promise.try(async () => {
-			const entry = await firstValueFrom(this.fileSystem.resolve("resource/tf_english.txt"))
-			if (entry.type != EntryType.File) {
-				throw new Error("resource/tf_english.txt")
-			}
-
-			await using document = await documents.get(entry.uri)
-			const documentSymbols = getVDFDocumentSymbols(document.text$.value, { multilineStrings: true })
-
-			const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
-			if (!lang) {
-				throw new Error("lang")
-			}
-
-			const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
-			if (!tokens) {
-				throw new Error("Tokens")
-			}
-
-			return new Map(
-				tokens
-					.filter((documentSymbol) => documentSymbol.detail != undefined)
-					.map((documentSymbol) => [documentSymbol.key, documentSymbol.detail!])
-			)
-		})
-
-		const items = Promise.all([items_game, tf_english]).then(([items_game, tf_english]) => {
-			const items = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "items")?.children
-			if (!items) {
-				throw new Error("items")
-			}
-
-			const collection = new Collection<Definition>()
-
-			const definitions = items
-				.values()
-				.drop(1 /* "default" */)
-				.map((documentSymbol) => {
-					const name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "name")!
-
-					const item_name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "item_name")?.detail?.substring("#".length)
-					const itemName = item_name != undefined ? tf_english.get(item_name) : undefined
-
-					const image_inventory = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "image_inventory")?.detail
-					const data = image_inventory != undefined
-						? { image: { uri: items_game.document.uri, path: posix.join("materials", `${image_inventory}.vmt`) } }
-						: undefined
-
-					return {
-						uri: items_game.document.uri,
-						key: name.detail!,
-						range: documentSymbol.range,
-						keyRange: documentSymbol.nameRange,
-						nameRange: undefined,
-						detail: undefined,
-						documentation: items_game.document.definitions.documentation(documentSymbol, "vdf"),
-						conditional: documentSymbol.conditional ?? undefined,
-						completionItem: {
-							labelDetails: {
-								description: itemName,
-							},
-							filterText: itemName,
-							data: data
-						}
-					} satisfies Definition
-				})
-				.filter((item) => item != null)
-
-			for (const definition of definitions) {
-				collection.set(null, Symbol.for("item"), definition.key, definition)
-			}
-
-			return {
-				scopes: new Map(),
-				definitions: new Definitions({ version: [items_game.document.version], collection }),
-				references: new References(items_game.document.uri, new Collection<VDFRange>(), [])
-			} satisfies DefinitionReferences
-		})
-
-		const attributes = items_game.then(async (items_game) => {
-			const attributes = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "attributes")?.children
-			if (!attributes) {
-				throw new Error("attributes")
-			}
-
-			const completionItems = attributes
-				.values()
-				.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
-				.filter((attribute) => attribute != undefined)
-				.map((attribute) => ({ label: attribute, kind: CompletionItemKind.Constant }))
-				.toArray()
-
-			return {
-				keys: {
-					[`${"CharacterAttributes".toLowerCase()}`]: { values: completionItems },
-					[`${"ItemAttributes".toLowerCase()}`]: {
-						values: [
-							{
-								label: "ItemName",
-								kind: CompletionItemKind.Field
-							},
-							...completionItems
-						]
-					}
-				}
-			}
-		})
-
-		this.gameSounds$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.gameSounds, { key: teamFortress2Folder }).pipe(
+		this.gameSounds$ = concat(
+			ready$,
+			fromTRPCSubscription(server.trpc.servers.vgui.workspace.gameSounds, { key: teamFortress2Folder })
+		).pipe(
 			map((definitions) => {
 				return {
 					definitions: definitions,
@@ -195,123 +80,229 @@ export class PopfileWorkspace extends WorkspaceBase {
 						},
 					}
 				} satisfies GlobalDefinitionReferences
+			}),
+			take(1),
+			shareReplayUntilDisposed(this.dispose$),
+		)
+
+		const languageTokens$ = concat(
+			ready$,
+			fromTRPCSubscription(server.trpc.servers.vgui.workspace.languageTokens, { key: teamFortress2Folder })
+		).pipe(
+			take(1),
+			shareReplayUntilDisposed(this.dispose$),
+		)
+
+		const itemsGameOpen$ = concat(
+			ready$,
+			fromTRPCSubscription(server.trpc.servers.vgui.workspace.itemsGame.open, { key: teamFortress2Folder })
+		).pipe(
+			shareReplay({ bufferSize: 1, refCount: true })
+		)
+
+		const itemsGameResource = async () => {
+			const { promise, resolve } = Promise.withResolvers<void>()
+			const subscription = itemsGameOpen$.subscribe((value) => {
+				resolve(value)
+			})
+
+			return promise.then((value) => {
+				return {
+					value: value,
+					[Symbol.asyncDispose]: async () => {
+						subscription.unsubscribe()
+					}
+				}
+			})
+		}
+
+		const items$ = usingAsync(itemsGameResource).pipe(
+			concatMap(async () => {
+				return await server.trpc.servers.vgui.workspace.itemsGame.documentSymbol.query({ key: teamFortress2Folder, name: "items" })
 			})
 		)
 
-		this.paints = Promise.all([items_game, tf_english]).then(([items_game, tf_english]) => {
-			const items = items_game.documentSymbols.find((documentSymbol) => documentSymbol.key == "items")?.children
-			if (!items) {
-				throw new Error("items")
-			}
+		const itemsDefinitions$ = usingAsync(itemsGameResource).pipe(
+			concatMap(async () => {
+				return await server.trpc.servers.vgui.workspace.itemsGame.definitions.query({ key: teamFortress2Folder })
+			}),
+			map((definitions) => {
+				return {
+					definitions: definitions,
+					references: {
+						setDocumentReferences: (references, notify) => {
+							const map = new Map<string, Map<string, References | null>>()
+							map.set("scripts/items/items_game.txt", references)
 
-			const paints: Record<string, string> = {}
-
-			for (const documentSymbol of items) {
-				const prefab = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "prefab")?.detail?.toLowerCase()
-				if (prefab == "valve paint_can" || prefab == "valve paint_can_team_color") {
-					const item_name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "item_name")?.detail?.substring("#".length)
-					const attributes = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "attributes")?.children
-					if (!item_name || !attributes) {
-						continue
+							server.trpc.servers.vgui.workspace.setFilesReferences.mutate({
+								key: teamFortress2Folder,
+								references: map
+							})
+						},
 					}
+				} satisfies GlobalDefinitionReferences
+			}),
+			shareReplayUntilDisposed(this.dispose$),
+		)
 
-					switch (prefab) {
-						case "valve paint_can":
-							const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
-							if (rgb) {
-								const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
-								if (value) {
-									paints[value] = tf_english.get(item_name)!
-								}
-							}
-							break
-						case "valve paint_can_team_color": {
-							const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
-							const rgb2 = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB 2".toLowerCase())?.children
-							if (rgb && rgb2) {
-								const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
-								const value2 = rgb2.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
-								if (value && value2) {
-									paints[value] = `${tf_english.get(item_name)!} (Red)`
-									paints[value2] = `${tf_english.get(item_name)!} (Blu)`
-								}
-							}
-							break
+		const attributes$ = usingAsync(itemsGameResource).pipe(
+			concatMap(async () => {
+				return await server.trpc.servers.vgui.workspace.itemsGame.documentSymbol.query({ key: teamFortress2Folder, name: "attributes" })
+			}),
+			map((documentSymbols) => {
+				const completionItems = documentSymbols
+					.values()
+					.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
+					.filter((attribute) => attribute != undefined)
+					.map((attribute) => ({ label: attribute, kind: CompletionItemKind.Constant }))
+					.toArray()
+
+				return {
+					keys: {
+						[`${"CharacterAttributes".toLowerCase()}`]: { values: completionItems },
+						[`${"ItemAttributes".toLowerCase()}`]: {
+							values: [
+								{
+									label: "ItemName",
+									kind: CompletionItemKind.Field
+								},
+								...completionItems
+							]
 						}
-						default:
-							continue
 					}
 				}
-			}
+			})
+		)
 
-			return new Map(Object.entries(paints).sort((a, b) => a[0].localeCompare(b[0])))
-		})
+		const paints$ = combineLatest({
+			items: items$,
+			languageTokens: languageTokens$
+		}).pipe(
+			map(({ items: documentSymbols, languageTokens }) => {
+				const string = Symbol.for("string")
+				const paints: [string, string][] = []
 
-		this.effects = tf_english.then((tf_english) => {
-			const attrib_particle = "Attrib_Particle".toLowerCase()
-			return new Map(
-				tf_english
-					.entries()
-					.filter(([key]) => key.toLowerCase().startsWith(attrib_particle))
-					.map(([key, value]) => [key.substring(attrib_particle.length), value])
-			)
-		})
+				for (const documentSymbol of documentSymbols) {
+					const prefab = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "prefab")?.detail?.toLowerCase()
+					if (prefab == "valve paint_can" || prefab == "valve paint_can_team_color") {
+						const item_name = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "item_name")?.detail?.substring("#".length)
+						const attributes = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.toLowerCase() == "attributes")?.children
+						if (!item_name || !attributes) {
+							continue
+						}
 
-		this.dependencies = Promise.all([items, attributes, this.game_sounds, this.paints, this.effects]).then(([items, attributes, game_sounds, paints, effects]) => {
-			const paintItems = paints
-				.entries()
-				.map(([key, name]) => {
-
-					const colour = parseInt(key)
-					const r = (colour >> 16) & 255
-					const g = (colour >> 8) & 255
-					const b = (colour >> 0) & 255
-					return {
-						label: name,
-						labelDetails: {
-							description: key
-						},
-						kind: CompletionItemKind.Color,
-						documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
-						filterText: name,
-						insertText: key,
-					} satisfies CompletionItem
-				})
-				.toArray()
-
-			const effectsItems = effects
-				.entries()
-				.map(([key, name]) => {
-					return {
-						label: name,
-						labelDetails: {
-							description: key
-						},
-						kind: CompletionItemKind.Event,
-						filterText: name,
-						insertText: key,
-					} satisfies CompletionItem
-				})
-				.toArray()
-
-			return {
-				schema: {
-					keys: {
-						...attributes.keys,
-					},
-					values: {}
-				},
-				completion: {
-					values: {
-						[`${"set item tint RGB".toLowerCase()}`]: paintItems,
-						[`${"set item tint RGB 2".toLowerCase()}`]: paintItems,
-						[`${"attach particle effect".toLowerCase()}`]: effectsItems,
-						[`${"attach particle effect static".toLowerCase()}`]: effectsItems,
+						switch (prefab) {
+							case "valve paint_can":
+								const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
+								if (rgb) {
+									const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
+									if (value) {
+										paints.push([value, languageTokens.get(null, string, item_name)![0].detail!])
+									}
+								}
+								break
+							case "valve paint_can_team_color": {
+								const rgb = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB".toLowerCase())?.children
+								const rgb2 = attributes.find((documentSymbol) => documentSymbol.key.toLowerCase() == "set item tint RGB 2".toLowerCase())?.children
+								if (rgb && rgb2) {
+									const value = rgb.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
+									const value2 = rgb2.find((documentSymbol) => documentSymbol.key.toLowerCase() == "value")?.detail
+									if (value && value2) {
+										const name = languageTokens.get(null, string, item_name)![0].detail!
+										paints.push([value, `${name} (Red)`], [value2, `${name} (Blu)`])
+									}
+								}
+								break
+							}
+							default:
+								continue
+						}
 					}
-				},
-				globals$: of([items, game_sounds])
-			}
-		})
+				}
+
+				return new Map(paints.sort((a, b) => a[0].localeCompare(b[0])))
+			})
+		)
+
+		const effects$ = languageTokens$.pipe(
+			map((languageTokens) => {
+				const attrib_particle = "Attrib_Particle".toLowerCase()
+				return new Map(
+					languageTokens
+						.ofType(null, Symbol.for("string"))
+						.values()
+						.filter(([definition]) => definition.key.toLowerCase().startsWith(attrib_particle))
+						.map(([definition]) => [definition.key.substring(attrib_particle.length), definition.detail!])
+				)
+			})
+		)
+
+		this.paints = firstValueFrom(paints$)
+		this.effects = firstValueFrom(effects$)
+
+		this.dependencies = firstValueFrom(
+			combineLatest({
+				attributes: attributes$,
+				paints: paints$,
+				effects: effects$
+			}).pipe(
+				map(({ attributes, paints, effects }) => {
+					const paintItems = paints
+						.entries()
+						.map(([key, name]) => {
+
+							const colour = parseInt(key)
+							const r = (colour >> 16) & 255
+							const g = (colour >> 8) & 255
+							const b = (colour >> 0) & 255
+							return {
+								label: name,
+								labelDetails: {
+									description: key
+								},
+								kind: CompletionItemKind.Color,
+								documentation: `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
+								filterText: name,
+								insertText: key,
+							} satisfies CompletionItem
+						})
+						.toArray()
+
+					const effectsItems = effects
+						.entries()
+						.map(([key, name]) => {
+							return {
+								label: name,
+								labelDetails: {
+									description: key
+								},
+								kind: CompletionItemKind.Event,
+								filterText: name,
+								insertText: key,
+							} satisfies CompletionItem
+						})
+						.toArray()
+
+					return {
+						schema: {
+							keys: {
+								...attributes.keys,
+							},
+							values: {}
+						},
+						completion: {
+							values: {
+								[`${"set item tint RGB".toLowerCase()}`]: paintItems,
+								[`${"set item tint RGB 2".toLowerCase()}`]: paintItems,
+								[`${"attach particle effect".toLowerCase()}`]: effectsItems,
+								[`${"attach particle effect static".toLowerCase()}`]: effectsItems,
+							}
+						},
+						globals$: combineLatest([itemsDefinitions$, this.gameSounds$])
+					}
+				})
+			)
+		)
 
 		this.maps = new Map()
 	}

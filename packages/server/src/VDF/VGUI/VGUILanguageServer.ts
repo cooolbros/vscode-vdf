@@ -6,8 +6,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { map, switchMap } from "rxjs"
-import type { VDFDocumentSymbols } from "vdf-documentsymbols"
+import { firstValueFrom, map, switchMap } from "rxjs"
 import { type Connection } from "vscode-languageserver"
 import { z } from "zod"
 import { Definitions, References } from "../../DefinitionReferences"
@@ -94,24 +93,6 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								signal!
 							)
 						}),
-					documentSymbol: t
-						.procedure
-						.input(
-							z.object({
-								key: Uri.schema,
-								path: z.string(),
-							})
-						)
-						.subscription(async ({ input, signal }) => {
-							return observableToAsyncIterable<VDFDocumentSymbols | null>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => {
-										return workspace.getVDFDocumentSymbols(input.path)
-									})
-								),
-								signal!
-							)
-						}),
 					clientScheme: t
 						.procedure
 						.input(
@@ -131,18 +112,114 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								signal!
 							)
 						}),
+					languageTokens: t
+						.procedure
+						.input(z.object({ key: Uri.schema }))
+						.subscription(async ({ input, signal }) => {
+							return observableToAsyncIterable<Definitions>(
+								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
+									switchMap((workspace) => {
+										return workspace.languageTokens$.pipe(
+											map((definitionReferences) => definitionReferences.definitions)
+										)
+									})
+								),
+								signal!
+							)
+						}),
+					hudanimations_manifest: t
+						.procedure
+						.input(z.object({ key: Uri.schema }))
+						.subscription(async ({ input, signal }) => {
+							return observableToAsyncIterable<string[]>(
+								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
+									switchMap((workspace) => workspace.hudanimations_manifest$)
+								),
+								signal!
+							)
+						}),
+					itemsGame: {
+						open: t
+							.procedure
+							.input(z.object({ key: Uri.schema }))
+							.subscription(({ input, signal }) => {
+								return observableToAsyncIterable<void>(
+									usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
+										switchMap((workspace) => workspace.itemsGame$),
+										map(() => undefined),
+									),
+									signal!
+								)
+							}),
+						documentSymbol: t
+							.procedure
+							.input(
+								z.object({
+									key: Uri.schema,
+									name: z.string(),
+								})
+							)
+							.query(async ({ input }) => {
+								return await firstValueFrom(
+									usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
+										switchMap((workspace) => workspace.itemsGame$),
+										switchMap((document) => document.documentSymbols$),
+										map((documentSymbols) => {
+											const name = input.name.toLowerCase()
+
+											const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "items_game")?.children
+											if (!items_game) {
+												throw new Error("items_game")
+											}
+
+											const section = items_game.find((documentSymbol) => documentSymbol.key.toLowerCase() == name)?.children
+											if (!section) {
+												throw new Error(input.name)
+											}
+
+											return section
+										})
+									)
+								)
+							}),
+						definitions: t
+							.procedure
+							.input(
+								z.object({
+									key: Uri.schema,
+								})
+							)
+							.query(async ({ input }) => {
+								await using workspace = await this.workspaces.get(input.key, reject)
+								await using document = await firstValueFrom(workspace.itemsGame$)
+								const definitionReferences = await firstValueFrom(document.definitionReferences$)
+
+								return definitionReferences.definitions
+							}),
+					},
 					gameSounds: t
 						.procedure
-						.input(
-							z.object({
-								key: Uri.schema,
-							})
-						)
+						.input(z.object({ key: Uri.schema }))
 						.subscription(async ({ input, signal }) => {
 							return observableToAsyncIterable<Definitions>(
 								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
 									switchMap((workspace) => {
 										return workspace.gameSounds$.pipe(
+											map((definitionReferences) => definitionReferences.definitions)
+										)
+									})
+								),
+								signal!
+							)
+						}),
+					surfaceProperties: t
+						.procedure
+						.input(z.object({ key: Uri.schema }))
+						.subscription(async ({ input, signal }) => {
+							return observableToAsyncIterable<Definitions>(
+								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
+									switchMap((workspace) => {
+										return workspace.surfaceProperties$.pipe(
 											map((definitionReferences) => definitionReferences.definitions)
 										)
 									})
