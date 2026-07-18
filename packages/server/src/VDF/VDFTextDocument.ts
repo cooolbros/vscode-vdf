@@ -6,7 +6,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, finalize, firstValueFrom, map, Observable, shareReplay, switchMap } from "rxjs"
+import { combineLatest, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, shareReplay, switchMap } from "rxjs"
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -525,7 +525,7 @@ export abstract class VDFTextDocument<
 			defaultDocumentSymbols: new VDFDocumentSymbols(),
 			definitionReferences$: combineLatest({
 				documentConfiguration: documentConfiguration$,
-				value: configuration.dependencies$.pipe(
+				value: defer(() => this.configuration.dependencies$).pipe(
 					switchMap((dependencies) => {
 						return combineLatest({
 							globals: dependencies.globals$,
