@@ -60,14 +60,17 @@ export class VGUILanguageServer extends VDFLanguageServer<
 
 		this.workspaces = new RefCountAsyncDisposableFactory(
 			(uri) => uri.toString(),
-			async (uri) => new VGUIWorkspace({
-				uri: uri,
-				fileSystem: await this.fileSystems.get([
-					{ type: "folder", folder: uri },
-					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
-				]),
-				documents: this.documents,
-			})
+			async (uri) => {
+				const teamFortress2Folder = (await this.workspaceUris.promise).teamFortress2Folder
+				return new VGUIWorkspace({
+					uri: uri,
+					fileSystem: await this.fileSystems.get([
+						...(!Uri.equals(uri, teamFortress2Folder) ? [{ type: <const>"folder", folder: uri }] : []),
+						{ type: "tf2", teamFortress2Folder: teamFortress2Folder }
+					]),
+					documents: this.documents,
+				})
+			}
 		)
 	}
 
