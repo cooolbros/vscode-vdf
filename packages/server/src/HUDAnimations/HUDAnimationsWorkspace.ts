@@ -136,83 +136,72 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		this.definitionReferences$ = combineLatest({
 			clientScheme: this.clientScheme$,
 			manifest: this.hudanimations_manifest$.pipe(
-				switchMap((documents) => {
-					if (!documents.length) {
-						return of({
-							files: [],
-							elements: [],
-						})
-					}
+				map((documents) => {
+					return documents.map((document) => ({ key: document.uri.toString(), document: document }))
+				}),
+				combineLatestPersistent(({ document }) => {
+					return document.documentSymbols$.pipe(
+						map((documentSymbols) => {
+							const result: HUDAnimationsWorkspaceDocumentDependencies = {
+								document: document,
+								documentSymbols: documentSymbols,
+								definitions: new Collection<Definition>(),
+								references: new Collection<VDFRange>(),
+								eventNames: [],
+							}
 
-					return combineLatest(
-						documents.map((document) => {
-							return document.documentSymbols$.pipe(
-								map((documentSymbols) => {
-									return documentSymbols.reduce(
-										(result, documentSymbol) => {
-											result.definitions.set(null, EventType, documentSymbol.eventName, {
-												uri: document.uri,
-												key: documentSymbol.eventName,
-												range: documentSymbol.range,
-												documentation: document.definitions.documentation(documentSymbol),
-												keyRange: documentSymbol.eventNameRange,
-												conditional: documentSymbol.conditional?.value
-											})
-
-											const key = documentSymbol.eventName.toLowerCase()
-											result.eventNames.push(key)
-
-											const type = Symbol.for(key)
-
-											for (const statement of documentSymbol.children) {
-												if ("event" in statement) {
-													result.references.set(null, EventType, statement.event, statement.eventRange)
-												}
-
-												if ("element" in statement) {
-													result.references.set(null, type, statement.element, statement.elementRange)
-												}
-
-												if (statement.type == HUDAnimationStatementType.Animate) {
-													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														result.references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
-													}
-												}
-
-												// HUDAnimationStatementType.SetFont
-												if ("font" in statement) {
-													result.references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
-												}
-											}
-
-											return result
-										},
-										{
-											document: document,
-											documentSymbols: documentSymbols,
-											definitions: new Collection<Definition>(),
-											references: new Collection<VDFRange>(),
-											eventNames: [],
-										} as HUDAnimationsWorkspaceDocumentDependencies
-									)
+							for (const documentSymbol of documentSymbols) {
+								result.definitions.set(null, EventType, documentSymbol.eventName, {
+									uri: document.uri,
+									key: documentSymbol.eventName,
+									range: documentSymbol.range,
+									documentation: document.definitions.documentation(documentSymbol),
+									keyRange: documentSymbol.eventNameRange,
+									conditional: documentSymbol.conditional?.value
 								})
-							)
-						})
-					).pipe(
-						switchMap((files) => {
-							const eventNames = new Set(files.flatMap((file) => file.eventNames))
-							return (
-								eventNames.size != 0
-									? combineLatest(eventNames.values().map((eventName) => this.getEventDefinitions(eventName)?.pipe(map((value) => ({ name: eventName, elements: value })))).filter((observable) => observable != null).toArray())
-									: of([])
-							).pipe(
-								map((elements) => {
-									return {
-										files: files,
-										elements,
+
+								const key = documentSymbol.eventName.toLowerCase()
+								result.eventNames.push(key)
+
+								const type = Symbol.for(key)
+
+								for (const statement of documentSymbol.children) {
+									if ("event" in statement) {
+										result.references.set(null, EventType, statement.event, statement.eventRange)
 									}
-								})
-							)
+
+									if ("element" in statement) {
+										result.references.set(null, type, statement.element, statement.elementRange)
+									}
+
+									if (statement.type == HUDAnimationStatementType.Animate) {
+										if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
+											result.references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
+										}
+									}
+
+									if ("font" in statement) {
+										result.references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
+									}
+								}
+							}
+
+							return result
+						})
+					)
+				}),
+				switchMap((files) => {
+					const eventNames = new Set(files.flatMap((file) => file.eventNames))
+					return (
+						eventNames.size != 0
+							? combineLatest(eventNames.values().map((eventName) => this.getEventDefinitions(eventName)?.pipe(map((value) => ({ name: eventName, elements: value })))).filter((observable) => observable != null).toArray())
+							: of([])
+					).pipe(
+						map((elements) => {
+							return {
+								files: files,
+								elements,
+							}
 						})
 					)
 				})
