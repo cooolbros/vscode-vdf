@@ -281,7 +281,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 		this.hudanimations_manifest$ = manifest("scripts/hudanimations_manifest.txt", new Set(["file"]))
 
-		this.game_sounds_manifest$ = manifest("scripts/game_sounds_manifest.txt", new Set(["precache_file", "preload_file"]))
+		this.game_sounds_manifest$ = manifest("scripts/game_sounds_manifest.txt", new Set(["precache_file", "preload_file"])).pipe(
+			shareReplay({ bufferSize: 1, refCount: true })
+		)
 
 		this.gameSoundsFiles$ = this.game_sounds_manifest$.pipe(
 			map((paths) => new Set(paths)),
