@@ -24,7 +24,6 @@ export class VMTLanguageServer extends VDFLanguageServer<
 
 	constructor(languageId: "vmt", name: "VMT", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
-			name: "vmt",
 			platform: platform,
 			servers: new Set(["vdf"]),
 			capabilities: {},

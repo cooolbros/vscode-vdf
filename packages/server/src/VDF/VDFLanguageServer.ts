@@ -14,7 +14,6 @@ import { type TextDocumentInit } from "../TextDocumentBase"
 import { VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
 export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies extends VDFTextDocumentDependencies> {
-	name: "popfile" | "vdf" | "vmt"
 	platform: string
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities

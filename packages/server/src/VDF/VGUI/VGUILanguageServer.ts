@@ -24,7 +24,6 @@ export class VGUILanguageServer extends VDFLanguageServer<
 
 	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
-			name: "vdf",
 			platform: platform,
 			servers: new Set(["hudanimations"]),
 			capabilities: {},

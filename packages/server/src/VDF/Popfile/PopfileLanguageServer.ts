@@ -30,7 +30,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 
 	constructor(languageId: "popfile", name: "Popfile", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
-			name: "popfile",
 			platform: platform,
 			servers: new Set(["vdf"]),
 			capabilities: {
