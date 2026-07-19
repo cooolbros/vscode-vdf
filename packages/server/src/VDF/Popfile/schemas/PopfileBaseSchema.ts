@@ -222,7 +222,7 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 				const references = new Collection<VDFRange>()
 
 				for (const documentSymbol of definitionsSchema.getTemplates(documentSymbols)) {
-					if (!documentSymbol.children || documentSymbol.children.length == 0) {
+					if (!documentSymbol.children) {
 						continue
 					}
 
