@@ -147,7 +147,7 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 		const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
 		if (params.textDocument.uri.basename().startsWith("mvm_")) {
-			const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key != "#base")
+			const waveSchedule = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")
 			if (waveSchedule?.children) {
 				codeLens.unshift({
 					range: waveSchedule.nameRange,
