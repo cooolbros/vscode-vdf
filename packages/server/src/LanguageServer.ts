@@ -85,10 +85,10 @@ export abstract class LanguageServer<
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
 	private readonly diagnostic = { id: 0 }
-	private readonly documentDiagnostics: WeakMap<TDocument, Map<number, DiagnosticCodeAction>>
-	private readonly documentsLinks: WeakMap<TDocument, { version: number, promise: Promise<(Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } })[]> }>
+	private readonly documentDiagnostics: Map<string, Map<number, DiagnosticCodeAction>>
+	private readonly documentsLinks: Map<string, { version: number, promise: Promise<(Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } })[]> }>
 	private readonly documentsColours: Map<string, { version: number, promise: Promise<{ colours: ColourInformationStringify[], map: Map<string, (colour: Color) => string> }> }>
-	private readonly documentsInlayHints: WeakMap<TDocument, { version: number, promise: Promise<InlayHint[]> }>
+	private readonly documentsInlayHints: Map<string, { version: number, promise: Promise<InlayHint[]> }>
 
 	private oldName: [number | null, symbol, string] | null = null
 
@@ -235,10 +235,10 @@ export abstract class LanguageServer<
 			}
 		})
 
-		this.documentDiagnostics = new WeakMap()
-		this.documentsLinks = new WeakMap()
+		this.documentDiagnostics = new Map()
+		this.documentsLinks = new Map()
 		this.documentsColours = new Map()
-		this.documentsInlayHints = new WeakMap()
+		this.documentsInlayHints = new Map()
 
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server v${version}`)
@@ -429,10 +429,12 @@ export abstract class LanguageServer<
 	protected async onDidOpen(event: TextDocumentChangeEvent<TDocument>): Promise<AsyncDisposable> {
 		return {
 			[Symbol.asyncDispose]: async () => {
-				this.documentDiagnostics.delete(event.document)
-				this.documentsLinks.delete(event.document)
-				this.documentsColours.delete(event.document.uri.toString())
-				this.documentsInlayHints.delete(event.document)
+				const uri = event.document.uri.toString()
+
+				this.documentDiagnostics.delete(uri)
+				this.documentsLinks.delete(uri)
+				this.documentsColours.delete(uri)
+				this.documentsInlayHints.delete(uri)
 			}
 		}
 	}
@@ -459,7 +461,7 @@ export abstract class LanguageServer<
 			result.push({ ...rest, data: { id } })
 		}
 
-		this.documentDiagnostics.set(document, map)
+		this.documentDiagnostics.set(document.uri.toString(), map)
 
 		this.connection.sendDiagnostics({
 			uri: document.uri.toString(),
@@ -470,8 +472,9 @@ export abstract class LanguageServer<
 	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
 
 		await using document = await this.documents.get(params.textDocument.uri)
+		const uri = document.uri.toString()
 
-		let documentLinks = this.documentsLinks.get(document)
+		let documentLinks = this.documentsLinks.get(uri)
 		if (documentLinks?.version == document.version) {
 			return await documentLinks.promise
 		}
@@ -489,16 +492,15 @@ export abstract class LanguageServer<
 			})
 		}
 
-		this.documentsLinks.set(document, documentLinks)
+		this.documentsLinks.set(uri, documentLinks)
 		return await documentLinks.promise
 	}
 
 	private async onDocumentLinkResolve(documentLink: DocumentLink) {
 
 		const { uri, index } = z.object({ uri: Uri.schema, index: z.number().nonnegative() }).parse(documentLink.data)
-		await using document = await this.documents.get(uri)
 
-		const resolve = (await this.documentsLinks.get(document)?.promise)?.[index].data.resolve
+		const resolve = (await this.documentsLinks.get(uri.toString())?.promise)?.[index].data.resolve
 		if (resolve == undefined) {
 			// Document closed
 			// https://github.com/cooolbros/vscode-vdf/issues/10
@@ -548,8 +550,9 @@ export abstract class LanguageServer<
 	private async onInlayHint(params: TextDocumentRequestParams<InlayHintParams>) {
 
 		await using document = await this.documents.get(params.textDocument.uri)
+		const uri = document.uri.toString()
 
-		let documentInlayHints = this.documentsInlayHints.get(document)
+		let documentInlayHints = this.documentsInlayHints.get(uri)
 		if (documentInlayHints?.version == document.version) {
 			return await documentInlayHints.promise
 		}
@@ -559,7 +562,7 @@ export abstract class LanguageServer<
 			promise: document.getInlayHints()
 		}
 
-		this.documentsInlayHints.set(document, documentInlayHints)
+		this.documentsInlayHints.set(uri, documentInlayHints)
 		return await documentInlayHints.promise
 	}
 
@@ -658,10 +661,11 @@ export abstract class LanguageServer<
 
 	private async onHover(params: TextDocumentRequestParams<HoverParams>): Promise<Hover | null> {
 		await using document = await this.documents.get(params.textDocument.uri)
+		const uri = document.uri.toString()
 
 		const { definitionReferences, documentLinks } = await firstValueFrom(combineLatest({
 			definitionReferences: document.definitionReferences$,
-			documentLinks: this.documentsLinks.get(document)!.promise
+			documentLinks: this.documentsLinks.get(uri)!.promise
 		}))
 
 		for (const { value: definitions } of definitionReferences.definitions) {
@@ -746,15 +750,14 @@ export abstract class LanguageServer<
 	private async onCodeAction(params: TextDocumentRequestParams<CodeActionParams>): Promise<CodeAction[] | null> {
 
 		await using document = await this.documents.get(params.textDocument.uri)
+		const uri = document.uri.toString()
 
-		const diagnostics = this.documentDiagnostics.get(document)
+		const diagnostics = this.documentDiagnostics.get(uri)
 		if (!diagnostics) {
 			return null
 		}
 
 		const diagnosticDataSchema = z.object({ id: z.number() })
-
-		const uri = params.textDocument.uri.toString()
 
 		const utils = {
 			params: params,
