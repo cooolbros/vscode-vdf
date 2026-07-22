@@ -36,7 +36,7 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 
 		const proxy = new Proxy(target, {
 			get: (target, p, receiver) => {
-				if (value.count == 0) {
+				if (!this.set.has(id)) {
 					console.warn(`[Symbol.asyncDispose]() => ${target.constructor.name}(${k}).${String(p)}`)
 					console.warn(stack)
 				}
