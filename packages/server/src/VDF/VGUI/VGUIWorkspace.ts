@@ -151,7 +151,7 @@ export class VGUIWorkspace extends WorkspaceBase {
 
 	public readonly globals$: Observable<GlobalDefinitionReferences[]>
 
-	public readonly fileReferences: Map<string, { references$: BehaviorSubject<Map<string, References | null>>, document$: Observable<VGUITextDocument | null> }>
+	public setFileReferences: (path: string, references: Map<string, References | null>) => Promise<void>
 
 	constructor({
 		uri,
@@ -402,7 +402,48 @@ export class VGUIWorkspace extends WorkspaceBase {
 			shareReplayUntilDisposed(this.dispose$),
 		)
 
-		this.fileReferences = new Map()
+		const fileReferences = new Map<string, { document$: Observable<[VGUITextDocument | null, VGUITextDocument | null]>, map: Map<string, References | null> }>()
+		this.setFileReferences = async (path, references) => {
+			const { document$, map } = fileReferences.getOrInsertComputed(path, () => {
+
+				const document$ = this.fileSystem.resolve(path).pipe(
+					switchMap((entry) => {
+						return entry.type == EntryType.File ?
+							usingAsync(async () => await this.documents.get(entry.uri))
+							: of(null)
+					}),
+					startWith(null),
+					pairwise(),
+					shareReplayUntilDisposed(this.dispose$),
+				)
+
+				const map = new Map<string, References | null>()
+
+				this.stack.adopt(
+					document$.subscribe(([previous, current]) => {
+						if (previous) {
+							previous.setDocumentReferences(new Map(map.keys().map((uri) => [uri, null])))
+						}
+
+						if (current) {
+							current.setDocumentReferences(map)
+						}
+					}),
+					(subscription) => subscription.unsubscribe()
+				)
+
+				return { document$, map }
+			})
+
+			const [previous, current] = await firstValueFrom(document$)
+			if (current) {
+				current.setDocumentReferences(references)
+			}
+
+			for (const [uri, documentReferences] of references) {
+				map.set(uri, documentReferences)
+			}
+		}
 
 		Promise.allSettled([
 			Promise.try(async () => {
@@ -471,46 +512,5 @@ export class VGUIWorkspace extends WorkspaceBase {
 				)
 			})
 		)
-	}
-
-	public async setFileReferences(path: string, references: Map<string, References | null>) {
-		const fileReferences = this.fileReferences.getOrInsertComputed(path, () => {
-			const value = {
-				references$: new BehaviorSubject(new Map()),
-				document$: this.fileSystem.resolve(path).pipe(
-					switchMap((entry) => entry.type == EntryType.File ? usingAsync(async () => await this.documents.get(entry.uri)) : of(null)),
-					startWith(null),
-					pairwise(),
-					map(([previous, current]) => {
-						if (previous) {
-							previous.setDocumentReferences(new Map(references.keys().map((uri) => [uri, null])))
-						}
-
-						if (current) {
-							current.setDocumentReferences(references)
-						}
-
-						return current
-					})
-				)
-			}
-
-			combineLatest({
-				references: value.references$,
-				document: value.document$,
-			}).subscribe(({ references, document }) => {
-				if (document) {
-					document.setDocumentReferences(references)
-				}
-			})
-
-			return value
-		})
-
-		for (const [uri, documentReferences] of references) {
-			fileReferences.references$.value.set(uri, documentReferences)
-		}
-
-		fileReferences.references$.next(fileReferences.references$.value)
 	}
 }
