@@ -55,6 +55,10 @@ export class Uri {
 		return posix.basename(this.path)
 	}
 
+	public extname() {
+		return posix.extname(this.path)
+	}
+
 	public joinPath(...paths: string[]) {
 		return this.with({ path: posix.join(this.path, ...paths.map((path) => path.split(/[/\\]/)).flat()) })
 	}

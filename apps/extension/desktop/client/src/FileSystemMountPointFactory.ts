@@ -10,7 +10,6 @@ import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import { posix } from "path"
 import { BehaviorSubject, distinctUntilChanged, finalize, firstValueFrom, map, of, ReplaySubject, shareReplay, switchMap, type Observable } from "rxjs"
 import { VDF } from "vdf"
 import vscode from "vscode"
@@ -320,8 +319,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						}
 					}
 					case "popfile:bsp": {
-						const extname = posix.extname(path.popfile.basename())
-						if (extname != ".pop") {
+						if (path.popfile.extname() != ".pop") {
 							throw new Error(`[FileSystemMountPointFactory.popfile:bsp] "${path.popfile}" != ".pop"`)
 						}
 
@@ -345,8 +343,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 						)
 					}
 					case "bsp": {
-						const extname = posix.extname(path.bsp.basename())
-						if (extname != ".bsp") {
+						if (path.bsp.extname() != ".bsp") {
 							throw new Error(`[FileSystemMountPointFactory.bsp] "${path.bsp}" != ".bsp"`)
 						}
 

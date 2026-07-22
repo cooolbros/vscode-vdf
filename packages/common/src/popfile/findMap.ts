@@ -4,8 +4,7 @@ import type { FileSystemMountPoint } from "../FileSystemMountPoint"
 import type { Uri } from "../Uri"
 
 export function findMap(uri: Uri, fileSystem: FileSystemMountPoint): Observable<`mvm_${string}.bsp` | null> {
-	const extname = posix.extname(uri.basename())
-	if (extname != ".pop") {
+	if (uri.extname() != ".pop") {
 		throw new Error(`[findMap] "${uri}" != ".pop"`)
 	}
 

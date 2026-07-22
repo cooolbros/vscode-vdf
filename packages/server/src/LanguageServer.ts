@@ -12,7 +12,6 @@ import { Uri } from "common/Uri"
 import { VSCodeJSONRPCLink } from "common/VSCodeJSONRPCLink"
 import { VSCodeVDFConfigurationSchema, type VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
-import { posix } from "path"
 import { BehaviorSubject, combineLatest, concatMap, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, Observable, shareReplay, switchMap } from "rxjs"
 import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
@@ -696,7 +695,7 @@ export abstract class LanguageServer<
 		for (const { range, data } of documentLinks) {
 			if (range.contains(params.position)) {
 				const target = await data.resolve()
-				if (target != null && posix.extname(target.path) == ".vmt") {
+				if (target != null && target.extname() == ".vmt") {
 					const value = await this.VTFToPNGBase64(target, document.fileSystem)
 					if (value) {
 						return {

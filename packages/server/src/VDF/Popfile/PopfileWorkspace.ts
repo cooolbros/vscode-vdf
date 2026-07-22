@@ -4,7 +4,6 @@ import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDispo
 import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { Uri } from "common/Uri"
-import { posix } from "path"
 import { combineLatest, concat, concatMap, firstValueFrom, ignoreElements, map, Observable, shareReplay, take } from "rxjs"
 import { CompletionItemKind, type CompletionItem } from "vscode-languageserver"
 import { z } from "zod"
@@ -308,8 +307,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 	}
 
 	public entities(uri: Uri) {
-		const extname = posix.extname(uri.basename())
-		if (extname != ".pop") {
+		if (uri.extname() != ".pop") {
 			throw new Error(`[PopfileWorkspace.entities] "${uri}" != ".pop"`)
 		}
 
