@@ -1,9 +1,9 @@
-import type { DecorationOptions, TextEditor, TextEditorDecorationType } from "vscode"
+import vscode from "vscode"
 
-export const decorationTypes = new Map<string, TextEditorDecorationType>()
-export const editorDecorations = new Map<string, { decorationType: TextEditorDecorationType, decorations: DecorationOptions[] }>()
+export const decorationTypes = new Map<string, vscode.TextEditorDecorationType>()
+export const editorDecorations = new Map<string, { decorationType: vscode.TextEditorDecorationType, decorations: vscode.DecorationOptions[] }>()
 
-export const onDidChangeActiveTextEditor = (editor: TextEditor | undefined) => {
+export const onDidChangeActiveTextEditor = (editor: vscode.TextEditor | undefined) => {
 	if (editor) {
 		const decorations = editorDecorations.get(editor.document.uri.toString())
 		if (decorations) {

@@ -1,5 +1,5 @@
 import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, skip, Subscription } from "rxjs"
-import vscode, { commands, type CustomDocument, StatusBarAlignment, type StatusBarItem, window, workspace } from "vscode"
+import vscode from "vscode"
 
 const VTF_WIDTH_OFFSET = 16
 const VTF_HEIGHT_OFFSET = 18
@@ -36,7 +36,7 @@ class DistinctBehaviorSubject<T> extends BehaviorSubject<T> {
 	}
 }
 
-export class VTFDocument implements CustomDocument {
+export class VTFDocument implements vscode.CustomDocument {
 
 	public static readonly flags = (buf: Uint8Array) => new DataView(buf.buffer).getUint32(VTF_FLAGS_OFFSET, true)
 
@@ -47,9 +47,9 @@ export class VTFDocument implements CustomDocument {
 	public readonly scale$: DistinctBehaviorSubject<number>
 	public changes = 0
 
-	private readonly zoomLevelStatusBarItem: StatusBarItem
-	private readonly dimensionsStatusBarItem: StatusBarItem
-	private readonly binarySizeStatusBarItem: StatusBarItem
+	private readonly zoomLevelStatusBarItem: vscode.StatusBarItem
+	private readonly dimensionsStatusBarItem: vscode.StatusBarItem
+	private readonly binarySizeStatusBarItem: vscode.StatusBarItem
 
 	public dispose: () => void
 
@@ -80,13 +80,13 @@ export class VTFDocument implements CustomDocument {
 					this.buf$.next(buf)
 				}
 				else {
-					const result = await window.showWarningMessage("This file has changed on disk, but you have unsaved changes. Saving now will overwrite the file on disk with your changes.", "Overwrite", "Revert")
+					const result = await vscode.window.showWarningMessage("This file has changed on disk, but you have unsaved changes. Saving now will overwrite the file on disk with your changes.", "Overwrite", "Revert")
 					switch (result) {
 						case "Overwrite":
-							commands.executeCommand("workbench.action.files.save")
+							vscode.commands.executeCommand("workbench.action.files.save")
 							break
 						case "Revert":
-							commands.executeCommand("workbench.action.files.revert")
+							vscode.commands.executeCommand("workbench.action.files.revert")
 							break
 					}
 				}
@@ -99,7 +99,7 @@ export class VTFDocument implements CustomDocument {
 
 		let priority = 100
 
-		this.zoomLevelStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
+		this.zoomLevelStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, priority--)
 		stack.defer(() => this.zoomLevelStatusBarItem.dispose())
 
 		stack.adopt(
@@ -116,7 +116,7 @@ export class VTFDocument implements CustomDocument {
 			arguments: [this]
 		}
 
-		this.dimensionsStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
+		this.dimensionsStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, priority--)
 		stack.defer(() => this.dimensionsStatusBarItem.dispose())
 		stack.adopt(
 			dataView$.pipe(
@@ -126,7 +126,7 @@ export class VTFDocument implements CustomDocument {
 			unsubscribe
 		)
 
-		this.binarySizeStatusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, priority--)
+		this.binarySizeStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, priority--)
 		stack.defer(() => this.binarySizeStatusBarItem.dispose())
 		stack.adopt(
 			dataView$.pipe(
@@ -168,7 +168,7 @@ export class VTFDocument implements CustomDocument {
 
 	public async revert() {
 		this.changes = 0
-		this.buf$.next(await workspace.fs.readFile(this.uri))
+		this.buf$.next(await vscode.workspace.fs.readFile(this.uri))
 	}
 
 	public backup() {

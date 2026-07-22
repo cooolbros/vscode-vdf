@@ -21,12 +21,12 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { firstValueFrom, of } from "rxjs"
-import { commands, Disposable, FileType, languages, window, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import vscode from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
 
-export function activate(context: ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): void {
 
 	const subscriptions = context.subscriptions
 
@@ -43,7 +43,7 @@ export function activate(context: ExtensionContext): void {
 					const root = new Uri({ scheme: RemoteResourceFileSystemProvider.scheme, path: "/" })
 					return await VSCodeFileSystem({
 						root: root,
-						type: FileType.Directory,
+						type: vscode.FileType.Directory,
 						watch: false,
 						resolvePath: (path) => root.joinPath(path)
 					})
@@ -63,26 +63,26 @@ export function activate(context: ExtensionContext): void {
 	// https://code.visualstudio.com/api/references/vscode-api
 
 	// Commands
-	subscriptions.push(commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
-	subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
-	subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory, null)))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
+	subscriptions.push(vscode.commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
+	subscriptions.push(vscode.commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
+	subscriptions.push(vscode.commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory, null)))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
-	subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
-	subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
+	subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
+	subscriptions.push(vscode.window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
 
 	// Workspace
-	subscriptions.push(workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
+	subscriptions.push(vscode.workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
-	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
+	const onDidOpenTextDocument = async (e: vscode.TextDocument): Promise<void> => {
 		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
 		if (result.success) {
 			await startServer(result.data)
@@ -100,7 +100,7 @@ export function activate(context: ExtensionContext): void {
 		const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
-		const languageStatusItem = languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
+		const languageStatusItem = vscode.languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
 		subscriptions.push(languageStatusItem)
 
 		languageStatusItem.text = "$(cloud)"
@@ -135,10 +135,10 @@ export function activate(context: ExtensionContext): void {
 			)
 		)
 
-		subscriptions.push(new Disposable(() => client[Symbol.asyncDispose]()))
+		subscriptions.push(new vscode.Disposable(() => client[Symbol.asyncDispose]()))
 		await client.start()
 	}
 
-	workspace.textDocuments.forEach(onDidOpenTextDocument)
-	subscriptions.push(workspace.onDidOpenTextDocument(onDidOpenTextDocument))
+	vscode.workspace.textDocuments.forEach(onDidOpenTextDocument)
+	subscriptions.push(vscode.workspace.onDidOpenTextDocument(onDidOpenTextDocument))
 }

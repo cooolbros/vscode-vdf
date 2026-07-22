@@ -1,11 +1,11 @@
 import type { Observable } from "rxjs"
-import type { FileType } from "vscode"
+import vscode from "vscode"
 import type { Uri } from "./Uri"
 
 export interface FileSystemMountPoint extends AsyncDisposable {
 	resolve(path: string): Observable<Entry>
-	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, FileType][]>
-	watchDirectory(path: string, options: { pattern?: string }): Observable<[string, FileType][]>
+	readDirectory(path: string, options: { recursive?: boolean, pattern?: string }): Promise<[string, vscode.FileType][]>
+	watchDirectory(path: string, options: { pattern?: string }): Observable<[string, vscode.FileType][]>
 }
 
 export const enum EntryType {

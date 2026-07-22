@@ -9,7 +9,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { WatchEvent } from "common/WatchEvent"
 import { concat, concatMap, distinctUntilChanged, filter, from, switchAll } from "rxjs"
-import vscode, { commands, window, workspace, type ExtensionContext } from "vscode"
+import vscode from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
 import { decorationTypes, editorDecorations } from "./decorations"
@@ -29,7 +29,7 @@ const UTF16LEDecoder = new TextDecoder("utf-16le")
 
 export function TRPCClientRouter(
 	t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>,
-	context: ExtensionContext,
+	context: vscode.ExtensionContext,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
@@ -50,7 +50,7 @@ export function TRPCClientRouter(
 						languageId: input.languageId,
 						version: 1,
 						content: await (async () => {
-							const arr = await workspace.fs.readFile(input.uri)
+							const arr = await vscode.workspace.fs.readFile(input.uri)
 							if (arr[0] == 255 && arr[1] == 254) {
 								return UTF16LEDecoder.decode(arr)
 							}
@@ -170,7 +170,7 @@ export function TRPCClientRouter(
 			.procedure
 			.input(URISchema).query(async ({ input }) => {
 				await initVTFPNG(context)
-				using vtf = new VTF(await workspace.fs.readFile(input.uri))
+				using vtf = new VTF(await vscode.workspace.fs.readFile(input.uri))
 				return VTFToPNGBase64(vtf, 256)
 			}),
 		window: {
@@ -187,7 +187,7 @@ export function TRPCClientRouter(
 					})
 				)
 				.mutation(async ({ input }) => {
-					const decorationType = window.createTextEditorDecorationType(input.options)
+					const decorationType = vscode.window.createTextEditorDecorationType(input.options)
 					decorationTypes.set(decorationType.key, decorationType)
 					return decorationType.key
 				}),
@@ -225,7 +225,7 @@ export function TRPCClientRouter(
 						}
 					)
 
-					const editor = window.visibleTextEditors.find((editor) => editor.document.uri.toString() == input.uri.toString())
+					const editor = vscode.window.visibleTextEditors.find((editor) => editor.document.uri.toString() == input.uri.toString())
 					if (editor) {
 						editor.setDecorations(
 							decorationType,
@@ -264,7 +264,7 @@ export function TRPCClientRouter(
 					.procedure
 					.input(URISchema)
 					.subscription(({ input, signal }) => {
-						const flags = async () => VTFDocument.flags(await workspace.fs.readFile(input.uri))
+						const flags = async () => VTFDocument.flags(await vscode.workspace.fs.readFile(input.uri))
 						return observableToAsyncIterable<number>(
 							concat(
 								from(Promise.try(flags)),
@@ -289,15 +289,15 @@ export function TRPCClientRouter(
 						})
 					)
 					.query(async ({ input }) => {
-						const configuration = workspace.getConfiguration("vscode-vdf")
+						const configuration = vscode.workspace.getConfiguration("vscode-vdf")
 						if (configuration.get("popfile.vscript.enable") == true) {
 							const languages = await vscode.languages.getLanguages()
 							const installed = languages.includes("squirrel") || languages.includes("tf2vscript")
 							if (!installed) {
-								const result = await window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
+								const result = await vscode.window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
 								switch (result) {
 									case "Yes":
-										await commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: "vscode", path: "extension/ocet247.tf2-vscript-support" }))
+										await vscode.commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: "vscode", path: "extension/ocet247.tf2-vscript-support" }))
 										break
 									case "No":
 										break

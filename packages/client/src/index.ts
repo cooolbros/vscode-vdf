@@ -9,7 +9,7 @@ import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
 import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { VDFPosition, VDFRange } from "vdf"
-import type { ExtensionContext } from "vscode"
+import vscode from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
@@ -31,7 +31,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 	private readonly router: ReturnType<typeof TRPCClientRouter>
 
 	constructor(
-		context: ExtensionContext,
+		context: vscode.ExtensionContext,
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,

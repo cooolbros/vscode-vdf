@@ -7,7 +7,7 @@ import dedent from "dedent"
 import { posix } from "path"
 import { BehaviorSubject, combineLatest, filter, firstValueFrom, isObservable, map, Observable, of, switchMap } from "rxjs"
 import { VDFRange, VDFSyntaxError, type RangeLike } from "vdf"
-import type { FileType } from "vscode"
+import vscode from "vscode"
 import { CodeAction, CodeLens, Color, ColorInformation, CompletionItem, CompletionItemKind, DiagnosticSeverity, DocumentLink, InlayHint, TextEdit, WorkspaceEdit, type CodeActionParams, type Diagnostic, type DocumentSymbol } from "vscode-languageserver"
 import { TextDocument, type TextDocumentContentChangeEvent } from "vscode-languageserver-textdocument"
 import { References, type DefinitionReferences, type SetDocumentReferences } from "./DefinitionReferences"
@@ -111,7 +111,7 @@ export abstract class TextDocumentBase<
 	}
 
 	public readonly completion = {
-		files: async ({ folder, text, basenamePattern, filter, image = false }: { folder: string, text?: string, basenamePattern?: string, filter?: ([name, type]: [string, FileType], startsWithFilter: (name: string) => boolean) => boolean, image?: boolean, }): Promise<IteratorObject<CompletionItem>> => {
+		files: async ({ folder, text, basenamePattern, filter, image = false }: { folder: string, text?: string, basenamePattern?: string, filter?: ([name, type]: [string, vscode.FileType], startsWithFilter: (name: string) => boolean) => boolean, image?: boolean, }): Promise<IteratorObject<CompletionItem>> => {
 			const documentConfiguration = await firstValueFrom(this.documentConfiguration$)
 			let startsWithFilter: (name: string) => boolean
 

@@ -1,6 +1,6 @@
 import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { Uri } from "common/Uri"
-import { commands, window, workspace } from "vscode"
+import vscode from "vscode"
 import { z } from "zod"
 
 export function TRPCImageRouter<T extends string>(t: TRPCRootObject<{ client: T }, object, { transformer: DataTransformer }>) {
@@ -8,7 +8,7 @@ export function TRPCImageRouter<T extends string>(t: TRPCRootObject<{ client: T 
 		showSaveDialog: t
 			.procedure
 			.query(async () => {
-				const uri = await window.showSaveDialog({ filters: { Images: ["png", "jpg"] } })
+				const uri = await vscode.window.showSaveDialog({ filters: { Images: ["png", "jpg"] } })
 				return uri != null
 					? new Uri(uri).toJSON()
 					: null
@@ -22,8 +22,8 @@ export function TRPCImageRouter<T extends string>(t: TRPCRootObject<{ client: T 
 				})
 			)
 			.mutation(async ({ input }) => {
-				await workspace.fs.writeFile(input.uri, input.buf)
-				commands.executeCommand("revealFileInOS", input.uri)
+				await vscode.workspace.fs.writeFile(input.uri, input.buf)
+				vscode.commands.executeCommand("revealFileInOS", input.uri)
 			})
 	})
 }

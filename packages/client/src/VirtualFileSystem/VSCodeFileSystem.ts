@@ -3,7 +3,7 @@ import { Uri } from "common/Uri"
 import { Minimatch } from "minimatch"
 import { posix } from "path"
 import { catchError, concat, concatMap, defer, EMPTY, from, map, Observable, of, Subject } from "rxjs"
-import vscode, { FileType } from "vscode"
+import vscode from "vscode"
 
 interface VSCodeFileSystem {
 	root: Uri,
@@ -30,10 +30,10 @@ export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCod
 			const path = root.relative(uri)
 			const stat = await vscode.workspace.fs.stat(event)
 			switch (stat.type) {
-				case FileType.File:
+				case vscode.FileType.File:
 					subjects.get(path)?.next({ type: EntryType.File, uri: uri })
 					break
-				case FileType.Directory:
+				case vscode.FileType.Directory:
 					subjects.get(path)?.next({ type: EntryType.Directory, uri: uri })
 					break
 			}
@@ -55,9 +55,9 @@ export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCod
 				from(vscode.workspace.fs.stat(uri)).pipe(
 					map((stat) => {
 						switch (stat.type) {
-							case FileType.File:
+							case vscode.FileType.File:
 								return { type: <const>EntryType.File, uri }
-							case FileType.Directory:
+							case vscode.FileType.Directory:
 								return { type: <const>EntryType.Directory, uri }
 							/**
 							 * *Note:* This value might be a bitmask, e.g. `FileType.File | FileType.SymbolicLink`.

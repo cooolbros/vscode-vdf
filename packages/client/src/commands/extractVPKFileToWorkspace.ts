@@ -1,26 +1,26 @@
 import { join } from "path"
-import vscode, { window, workspace, type TextEditor, type WorkspaceFolder } from "vscode"
+import vscode from "vscode"
 
-export async function extractVPKFileToWorkspace(editor: TextEditor): Promise<void> {
+export async function extractVPKFileToWorkspace(editor: vscode.TextEditor): Promise<void> {
 
-	const currentWorkspace = workspace.workspaceFolders
-		? workspace.workspaceFolders.length > 1
-			? await (async (): Promise<WorkspaceFolder> => {
-				const selection = await window.showQuickPick(workspace.workspaceFolders!.map(workspaceFolder => workspaceFolder.name), { title: "Select workspace folder to extract VPK file to" })
-				return workspace.workspaceFolders!.find(workspaceFolder => workspaceFolder.name == selection)!
+	const currentWorkspace = vscode.workspace.workspaceFolders
+		? vscode.workspace.workspaceFolders.length > 1
+			? await (async (): Promise<vscode.WorkspaceFolder> => {
+				const selection = await vscode.window.showQuickPick(vscode.workspace.workspaceFolders!.map(workspaceFolder => workspaceFolder.name), { title: "Select workspace folder to extract VPK file to" })
+				return vscode.workspace.workspaceFolders!.find(workspaceFolder => workspaceFolder.name == selection)!
 			})()
-			: workspace.workspaceFolders[0]
+			: vscode.workspace.workspaceFolders[0]
 		: null
 
 	if (!currentWorkspace) {
-		window.showErrorMessage("No workspace folder.")
+		vscode.window.showErrorMessage("No workspace folder.")
 		return
 	}
 
 	const source = editor.document.uri
 	const target = vscode.Uri.file(join(currentWorkspace.uri.fsPath, source.fsPath))
 
-	await workspace.fs.copy(source, target)
+	await vscode.workspace.fs.copy(source, target)
 
-	window.showTextDocument(target)
+	vscode.window.showTextDocument(target)
 }

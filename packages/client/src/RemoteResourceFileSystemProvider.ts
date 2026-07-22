@@ -1,22 +1,22 @@
-import vscode, { Disposable, EventEmitter, FileSystemError, FileType, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider, } from "vscode"
+import vscode from "vscode"
 import { z } from "zod"
 
-export class RemoteResourceFileSystemProvider implements FileSystemProvider {
+export class RemoteResourceFileSystemProvider implements vscode.FileSystemProvider {
 
 	public static readonly scheme = "vscode-vdf-tf-remote-resource"
 	public static readonly base = "https://vscode.pfwobcke.dev"
 
-	public readonly onDidChangeFile: Event<FileChangeEvent[]>
+	public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]>
 
 	constructor() {
-		this.onDidChangeFile = new EventEmitter<FileChangeEvent[]>().event
+		this.onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>().event
 	}
 
-	public watch(): Disposable {
-		return Disposable.from()
+	public watch(): vscode.Disposable {
+		return vscode.Disposable.from()
 	}
 
-	public async stat(uri: vscode.Uri): Promise<FileStat> {
+	public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
 
 		const url = new URL(uri.path, RemoteResourceFileSystemProvider.base)
 		url.searchParams.set("stat", "")
@@ -30,15 +30,15 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 					mtime: z.number(),
 					size: z.number(),
 					permissions: z.number().optional(),
-				}).parse(await response.json()) as FileStat
+				}).parse(await response.json()) as vscode.FileStat
 			case 404:
-				throw FileSystemError.FileNotFound()
+				throw vscode.FileSystemError.FileNotFound()
 			default:
-				throw FileSystemError.Unavailable(uri)
+				throw vscode.FileSystemError.Unavailable(uri)
 		}
 	}
 
-	public async readDirectory(uri: vscode.Uri): Promise<[string, FileType][]> {
+	public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
 
 		const url = new URL(uri.path, RemoteResourceFileSystemProvider.base)
 		url.searchParams.set("readdir", "")
@@ -48,14 +48,14 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 			case 200:
 				return z.array(z.tuple([z.string(), z.number()])).parse(await response.json())
 			case 415:
-				throw FileSystemError.FileNotADirectory()
+				throw vscode.FileSystemError.FileNotADirectory()
 			default:
-				throw FileSystemError.Unavailable(uri)
+				throw vscode.FileSystemError.Unavailable(uri)
 		}
 	}
 
 	public createDirectory(): void {
-		throw FileSystemError.NoPermissions()
+		throw vscode.FileSystemError.NoPermissions()
 	}
 
 	public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
@@ -67,27 +67,27 @@ export class RemoteResourceFileSystemProvider implements FileSystemProvider {
 			case 200:
 				return await response.bytes()
 			case 404:
-				throw FileSystemError.FileNotFound()
+				throw vscode.FileSystemError.FileNotFound()
 			case 415:
-				throw FileSystemError.FileIsADirectory()
+				throw vscode.FileSystemError.FileIsADirectory()
 			default:
-				throw FileSystemError.Unavailable(uri)
+				throw vscode.FileSystemError.Unavailable(uri)
 		}
 	}
 
 	public writeFile(): void {
-		throw FileSystemError.NoPermissions()
+		throw vscode.FileSystemError.NoPermissions()
 	}
 
 	public delete(): void {
-		throw FileSystemError.NoPermissions()
+		throw vscode.FileSystemError.NoPermissions()
 	}
 
 	public rename(): void {
-		throw FileSystemError.NoPermissions()
+		throw vscode.FileSystemError.NoPermissions()
 	}
 
 	public copy?(): void {
-		throw FileSystemError.NoPermissions()
+		throw vscode.FileSystemError.NoPermissions()
 	}
 }

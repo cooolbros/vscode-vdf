@@ -1,5 +1,5 @@
 import { Uri } from "common/Uri"
-import { FileType, workspace } from "vscode"
+import vscode from "vscode"
 
 /**
  * Resolve root folder of an absolute workspace file uri
@@ -11,8 +11,8 @@ export async function searchForWorkspaceRoot(uri: Uri) {
 	let folderUriReference = uri
 
 	while (!Uri.equals(folderUri, folderUriReference)) {
-		const info = workspace.fs.stat(folderUri.joinPath("info.vdf")).then((stat) => stat.type == FileType.File, () => false)
-		const gameinfo = workspace.fs.stat(folderUri.joinPath("gameinfo.txt")).then((stat) => stat.type == FileType.File, () => false)
+		const info = vscode.workspace.fs.stat(folderUri.joinPath("info.vdf")).then((stat) => stat.type == vscode.FileType.File, () => false)
+		const gameinfo = vscode.workspace.fs.stat(folderUri.joinPath("gameinfo.txt")).then((stat) => stat.type == vscode.FileType.File, () => false)
 
 		if ((await Promise.all([info, gameinfo])).some((exists) => exists)) {
 			return folderUri

@@ -2,10 +2,10 @@ import { Uri } from "common/Uri"
 import { posix } from "path"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { quote } from "vdf-format"
-import { env, window, type TextEditor } from "vscode"
+import vscode from "vscode"
 import { searchForWorkspaceRoot } from "../searchForWorkspaceRoot"
 
-export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
+export async function copyKeyValuePath(editor: vscode.TextEditor): Promise<void> {
 
 	if (!new Set(["popfile", "vdf", "vmt"]).has(editor.document.languageId)) {
 		return
@@ -25,7 +25,7 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 	const documentSymbols = getVDFDocumentSymbols(editor.document.getText(), { multilineStrings: false })
 	const documentSymbolResult = documentSymbols.findRecursive((documentSymbol) => documentSymbol.range.contains(editor.selection.start))
 	if (!documentSymbolResult) {
-		window.showErrorMessage("No result.")
+		vscode.window.showErrorMessage("No result.")
 		return
 	}
 
@@ -38,6 +38,6 @@ export async function copyKeyValuePath(editor: TextEditor): Promise<void> {
 
 	const result = `${filePath.split(/[/\\]+/).join("/")} ${documentSymbolsPath.join(" > ")}`
 
-	await env.clipboard.writeText(result)
-	window.showInputBox({ value: result })
+	await vscode.env.clipboard.writeText(result)
+	vscode.window.showInputBox({ value: result })
 }

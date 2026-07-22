@@ -3,7 +3,7 @@ import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFa
 import { Uri } from "common/Uri"
 import type { WatchEvent } from "common/WatchEvent"
 import { Subject } from "rxjs"
-import vscode, { RelativePattern, workspace } from "vscode"
+import vscode from "vscode"
 
 class DisposableSubject<T> extends Subject<T> implements AsyncDisposable {
 
@@ -28,8 +28,8 @@ class FolderWatcher extends RefCountAsyncDisposableFactory<string, DisposableSub
 
 		this.stack = new DisposableStack()
 
-		const pattern = new RelativePattern(vscode.Uri.parse(dirname.toString()), "*")
-		const watcher = this.stack.adopt(workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
+		const pattern = new vscode.RelativePattern(vscode.Uri.parse(dirname.toString()), "*")
+		const watcher = this.stack.adopt(vscode.workspace.createFileSystemWatcher(pattern), (watcher) => watcher.dispose())
 
 		const onStat = async (type: Exclude<WatchEvent["type"], "delete">, event: vscode.Uri) => {
 			const uri = new Uri(event)

@@ -1,6 +1,6 @@
 import type { AnyTRPCRouter } from "@trpc/server"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
-import type { Webview } from "vscode"
+import vscode from "vscode"
 import { z } from "zod"
 
 const messageSchema = z.object({
@@ -10,7 +10,7 @@ const messageSchema = z.object({
 })
 
 export interface TRPCWebViewRequestHandlerOptions<T extends z.util.EnumLike> {
-	webview: Webview
+	webview: vscode.Webview
 	router: AnyTRPCRouter
 	schema: z.ZodEnum<T>
 }

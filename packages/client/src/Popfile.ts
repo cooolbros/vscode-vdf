@@ -10,7 +10,7 @@ import { VDFSyntaxError, type RangeLike } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { quote } from "vdf-format"
-import { commands, FileType, workspace, type TextDocumentChangeEvent } from "vscode"
+import vscode from "vscode"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { VSCodeDocumentGetTextSchema } from "./VSCodeSchemas"
@@ -68,7 +68,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 	public readonly document$: Observable<VSCodeDocumentLike>
 	private readonly fileSystem: FileSystemMountPoint
 	private readonly fileSystemWatcherFactory: FileSystemWatcherFactory
-	private readonly onDidChangeTextDocument$: Observable<TextDocumentChangeEvent>
+	private readonly onDidChangeTextDocument$: Observable<vscode.TextDocumentChangeEvent>
 
 	public readonly documentSymbols$: Observable<VDFDocumentSymbols>
 	public readonly base$: Observable<string[]>
@@ -84,7 +84,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 	public readonly referencedTemplates$: Observable<Set<string>>
 	public readonly classIcons$: Observable<string[]>
 
-	constructor(uri: Uri, document$: Observable<VSCodeDocumentLike>, fileSystem: FileSystemMountPoint, fileSystemWatcherFactory: FileSystemWatcherFactory, onDidChangeTextDocument$: Observable<TextDocumentChangeEvent>) {
+	constructor(uri: Uri, document$: Observable<VSCodeDocumentLike>, fileSystem: FileSystemMountPoint, fileSystemWatcherFactory: FileSystemWatcherFactory, onDidChangeTextDocument$: Observable<vscode.TextDocumentChangeEvent>) {
 		super()
 
 		this.uri = uri
@@ -102,10 +102,10 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 					if (error instanceof UriSyntaxError) {
 						if (index == 0) {
 							Promise.allSettled([Promise.try(async () => {
-								await commands.executeCommand("vscode.open", error.uri)
+								await vscode.commands.executeCommand("vscode.open", error.uri)
 								await Promise.all([
-									commands.executeCommand("revealLine", { lineNumber: error.cause.range.start.line, at: "top" }),
-									commands.executeCommand("workbench.action.problems.focus")
+									vscode.commands.executeCommand("revealLine", { lineNumber: error.cause.range.start.line, at: "top" }),
+									vscode.commands.executeCommand("workbench.action.problems.focus")
 								])
 							})])
 						}
@@ -316,7 +316,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 					documentSelector: async (uri) => new BasePopfile(
 						uri,
 						concat(
-							from(workspace.fs.readFile(uri)).pipe(
+							from(vscode.workspace.fs.readFile(uri)).pipe(
 								map((buf) => new TextDecoder("utf-8").decode(buf)),
 								map((text) => {
 									const document = TextDocument.create(uri.toString(), "popfile", 1, text)
@@ -337,12 +337,12 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 					observableSelector: (popfile) => popfile.getTemplates([...stack, { path: `scripts/population/${this.uri.basename()}`, uri: this.uri }]),
 					fileSystem: this.fileSystem,
 					watch: (uri) => concat(
-						from(workspace.fs.stat(uri).then(
+						from(vscode.workspace.fs.stat(uri).then(
 							(stat) => {
 								switch (stat.type) {
-									case FileType.File:
+									case vscode.FileType.File:
 										return { type: <const>"create", entry: { type: <const>EntryType.File, uri: uri } }
-									case FileType.Directory:
+									case vscode.FileType.Directory:
 										return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: uri } }
 									default:
 										return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }

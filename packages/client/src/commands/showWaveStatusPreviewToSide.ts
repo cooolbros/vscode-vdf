@@ -17,7 +17,7 @@ import { catchError, combineLatest, concat, concatMap, defer, filter, firstValue
 import type { RangeLike } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import vscode, { commands, ThemeIcon, ViewColumn, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocumentChangeEvent, type TextEditor, type WebviewPanel } from "vscode"
+import vscode from "vscode"
 import { VTF, VTFToPNG } from "vtf-png"
 import { z } from "zod"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
@@ -74,13 +74,13 @@ const enum Type {
 }
 
 export function showWaveStatusPreviewToSide(
-	context: ExtensionContext,
+	context: vscode.ExtensionContext,
 	teamFortress2Folder$: Observable<Uri>,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null
 ) {
-	const webviewPanels = new Map<string, WebviewPanel>()
+	const webviewPanels = new Map<string, vscode.WebviewPanel>()
 
 	function send(command: string) {
 		return (arg: any) => {
@@ -93,28 +93,28 @@ export function showWaveStatusPreviewToSide(
 	}
 
 	context.subscriptions.push(
-		commands.registerCommand("vscode-vdf.waveStatusPreviewSaveImageAs", send("vscode-vdf.waveStatusPreviewSaveImageAs")),
-		commands.registerCommand("vscode-vdf.waveStatusPreviewCopyImage", send("vscode-vdf.waveStatusPreviewCopyImage")),
+		vscode.commands.registerCommand("vscode-vdf.waveStatusPreviewSaveImageAs", send("vscode-vdf.waveStatusPreviewSaveImageAs")),
+		vscode.commands.registerCommand("vscode-vdf.waveStatusPreviewCopyImage", send("vscode-vdf.waveStatusPreviewCopyImage")),
 	)
 
-	return async ({ document }: TextEditor) => {
+	return async ({ document }: vscode.TextEditor) => {
 		if (document.languageId != "popfile") {
-			window.showWarningMessage(document.languageId)
+			vscode.window.showWarningMessage(document.languageId)
 			return
 		}
 
 		const id = document.uri.toString()
 		const name = posix.parse(new Uri(document.uri).basename()).name
 
-		const webviewPanel = window.createWebviewPanel(
+		const webviewPanel = vscode.window.createWebviewPanel(
 			"vscode-vdf.waveStatusPreview",
 			name,
-			{ viewColumn: ViewColumn.Beside, preserveFocus: true },
+			{ viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
 			{ enableScripts: true, retainContextWhenHidden: true }
 		)
 
 		// https://microsoft.github.io/vscode-codicons/dist/codicon.html
-		webviewPanel.iconPath = new ThemeIcon("output")
+		webviewPanel.iconPath = new vscode.ThemeIcon("output")
 
 		const stack = new AsyncDisposableStack()
 		webviewPanel.onDidDispose(() => stack.disposeAsync())
@@ -125,8 +125,8 @@ export function showWaveStatusPreviewToSide(
 		const dispose$ = new ReplaySubject<void>(1)
 		stack.defer(() => dispose$.next())
 
-		const configuration$ = new Observable<ConfigurationChangeEvent>((subscriber) => {
-			const disposable = workspace.onDidChangeConfiguration((event) => {
+		const configuration$ = new Observable<vscode.ConfigurationChangeEvent>((subscriber) => {
+			const disposable = vscode.workspace.onDidChangeConfiguration((event) => {
 				subscriber.next(event)
 			})
 			return () => disposable.dispose()
@@ -134,7 +134,7 @@ export function showWaveStatusPreviewToSide(
 			filter((event) => event.affectsConfiguration("vscode-vdf.popfile.waveStatusPreview")),
 			map(() => null),
 			startWith(null),
-			map(() => VSCodeVDFConfigurationSchema.shape.popfile.shape.waveStatusPreview.parse(workspace.getConfiguration("vscode-vdf.popfile.waveStatusPreview"))),
+			map(() => VSCodeVDFConfigurationSchema.shape.popfile.shape.waveStatusPreview.parse(vscode.workspace.getConfiguration("vscode-vdf.popfile.waveStatusPreview"))),
 			shareReplayUntilDisposed(dispose$)
 		)
 
@@ -169,7 +169,7 @@ export function showWaveStatusPreviewToSide(
 					})
 				)
 			}),
-			concatMap(async (uri) => new TextDecoder("utf-16").decode(await workspace.fs.readFile(uri))),
+			concatMap(async (uri) => new TextDecoder("utf-16").decode(await vscode.workspace.fs.readFile(uri))),
 			map((text) => {
 				const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
 
@@ -200,7 +200,7 @@ export function showWaveStatusPreviewToSide(
 						throw new Error("scripts/items/items_game.txt")
 					}
 
-					const buf = await workspace.fs.readFile(entry.uri)
+					const buf = await vscode.workspace.fs.readFile(entry.uri)
 					const text = new TextDecoder("utf-8").decode(buf)
 					const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: false })
 					return documentSymbols[0].children!
@@ -295,8 +295,8 @@ export function showWaveStatusPreviewToSide(
 			shareReplayUntilDisposed(dispose$)
 		)
 
-		const onDidChangeTextDocument$ = new Observable<TextDocumentChangeEvent>((subscriber) => {
-			const disposable = workspace.onDidChangeTextDocument((event) => subscriber.next(event))
+		const onDidChangeTextDocument$ = new Observable<vscode.TextDocumentChangeEvent>((subscriber) => {
+			const disposable = vscode.workspace.onDidChangeTextDocument((event) => subscriber.next(event))
 			return () => disposable.dispose()
 		}).pipe(
 			share()
@@ -706,7 +706,7 @@ export function showWaveStatusPreviewToSide(
 					}
 
 					return concat(
-						from(Promise.try(async () => new TextDecoder("utf-8").decode(await workspace.fs.readFile(entry.uri)))),
+						from(Promise.try(async () => new TextDecoder("utf-8").decode(await vscode.workspace.fs.readFile(entry.uri)))),
 						onDidChangeTextDocument$.pipe(
 							filter((event) => Uri.equals(entry.uri, new Uri(event.document.uri))),
 							map((event) => event.document.getText())
@@ -741,7 +741,7 @@ export function showWaveStatusPreviewToSide(
 									}
 
 									const [buf] = await Promise.all([
-										await workspace.fs.readFile(entry.uri),
+										await vscode.workspace.fs.readFile(entry.uri),
 										initVTFPNG(context)
 									])
 
@@ -849,7 +849,7 @@ export function showWaveStatusPreviewToSide(
 									return fileSystem.resolve(input.path).pipe(
 										concatMap(async (entry) => {
 											return entry.type == EntryType.File
-												? new Uint8Array(await workspace.fs.readFile(entry.uri))
+												? new Uint8Array(await vscode.workspace.fs.readFile(entry.uri))
 												: null
 										})
 									)
@@ -875,7 +875,7 @@ export function showWaveStatusPreviewToSide(
 				openSettings: t
 					.procedure
 					.query(async () => {
-						await commands.executeCommand("workbench.action.openSettings", "vscode-vdf.popfile.waveStatusPreview")
+						await vscode.commands.executeCommand("workbench.action.openSettings", "vscode-vdf.popfile.waveStatusPreview")
 					}),
 			})
 		)
@@ -883,7 +883,7 @@ export function showWaveStatusPreviewToSide(
 		stack.use(TRPCWebViewRequestHandler({ webview: webviewPanel.webview, router: router, schema: schema }))
 
 		const dist = vscode.Uri.joinPath(context.extensionUri, "apps/wavestatus-preview/dist")
-		const html = new TextDecoder("utf-8").decode(await workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
+		const html = new TextDecoder("utf-8").decode(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(dist, "index.html")))
 		webviewPanel.webview.html = html
 			.replaceAll("%ID%", id)
 			.replaceAll("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)

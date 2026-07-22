@@ -4,7 +4,7 @@ import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposa
 import { Uri } from "common/Uri"
 import { EMPTY, firstValueFrom, Observable, of } from "rxjs"
 import type { RangeLike } from "vdf"
-import { EndOfLine, type TextEditor, window, workspace, WorkspaceEdit } from "vscode"
+import vscode from "vscode"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
 import { MissionPopfile } from "../Popfile"
 import { VSCodeDocumentGetTextSchema } from "../VSCodeSchemas"
@@ -52,9 +52,9 @@ class Table {
 }
 
 export function listPopfileClassIcons(teamFortress2Folder$: Observable<Uri>, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
-	return async ({ document, selection }: TextEditor) => {
+	return async ({ document, selection }: vscode.TextEditor) => {
 		if (document.languageId != "popfile") {
-			window.showWarningMessage(document.languageId)
+			vscode.window.showWarningMessage(document.languageId)
 			return
 		}
 
@@ -81,9 +81,9 @@ export function listPopfileClassIcons(teamFortress2Folder$: Observable<Uri>, fil
 			table.addRow([icon])
 		}
 
-		const edit = new WorkspaceEdit()
-		const text = table.getText(document.eol == EndOfLine.CRLF ? "\r\n" : "\n")
+		const edit = new vscode.WorkspaceEdit()
+		const text = table.getText(document.eol == vscode.EndOfLine.CRLF ? "\r\n" : "\n")
 		edit.insert(document.uri, selection.start, text)
-		await workspace.applyEdit(edit)
+		await vscode.workspace.applyEdit(edit)
 	}
 }

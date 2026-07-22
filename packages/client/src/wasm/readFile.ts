@@ -1,7 +1,7 @@
 import { Uri } from "common/Uri"
-import { env, UIKind, workspace, type ExtensionContext } from "vscode"
+import vscode from "vscode"
 
-export async function readFile(context: ExtensionContext, url: string) {
-	const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${env.uiKind == UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url.split("/").pop()!}`).with({ query: null })
-	return await workspace.fs.readFile(uri)
+export async function readFile(context: vscode.ExtensionContext, url: string) {
+	const uri = new Uri(`${new Uri(context.extensionUri).joinPath(`apps/extension/${vscode.env.uiKind == vscode.UIKind.Desktop ? "desktop" : "browser"}/client/dist`)}/${url.split("/").pop()!}`).with({ query: null })
+	return await vscode.workspace.fs.readFile(uri)
 }

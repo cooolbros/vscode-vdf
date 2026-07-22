@@ -10,7 +10,7 @@ import { combineLatest, defer, distinctUntilChanged, finalize, firstValueFrom, m
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import type { FileType } from "vscode"
+import vscode from "vscode"
 import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences } from "../DefinitionReferences"
 import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
@@ -44,7 +44,7 @@ export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDepe
 			keys: Set<string>
 			folder: string | null
 			basenamePattern?: string
-			filter?: ([name, type]: [string, FileType], startsWithFilter: (name: string) => boolean) => boolean
+			filter?: ([name, type]: [string, vscode.FileType], startsWithFilter: (name: string) => boolean) => boolean
 			map?: (item: CompletionItem, withoutExtension: (name: string) => string) => CompletionItem
 			asset?: VGUIAssetType
 		}[]

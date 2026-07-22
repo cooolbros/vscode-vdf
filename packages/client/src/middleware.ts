@@ -2,12 +2,12 @@ import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { VDFRange } from "vdf"
 import type { VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import { commands, CompletionList, EventEmitter, Hover, Position, SignatureHelp, Uri, workspace, type ExtensionContext, type TextDocument } from "vscode"
+import vscode from "vscode"
 import type { Middleware } from "vscode-languageclient"
 import { VSCodeDocumentGetTextSchema, VSCodePositionSchema } from "./VSCodeSchemas"
 
 function createEmbeddedLanguageMiddleware(
-	context: ExtensionContext,
+	context: vscode.ExtensionContext,
 	languageId: string,
 	extension: `.${string}`,
 	getVirtualRanges: (text: string) => VDFRange[],
@@ -15,20 +15,20 @@ function createEmbeddedLanguageMiddleware(
 ): Middleware {
 	const documents = new Map<string, { version: number, text: string, ranges: VDFRange[] }>()
 	const virtualDocumentContents = new Map<string, { version: number, content: string }>()
-	const eventEmitter = new EventEmitter<Uri>()
+	const eventEmitter = new vscode.EventEmitter<vscode.Uri>()
 
 	context.subscriptions.push(
 		eventEmitter,
-		workspace.registerTextDocumentContentProvider(`embedded-${languageId}`, {
+		vscode.workspace.registerTextDocumentContentProvider(`embedded-${languageId}`, {
 			onDidChange: eventEmitter.event,
 			provideTextDocumentContent: (uri, token) => virtualDocumentContents.get(uri.toString())?.content
 		})
 	)
 
-	const virtual = (uri: Uri) => Uri.from({ scheme: `embedded-${languageId}`, path: `${uri.path}${extension}` })
+	const virtual = (uri: vscode.Uri) => vscode.Uri.from({ scheme: `embedded-${languageId}`, path: `${uri.path}${extension}` })
 	const clear = (text: string) => text.split("\n").map((line) => " ".repeat(line.length)).join("\n")
 
-	async function middleware<T>({ document, position, next, embedded }: { document: TextDocument, position: Position, next: () => Promise<T>, embedded: (uri: Uri) => Promise<T> }) {
+	async function middleware<T>({ document, position, next, embedded }: { document: vscode.TextDocument, position: vscode.Position, next: () => Promise<T>, embedded: (uri: vscode.Uri) => Promise<T> }) {
 		let value = documents.get(document.uri.toString())
 		if (value?.version != document.version) {
 			const text = document.getText()
@@ -73,7 +73,7 @@ function createEmbeddedLanguageMiddleware(
 				document,
 				position,
 				next: async () => await next(document, position, context, token),
-				embedded: async (uri) => await commands.executeCommand<CompletionList>(
+				embedded: async (uri) => await vscode.commands.executeCommand<vscode.CompletionList>(
 					"vscode.executeCompletionItemProvider",
 					uri,
 					position,
@@ -86,7 +86,7 @@ function createEmbeddedLanguageMiddleware(
 				document,
 				position,
 				next: async () => await next(document, position, token),
-				embedded: async (uri) => await commands.executeCommand<Hover[]>(
+				embedded: async (uri) => await vscode.commands.executeCommand<vscode.Hover[]>(
 					"vscode.executeHoverProvider",
 					uri,
 					position,
@@ -98,7 +98,7 @@ function createEmbeddedLanguageMiddleware(
 				document,
 				position,
 				next: async () => await next(document, position, context, token),
-				embedded: async (uri) => await commands.executeCommand<SignatureHelp>(
+				embedded: async (uri) => await vscode.commands.executeCommand<vscode.SignatureHelp>(
 					"vscode.executeSignatureHelpProvider",
 					uri,
 					position,
@@ -109,7 +109,7 @@ function createEmbeddedLanguageMiddleware(
 	}
 }
 
-export function createMiddleware(context: ExtensionContext): Partial<Record<VSCodeVDFLanguageID, Middleware>> {
+export function createMiddleware(context: vscode.ExtensionContext): Partial<Record<VSCodeVDFLanguageID, Middleware>> {
 	return {
 		popfile: createEmbeddedLanguageMiddleware(
 			context,

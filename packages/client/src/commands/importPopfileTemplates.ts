@@ -5,14 +5,14 @@ import { Uri } from "common/Uri"
 import { posix } from "path"
 import { combineLatest, EMPTY, firstValueFrom, map, of, type Observable } from "rxjs"
 import type { RangeLike } from "vdf"
-import { commands, EndOfLine, Position, window, workspace, WorkspaceEdit, type TextEditor } from "vscode"
+import vscode from "vscode"
 import type { FileSystemWatcherFactory } from "../FileSystemWatcherFactory"
 import { MissionPopfile, PopfileBase, UriSyntaxError } from "../Popfile"
 import { VSCodeDocumentGetTextSchema, VSCodePositionSchema, VSCodeRangeSchema } from "../VSCodeSchemas"
 import { VirtualFileSystem } from "../VirtualFileSystem/VirtualFileSystem"
 
 export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>, fileSystemWatcherFactory: FileSystemWatcherFactory) {
-	return async ({ document }: TextEditor) => {
+	return async ({ document }: vscode.TextEditor) => {
 		try {
 			const teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
 
@@ -43,12 +43,12 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 			}))
 
 			if (!base.length) {
-				window.showWarningMessage("#base")
+				vscode.window.showWarningMessage("#base")
 				return
 			}
 
 			if (!waveSchedule.documentSymbol) {
-				window.showWarningMessage("WaveSchedule")
+				vscode.window.showWarningMessage("WaveSchedule")
 				return
 			}
 
@@ -56,8 +56,8 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 			const templatesBlock = templatesBlocks.at(0)
 			const templatesInFile = new Map(templatesBlock?.children?.map((documentSymbol) => [documentSymbol.key.toLowerCase(), documentSymbol]))
 
-			const edit = new WorkspaceEdit()
-			const eol = document.eol == EndOfLine.CRLF ? "\r\n" : "\n"
+			const edit = new vscode.WorkspaceEdit()
+			const eol = document.eol == vscode.EndOfLine.CRLF ? "\r\n" : "\n"
 
 			// Append KeyValues to existing referenced Templates
 			for (const [key, documentSymbol] of templatesInFile) {
@@ -118,7 +118,7 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 
 					edit.insert(
 						document.uri,
-						new Position(position.line, position.character),
+						new vscode.Position(position.line, position.character),
 						text
 					)
 				}
@@ -136,16 +136,16 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 				edit.delete(document.uri, VSCodeRangeSchema.parse(templateBlock.range))
 			}
 
-			await workspace.applyEdit(edit)
+			await vscode.workspace.applyEdit(edit)
 		}
 		catch (error) {
 			if (error instanceof Error) {
-				window.showErrorMessage(error.message)
+				vscode.window.showErrorMessage(error.message)
 				if (error instanceof UriSyntaxError) {
-					await commands.executeCommand("vscode.open", error.uri)
+					await vscode.commands.executeCommand("vscode.open", error.uri)
 					await Promise.all([
-						commands.executeCommand("revealLine", { lineNumber: error.cause.range.start.line, at: "top" }),
-						commands.executeCommand("workbench.action.problems.focus")
+						vscode.commands.executeCommand("revealLine", { lineNumber: error.cause.range.start.line, at: "top" }),
+						vscode.commands.executeCommand("workbench.action.problems.focus")
 					])
 				}
 			}

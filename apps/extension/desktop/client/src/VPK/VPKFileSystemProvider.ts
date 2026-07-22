@@ -1,17 +1,17 @@
 import { open } from "fs/promises"
 import { posix } from "path"
 import { VPK, VPKFileType, type VPKEntry } from "vpk"
-import vscode, { Disposable, EventEmitter, FilePermission, FileSystemError, FileType, workspace, type Event, type FileChangeEvent, type FileStat, type FileSystemProvider } from "vscode"
+import vscode from "vscode"
 
-export class VPKFileSystemProvider implements FileSystemProvider {
+export class VPKFileSystemProvider implements vscode.FileSystemProvider {
 
-	private readonly vpks: Map<string, Promise<{ stat: FileStat, vpk: VPK }>>
+	private readonly vpks: Map<string, Promise<{ stat: vscode.FileStat, vpk: VPK }>>
 
-	public readonly onDidChangeFile: Event<FileChangeEvent[]>
+	public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]>
 
 	constructor() {
 		this.vpks = new Map()
-		this.onDidChangeFile = new EventEmitter<FileChangeEvent[]>().event
+		this.onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>().event
 	}
 
 	private async resolve(uri: vscode.Uri) {
@@ -22,8 +22,8 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		if (!vpk) {
 			vpk = (async () => {
 				const [stat, { buffer }] = await Promise.all([
-					workspace.fs.stat(vpkUri),
-					workspace.fs.readFile(vpkUri)
+					vscode.workspace.fs.stat(vpkUri),
+					vscode.workspace.fs.readFile(vpkUri)
 				])
 
 				return {
@@ -45,27 +45,27 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 		return vpk.entry(path)
 	}
 
-	public watch(): Disposable {
-		return Disposable.from()
+	public watch(): vscode.Disposable {
+		return vscode.Disposable.from()
 	}
 
-	public async stat(uri: vscode.Uri): Promise<FileStat> {
+	public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
 
 		const entry = await this.entry(uri)
 		if (!entry) {
-			throw FileSystemError.FileNotFound()
+			throw vscode.FileSystemError.FileNotFound()
 		}
 
-		let type: FileType
+		let type: vscode.FileType
 		let size: number
 
 		switch (entry.type) {
 			case VPKFileType.File:
-				type = FileType.File
+				type = vscode.FileType.File
 				size = entry.value.entryLength
 				break
 			case VPKFileType.Directory:
-				type = FileType.Directory
+				type = vscode.FileType.Directory
 				size = 0
 				break
 		}
@@ -77,41 +77,41 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 			ctime: stat.ctime,
 			mtime: stat.mtime,
 			size: size,
-			permissions: FilePermission.Readonly
+			permissions: vscode.FilePermission.Readonly
 		}
 	}
 
-	public async readDirectory(uri: vscode.Uri): Promise<[string, FileType][]> {
+	public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
 
 		const entry = await this.entry(uri)
 		if (!entry) {
-			throw FileSystemError.FileNotFound()
+			throw vscode.FileSystemError.FileNotFound()
 		}
 
 		if (entry.type == VPKFileType.File) {
-			throw FileSystemError.FileNotADirectory()
+			throw vscode.FileSystemError.FileNotADirectory()
 		}
 
 		return entry
 			.value
 			.entries()
-			.map(([name, entry]): [string, FileType] => [name, entry.type == VPKFileType.File ? FileType.File : FileType.Directory])
+			.map(([name, entry]): [string, vscode.FileType] => [name, entry.type == VPKFileType.File ? vscode.FileType.File : vscode.FileType.Directory])
 			.toArray()
 	}
 
 	public createDirectory(): void {
-		throw FileSystemError.Unavailable()
+		throw vscode.FileSystemError.Unavailable()
 	}
 
 	public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
 
 		const entry = await this.entry(uri)
 		if (!entry) {
-			throw FileSystemError.FileNotFound()
+			throw vscode.FileSystemError.FileNotFound()
 		}
 
 		if (entry.type == VPKFileType.Directory) {
-			throw FileSystemError.FileIsADirectory()
+			throw vscode.FileSystemError.FileIsADirectory()
 		}
 
 		const vpkUri = vscode.Uri.from(JSON.parse(new URLSearchParams(uri.query).get("root")!))
@@ -130,18 +130,18 @@ export class VPKFileSystemProvider implements FileSystemProvider {
 	}
 
 	public writeFile(): void {
-		throw FileSystemError.Unavailable()
+		throw vscode.FileSystemError.Unavailable()
 	}
 
 	public delete(): void {
-		throw FileSystemError.Unavailable()
+		throw vscode.FileSystemError.Unavailable()
 	}
 
 	public rename(): void {
-		throw FileSystemError.Unavailable()
+		throw vscode.FileSystemError.Unavailable()
 	}
 
 	public copy?(): void {
-		throw FileSystemError.Unavailable()
+		throw vscode.FileSystemError.Unavailable()
 	}
 }

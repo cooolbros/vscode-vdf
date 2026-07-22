@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "vscode"
+import vscode from "vscode"
 import init from "vtf-png"
 import { readFile } from "./readFile"
 
@@ -7,6 +7,6 @@ import vtf_png_bg_url from "vtf-png/pkg/vtf_png_bg.wasm?url"
 
 let VTFPNGWASM: import("vtf-png").InitOutput
 
-export async function initVTFPNG(context: ExtensionContext) {
+export async function initVTFPNG(context: vscode.ExtensionContext) {
 	VTFPNGWASM ??= await init({ module_or_path: readFile(context, vtf_png_bg_url) })
 }

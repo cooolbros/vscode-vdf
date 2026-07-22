@@ -1,4 +1,4 @@
-import vscode, { Location, Position, Range } from "vscode"
+import vscode from "vscode"
 import { z } from "zod"
 
 export const VSCodeUriSchema = z.object({
@@ -9,10 +9,10 @@ export const VSCodeUriSchema = z.object({
 	fragment: z.string(),
 }).transform((arg) => vscode.Uri.from(arg))
 
-export const VSCodePositionSchema = z.object({ line: z.number(), character: z.number() }).transform(({ line, character }) => new Position(line, character))
+export const VSCodePositionSchema = z.object({ line: z.number(), character: z.number() }).transform(({ line, character }) => new vscode.Position(line, character))
 
-export const VSCodeRangeSchema = z.object({ start: VSCodePositionSchema, end: VSCodePositionSchema }).transform(({ start, end }) => new Range(start, end))
+export const VSCodeRangeSchema = z.object({ start: VSCodePositionSchema, end: VSCodePositionSchema }).transform(({ start, end }) => new vscode.Range(start, end))
 
-export const VSCodeLocationSchema = z.object({ uri: VSCodeUriSchema, range: VSCodeRangeSchema }).transform((arg) => new Location(arg.uri, arg.range))
+export const VSCodeLocationSchema = z.object({ uri: VSCodeUriSchema, range: VSCodeRangeSchema }).transform((arg) => new vscode.Location(arg.uri, arg.range))
 
 export const VSCodeDocumentGetTextSchema = VSCodeRangeSchema.optional()

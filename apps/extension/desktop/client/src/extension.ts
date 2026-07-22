@@ -21,7 +21,7 @@ import { homedir } from "os"
 import { join, posix, win32 } from "path"
 import { concat, concatMap, defer, distinctUntilChanged, filter, firstValueFrom, map, Observable, shareReplay } from "rxjs"
 import { VDF } from "vdf"
-import { commands, ConfigurationTarget, Disposable, FileSystemError, FileType, languages, LanguageStatusSeverity, window, workspace, type ConfigurationChangeEvent, type ExtensionContext, type TextDocument } from "vscode"
+import vscode from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
 import { z } from "zod"
 import { BSPFileSystemProvider } from "./BSP/BSPFileSystemProvider"
@@ -31,7 +31,7 @@ import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 
 const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
 
-export function activate(context: ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): void {
 
 	const subscriptions = context.subscriptions
 
@@ -67,14 +67,14 @@ export function activate(context: ExtensionContext): void {
 
 	async function exists(uri: Uri) {
 		return (await Promise.all([
-			workspace.fs.stat(uri).then((stat) => stat.type == FileType.Directory, () => false),
-			workspace.fs.stat(uri.joinPath("tf/gameinfo.txt")).then((stat) => stat.type == FileType.File, () => false),
+			vscode.workspace.fs.stat(uri).then((stat) => stat.type == vscode.FileType.Directory, () => false),
+			vscode.workspace.fs.stat(uri.joinPath("tf/gameinfo.txt")).then((stat) => stat.type == vscode.FileType.File, () => false),
 		])).every((value) => value)
 	}
 
 	const teamFortress2FolderConfiguration$ = concat(
 		defer(async (): Promise<TeamFortress2FolderResult> => {
-			const configuration = workspace.getConfiguration("vscode-vdf")
+			const configuration = vscode.workspace.getConfiguration("vscode-vdf")
 			let setting = configuration.get<string>("teamFortress2Folder")!
 
 			const result = await teamFortress2FolderSchema.parseAsync(setting)
@@ -83,7 +83,7 @@ export function activate(context: ExtensionContext): void {
 			}
 
 			function update(uri: Uri) {
-				configuration.update("teamFortress2Folder", uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase()).replaceAll(/[\\]+/g, "/"), ConfigurationTarget.Global)
+				configuration.update("teamFortress2Folder", uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase()).replaceAll(/[\\]+/g, "/"), vscode.ConfigurationTarget.Global)
 			}
 
 			const decoder = new TextDecoder("utf-8")
@@ -97,7 +97,7 @@ export function activate(context: ExtensionContext): void {
 
 			async function steam(installPath: string): Promise<Uri | null> {
 				try {
-					const buf = await workspace.fs.readFile(new Uri({ scheme: "file", path: posix.join(installPath, "steamapps/libraryfolders.vdf") }))
+					const buf = await vscode.workspace.fs.readFile(new Uri({ scheme: "file", path: posix.join(installPath, "steamapps/libraryfolders.vdf") }))
 					const text = decoder.decode(buf)
 					const { libraryfolders } = libraryFoldersSchema.parse(VDF.parse(text))
 
@@ -112,7 +112,7 @@ export function activate(context: ExtensionContext): void {
 						: null
 				}
 				catch (error) {
-					if (!(error instanceof FileSystemError) || error.code != "FileNotFound") {
+					if (!(error instanceof vscode.FileSystemError) || error.code != "FileNotFound") {
 						console.error(error)
 					}
 
@@ -191,10 +191,10 @@ export function activate(context: ExtensionContext): void {
 			}
 
 			while (true) {
-				const result = await window.showErrorMessage(`Team Fortress 2 installation not found at "${setting}". Please select path to Team Fortress 2 folder`, "Select Folder", "Ignore", "Don't show again")
+				const result = await vscode.window.showErrorMessage(`Team Fortress 2 installation not found at "${setting}". Please select path to Team Fortress 2 folder`, "Select Folder", "Ignore", "Don't show again")
 				switch (result) {
 					case "Select Folder": {
-						const uris = await window.showOpenDialog({
+						const uris = await vscode.window.showOpenDialog({
 							canSelectFiles: false,
 							canSelectFolders: true,
 							canSelectMany: false,
@@ -220,19 +220,19 @@ export function activate(context: ExtensionContext): void {
 				}
 			}
 		}),
-		new Observable<ConfigurationChangeEvent>((subscriber) => {
-			const disposable = workspace.onDidChangeConfiguration(async (event) => {
+		new Observable<vscode.ConfigurationChangeEvent>((subscriber) => {
+			const disposable = vscode.workspace.onDidChangeConfiguration(async (event) => {
 				subscriber.next(event)
 			})
 
 			return () => disposable.dispose()
 		}).pipe(
 			filter((event) => event.affectsConfiguration("vscode-vdf.teamFortress2Folder")),
-			map(() => workspace.getConfiguration("vscode-vdf").get<string>("teamFortress2Folder")!),
+			map(() => vscode.workspace.getConfiguration("vscode-vdf").get<string>("teamFortress2Folder")!),
 			concatMap(async (setting) => {
 				const result = await teamFortress2FolderSchema.parseAsync(setting)
 				if (result.type == "error") {
-					window.showWarningMessage(`Team Fortress 2 installation not found at "${setting}".`)
+					vscode.window.showWarningMessage(`Team Fortress 2 installation not found at "${setting}".`)
 				}
 				return result
 			})
@@ -260,28 +260,28 @@ export function activate(context: ExtensionContext): void {
 	// https://code.visualstudio.com/api/references/vscode-api
 
 	// Commands
-	subscriptions.push(commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
-	subscriptions.push(commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
-	subscriptions.push(commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory, bspFactory)))
-	subscriptions.push(commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
+	subscriptions.push(vscode.commands.registerCommand("vscode-vdf.executeCommands", executeCommands))
+	subscriptions.push(vscode.commands.registerCommand("vscode-vdf.selectTeamFortress2Folder", selectTeamFortress2Folder))
+	subscriptions.push(vscode.commands.registerCommand("vscode-vdf.setVTFFlags", setVTFFlags))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.copyKeyValuePath", copyKeyValuePath))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.extractVPKFileToWorkspace", extractVPKFileToWorkspace))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.importPopfileTemplates", importPopfileTemplates(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.JSONToVDF", JSONToVDF))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.listPopfileClassIcons", listPopfileClassIcons(teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory)))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.showReferences", showReferences))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.showWaveStatusPreviewToSide", showWaveStatusPreviewToSide(context, teamFortress2Folder$, fileSystemMountPointFactory, fileSystemWatcherFactory, bspFactory)))
+	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
-	subscriptions.push(window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
-	subscriptions.push(window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
+	subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
+	subscriptions.push(vscode.window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
 
 	// Workspace
-	subscriptions.push(workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory), { isCaseSensitive: false, isReadonly: true }))
-	subscriptions.push(workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
+	subscriptions.push(vscode.workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory), { isCaseSensitive: false, isReadonly: true }))
+	subscriptions.push(vscode.workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
-	const onDidOpenTextDocument = async (e: TextDocument): Promise<void> => {
+	const onDidOpenTextDocument = async (e: vscode.TextDocument): Promise<void> => {
 		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
 		if (result.success) {
 			await startServer(result.data)
@@ -299,7 +299,7 @@ export function activate(context: ExtensionContext): void {
 		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
 		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
 
-		const languageStatusItem = languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
+		const languageStatusItem = vscode.languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
 		subscriptions.push(languageStatusItem)
 		languageStatusItem.busy = true
 
@@ -307,17 +307,17 @@ export function activate(context: ExtensionContext): void {
 			switch (result.type) {
 				case "success":
 					languageStatusItem.text = `$(folder-active) ${result.uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
-					languageStatusItem.severity = LanguageStatusSeverity.Information
+					languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
 					languageStatusItem.command = undefined
 					break
 				case "empty":
 					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
-					languageStatusItem.severity = LanguageStatusSeverity.Information
+					languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
 					languageStatusItem.command = undefined
 					break
 				case "error":
 					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
-					languageStatusItem.severity = LanguageStatusSeverity.Warning
+					languageStatusItem.severity = vscode.LanguageStatusSeverity.Warning
 					languageStatusItem.command = { title: "Select Team Fortress 2 folder", command: "vscode-vdf.selectTeamFortress2Folder" }
 					break
 			}
@@ -325,7 +325,7 @@ export function activate(context: ExtensionContext): void {
 			languageStatusItem.busy = false
 		})
 
-		subscriptions.push(new Disposable(() => languageStatusItemSubscription.unsubscribe()))
+		subscriptions.push(new vscode.Disposable(() => languageStatusItemSubscription.unsubscribe()))
 
 		const options = {
 			execArgv: ["--enable-source-maps"]
@@ -380,8 +380,8 @@ export function activate(context: ExtensionContext): void {
 		)
 
 		subscriptions.push(
-			new Disposable(() => client[Symbol.asyncDispose]()),
-			commands.registerCommand(`vscode-vdf.restart${name.replaceAll(" ", "")}LanguageServer`, () => {
+			new vscode.Disposable(() => client[Symbol.asyncDispose]()),
+			vscode.commands.registerCommand(`vscode-vdf.restart${name.replaceAll(" ", "")}LanguageServer`, () => {
 				client.client.restart()
 			})
 		)
@@ -401,16 +401,16 @@ export function activate(context: ExtensionContext): void {
 				client.client.restart()
 			})
 
-			subscriptions.push(new Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
+			subscriptions.push(new vscode.Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
 		}
 
 		if (workspaceFoldersReturned) {
-			subscriptions.push(workspace.onDidChangeWorkspaceFolders(() => {
+			subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => {
 				client.client.restart()
 			}))
 		}
 	}
 
-	workspace.textDocuments.forEach(onDidOpenTextDocument)
-	subscriptions.push(workspace.onDidOpenTextDocument(onDidOpenTextDocument))
+	vscode.workspace.textDocuments.forEach(onDidOpenTextDocument)
+	subscriptions.push(vscode.workspace.onDidOpenTextDocument(onDidOpenTextDocument))
 }
