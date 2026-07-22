@@ -322,7 +322,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 					case "popfile:bsp": {
 						const extname = posix.extname(path.popfile.basename())
 						if (extname != ".pop") {
-							throw new Error(extname)
+							throw new Error(`[FileSystemMountPointFactory.popfile:bsp] "${path.popfile}" != ".pop"`)
 						}
 
 						return ObservableFileSystem(
@@ -347,7 +347,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 					case "bsp": {
 						const extname = posix.extname(path.bsp.basename())
 						if (extname != ".bsp") {
-							throw new Error(extname)
+							throw new Error(`[FileSystemMountPointFactory.bsp] "${path.bsp}" != ".bsp"`)
 						}
 
 						return await BSPFileSystem(path.bsp)

@@ -310,7 +310,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 	public entities(uri: Uri) {
 		const extname = posix.extname(uri.basename())
 		if (extname != ".pop") {
-			throw new Error(extname)
+			throw new Error(`[PopfileWorkspace.entities] "${uri}" != ".pop"`)
 		}
 
 		return findMap(uri, this.fileSystem).pipe(
