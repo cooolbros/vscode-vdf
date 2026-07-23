@@ -1,7 +1,6 @@
 import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
-import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { generateTokens } from "common/generateTokens"
@@ -21,7 +20,8 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 	"hudanimations",
 	HUDAnimationsTextDocument,
 	HUDAnimationsDocumentSymbols,
-	HUDAnimationsTextDocumentDependencies
+	HUDAnimationsTextDocumentDependencies,
+	HUDAnimationsWorkspace
 > {
 
 	public static readonly keywords = <const>[
@@ -71,8 +71,6 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 		"Bias",
 	]
 
-	private readonly workspaces: RefCountAsyncDisposableFactory<Uri, HUDAnimationsWorkspace>
-
 	constructor(languageId: "hudanimations", name: "HUD Animations", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
 			platform: platform,
@@ -99,21 +97,21 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 					await this.fileSystems.get(paths),
 					await workspace,
 				)
-			}
+			},
+			createWorkspace: async (uri) => {
+				const { teamFortress2Folder, workspaceUris } = await this.workspaceUris.promise
+				return new HUDAnimationsWorkspace({
+					uri: uri,
+					fileSystem: await this.fileSystems.get([
+						...(!Uri.equals(uri, teamFortress2Folder) ? [{ type: <const>"folder", folder: uri }] : []),
+						{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
+						...workspaceUris.map((uri) => ({ type: <const>"folder", folder: uri })),
+					]),
+					server: this,
+					documents: this.documents,
+				})
+			},
 		})
-
-		this.workspaces = new RefCountAsyncDisposableFactory(
-			(uri) => uri.toString(),
-			async (uri) => new HUDAnimationsWorkspace({
-				uri: uri,
-				fileSystem: await this.fileSystems.get([
-					{ type: "folder", folder: uri },
-					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
-				]),
-				server: this,
-				documents: this.documents,
-			})
-		)
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {

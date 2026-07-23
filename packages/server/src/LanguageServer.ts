@@ -26,6 +26,7 @@ import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeA
 import type { PopfileLanguageServer } from "./VDF/Popfile/PopfileLanguageServer"
 import type { VGUILanguageServer } from "./VDF/VGUI/VGUILanguageServer"
 import type { VMTLanguageServer } from "./VDF/VMT/VMTLanguageServer"
+import type { WorkspaceBase } from "./WorkspaceBase"
 
 const capabilities = {
 	textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -57,7 +58,7 @@ const capabilities = {
 	}
 } satisfies ServerCapabilities
 
-export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies> {
+export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>, TDocumentSymbols extends DocumentSymbol[], TDependencies, TWorkspace extends WorkspaceBase> {
 	platform: string,
 	servers: Set<VSCodeVDFLanguageID>
 	/**
@@ -65,6 +66,7 @@ export interface LanguageServerConfiguration<TDocument extends TextDocumentBase<
 	 */
 	capabilities: Omit<ServerCapabilities, keyof typeof capabilities>
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
+	createWorkspace(uri: Uri): Promise<TWorkspace>
 }
 
 export type TextDocumentRequestParams<T extends { textDocument: { uri: string } }> = ({ textDocument: { uri: Uri } }) & Omit<T, "textDocument">
@@ -73,15 +75,17 @@ export abstract class LanguageServer<
 	TLanguageId extends VSCodeVDFLanguageID,
 	TDocument extends TextDocumentBase<TDocumentSymbols, TDependencies>,
 	TDocumentSymbols extends DocumentSymbol[],
-	TDependencies
+	TDependencies,
+	TWorkspace extends WorkspaceBase
 > {
 
 	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
-	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>
+	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies, TWorkspace>
 	protected readonly workspaceUris: PromiseWithResolvers<{ teamFortress2Folder: Uri, workspaceUris: Uri[] }>
 	protected readonly fileSystems: RefCountAsyncDisposableFactory<FileSystemKey[], FileSystemMountPoint>
 	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
+	protected readonly workspaces: { get: (uri: Uri, factory?: (uri: Uri) => Promise<TWorkspace>) => Promise<TWorkspace> }
 
 	private readonly diagnostic = { id: 0 }
 	private readonly documentDiagnostics: Map<string, Map<number, DiagnosticCodeAction>>
@@ -105,7 +109,7 @@ export abstract class LanguageServer<
 		languageId: TLanguageId,
 		name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId],
 		connection: Connection,
-		languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies>,
+		languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies, TWorkspace>,
 	) {
 		this.languageId = languageId
 		this.connection = connection
@@ -159,6 +163,13 @@ export abstract class LanguageServer<
 				)
 			)
 		)
+
+		const workspaces = new Map<string, Promise<TWorkspace>>()
+		this.workspaces = {
+			get: async (uri: Uri, factory = this.languageServerConfiguration.createWorkspace) => {
+				return workspaces.getOrInsertComputed(uri.toString(), async () => await factory(uri))
+			}
+		}
 
 		this.connection.onDidChangeConfiguration((params) => {
 			onDidChangeConfiguration$.next()

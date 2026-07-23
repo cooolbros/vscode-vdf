@@ -1,6 +1,7 @@
 import { EntryType } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
-import { defer, firstValueFrom, map, of, shareReplay, Subscription, switchMap } from "rxjs"
+import { Uri } from "common/Uri"
+import { firstValueFrom, map, of, Subscription, switchMap } from "rxjs"
 import { FoldingRange, FoldingRangeKind, type CodeLensParams, type Connection, type FoldingRangeParams, type SignatureHelpParams, type TextDocumentChangeEvent } from "vscode-languageserver"
 import type { TextDocumentRequestParams } from "../../LanguageServer"
 import type { DiagnosticCodeAction } from "../../TextDocumentBase"
@@ -11,19 +12,9 @@ import { PopfileWorkspace } from "./PopfileWorkspace"
 export class PopfileLanguageServer extends VDFLanguageServer<
 	"popfile",
 	PopfileTextDocument,
-	PopfileTextDocumentDependencies
+	PopfileTextDocumentDependencies,
+	PopfileWorkspace
 > {
-
-	private readonly workspace$ = defer(async () => {
-		const teamFortress2Folder = (await this.workspaceUris.promise).teamFortress2Folder
-		return new PopfileWorkspace({
-			teamFortress2Folder: teamFortress2Folder,
-			fileSystem: await this.fileSystems.get([{ type: "tf2", teamFortress2Folder: teamFortress2Folder }]),
-			server: this,
-		})
-	}).pipe(
-		shareReplay(1)
-	)
 
 	private vscript = false
 
@@ -39,10 +30,8 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 				foldingRangeProvider: true,
 			},
 			createDocument: async (init, documentConfiguration$) => {
-				const [{ teamFortress2Folder, workspaceUris }, workspace] = await Promise.all([
-					this.workspaceUris.promise,
-					firstValueFrom(this.workspace$)
-				])
+				const { teamFortress2Folder, workspaceUris } = await this.workspaceUris.promise
+				const workspace = await this.workspaces.get(teamFortress2Folder)
 
 				return new PopfileTextDocument(
 					init,
@@ -75,7 +64,22 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 						})
 					)
 				)
-			}
+			},
+			createWorkspace: async (uri) => {
+				const { teamFortress2Folder, workspaceUris } = await this.workspaceUris.promise
+				if (!Uri.equals(uri, teamFortress2Folder)) {
+					throw new Error(uri.toString())
+				}
+
+				return new PopfileWorkspace({
+					teamFortress2Folder: teamFortress2Folder,
+					fileSystem: await this.fileSystems.get([
+						{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
+						...workspaceUris.map((uri) => ({ type: <const>"folder", folder: uri })),
+					]),
+					server: this,
+				})
+			},
 		})
 
 		this.onTextDocumentRequest(this.connection.onSignatureHelp, this.onSignatureHelp)

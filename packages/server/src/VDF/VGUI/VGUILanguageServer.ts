@@ -3,7 +3,6 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { usingAsync } from "common/operators/usingAsync"
-import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { firstValueFrom, map, switchMap } from "rxjs"
@@ -17,10 +16,9 @@ import { VGUIWorkspace } from "./VGUIWorkspace"
 export class VGUILanguageServer extends VDFLanguageServer<
 	"vdf",
 	VGUITextDocument,
-	VGUITextDocumentDependencies
+	VGUITextDocumentDependencies,
+	VGUIWorkspace
 > {
-
-	private readonly workspaces: RefCountAsyncDisposableFactory<Uri, VGUIWorkspace>
 
 	constructor(languageId: "vdf", name: "VDF", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -55,23 +53,20 @@ export class VGUILanguageServer extends VDFLanguageServer<
 					this.documents,
 					await workspace,
 				)
-			}
-		})
-
-		this.workspaces = new RefCountAsyncDisposableFactory(
-			(uri) => uri.toString(),
-			async (uri) => {
-				const teamFortress2Folder = (await this.workspaceUris.promise).teamFortress2Folder
+			},
+			createWorkspace: async (uri) => {
+				const { teamFortress2Folder, workspaceUris } = await this.workspaceUris.promise
 				return new VGUIWorkspace({
 					uri: uri,
 					fileSystem: await this.fileSystems.get([
 						...(!Uri.equals(uri, teamFortress2Folder) ? [{ type: <const>"folder", folder: uri }] : []),
-						{ type: "tf2", teamFortress2Folder: teamFortress2Folder }
+						{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
+						...workspaceUris.map((uri) => ({ type: <const>"folder", folder: uri })),
 					]),
 					documents: this.documents,
 				})
-			}
-		)
+			},
+		})
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {

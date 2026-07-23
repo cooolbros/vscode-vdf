@@ -1,5 +1,6 @@
 import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { generateTokens } from "common/generateTokens"
+import type { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { VSCodeVDFLanguageID, VSCodeVDFLanguageNameSchema } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
@@ -11,29 +12,33 @@ import { CompletionItem, CompletionItemKind, InsertTextFormat, MarkupKind, Range
 import { z } from "zod"
 import { LanguageServer, type TextDocumentRequestParams } from "../LanguageServer"
 import { type TextDocumentInit } from "../TextDocumentBase"
+import type { WorkspaceBase } from "../WorkspaceBase"
 import { VGUIAssetType, type VDFTextDocument, type VDFTextDocumentDependencies } from "./VDFTextDocument"
 
-export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies extends VDFTextDocumentDependencies> {
+export interface VDFLanguageServerConfiguration<TDocument extends VDFTextDocument<TDocument, TDependencies>, TDependencies extends VDFTextDocumentDependencies, TWorkspace extends WorkspaceBase> {
 	platform: string
 	servers: Set<VSCodeVDFLanguageID>
 	capabilities: ServerCapabilities
 	createDocument(init: TextDocumentInit, documentConfiguration$: Observable<VSCodeVDFConfiguration>): Promise<TDocument>
+	createWorkspace(uri: Uri): Promise<TWorkspace>
 }
 
 export abstract class VDFLanguageServer<
 	TLanguageId extends Extract<VSCodeVDFLanguageID, "popfile" | "vdf" | "vmt">,
 	TDocument extends VDFTextDocument<TDocument, TDependencies>,
-	TDependencies extends VDFTextDocumentDependencies
-> extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, TDependencies> {
+	TDependencies extends VDFTextDocumentDependencies,
+	TWorkspace extends WorkspaceBase
+> extends LanguageServer<TLanguageId, TDocument, VDFDocumentSymbols, TDependencies, TWorkspace> {
 
-	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>
+	protected readonly VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies, TWorkspace>
 
-	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies>) {
+	constructor(languageId: TLanguageId, name: z.infer<typeof VSCodeVDFLanguageNameSchema>[TLanguageId], connection: Connection, VDFLanguageServerConfiguration: VDFLanguageServerConfiguration<TDocument, TDependencies, TWorkspace>) {
 		super(languageId, name, connection, {
 			platform: VDFLanguageServerConfiguration.platform,
 			servers: new Set(["vmt", ...VDFLanguageServerConfiguration.servers]),
 			capabilities: VDFLanguageServerConfiguration.capabilities,
-			createDocument: async (init, documentConfiguration$) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$)
+			createDocument: async (init, documentConfiguration$) => await VDFLanguageServerConfiguration.createDocument(init, documentConfiguration$),
+			createWorkspace: async (uri) => await VDFLanguageServerConfiguration.createWorkspace(uri),
 		})
 
 		this.VDFLanguageServerConfiguration = VDFLanguageServerConfiguration

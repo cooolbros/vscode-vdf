@@ -3,7 +3,6 @@ import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 import { usingAsync } from "common/operators/usingAsync"
-import { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { posix } from "path"
@@ -17,10 +16,9 @@ import { VMTWorkspace } from "./VMTWorkspace"
 export class VMTLanguageServer extends VDFLanguageServer<
 	"vmt",
 	VMTTextDocument,
-	VMTTextDocumentDependencies
+	VMTTextDocumentDependencies,
+	VMTWorkspace
 > {
-
-	private readonly workspaces: RefCountAsyncDisposableFactory<Uri, VMTWorkspace>
 
 	constructor(languageId: "vmt", name: "VMT", connection: Connection, platform: string) {
 		super(languageId, name, connection, {
@@ -58,20 +56,20 @@ export class VMTLanguageServer extends VDFLanguageServer<
 					this.documents,
 					await workspace,
 				)
-			}
+			},
+			createWorkspace: async (uri) => {
+				const { teamFortress2Folder, workspaceUris } = await this.workspaceUris.promise
+				return new VMTWorkspace({
+					uri: uri,
+					fileSystem: await this.fileSystems.get([
+						...(!Uri.equals(uri, teamFortress2Folder) ? [{ type: <const>"folder", folder: uri }] : []),
+						{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
+						...workspaceUris.map((uri) => ({ type: <const>"folder", folder: uri })),
+					]),
+					server: this,
+				})
+			},
 		})
-
-		this.workspaces = new RefCountAsyncDisposableFactory(
-			(uri) => uri.toString(),
-			async (uri) => new VMTWorkspace({
-				uri: uri,
-				fileSystem: await this.fileSystems.get([
-					{ type: "folder", folder: uri },
-					{ type: "tf2", teamFortress2Folder: (await this.workspaceUris.promise).teamFortress2Folder }
-				]),
-				server: this,
-			})
-		)
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
