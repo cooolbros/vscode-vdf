@@ -71,12 +71,14 @@
             {
                 "category": "HUD Animations",
                 "title": "Restart HUD Animations Language Server",
-                "command": "vscode-vdf.restartHUDAnimationsLanguageServer"
+                "command": "vscode-vdf.restartHUDAnimationsLanguageServer",
+                "enablement": "!isWeb"
             },
             {
                 "category": "Popfile",
                 "title": "Restart Popfile Language Server",
-                "command": "vscode-vdf.restartPopfileLanguageServer"
+                "command": "vscode-vdf.restartPopfileLanguageServer",
+                "enablement": "!isWeb"
             },
             {
                 "category": "Popfile",
@@ -87,12 +89,14 @@
             {
                 "category": "VDF",
                 "title": "Restart VDF Language Server",
-                "command": "vscode-vdf.restartVDFLanguageServer"
+                "command": "vscode-vdf.restartVDFLanguageServer",
+                "enablement": "!isWeb"
             },
             {
                 "category": "VMT",
                 "title": "Restart VMT Language Server",
-                "command": "vscode-vdf.restartVMTLanguageServer"
+                "command": "vscode-vdf.restartVMTLanguageServer",
+                "enablement": "!isWeb"
             },
             {
                 "category": "VDF",
