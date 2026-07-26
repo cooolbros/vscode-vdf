@@ -6,7 +6,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, concat, firstValueFrom, ignoreElements, lastValueFrom, map, Observable, of, switchMap, take } from "rxjs"
+import { BehaviorSubject, combineLatest, firstValueFrom, map, Observable, of, switchMap } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -50,46 +50,34 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		this.server = server
 		this.files = new Map()
 
-		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri }).pipe(
-			shareReplayUntilDisposed(this.dispose$),
-			take(1),
-			ignoreElements()
-		)
-
 		const fileDefinitions = new Map<string, Observable<{ uri: Uri, definitions: Definitions } | null>>()
 		this.getDefinitions = (path: string) => {
 			return fileDefinitions.getOrInsertComputed(path, () => {
-				return concat(
-					ready$,
-					fromTRPCSubscription(server.trpc.servers.vgui.workspace.definitions, { key: uri, path: path })
-				)
+				return fromTRPCSubscription(server.trpc.servers.vgui.workspace.definitions, { key: uri, path: path })
 			})
 		}
 
-		this.hudanimations_manifest$ = concat(
-			ready$,
-			fromTRPCSubscription(server.trpc.servers.vgui.workspace.hudanimations_manifest, { key: uri }).pipe(
-				map((paths) => {
-					if (paths.length == 0) {
-						console.warn(`hudanimations_manifest.length == 0`)
-					}
+		this.hudanimations_manifest$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.hudanimations_manifest, { key: uri }).pipe(
+			map((paths) => {
+				if (paths.length == 0) {
+					console.warn(`hudanimations_manifest.length == 0`)
+				}
 
-					return paths.map((path) => ({ key: path }))
-				}),
-				combineLatestPersistent(({ key: path }) => {
-					return fileSystem.resolve(path).pipe(
-						switchMap((entry) => {
-							return entry.type == EntryType.File
-								? usingAsync(async () => await documents.get(entry.uri))
-								: of(null)
-						}),
-					)
-				}),
-				map((documents) => {
-					return documents.filter((document) => document != null)
-				}),
-				shareReplayUntilDisposed(this.dispose$),
-			)
+				return paths.map((path) => ({ key: path }))
+			}),
+			combineLatestPersistent(({ key: path }) => {
+				return fileSystem.resolve(path).pipe(
+					switchMap((entry) => {
+						return entry.type == EntryType.File
+							? usingAsync(async () => await documents.get(entry.uri))
+							: of(null)
+					}),
+				)
+			}),
+			map((documents) => {
+				return documents.filter((document) => document != null)
+			}),
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
 		this.clientScheme$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.clientScheme, { key: uri }).pipe(
@@ -299,7 +287,7 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 			shareReplayUntilDisposed(this.dispose$),
 		)
 
-		this.ready = Promise.all([lastValueFrom(ready$, { defaultValue: undefined }), firstValueFrom(this.definitionReferences$)]).then(() => undefined)
+		this.ready = Promise.all([firstValueFrom(this.definitionReferences$)]).then(() => undefined)
 	}
 
 	public getEventDefinitions(event: string) {
