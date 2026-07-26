@@ -277,7 +277,7 @@ export function activate(context: vscode.ExtensionContext): void {
 	subscriptions.push(vscode.window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
 
 	// Workspace
-	subscriptions.push(vscode.workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory), { isCaseSensitive: false, isReadonly: true }))
+	subscriptions.push(vscode.workspace.registerFileSystemProvider("bsp", new BSPFileSystemProvider(bspFactory, subscriptions), { isCaseSensitive: false, isReadonly: true }))
 	subscriptions.push(vscode.workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server

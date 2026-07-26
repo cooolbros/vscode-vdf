@@ -9,7 +9,7 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 
 	public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]>
 
-	constructor(private readonly bspFactory: BSPFactory) {
+	constructor(private readonly bspFactory: BSPFactory, private readonly subscriptions: vscode.Disposable[]) {
 		this.bsps = new Map()
 		this.onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>().event
 	}
@@ -25,6 +25,11 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 					vscode.workspace.fs.stat(bspUri),
 					this.bspFactory.get(new Uri(bspUri))
 				])
+
+				this.subscriptions.push(new vscode.Disposable(() => {
+					// @ts-expect-error
+					bsp[Symbol.asyncDispose]()
+				}))
 
 				const pakfile = bsp.pakfile()
 				const files = pakfile.files()
