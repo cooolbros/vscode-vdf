@@ -144,7 +144,7 @@ export abstract class LanguageServer<
 			}
 		})
 
-		const start = Promise.withResolvers<VSCodeVDFLanguageID[]>()
+		const start = Promise.withResolvers<VSCodeVDFLanguageID[] | undefined>()
 
 		this.connection.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
 			router: this.router(
@@ -357,7 +357,10 @@ export abstract class LanguageServer<
 			this.connection.console.log(`${name} Language Server v${version}`)
 			this.connection.console.log(languageServerConfiguration.platform)
 
-			const initializationOptions = z.object({ teamFortress2Folder: Uri.schema, clients: z.array(VSCodeVDFLanguageIDSchema) }).parse(params.initializationOptions)
+			const initializationOptions = z.object({
+				teamFortress2Folder: Uri.schema,
+				clients: z.array(VSCodeVDFLanguageIDSchema).optional()
+			}).parse(params.initializationOptions)
 
 			this.workspaceUris.resolve({
 				teamFortress2Folder: initializationOptions.teamFortress2Folder,

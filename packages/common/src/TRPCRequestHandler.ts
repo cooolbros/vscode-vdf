@@ -9,7 +9,7 @@ export interface TRPCRequestHandlerOptions<T extends z.util.EnumLike> {
 	schema: z.ZodEnum<T>
 	stack?: AsyncDisposableStack
 	sendNotification: (client: z.infer<z.ZodEnum<T>>, method: "vscode-vdf/trpc", param: unknown) => Promise<void>
-	start?: Promise<z.infer<z.ZodEnum<T>>[]>
+	start?: Promise<z.infer<z.ZodEnum<T>>[] | undefined>
 	onExit?: (clients: Set<z.infer<z.ZodEnum<T>>>) => Promise<void>
 }
 
@@ -58,7 +58,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 	})
 
 	opts.start?.then((clients) => {
-		for (const client of clients) {
+		for (const client of clients ?? []) {
 			opts.sendNotification(client, "vscode-vdf/trpc", { type: "start" })
 		}
 	})
