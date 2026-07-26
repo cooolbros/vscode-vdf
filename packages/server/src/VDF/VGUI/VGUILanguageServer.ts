@@ -2,7 +2,6 @@ import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
-import { usingAsync } from "common/operators/usingAsync"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { firstValueFrom, map, switchMap } from "rxjs"
@@ -70,26 +69,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 	}
 
 	protected router(t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>) {
-		const reject = (uri: Uri) => Promise.reject(`VGUIWorkspace "${uri.toString()}" does not exist.`)
 		return t.mergeRouters(
 			super.router(t),
 			t.router({
 				workspace: {
-					open: t
-						.procedure
-						.input(
-							z.object({
-								uri: Uri.schema,
-							})
-						)
-						.subscription(({ input, signal }) => {
-							return observableToAsyncIterable<void>(
-								usingAsync(async () => await this.workspaces.get(input.uri)).pipe(
-									map(() => undefined),
-								),
-								signal!
-							)
-						}),
 					clientScheme: t
 						.procedure
 						.input(
@@ -98,13 +81,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key)
 							return observableToAsyncIterable<Definitions>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => {
-										return workspace.clientScheme$.pipe(
-											map((definitionReferences) => definitionReferences.definitions)
-										)
-									})
+								workspace.clientScheme$.pipe(
+									map((definitionReferences) => definitionReferences.definitions)
 								),
 								signal!
 							)
@@ -113,13 +93,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 						.procedure
 						.input(z.object({ key: Uri.schema }))
 						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key)
 							return observableToAsyncIterable<Definitions>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => {
-										return workspace.languageTokens$.pipe(
-											map((definitionReferences) => definitionReferences.definitions)
-										)
-									})
+								workspace.languageTokens$.pipe(
+									map((definitionReferences) => definitionReferences.definitions)
 								),
 								signal!
 							)
@@ -128,10 +105,9 @@ export class VGUILanguageServer extends VDFLanguageServer<
 						.procedure
 						.input(z.object({ key: Uri.schema }))
 						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key)
 							return observableToAsyncIterable<string[]>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => workspace.hudanimations_manifest$)
-								),
+								workspace.hudanimations_manifest$,
 								signal!
 							)
 						}),
@@ -139,10 +115,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 						open: t
 							.procedure
 							.input(z.object({ key: Uri.schema }))
-							.subscription(({ input, signal }) => {
+							.subscription(async ({ input, signal }) => {
+								const workspace = await this.workspaces.get(input.key)
 								return observableToAsyncIterable<void>(
-									usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-										switchMap((workspace) => workspace.itemsGame$),
+									workspace.itemsGame$.pipe(
 										map(() => undefined),
 									),
 									signal!
@@ -157,9 +133,9 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								})
 							)
 							.query(async ({ input }) => {
+								const workspace = await this.workspaces.get(input.key)
 								return await firstValueFrom(
-									usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-										switchMap((workspace) => workspace.itemsGame$),
+									workspace.itemsGame$.pipe(
 										switchMap((document) => document.documentSymbols$),
 										map((documentSymbols) => {
 											const name = input.name.toLowerCase()
@@ -187,10 +163,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 								})
 							)
 							.query(async ({ input }) => {
-								await using workspace = await this.workspaces.get(input.key, reject)
-								await using document = await firstValueFrom(workspace.itemsGame$)
+								const workspace = await this.workspaces.get(input.key)
+								// Disposed by firstValueFrom
+								const document = await firstValueFrom(workspace.itemsGame$)
 								const definitionReferences = await firstValueFrom(document.definitionReferences$)
-
 								return definitionReferences.definitions
 							}),
 					},
@@ -198,13 +174,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 						.procedure
 						.input(z.object({ key: Uri.schema }))
 						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key)
 							return observableToAsyncIterable<Definitions>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => {
-										return workspace.gameSounds$.pipe(
-											map((definitionReferences) => definitionReferences.definitions)
-										)
-									})
+								workspace.gameSounds$.pipe(
+									map((definitionReferences) => definitionReferences.definitions)
 								),
 								signal!
 							)
@@ -213,13 +186,10 @@ export class VGUILanguageServer extends VDFLanguageServer<
 						.procedure
 						.input(z.object({ key: Uri.schema }))
 						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key)
 							return observableToAsyncIterable<Definitions>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => {
-										return workspace.surfaceProperties$.pipe(
-											map((definitionReferences) => definitionReferences.definitions)
-										)
-									})
+								workspace.surfaceProperties$.pipe(
+									map((definitionReferences) => definitionReferences.definitions)
 								),
 								signal!
 							)
@@ -233,12 +203,9 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.subscription(async ({ input, signal }) => {
+							const workspace = await this.workspaces.get(input.key)
 							return observableToAsyncIterable<{ uri: Uri, definitions: Definitions } | null>(
-								usingAsync(async () => await this.workspaces.get(input.key, reject)).pipe(
-									switchMap((workspace) => {
-										return workspace.getDefinitionReferences(input.path)
-									})
-								),
+								workspace.getDefinitionReferences(input.path),
 								signal!
 							)
 						}),
@@ -251,8 +218,7 @@ export class VGUILanguageServer extends VDFLanguageServer<
 							})
 						)
 						.mutation(async ({ input }) => {
-							await using workspace = await this.workspaces.get(input.key, reject)
-
+							const workspace = await this.workspaces.get(input.key)
 							for (const [path, documentReferences] of input.references) {
 								workspace.setFileReferences(path, documentReferences)
 							}

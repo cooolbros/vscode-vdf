@@ -150,6 +150,6 @@ export class VGUITextDocument extends VDFTextDocument<VGUITextDocument, VGUIText
 			),
 		})
 
-		this.workspace = this.stack.use(workspace)
+		this.workspace = workspace
 	}
 }

@@ -2,6 +2,7 @@ import { createTRPCClient, type CreateTRPCClientOptions, type TRPCClient } from 
 import type { DataTransformer, TRPCRootObject } from "@trpc/server"
 import { initTRPC, type AnyTRPCRouter } from "@trpc/server"
 import type { TRPCClientRouter } from "client/TRPCClientRouter"
+import { AsyncDisposableBase } from "common/AsyncDisposableBase"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
 import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
@@ -77,15 +78,16 @@ export abstract class LanguageServer<
 	TDocumentSymbols extends DocumentSymbol[],
 	TDependencies,
 	TWorkspace extends WorkspaceBase
-> {
+> extends AsyncDisposableBase {
 
 	protected readonly languageId: TLanguageId
 	protected readonly connection: Connection
 	protected readonly languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies, TWorkspace>
 	protected readonly workspaceUris: PromiseWithResolvers<{ teamFortress2Folder: Uri, workspaceUris: Uri[] }>
+
 	protected readonly fileSystems: RefCountAsyncDisposableFactory<FileSystemKey[], FileSystemMountPoint>
-	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 	protected readonly workspaces: { get: (uri: Uri, factory?: (uri: Uri) => Promise<TWorkspace>) => Promise<TWorkspace> }
+	protected readonly documents: RefCountAsyncDisposableFactory<Uri, TDocument>
 
 	private readonly diagnostic = { id: 0 }
 	private readonly documentDiagnostics: Map<string, Map<number, DiagnosticCodeAction>>
@@ -111,10 +113,97 @@ export abstract class LanguageServer<
 		connection: Connection,
 		languageServerConfiguration: LanguageServerConfiguration<TDocument, TDocumentSymbols, TDependencies, TWorkspace>,
 	) {
+		super()
 		this.languageId = languageId
 		this.connection = connection
 		this.languageServerConfiguration = languageServerConfiguration
 		this.workspaceUris = Promise.withResolvers()
+
+		this.connection.onExit(async () => await this[Symbol.asyncDispose]())
+
+		const transformer = devalueTransformer({
+			reducers: {
+				Definitions: (value: unknown) => value instanceof Definitions && value.toJSON(),
+				References: (value: unknown) => value instanceof References && value.toJSON(),
+				Symbol: (value: unknown) => typeof value == "symbol" ? Symbol.keyFor(value) : undefined,
+				Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
+				VDFDocumentSymbol: (value: unknown) => value instanceof VDFDocumentSymbol ? value.toJSON() : undefined,
+				VDFDocumentSymbols: (value: unknown) => value instanceof VDFDocumentSymbols ? value.toJSON() : undefined,
+				VDFPosition: (value: unknown) => value instanceof VDFPosition ? value.toJSON() : undefined,
+				VDFRange: (value: unknown) => value instanceof VDFRange ? value.toJSON() : undefined,
+			},
+			revivers: {
+				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
+				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
+				Symbol: (value: ReturnType<Symbol["toString"]>) => Symbol.for(value),
+				Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
+				VDFDocumentSymbol: (value: ReturnType<VDFDocumentSymbol["toJSON"]>) => VDFDocumentSymbol.schema.parse(value),
+				VDFDocumentSymbols: (value: ReturnType<VDFDocumentSymbols["toJSON"]>) => VDFDocumentSymbols.schema.parse(value),
+				VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
+				VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
+			}
+		})
+
+		const start = Promise.withResolvers<VSCodeVDFLanguageID[]>()
+
+		this.connection.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
+			router: this.router(
+				initTRPC
+					.context<{ client: VSCodeVDFLanguageID }>()
+					.create({
+						transformer: transformer,
+						isDev: true,
+					})
+			),
+			schema: VSCodeVDFLanguageIDSchema,
+			stack: this.stack,
+			sendNotification: async (server, method, param) => {
+				return await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param: { server: this.languageId, notification: param } })
+			},
+			start: start.promise,
+			onExit: async (clients) => {
+				await this.connection.sendNotification("vscode-vdf/exit", { clients: [...clients] })
+			},
+		}))
+
+		const notificationSchema = z.object({
+			server: VSCodeVDFLanguageIDSchema.nullable(),
+			notification: z.unknown(),
+		})
+
+		const notificationHandlers = new Map<z.infer<typeof notificationSchema.shape.server>, (param: unknown) => Promise<void>>()
+
+		this.connection.onNotification("vscode-vdf/trpc", async (param) => {
+			const { server, notification } = notificationSchema.parse(param)
+			await notificationHandlers.get(server)!(notification)
+		})
+
+		const VSCodeRPCOptions = (server: VSCodeVDFLanguageID | null) => ({
+			links: [
+				VSCodeJSONRPCLink({
+					stack: this.stack,
+					client: { name: this.languageId },
+					transformer: transformer,
+					onNotification: (type, handler) => {
+						notificationHandlers.set(server, handler)
+						return { [Symbol.dispose]: () => notificationHandlers.delete(server) }
+					},
+					sendRequest: server != null
+						? async (method, param) => await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
+						: async (method, param) => await this.connection.sendRequest(method, param)
+				})
+			]
+		} satisfies CreateTRPCClientOptions<AnyTRPCRouter>)
+
+		this.trpc = {
+			client: createTRPCClient<ReturnType<typeof TRPCClientRouter>>(VSCodeRPCOptions(null)),
+			servers: {
+				hudanimations: createTRPCClient<ReturnType<HUDAnimationsLanguageServer["router"]>>(VSCodeRPCOptions("hudanimations")),
+				popfile: createTRPCClient<ReturnType<PopfileLanguageServer["router"]>>(VSCodeRPCOptions("popfile")),
+				vgui: createTRPCClient<ReturnType<VGUILanguageServer["router"]>>(VSCodeRPCOptions("vdf")),
+				vmt: createTRPCClient<ReturnType<VMTLanguageServer["router"]>>(VSCodeRPCOptions("vmt")),
+			}
+		}
 
 		const onDidChangeConfiguration$ = new BehaviorSubject<void>(undefined)
 
@@ -153,6 +242,24 @@ export abstract class LanguageServer<
 			}
 		)
 
+		const workspaces = new Map<string, Promise<TWorkspace>>()
+		this.stack.defer(async () => {
+			await Promise.all(workspaces.values().map(async (promise) => (await promise)[Symbol.asyncDispose]()))
+		})
+
+		this.workspaces = {
+			get: async (uri: Uri, factory = this.languageServerConfiguration.createWorkspace) => {
+				const workspace = await workspaces.getOrInsertComputed(uri.toString(), async () => await factory(uri))
+				return new Proxy(workspace, {
+					get(target, p, receiver) {
+						return p == Symbol.asyncDispose
+							? async () => { console.warn(`${target.constructor.name} [Symbol.asyncDispose]()`) }
+							: Reflect.get(target, p, receiver)
+					},
+				})
+			}
+		}
+
 		this.documents = new RefCountAsyncDisposableFactory(
 			(uri) => uri.toString(),
 			async (uri) => await languageServerConfiguration.createDocument(
@@ -164,18 +271,14 @@ export abstract class LanguageServer<
 			)
 		)
 
-		const workspaces = new Map<string, Promise<TWorkspace>>()
-		this.workspaces = {
-			get: async (uri: Uri, factory = this.languageServerConfiguration.createWorkspace) => {
-				return workspaces.getOrInsertComputed(uri.toString(), async () => await factory(uri))
-			}
-		}
-
 		this.connection.onDidChangeConfiguration((params) => {
 			onDidChangeConfiguration$.next()
 		})
 
 		const onDidClose = new Map<string, Promise<AsyncDisposable>>()
+		this.stack.defer(async () => {
+			await Promise.all(onDidClose.values().map(async (promise) => (await promise)[Symbol.asyncDispose]()))
+		})
 
 		this.connection.onDidOpenTextDocument(async (params) => {
 
@@ -253,10 +356,15 @@ export abstract class LanguageServer<
 		this.connection.onInitialize(async (params) => {
 			this.connection.console.log(`${name} Language Server v${version}`)
 			this.connection.console.log(languageServerConfiguration.platform)
+
+			const initializationOptions = z.object({ teamFortress2Folder: Uri.schema, clients: z.array(VSCodeVDFLanguageIDSchema) }).parse(params.initializationOptions)
+
 			this.workspaceUris.resolve({
-				teamFortress2Folder: z.object({ teamFortress2Folder: Uri.schema }).parse(params.initializationOptions).teamFortress2Folder,
+				teamFortress2Folder: initializationOptions.teamFortress2Folder,
 				workspaceUris: params.workspaceFolders?.map((workspaceFolder) => new Uri(workspaceFolder.uri)) ?? []
 			})
+
+			start.resolve(initializationOptions.clients)
 
 			return {
 				serverInfo: {
@@ -307,71 +415,6 @@ export abstract class LanguageServer<
 		this.onTextDocumentRequest((handler: GenericRequestHandler<InlayHint[] | null, void>) => this.connection.onRequest(InlayHintRequest.method, handler), this.onInlayHint)
 		this.onTextDocumentRequest(this.connection.onPrepareRename, this.onPrepareRename)
 		this.onTextDocumentRequest(this.connection.onRenameRequest, this.onRenameRequest)
-
-		const transformer = devalueTransformer({
-			reducers: {
-				Definitions: (value: unknown) => value instanceof Definitions && value.toJSON(),
-				References: (value: unknown) => value instanceof References && value.toJSON(),
-				Symbol: (value: unknown) => typeof value == "symbol" ? Symbol.keyFor(value) : undefined,
-				Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
-				VDFDocumentSymbol: (value: unknown) => value instanceof VDFDocumentSymbol ? value.toJSON() : undefined,
-				VDFDocumentSymbols: (value: unknown) => value instanceof VDFDocumentSymbols ? value.toJSON() : undefined,
-				VDFPosition: (value: unknown) => value instanceof VDFPosition ? value.toJSON() : undefined,
-				VDFRange: (value: unknown) => value instanceof VDFRange ? value.toJSON() : undefined,
-			},
-			revivers: {
-				Definitions: (value: ReturnType<Definitions["toJSON"]>) => Definitions.schema.parse(value),
-				References: (value: ReturnType<References["toJSON"]>) => References.schema.parse(value),
-				Symbol: (value: ReturnType<Symbol["toString"]>) => Symbol.for(value),
-				Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
-				VDFDocumentSymbol: (value: ReturnType<VDFDocumentSymbol["toJSON"]>) => VDFDocumentSymbol.schema.parse(value),
-				VDFDocumentSymbols: (value: ReturnType<VDFDocumentSymbols["toJSON"]>) => VDFDocumentSymbols.schema.parse(value),
-				VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
-				VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
-			}
-		})
-
-		this.connection.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
-			router: this.router(
-				initTRPC
-					.context<{ client: VSCodeVDFLanguageID }>()
-					.create({
-						transformer: transformer,
-						isDev: true,
-					})
-			),
-			schema: VSCodeVDFLanguageIDSchema,
-			onRequest: (method, handler) => this.connection.onRequest(method, handler),
-			sendNotification: async (server, method, param) => {
-				return await this.connection.sendNotification("vscode-vdf/sendNotification", { server, method, param })
-			}
-		}))
-
-		const link = VSCodeJSONRPCLink({
-			client: { name: this.languageId },
-			transformer: transformer,
-			onNotification: (type, handler) => this.connection.onNotification(type, handler),
-		})
-
-		const VSCodeRPCOptions = (server: VSCodeVDFLanguageID | null) => ({
-			links: [
-				link({
-					sendRequest: server != null
-						? async (method, param) => await this.connection.sendRequest("vscode-vdf/sendRequest", { server, method, param })
-						: async (method, param) => await this.connection.sendRequest(method, param)
-				})
-			]
-		} satisfies CreateTRPCClientOptions<AnyTRPCRouter>)
-
-		this.trpc = {
-			client: createTRPCClient<ReturnType<typeof TRPCClientRouter>>(VSCodeRPCOptions(null)),
-			servers: {
-				hudanimations: createTRPCClient<ReturnType<HUDAnimationsLanguageServer["router"]>>(VSCodeRPCOptions("hudanimations")),
-				popfile: createTRPCClient<ReturnType<PopfileLanguageServer["router"]>>(VSCodeRPCOptions("popfile")),
-				vgui: createTRPCClient<ReturnType<VGUILanguageServer["router"]>>(VSCodeRPCOptions("vdf")),
-				vmt: createTRPCClient<ReturnType<VMTLanguageServer["router"]>>(VSCodeRPCOptions("vmt")),
-			}
-		}
 
 		this.connection.listen()
 	}

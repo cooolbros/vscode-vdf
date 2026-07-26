@@ -53,24 +53,26 @@ export function createTRPCClient<T extends AnyTRPCRouter>(opts: CreateTRPCClient
 		requests.delete(response.id)
 	})
 
+	let id = 0
+
 	const trpc = _createTRPCClient<T>({
 		links: [
 			VSCodeJSONRPCLink({
 				client: { name: `${name}-webview` },
 				transformer: devalueTransformer({ reducers: {}, revivers: {} }),
 				onNotification: (type, handler) => {
-					onNotification$.subscribe((notification) => {
+					const subscription = onNotification$.subscribe((notification) => {
 						if (notification.method == type) {
 							handler(notification.param)
 						}
 					})
+					return { [Symbol.dispose]: () => subscription.unsubscribe() }
 				},
-			})({
 				sendRequest: async (method, param) => {
+					const requestID = id++
 					const { promise, resolve } = Promise.withResolvers()
-					// @ts-ignore
-					requests.set(param.id, { resolve })
-					vscode.postMessage({ type: "request", method, param })
+					requests.set(requestID, { resolve })
+					vscode.postMessage({ id: requestID, message: param })
 					return promise
 				},
 			}),

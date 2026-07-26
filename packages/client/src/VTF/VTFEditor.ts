@@ -100,12 +100,12 @@ export class VTFEditor implements vscode.CustomEditorProvider<VTFDocument> {
 
 	public async resolveCustomEditor(document: VTFDocument, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
 
-		const stack = new DisposableStack()
-		webviewPanel.onDidDispose(() => stack.dispose())
+		const stack = new AsyncDisposableStack()
+		webviewPanel.onDidDispose(() => stack.disposeAsync())
 
 		const id = document.uri.toString()
 		this.webviewPanels.set(id, webviewPanel)
-		stack.defer(() => this.webviewPanels.delete(id))
+		stack.defer(() => void this.webviewPanels.delete(id))
 
 		stack.adopt(
 			webviewPanel.onDidChangeViewState(() => {

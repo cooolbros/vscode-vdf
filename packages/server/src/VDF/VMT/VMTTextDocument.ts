@@ -227,6 +227,6 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 			})
 		})
 
-		this.workspace = this.stack.use(workspace)
+		this.workspace = workspace
 	}
 }

@@ -1,10 +1,8 @@
 import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
-import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
-import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import { Uri } from "common/Uri"
-import { combineLatest, concat, concatMap, firstValueFrom, ignoreElements, map, Observable, shareReplay, take } from "rxjs"
+import { combineLatest, concatMap, firstValueFrom, map, Observable, shareReplay, take } from "rxjs"
 import { CompletionItemKind, type CompletionItem } from "vscode-languageserver"
 import { z } from "zod"
 import { References, type GlobalDefinitionReferences } from "../../DefinitionReferences"
@@ -54,16 +52,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 		super(teamFortress2Folder, fileSystem)
 		this.server = server
 
-		const ready$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.open, { uri: teamFortress2Folder }).pipe(
-			shareReplayUntilDisposed(this.dispose$),
-			take(1),
-			ignoreElements()
-		)
-
-		this.gameSounds$ = concat(
-			ready$,
-			fromTRPCSubscription(server.trpc.servers.vgui.workspace.gameSounds, { key: teamFortress2Folder })
-		).pipe(
+		this.gameSounds$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.gameSounds, { key: teamFortress2Folder }).pipe(
 			map((definitions) => {
 				return {
 					definitions: definitions,
@@ -81,100 +70,83 @@ export class PopfileWorkspace extends WorkspaceBase {
 				} satisfies GlobalDefinitionReferences
 			}),
 			take(1),
-			shareReplayUntilDisposed(this.dispose$),
+			shareReplay(1),
 		)
 
-		const languageTokens$ = concat(
-			ready$,
-			fromTRPCSubscription(server.trpc.servers.vgui.workspace.languageTokens, { key: teamFortress2Folder })
-		).pipe(
+		const languageTokens$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.languageTokens, { key: teamFortress2Folder }).pipe(
 			take(1),
-			shareReplayUntilDisposed(this.dispose$),
+			shareReplay(1),
 		)
 
-		const itemsGameOpen$ = concat(
-			ready$,
-			fromTRPCSubscription(server.trpc.servers.vgui.workspace.itemsGame.open, { key: teamFortress2Folder })
-		).pipe(
+		const itemsGame$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.itemsGame.open, { key: teamFortress2Folder }).pipe(
 			shareReplay({ bufferSize: 1, refCount: true })
 		)
 
-		const itemsGameResource = async () => {
-			const { promise, resolve } = Promise.withResolvers<void>()
-			const subscription = itemsGameOpen$.subscribe((value) => {
-				resolve(value)
-			})
-
-			return promise.then((value) => {
-				return {
-					value: value,
-					[Symbol.asyncDispose]: async () => {
-						subscription.unsubscribe()
-					}
-				}
-			})
-		}
-
-		const items$ = usingAsync(itemsGameResource).pipe(
-			concatMap(async () => {
-				return await server.trpc.servers.vgui.workspace.itemsGame.documentSymbol.query({ key: teamFortress2Folder, name: "items" })
-			})
+		const items = firstValueFrom(
+			itemsGame$.pipe(
+				concatMap(async () => {
+					return await server.trpc.servers.vgui.workspace.itemsGame.documentSymbol.query({ key: teamFortress2Folder, name: "items" })
+				}),
+			)
 		)
 
-		const itemsDefinitions$ = usingAsync(itemsGameResource).pipe(
-			concatMap(async () => {
-				return await server.trpc.servers.vgui.workspace.itemsGame.definitions.query({ key: teamFortress2Folder })
-			}),
-			map((definitions) => {
-				return {
-					definitions: definitions,
-					references: {
-						setDocumentReferences: (references, notify) => {
-							const map = new Map<string, Map<string, References | null>>()
-							map.set("scripts/items/items_game.txt", references)
+		const itemsDefinitions = firstValueFrom(
+			itemsGame$.pipe(
+				concatMap(async () => {
+					return await server.trpc.servers.vgui.workspace.itemsGame.definitions.query({ key: teamFortress2Folder })
+				}),
+				map((definitions) => {
+					return {
+						definitions: definitions,
+						references: {
+							setDocumentReferences: (references, notify) => {
+								const map = new Map<string, Map<string, References | null>>()
+								map.set("scripts/items/items_game.txt", references)
 
-							server.trpc.servers.vgui.workspace.setFilesReferences.mutate({
-								key: teamFortress2Folder,
-								references: map
-							})
-						},
-					}
-				} satisfies GlobalDefinitionReferences
-			}),
-			shareReplayUntilDisposed(this.dispose$),
+								server.trpc.servers.vgui.workspace.setFilesReferences.mutate({
+									key: teamFortress2Folder,
+									references: map
+								})
+							},
+						}
+					} satisfies GlobalDefinitionReferences
+				}),
+			)
 		)
 
-		const attributes$ = usingAsync(itemsGameResource).pipe(
-			concatMap(async () => {
-				return await server.trpc.servers.vgui.workspace.itemsGame.documentSymbol.query({ key: teamFortress2Folder, name: "attributes" })
-			}),
-			map((documentSymbols) => {
-				const completionItems = documentSymbols
-					.values()
-					.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
-					.filter((attribute) => attribute != undefined)
-					.map((attribute) => ({ label: attribute, kind: CompletionItemKind.Constant }))
-					.toArray()
+		const attributes = firstValueFrom(
+			itemsGame$.pipe(
+				concatMap(async () => {
+					return await server.trpc.servers.vgui.workspace.itemsGame.documentSymbol.query({ key: teamFortress2Folder, name: "attributes" })
+				}),
+				map((documentSymbols) => {
+					const completionItems = documentSymbols
+						.values()
+						.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key == "name")?.detail)
+						.filter((attribute) => attribute != undefined)
+						.map((attribute) => ({ label: attribute, kind: CompletionItemKind.Constant }))
+						.toArray()
 
-				return {
-					keys: {
-						[`${"CharacterAttributes".toLowerCase()}`]: { values: completionItems },
-						[`${"ItemAttributes".toLowerCase()}`]: {
-							values: [
-								{
-									label: "ItemName",
-									kind: CompletionItemKind.Field
-								},
-								...completionItems
-							]
+					return {
+						keys: {
+							[`${"CharacterAttributes".toLowerCase()}`]: { values: completionItems },
+							[`${"ItemAttributes".toLowerCase()}`]: {
+								values: [
+									{
+										label: "ItemName",
+										kind: CompletionItemKind.Field
+									},
+									...completionItems
+								]
+							}
 						}
 					}
-				}
-			})
+				}),
+			)
 		)
 
 		const paints$ = combineLatest({
-			items: items$,
+			items: items,
 			languageTokens: languageTokens$
 		}).pipe(
 			map(({ items: documentSymbols, languageTokens }) => {
@@ -239,11 +211,16 @@ export class PopfileWorkspace extends WorkspaceBase {
 		this.paints = firstValueFrom(paints$)
 		this.effects = firstValueFrom(effects$)
 
+		const globals$ = combineLatest([itemsDefinitions, this.gameSounds$]).pipe(
+			take(1),
+			shareReplay(1)
+		)
+
 		this.dependencies = firstValueFrom(
 			combineLatest({
-				attributes: attributes$,
-				paints: paints$,
-				effects: effects$
+				attributes: attributes,
+				paints: this.paints,
+				effects: this.effects
 			}).pipe(
 				map(({ attributes, paints, effects }) => {
 					const paintItems = paints
@@ -297,7 +274,7 @@ export class PopfileWorkspace extends WorkspaceBase {
 								[`${"attach particle effect static".toLowerCase()}`]: effectsItems,
 							}
 						},
-						globals$: combineLatest([itemsDefinitions$, this.gameSounds$])
+						globals$: globals$
 					}
 				})
 			)

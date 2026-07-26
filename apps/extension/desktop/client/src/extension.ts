@@ -367,7 +367,8 @@ export function activate(context: vscode.ExtensionContext): void {
 						languageId
 					],
 					initializationOptions: () => ({
-						teamFortress2Folder: teamFortress2Folder.toJSON()
+						teamFortress2Folder: teamFortress2Folder.toJSON(),
+						...client.initializationOptions()
 					}),
 					middleware: middleware[languageId],
 					...(process.env.NODE_ENV != "production" && {

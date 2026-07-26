@@ -28,6 +28,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 	public readonly client: T
 
 	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
+	private readonly clients: Set<string>
 	private readonly router: ReturnType<typeof TRPCClientRouter>
 
 	constructor(
@@ -43,6 +44,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 
 		this.client = this.stack.adopt(client, (disposable) => disposable.dispose())
 		this.startServer = startServer
+		this.clients = new Set()
 		this.router = TRPCClientRouter(
 			initTRPC
 				.context<{ client: VSCodeVDFLanguageID }>()
@@ -69,9 +71,8 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 			this.client.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
 				router: this.router,
 				schema: VSCodeVDFLanguageIDSchema,
-				onRequest: (method, handler) => this.stack.adopt(this.client.onRequest(method, handler), (disposable) => disposable.dispose()),
 				sendNotification: async (server, method, param) => {
-					await languageClients[server]!.client.sendNotification(method, param)
+					await languageClients[server]!.client.sendNotification(method, { server: null, notification: param })
 				}
 			})),
 			(disposable) => disposable.dispose()
@@ -92,6 +93,24 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 			}),
 			(disposable) => disposable.dispose()
 		)
+
+		this.stack.adopt(
+			this.client.onNotification("vscode-vdf/exit", async (...params) => {
+				const { clients } = z.object({ clients: z.array(z.string()) }).parse(params[0])
+				for (const client of clients) {
+					this.clients.add(client)
+				}
+			}),
+			(disposable) => disposable.dispose()
+		)
+	}
+
+	public initializationOptions() {
+		const clients = [...this.clients]
+		this.clients.clear()
+		return {
+			clients: [...clients]
+		}
 	}
 
 	public async start(): Promise<Record<string, unknown>> {

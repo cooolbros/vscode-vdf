@@ -4,9 +4,8 @@ import vscode from "vscode"
 import { z } from "zod"
 
 const messageSchema = z.object({
-	type: z.union([z.literal("request"), z.literal("notification")]),
-	method: z.string(),
-	param: z.any()
+	id: z.number(),
+	message: z.any()
 })
 
 export interface TRPCWebViewRequestHandlerOptions<T extends z.util.EnumLike> {
@@ -15,28 +14,14 @@ export interface TRPCWebViewRequestHandlerOptions<T extends z.util.EnumLike> {
 	schema: z.ZodEnum<T>
 }
 
-export function TRPCWebViewRequestHandler<T extends z.util.EnumLike>(opts: TRPCWebViewRequestHandlerOptions<T>): Disposable {
+export function TRPCWebViewRequestHandler<T extends z.util.EnumLike>(opts: TRPCWebViewRequestHandlerOptions<T>): AsyncDisposable {
 	const { webview, router, schema } = opts
-	const stack = new DisposableStack()
-
-	const handlers = {
-		request: new Map<string, (param: unknown) => void>(),
-		notification: new Map<string, (param: unknown) => void>(),
-	}
-
-	stack.defer(() => handlers.request.clear())
-	stack.defer(() => handlers.notification.clear())
-
-	const controller = new AbortController()
-	stack.defer(() => controller.abort())
+	const stack = new AsyncDisposableStack()
 
 	const trpc = TRPCRequestHandler({
 		router: router,
 		schema: schema,
-		signal: controller.signal,
-		onRequest: (method, handler) => {
-			handlers.request.set(method, handler)
-		},
+		stack: stack,
 		sendNotification: async (server, method, param) => {
 			await webview.postMessage({
 				type: "notification",
@@ -46,19 +31,15 @@ export function TRPCWebViewRequestHandler<T extends z.util.EnumLike>(opts: TRPCW
 		}
 	})
 
-	handlers.request.set("vscode-vdf/trpc", async (param) => {
-		webview.postMessage({
-			type: "response",
-			// @ts-ignore
-			id: param.id,
-			response: await trpc(param),
-		})
-	})
-
 	stack.adopt(
-		webview.onDidReceiveMessage((event) => {
-			const { type, method, param } = messageSchema.parse(event)
-			handlers[type].get(method)?.(param)
+		webview.onDidReceiveMessage(async (event) => {
+			const { id, message } = messageSchema.parse(event)
+
+			webview.postMessage({
+				type: "response",
+				id: id,
+				response: await trpc(message),
+			})
 		}),
 		(disposable) => disposable.dispose()
 	)
