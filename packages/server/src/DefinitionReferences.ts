@@ -195,6 +195,11 @@ export class References implements SetDocumentReferences {
 		}
 	}
 
+	public *document() {
+		yield* this.collection
+		yield* this.references$.value.get(this.uri.toString())?.collection ?? []
+	}
+
 	public get(scope: number | null, type: symbol, key: string) {
 		return this.collection.get(scope, type, key) ?? []
 	}
