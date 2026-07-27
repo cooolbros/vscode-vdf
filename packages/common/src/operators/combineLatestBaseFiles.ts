@@ -105,7 +105,7 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 											observableSelector,
 											watch,
 											fileSystem,
-											relativeFolderPath
+											relativeFolderPath: posix.dirname(path),
 										})
 									}),
 									switchMap(({ base: results }) => {
