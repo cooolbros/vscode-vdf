@@ -5,7 +5,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { BehaviorSubject, combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
+import { combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
@@ -165,7 +165,9 @@ export class VGUIWorkspace extends WorkspaceBase {
 		super(uri, fileSystem)
 		this.documents = documents
 
-		const files = (path: string): Observable<string[]> => {
+		const files = (path: string, seen: string[] = []): Observable<string[]> => {
+			const dirname = posix.dirname(path)
+			const self = path.toLowerCase()
 			return fileSystem.resolve(path).pipe(
 				switchMap((entry) => {
 					if (entry.type != EntryType.File) {
@@ -173,23 +175,20 @@ export class VGUIWorkspace extends WorkspaceBase {
 					}
 
 					return usingAsync(async () => await documents.get(entry.uri)).pipe(
-						switchMap((document) => document.documentSymbols$),
-						map((documentSymbols) => {
-							return documentSymbols
-								.filter((documentSymbol) => documentSymbol.key == "#base" && documentSymbol.detail)
-								.map((documentSymbol) => posix.resolve(`/${posix.dirname(path)}/${documentSymbol.detail}`).substring(1))
-						}),
-						distinctUntilChanged((previous, current) => {
-							return previous.length == current.length && previous.every((path, index) => path == current[index])
-						}),
-						switchMap((paths) => {
-							return paths.length
-								? combineLatest(paths.map((path) => files(path))).pipe(map((paths) => paths.flat()))
-								: new BehaviorSubject([])
-						}),
-						map((paths) => [path, ...paths]),
+						switchMap((document) => document.base$),
 					)
-				})
+				}),
+				map((base) => base.map((detail) => ({ key: detail }))),
+				combineLatestPersistent(({ key: detail }) => {
+					const base = posix.resolve(`/${dirname}/${detail}`).substring(1)
+					const key = base.toLowerCase()
+					if (key == self || seen.some((path) => path.toLowerCase() == key)) {
+						return of([])
+					}
+
+					return files(base, [...seen, path])
+				}),
+				map((paths) => [path, ...paths.flat()]),
 			)
 		}
 
