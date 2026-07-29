@@ -98,7 +98,7 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 								return document.base$.pipe(
 									map((base) => ({ base: base, value: undefined })),
 									combineLatestBaseFiles({
-										stack: [...stack, { path: path, uri: current }],
+										stack: [...stack, { path: self, uri: current }],
 										open: fs({
 											current: document.uri,
 											documentSelector,
