@@ -41,7 +41,7 @@ export const GameSoundsSchema = (document: VGUITextDocument): VDFTextDocumentSch
 		getDiagnostics: (params) => {
 			return []
 		},
-		getLinks: ({ documentSymbols, resolve }) => {
+		getLinks: async ({ documentSymbols, resolve }) => {
 			const links: DocumentLinkData[] = []
 
 			const wave = (documentSymbol: VDFDocumentSymbol) => {
@@ -51,8 +51,7 @@ export const GameSoundsSchema = (document: VGUITextDocument): VDFTextDocumentSch
 						data: {
 							resolve: async () => {
 								const { chars, value } = removeSoundChars(documentSymbol.detail!)
-
-								return (await firstValueFrom(document.fileSystem.resolve(resolve(`sound/${documentSymbol.detail}`)))).uri
+								return (await firstValueFrom(document.fileSystem.resolve(resolve(`sound/${value}`)))).uri
 							}
 						}
 					})

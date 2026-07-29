@@ -50,7 +50,7 @@ export const GameSoundsManifestSchema = (document: VGUITextDocument): VDFTextDoc
 		},
 		definitionReferences: new Map(),
 		getDiagnostics: getDiagnostics,
-		getLinks: ({ documentSymbols, resolve }) => {
+		getLinks: async ({ documentSymbols, resolve }) => {
 			return documentSymbols
 				.values()
 				.flatMap((documentSymbol) => {

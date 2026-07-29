@@ -91,7 +91,7 @@ export abstract class LanguageServer<
 
 	private readonly diagnostic = { id: 0 }
 	private readonly documentDiagnostics: Map<string, Map<number, DiagnosticCodeAction>>
-	private readonly documentsLinks: Map<string, { version: number, promise: Promise<(Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } })[]> }>
+	private readonly documentsLinks: Map<string, { document: TDocument, promise: Promise<(Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } })[]> }>
 	private readonly documentsColours: Map<string, { version: number, promise: Promise<{ colours: ColourInformationStringify[], map: Map<string, (colour: Color) => string> }> }>
 	private readonly documentsInlayHints: Map<string, { version: number, promise: Promise<InlayHint[]> }>
 
@@ -486,6 +486,7 @@ export abstract class LanguageServer<
 		return {
 			[Symbol.asyncDispose]: async () => {
 				const uri = event.document.uri.toString()
+				await this.documentsLinks.get(uri)?.document[Symbol.asyncDispose]()
 
 				this.documentDiagnostics.delete(uri)
 				this.documentsLinks.delete(uri)
@@ -526,17 +527,19 @@ export abstract class LanguageServer<
 	}
 
 	private async onDocumentLinks(params: TextDocumentRequestParams<DocumentLinkParams>) {
-
-		await using document = await this.documents.get(params.textDocument.uri)
+		const document = await this.documents.get(params.textDocument.uri)
 		const uri = document.uri.toString()
 
 		let documentLinks = this.documentsLinks.get(uri)
-		if (documentLinks?.version == document.version) {
+		if (documentLinks?.document.version == document.version) {
+			await document[Symbol.asyncDispose]()
 			return await documentLinks.promise
 		}
 
+		await documentLinks?.document[Symbol.asyncDispose]()
+
 		documentLinks = {
-			version: document.version,
+			document: document,
 			promise: document.getLinks().then((documentLinks) => {
 				return documentLinks.map((documentLink, index): (Omit<DocumentLinkData, "data"> & { data: DocumentLinkData["data"] & { uri: Uri, index: number } }) => {
 					// @ts-expect-error

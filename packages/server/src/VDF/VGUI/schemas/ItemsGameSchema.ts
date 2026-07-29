@@ -428,7 +428,7 @@ export const ItemsGameSchema = (document: VGUITextDocument): VDFTextDocumentSche
 		getDiagnostics: (params) => {
 			return []
 		},
-		getLinks: ({ documentSymbols, resolve }) => {
+		getLinks: async ({ documentSymbols, resolve }) => {
 			const items_game = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "items_game")?.children
 			if (!items_game) {
 				return []

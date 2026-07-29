@@ -107,7 +107,7 @@ export class VMTTextDocument extends VDFTextDocument<VMTTextDocument, VMTTextDoc
 				[Symbol.for("surfaceprop"), { keys: surfaceprops }],
 			]),
 			getDiagnostics: getDiagnostics,
-			getLinks: ({ documentSymbols, resolve }) => {
+			getLinks: async ({ documentSymbols, resolve }) => {
 				const links: DocumentLinkData[] = []
 
 				documentSymbols.forEach((documentSymbol) => {

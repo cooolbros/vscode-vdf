@@ -59,7 +59,7 @@ export const LanguageTokensSchema = (document: VGUITextDocument): VDFTextDocumen
 			[Symbol.for("string"), { keys: new Set(), toReference: (name) => `#${name}` }],
 		]),
 		getDiagnostics: getDiagnostics,
-		getLinks: (params) => {
+		getLinks: async (params) => {
 			return []
 		},
 		getColours: (params) => {

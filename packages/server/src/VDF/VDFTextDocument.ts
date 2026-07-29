@@ -33,7 +33,7 @@ export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDepe
 	getDefinitionReferences(params: DefinitionReferencesHandlerParams<TDependencies>): { scopes: Map<symbol, Map<number, VDFRange>>, definitions: Collection<Definition>, references: Collection<VDFRange> }
 	definitionReferences: Map<symbol, { keys: Set<string>, toReference?: ((name: string) => string) }>
 	getDiagnostics(params: DiagnosticsHandlerParams<TDependencies>): DiagnosticCodeActions
-	getLinks(params: DocumentLinksHandlerParams): DocumentLinkData[]
+	getLinks(params: DocumentLinksHandlerParams): Promise<DocumentLinkData[]>
 	getColours(params: DocumentColoursHandlerParams): ColourInformationStringify[]
 	getInlayHints(params: DocumentInlayHintsHandlerParams<TDependencies>): Promise<InlayHint[]>
 	completion: {
@@ -67,7 +67,6 @@ export interface DiagnosticsHandlerParams<TDependencies extends VDFTextDocumentD
 
 export interface DocumentLinksHandlerParams {
 	documentSymbols: VDFDocumentSymbol[]
-	definitionReferences: DefinitionReferences
 	resolve: (value: string, extension?: `.${string}`) => string
 }
 
@@ -850,10 +849,9 @@ export abstract class VDFTextDocument<
 	}
 
 	public async getLinks(): Promise<DocumentLinkData[]> {
-		const { documentSymbols, dependencies, definitionReferences } = await firstValueFrom(combineLatest({
+		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
 			documentSymbols: this.documentSymbols$,
 			dependencies: this.configuration.dependencies$,
-			definitionReferences: this.definitionReferences$
 		}))
 
 		const { base = [], rest = [] } = Object.groupBy(
@@ -887,9 +885,8 @@ export abstract class VDFTextDocument<
 						}
 					}
 				})),
-			...dependencies.schema.getLinks({
+			...await dependencies.schema.getLinks({
 				documentSymbols: rest,
-				definitionReferences: definitionReferences,
 				resolve: (value, extension) => {
 					value = value.replaceAll(/[/\\]+/g, "/")
 					if (extension != undefined && posix.extname(value) != extension) {

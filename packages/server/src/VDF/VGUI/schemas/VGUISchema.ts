@@ -242,7 +242,7 @@ export const VGUISchema = (document: VGUITextDocument): VDFTextDocumentSchema<VG
 		},
 		definitionReferences: definitionReferences,
 		getDiagnostics: getDiagnostics,
-		getLinks: ({ documentSymbols, resolve }) => {
+		getLinks: async ({ documentSymbols, resolve }) => {
 			const links: DocumentLinkData[] = []
 			documentSymbols.forEach((documentSymbol) => {
 				documentSymbol.children?.forAll((documentSymbol) => {

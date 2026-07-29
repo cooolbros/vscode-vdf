@@ -205,7 +205,7 @@ export const ClientSchemeSchema = (document: VGUITextDocument): VDFTextDocumentS
 		},
 		definitionReferences: new Map(),
 		getDiagnostics: getDiagnostics,
-		getLinks: ({ documentSymbols, resolve }) => {
+		getLinks: async ({ documentSymbols, resolve }) => {
 			const links: DocumentLinkData[] = []
 
 			documentSymbols.forEach((documentSymbols) => {

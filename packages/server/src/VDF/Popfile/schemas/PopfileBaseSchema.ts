@@ -416,7 +416,8 @@ export const PopfileBaseSchema = ({ definitionsSchema, diagnosticsSchema }: { de
 
 				return diagnostics
 			},
-			getLinks: ({ documentSymbols, definitionReferences, resolve }) => {
+			getLinks: async ({ documentSymbols, resolve }) => {
+				const definitionReferences = await firstValueFrom(document.definitionReferences$)
 				const links: DocumentLinkData[] = []
 
 				documentSymbols.forEach((documentSymbol) => {

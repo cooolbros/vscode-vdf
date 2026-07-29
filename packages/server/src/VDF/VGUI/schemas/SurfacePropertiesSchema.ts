@@ -37,7 +37,7 @@ export const SurfacePropertiesSchema = (document: VGUITextDocument): VDFTextDocu
 		getDiagnostics: (params) => {
 			return []
 		},
-		getLinks: (params) => {
+		getLinks: async (params) => {
 			return []
 		},
 		getColours: (params) => {
