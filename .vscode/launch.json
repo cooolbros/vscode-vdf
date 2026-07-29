@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Launch Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--profile-temp",
+                "--extensionDevelopmentPath=${workspaceFolder}",
+            ],
+            "outFiles": [
+                "${workspaceFolder}/**/dist/*.js"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "autoAttachChildProcesses": true,
+        }
+    ]
+}
