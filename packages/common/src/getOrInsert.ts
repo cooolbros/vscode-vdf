@@ -35,6 +35,3 @@ if (!("getOrInsertComputed" in WeakMap.prototype)) {
 		return this.get(key)
 	}
 }
-
-
-new WeakMap().getOrInsertComputed
