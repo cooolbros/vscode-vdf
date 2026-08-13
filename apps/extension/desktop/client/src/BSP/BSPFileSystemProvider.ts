@@ -27,7 +27,6 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 				])
 
 				this.subscriptions.push(new vscode.Disposable(() => {
-					// @ts-expect-error
 					bsp[Symbol.asyncDispose]()
 				}))
 

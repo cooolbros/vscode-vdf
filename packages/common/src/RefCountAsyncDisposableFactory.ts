@@ -1,4 +1,4 @@
-export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable | Disposable> {
+export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable> {
 
 	private static id = 0
 
@@ -57,12 +57,7 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 
 						if (value.count == 0) {
 							this.map.delete(k)
-							if (Symbol.asyncDispose in target) {
-								await target[Symbol.asyncDispose]()
-							}
-							else {
-								target[Symbol.dispose]()
-							}
+							await target[Symbol.asyncDispose]()
 						}
 					}
 				}

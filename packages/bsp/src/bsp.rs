@@ -205,4 +205,7 @@ impl BSP {
 
         Ok(pakfile)
     }
+
+    #[wasm_bindgen(js_name = "[Symbol.asyncDispose]")]
+    pub async fn async_dispose(self) {}
 }
