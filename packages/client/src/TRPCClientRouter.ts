@@ -168,7 +168,8 @@ export function TRPCClientRouter(
 		},
 		VTFToPNGBase64: t
 			.procedure
-			.input(URISchema).query(async ({ input }) => {
+			.input(URISchema)
+			.query(async ({ input }) => {
 				await initVTFPNG(context)
 				using vtf = new VTF(await vscode.workspace.fs.readFile(input.uri))
 				return VTFToPNGBase64(vtf, 256)
