@@ -6,7 +6,7 @@ import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import type { WatchEvent } from "common/WatchEvent"
 import { posix } from "path"
-import { combineLatest, defer, distinctUntilChanged, finalize, firstValueFrom, map, Observable, shareReplay, switchMap } from "rxjs"
+import { combineLatest, concat, defer, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, shareReplay, switchMap } from "rxjs"
 import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -128,7 +128,7 @@ export abstract class VDFTextDocument<
 	 */
 	public readonly base$: Observable<string[]>
 
-	private readonly context = new Map<string, Observable<BaseResult<DefinitionReferences>>>()
+	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
 
 	public readonly diagnostics = {
 		unreachable: (range: VDFRange, fix?: NonNullable<DiagnosticCodeAction["data"]>["fix"]): DiagnosticCodeAction => {
@@ -545,18 +545,12 @@ export abstract class VDFTextDocument<
 								}),
 								(source$) => {
 									const documentSelector = async (uri: Uri) => await documents.get(uri)
-									const observableSelector = (document: TDocument) => document.definitionReferences$.pipe(
-										finalize(() => {
-											document.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
-										})
-									)
 
-									let open: ({ stack, detail }: BaseValue) => Observable<BaseResult<DefinitionReferences>>
+									let open: ({ stack, detail }: BaseValue) => Observable<BaseResult<TDocument>>
 									if (configuration.relativeFolderPath != null) {
 										open = fs({
 											current: init.uri,
 											documentSelector,
-											observableSelector,
 											watch,
 											fileSystem,
 											relativeFolderPath: configuration.relativeFolderPath
@@ -566,7 +560,6 @@ export abstract class VDFTextDocument<
 										open = ambient({
 											current: init.uri,
 											documentSelector,
-											observableSelector,
 											watch
 										})
 									}
@@ -580,7 +573,26 @@ export abstract class VDFTextDocument<
 														finalize(() => this.context.delete(detail)),
 														shareReplay({ bufferSize: 1, refCount: true }),
 													)
-												})
+												}).pipe(
+													switchMap((result) => {
+														if (result.type != BaseResultType.Success) {
+															return concat(of(result), NEVER)
+														}
+
+														return result.value.definitionReferences$.pipe(
+															map((definitions) => {
+																return {
+																	type: <const>BaseResultType.Success,
+																	ambient: result.ambient,
+																	value: definitions
+																}
+															}),
+															finalize(() => {
+																result.value.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
+															})
+														)
+													})
+												)
 											},
 										}),
 										map(({ base: results, value }) => {

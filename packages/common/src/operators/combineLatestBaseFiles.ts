@@ -6,10 +6,9 @@ import type { WatchEvent } from "../WatchEvent"
 import { combineLatestPersistent } from "./combineLatestPersistent"
 import { usingAsync } from "./usingAsync"
 
-export interface BaseConfig<D extends DocumentLike, T> {
+export interface BaseConfig<D extends DocumentLike> {
 	current: Uri
 	documentSelector: (uri: Uri) => Promise<D>
-	observableSelector: (document: D) => Observable<T>
 }
 
 export interface DocumentLike extends AsyncDisposable {
@@ -17,11 +16,11 @@ export interface DocumentLike extends AsyncDisposable {
 	readonly base$: Observable<string[]>
 }
 
-export interface AmbientConfig<D extends DocumentLike, T> extends BaseConfig<D, T> {
+export interface AmbientConfig<D extends DocumentLike> extends BaseConfig<D> {
 	watch: (uri: Uri) => Observable<WatchEvent>,
 }
 
-export interface FSConfig<D extends DocumentLike, T> extends AmbientConfig<D, T> {
+export interface FSConfig<D extends DocumentLike> extends AmbientConfig<D> {
 	fileSystem: FileSystemMountPoint
 	relativeFolderPath: string
 }
@@ -64,18 +63,18 @@ export type BaseError = (
 	| { type: BaseErrorType.Base, path: string, errors: BaseError[] }
 )
 
-export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
-	const { current, documentSelector, observableSelector, watch, fileSystem, relativeFolderPath } = config
+export const fs = <D extends DocumentLike>(config: FSConfig<D>) => {
+	const { current, documentSelector, watch, fileSystem, relativeFolderPath } = config
 
 	const self = `${relativeFolderPath}/${current.basename()}`
-	const external = ambient({ current, documentSelector, observableSelector, watch })
+	const external = ambient({ current, documentSelector, watch })
 
-	return ({ stack, detail }: BaseValue): Observable<BaseResult<T>> => {
+	return ({ stack, detail }: BaseValue): Observable<BaseResult<D>> => {
 		const path = posix.resolve(`/${relativeFolderPath}/${detail}`).substring(1)
 
 		if (path.toLowerCase() == self.toLowerCase()) {
 			return concat(
-				of<BaseResult<T>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Self, self: self, detail: detail, uri: current }] }),
+				of<BaseResult<D>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Self, self: self, detail: detail, uri: current }] }),
 				NEVER
 			)
 		}
@@ -83,7 +82,7 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 		const index = stack.findIndex((p) => p.path.toLowerCase() == path.toLowerCase())
 		if (index != -1 || stack.length > 32) {
 			return concat(
-				of<BaseResult<T>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Cyclic, stack: stack.slice(index) }] }),
+				of<BaseResult<D>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Cyclic, stack: stack.slice(index) }] }),
 				NEVER
 			)
 		}
@@ -103,20 +102,21 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 										open: fs({
 											current: document.uri,
 											documentSelector,
-											observableSelector,
 											watch,
 											fileSystem,
 											relativeFolderPath: posix.dirname(path),
 										})
 									}),
-									switchMap(({ base: results }) => {
+									map(({ base: results }) => {
 										if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-											return observableSelector(document).pipe(
-												map((value) => ({ type: <const>BaseResultType.Success, ambient: false, value: value })),
-											)
+											return {
+												type: <const>BaseResultType.Success,
+												ambient: false,
+												value: document
+											}
 										}
 
-										return of<BaseResult<T>>({
+										return {
 											type: <const>BaseResultType.Error,
 											self: self,
 											errors: results
@@ -136,14 +136,14 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 												})
 												.filter((error) => error != null)
 												.toArray()
-										})
+										}
 									})
 								)
 							})
 						)
 					case EntryType.Directory:
 						return concat(
-							of<BaseResult<T>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Directory, self: self, detail: detail, uri: current }] }),
+							of<BaseResult<D>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Directory, self: self, detail: detail, uri: current }] }),
 							NEVER
 						)
 				}
@@ -152,19 +152,19 @@ export const fs = <D extends DocumentLike, T>(config: FSConfig<D, T>) => {
 	}
 }
 
-export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) => {
-	const { current, documentSelector, observableSelector, watch } = config
+export const ambient = <D extends DocumentLike>(config: AmbientConfig<D>) => {
+	const { current, documentSelector, watch } = config
 
 	const self = current.fsPath
 	const dirname = current.dirname()
 
-	return ({ stack, detail }: BaseValue): Observable<BaseResult<T>> => {
+	return ({ stack, detail }: BaseValue): Observable<BaseResult<D>> => {
 		const uri = current.with({ path: posix.resolve(dirname.joinPath(detail).path) })
 		const fsPath = uri.fsPath.toLowerCase()
 
 		if (Uri.equals(current, uri) || current.fsPath.toLowerCase() == fsPath) {
 			return concat(
-				of<BaseResult<T>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Self, self: self, detail: detail, uri: current }] }),
+				of<BaseResult<D>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Self, self: self, detail: detail, uri: current }] }),
 				NEVER
 			)
 		}
@@ -172,7 +172,7 @@ export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) 
 		const index = stack.findIndex((p) => p.path.toLowerCase() == fsPath)
 		if (index != -1) {
 			return concat(
-				of<BaseResult<T>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Cyclic, stack: stack.slice(index) }] }),
+				of<BaseResult<D>>({ type: <const>BaseResultType.Error, self: self, errors: [{ type: <const>BaseErrorType.Cyclic, stack: stack.slice(index) }] }),
 				NEVER
 			)
 		}
@@ -193,18 +193,19 @@ export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) 
 												open: ambient({
 													current: document.uri,
 													documentSelector,
-													observableSelector,
 													watch,
 												}),
 											}),
-											switchMap(({ base: results }) => {
+											map(({ base: results }) => {
 												if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
-													return observableSelector(document).pipe(
-														map((value) => ({ type: <const>BaseResultType.Success, ambient: true, value: value }))
-													)
+													return {
+														type: <const>BaseResultType.Success,
+														ambient: true,
+														value: document,
+													}
 												}
 
-												return of<BaseResult<T>>({
+												return {
 													type: <const>BaseResultType.Error,
 													self: self,
 													errors: results
@@ -224,14 +225,14 @@ export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) 
 														})
 														.filter((error) => error != null)
 														.toArray()
-												})
+												}
 											}),
 										)
 									})
 								)
 							case EntryType.Directory:
 								return concat(
-									of<BaseResult<T>>({
+									of<BaseResult<D>>({
 										type: <const>BaseResultType.Error,
 										self: self,
 										errors: [{ type: <const>BaseErrorType.Directory, self: self, detail: detail, uri: current }]

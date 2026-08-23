@@ -5,7 +5,7 @@ import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDispo
 import { usingAsync } from "common/operators/usingAsync"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import { Uri } from "common/Uri"
-import { combineLatest, concat, defer, distinctUntilChanged, filter, from, map, Observable, shareReplay, switchAll, withLatestFrom } from "rxjs"
+import { combineLatest, concat, defer, distinctUntilChanged, filter, from, map, NEVER, Observable, of, shareReplay, switchAll, switchMap, withLatestFrom } from "rxjs"
 import { VDFSyntaxError, type RangeLike } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -308,54 +308,73 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 	}
 
 	protected getTemplates(stack: Stack): Observable<Map<string, TemplateBuilder>> {
+		const open = fs({
+			current: this.uri,
+			documentSelector: async (uri) => new BasePopfile(
+				uri,
+				concat(
+					from(vscode.workspace.fs.readFile(uri)).pipe(
+						map((buf) => new TextDecoder("utf-8").decode(buf)),
+						map((text) => {
+							const document = TextDocument.create(uri.toString(), "popfile", 1, text)
+							return { getText: (range?: RangeLike) => document.getText(range) }
+						})
+					),
+					this.onDidChangeTextDocument$.pipe(
+						filter((event) => Uri.equals(new Uri(event.document.uri), uri)),
+						map((event) => {
+							return { getText: (range?: RangeLike) => event.document.getText(VSCodeDocumentGetTextSchema.parse(range)) }
+						})
+					)
+				),
+				this.fileSystem,
+				this.fileSystemWatcherFactory,
+				this.onDidChangeTextDocument$,
+			),
+			fileSystem: this.fileSystem,
+			watch: (uri) => concat(
+				from(vscode.workspace.fs.stat(uri).then(
+					(stat) => {
+						switch (stat.type) {
+							case vscode.FileType.File:
+								return { type: <const>"create", entry: { type: <const>EntryType.File, uri: uri } }
+							case vscode.FileType.Directory:
+								return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: uri } }
+							default:
+								return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }
+						}
+					},
+					() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
+				)),
+				usingAsync(async () => await this.fileSystemWatcherFactory.get(uri)).pipe(
+					switchAll()
+				)
+			),
+			relativeFolderPath: "scripts/population",
+		})
+
 		return combineLatest({ base: this.base$, value: this.templatesBlocks$ }).pipe(
 			combineLatestBaseFiles({
 				stack: stack,
-				open: fs({
-					current: this.uri,
-					documentSelector: async (uri) => new BasePopfile(
-						uri,
-						concat(
-							from(vscode.workspace.fs.readFile(uri)).pipe(
-								map((buf) => new TextDecoder("utf-8").decode(buf)),
-								map((text) => {
-									const document = TextDocument.create(uri.toString(), "popfile", 1, text)
-									return { getText: (range?: RangeLike) => document.getText(range) }
-								})
-							),
-							this.onDidChangeTextDocument$.pipe(
-								filter((event) => Uri.equals(new Uri(event.document.uri), uri)),
-								map((event) => {
-									return { getText: (range?: RangeLike) => event.document.getText(VSCodeDocumentGetTextSchema.parse(range)) }
-								})
+				open: ({ stack, detail }) => {
+					return open({ stack, detail }).pipe(
+						switchMap((result) => {
+							if (result.type != BaseResultType.Success) {
+								return concat(of(result), NEVER)
+							}
+
+							return result.value.getTemplates([...stack, { path: `scripts/population/${this.uri.basename()}`, uri: this.uri }]).pipe(
+								map((templates) => {
+									return {
+										type: <const>BaseResultType.Success,
+										ambient: result.ambient,
+										value: templates
+									}
+								}),
 							)
-						),
-						this.fileSystem,
-						this.fileSystemWatcherFactory,
-						this.onDidChangeTextDocument$,
-					),
-					observableSelector: (popfile) => popfile.getTemplates([...stack, { path: `scripts/population/${this.uri.basename()}`, uri: this.uri }]),
-					fileSystem: this.fileSystem,
-					watch: (uri) => concat(
-						from(vscode.workspace.fs.stat(uri).then(
-							(stat) => {
-								switch (stat.type) {
-									case vscode.FileType.File:
-										return { type: <const>"create", entry: { type: <const>EntryType.File, uri: uri } }
-									case vscode.FileType.Directory:
-										return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: uri } }
-									default:
-										return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }
-								}
-							},
-							() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
-						)),
-						usingAsync(async () => await this.fileSystemWatcherFactory.get(uri)).pipe(
-							switchAll()
-						)
-					),
-					relativeFolderPath: "scripts/population",
-				}),
+						})
+					)
+				},
 			}),
 			map(({ base: results, value }) => {
 				const map = this.getTemplatesMap(value.value)
