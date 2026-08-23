@@ -297,7 +297,7 @@ export function TRPCClientRouter(
 								const result = await vscode.window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
 								switch (result) {
 									case "Yes":
-										await vscode.commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: "vscode", path: "extension/ocet247.tf2-vscript-support" }))
+										await vscode.commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: vscode.env.uriScheme, path: "extension/ocet247.tf2-vscript-support" }))
 										break
 									case "No":
 										break
