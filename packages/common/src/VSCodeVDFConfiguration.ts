@@ -74,8 +74,8 @@ export const VSCodeVDFConfigurationSchema = z.object({
 			}).default(<any>{})
 		}).default(<any>{})
 	}),
-	vmt: VDFLanguageConfigurationSchema({ insertNewlineBeforeObjects: false, quotes: true, tabs: 1 }).default(<any>{}),
 	vdf: VDFLanguageConfigurationSchema({ insertNewlineBeforeObjects: false, quotes: true, tabs: 1 }).default(<any>{}),
+	vmt: VDFLanguageConfigurationSchema({ insertNewlineBeforeObjects: false, quotes: true, tabs: 1 }).default(<any>{}),
 })
 
 export type VSCodeVDFConfiguration = z.infer<typeof VSCodeVDFConfigurationSchema>
