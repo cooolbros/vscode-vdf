@@ -5,7 +5,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { posix } from "path"
-import { combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, type Observable } from "rxjs"
+import { combineLatest, distinctUntilChanged, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, tap, type Observable } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../../DefinitionReferences"
 import { WorkspaceBase } from "../../WorkspaceBase"
@@ -178,17 +178,19 @@ export class VGUIWorkspace extends WorkspaceBase {
 						switchMap((document) => document.base$),
 					)
 				}),
-				map((base) => base.map((detail) => ({ key: detail }))),
-				combineLatestPersistent(({ key: detail }) => {
-					const base = posix.resolve(`/${dirname}/${detail}`).substring(1)
-					const key = base.toLowerCase()
-					if (key == self || seen.some((path) => path.toLowerCase() == key)) {
-						return of([])
-					}
+				combineLatestPersistent({
+					entries: (base) => base.map((detail) => ({ key: detail })),
+					observableSelector: ({ key: detail }) => {
+						const base = posix.resolve(`/${dirname}/${detail}`).substring(1)
+						const key = base.toLowerCase()
+						if (key == self || seen.some((path) => path.toLowerCase() == key)) {
+							return of([])
+						}
 
-					return files(base, [...seen, path])
+						return files(base, [...seen, path])
+					},
+					resultSelector: (value, results) => [path, ...results.flat()]
 				}),
-				map((paths) => [path, ...paths.flat()]),
 			)
 		}
 
@@ -290,25 +292,27 @@ export class VGUIWorkspace extends WorkspaceBase {
 		)
 
 		this.gameSounds$ = this.game_sounds_manifest$.pipe(
-			map((paths) => {
+			tap((paths) => {
 				if (paths.length == 0) {
 					console.warn(`hudanimations_manifest.length == 0`)
 				}
-
-				return paths.map((path) => ({ key: path }))
 			}),
-			combineLatestPersistent(({ key: path }) => {
-				return fileSystem.resolve(path).pipe(
-					switchMap((entry) => {
-						if (entry.type != EntryType.File) {
-							return of(null)
-						}
+			combineLatestPersistent({
+				entries: (paths) => paths.map((path) => ({ key: path })),
+				observableSelector: ({ key: path }) => {
+					return fileSystem.resolve(path).pipe(
+						switchMap((entry) => {
+							if (entry.type != EntryType.File) {
+								return of(null)
+							}
 
-						return usingAsync(async () => await documents.get(entry.uri)).pipe(
-							switchMap((document) => document.definitionReferences$),
-						)
-					}),
-				)
+							return usingAsync(async () => await documents.get(entry.uri)).pipe(
+								switchMap((document) => document.definitionReferences$),
+							)
+						}),
+					)
+				},
+				resultSelector: (value, results) => results
 			}),
 			map((results) => {
 				const version: number[] = []
@@ -343,25 +347,27 @@ export class VGUIWorkspace extends WorkspaceBase {
 		)
 
 		this.surfaceProperties$ = this.surfaceproperties_manifest$.pipe(
-			map((paths) => {
+			tap((paths) => {
 				if (paths.length == 0) {
 					console.warn(`surfaceproperties_manifest.length == 0`)
 				}
-
-				return paths.map((path) => ({ key: path }))
 			}),
-			combineLatestPersistent(({ key: path }) => {
-				return fileSystem.resolve(path).pipe(
-					switchMap((entry) => {
-						if (entry.type != EntryType.File) {
-							return of(null)
-						}
+			combineLatestPersistent({
+				entries: (paths) => paths.map((path) => ({ key: path })),
+				observableSelector: ({ key: path }) => {
+					return fileSystem.resolve(path).pipe(
+						switchMap((entry) => {
+							if (entry.type != EntryType.File) {
+								return of(null)
+							}
 
-						return usingAsync(async () => await documents.get(entry.uri)).pipe(
-							switchMap((document) => document.definitionReferences$),
-						)
-					}),
-				)
+							return usingAsync(async () => await documents.get(entry.uri)).pipe(
+								switchMap((document) => document.definitionReferences$),
+							)
+						}),
+					)
+				},
+				resultSelector: (value, results) => results
 			}),
 			map((results) => {
 				const version: number[] = []

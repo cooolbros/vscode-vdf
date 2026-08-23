@@ -584,7 +584,7 @@ export abstract class VDFTextDocument<
 											},
 										}),
 										map(({ base: results, value }) => {
-											const { definitionReferences, ...rest } = value
+											const { definitionReferences, ...rest } = value.value
 
 											const base = results
 												.values()
@@ -592,7 +592,7 @@ export abstract class VDFTextDocument<
 												.map((result) => result.value)
 												.toArray()
 
-											const definitions = value.definitionReferences.definitions.clone()
+											const definitions = definitionReferences.definitions.clone()
 
 											for (const baseDefinitionReferences of base) {
 												for (const { scope, type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {

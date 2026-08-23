@@ -190,7 +190,11 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		resolve: (path) => {
 			return observables.getOrInsertComputed(path, () => {
 				return fileSystems$.pipe(
-					combineLatestPersistent(({ fileSystem }) => fileSystem.resolve(path)),
+					combineLatestPersistent({
+						entries: (value) => value,
+						observableSelector: (entry) => entry.fileSystem.resolve(path),
+						resultSelector: (value, results) => results,
+					}),
 					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? { type: <const>EntryType.None, uri: null } as Entry),
 					distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 					finalize(() => observables.delete(path)),
@@ -210,7 +214,11 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 		},
 		watchDirectory: (path, options) => {
 			return fileSystems$.pipe(
-				combineLatestPersistent(({ fileSystem }) => fileSystem.watchDirectory(path, options)),
+				combineLatestPersistent({
+					entries: (value) => value,
+					observableSelector: (entry) => entry.fileSystem.watchDirectory(path, options),
+					resultSelector: (value, results) => results,
+				}),
 				map((results) => {
 					const map = new Map<string, vscode.FileType>()
 					for (const entries of results) {

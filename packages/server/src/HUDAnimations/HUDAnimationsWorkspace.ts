@@ -6,7 +6,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import { HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { BehaviorSubject, combineLatest, firstValueFrom, map, Observable, of, switchMap } from "rxjs"
+import { BehaviorSubject, combineLatest, firstValueFrom, map, Observable, of, switchMap, tap } from "rxjs"
 import type { VDFRange } from "vdf"
 import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences, type SetDocumentReferences } from "../DefinitionReferences"
 import { WorkspaceBase } from "../WorkspaceBase"
@@ -58,24 +58,23 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		}
 
 		this.hudanimations_manifest$ = fromTRPCSubscription(server.trpc.servers.vgui.workspace.hudanimations_manifest, { key: uri }).pipe(
-			map((paths) => {
+			tap((paths) => {
 				if (paths.length == 0) {
 					console.warn(`hudanimations_manifest.length == 0`)
 				}
-
-				return paths.map((path) => ({ key: path }))
 			}),
-			combineLatestPersistent(({ key: path }) => {
-				return fileSystem.resolve(path).pipe(
-					switchMap((entry) => {
-						return entry.type == EntryType.File
-							? usingAsync(async () => await documents.get(entry.uri))
-							: of(null)
-					}),
-				)
-			}),
-			map((documents) => {
-				return documents.filter((document) => document != null)
+			combineLatestPersistent({
+				entries: (paths) => paths.map((path) => ({ key: path })),
+				observableSelector: ({ key: path }) => {
+					return this.fileSystem.resolve(path).pipe(
+						switchMap((entry) => {
+							return entry.type == EntryType.File
+								? usingAsync(async () => await documents.get(entry.uri))
+								: of(null)
+						}),
+					)
+				},
+				resultSelector: (value, results) => results.filter((result) => result != null),
 			}),
 			shareReplayUntilDisposed(this.dispose$),
 		)
@@ -124,59 +123,60 @@ export class HUDAnimationsWorkspace extends WorkspaceBase {
 		this.definitionReferences$ = combineLatest({
 			clientScheme: this.clientScheme$,
 			manifest: this.hudanimations_manifest$.pipe(
-				map((documents) => {
-					return documents.map((document) => ({ key: document.uri.toString(), document: document }))
-				}),
-				combineLatestPersistent(({ document }) => {
-					return document.documentSymbols$.pipe(
-						map((documentSymbols) => {
-							const result: HUDAnimationsWorkspaceDocumentDependencies = {
-								document: document,
-								documentSymbols: documentSymbols,
-								definitions: new Collection<Definition>(),
-								references: new Collection<VDFRange>(),
-								eventNames: [],
-							}
+				combineLatestPersistent({
+					entries: (documents) => documents.map((document) => ({ key: document.uri.toString(), document: document })),
+					observableSelector: ({ document }) => {
+						return document.documentSymbols$.pipe(
+							map((documentSymbols) => {
+								const result: HUDAnimationsWorkspaceDocumentDependencies = {
+									document: document,
+									documentSymbols: documentSymbols,
+									definitions: new Collection<Definition>(),
+									references: new Collection<VDFRange>(),
+									eventNames: [],
+								}
 
-							for (const documentSymbol of documentSymbols) {
-								result.definitions.set(null, EventType, documentSymbol.eventName, {
-									uri: document.uri,
-									key: documentSymbol.eventName,
-									range: documentSymbol.range,
-									documentation: document.definitions.documentation(documentSymbol),
-									keyRange: documentSymbol.eventNameRange,
-									conditional: documentSymbol.conditional?.value
-								})
+								for (const documentSymbol of documentSymbols) {
+									result.definitions.set(null, EventType, documentSymbol.eventName, {
+										uri: document.uri,
+										key: documentSymbol.eventName,
+										range: documentSymbol.range,
+										documentation: document.definitions.documentation(documentSymbol),
+										keyRange: documentSymbol.eventNameRange,
+										conditional: documentSymbol.conditional?.value
+									})
 
-								const key = documentSymbol.eventName.toLowerCase()
-								result.eventNames.push(key)
+									const key = documentSymbol.eventName.toLowerCase()
+									result.eventNames.push(key)
 
-								const type = Symbol.for(key)
+									const type = Symbol.for(key)
 
-								for (const statement of documentSymbol.children) {
-									if ("event" in statement) {
-										result.references.set(null, EventType, statement.event, statement.eventRange)
-									}
+									for (const statement of documentSymbol.children) {
+										if ("event" in statement) {
+											result.references.set(null, EventType, statement.event, statement.eventRange)
+										}
 
-									if ("element" in statement) {
-										result.references.set(null, type, statement.element, statement.elementRange)
-									}
+										if ("element" in statement) {
+											result.references.set(null, type, statement.element, statement.elementRange)
+										}
 
-									if (statement.type == HUDAnimationStatementType.Animate) {
-										if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-											result.references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
+										if (statement.type == HUDAnimationStatementType.Animate) {
+											if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
+												result.references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
+											}
+										}
+
+										if ("font" in statement) {
+											result.references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
 										}
 									}
-
-									if ("font" in statement) {
-										result.references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
-									}
 								}
-							}
 
-							return result
-						})
-					)
+								return result
+							})
+						)
+					},
+					resultSelector: (value, results) => results
 				}),
 				switchMap((files) => {
 					const eventNames = new Set(files.flatMap((file) => file.eventNames))

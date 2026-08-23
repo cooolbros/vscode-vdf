@@ -1,8 +1,9 @@
 import { posix } from "path"
-import { concat, filter, map, NEVER, Observable, of, Subscription, switchMap } from "rxjs"
+import { concat, filter, map, NEVER, Observable, of, switchMap } from "rxjs"
 import { EntryType, type FileSystemMountPoint } from "../FileSystemMountPoint"
 import { Uri } from "../Uri"
 import type { WatchEvent } from "../WatchEvent"
+import { combineLatestPersistent } from "./combineLatestPersistent"
 import { usingAsync } from "./usingAsync"
 
 export interface BaseConfig<D extends DocumentLike, T> {
@@ -246,78 +247,11 @@ export const ambient = <D extends DocumentLike, T>(config: AmbientConfig<D, T>) 
 	}
 }
 
-export function combineLatestBaseFiles<T, R>(config: CombineLatestBaseFilesConfig<R>) {
-	return (source$: Observable<{ base: string[], value: T }>) => {
-		const { stack, open } = config
-		const subscriptions = new Map<string, Subscription>()
-
-		interface Current {
-			value: T | undefined
-			base: {
-				details: string[]
-				map: Map<string, { result: BaseResult<R> } | undefined>
-			}
-		}
-
-		const current: Current = {
-			value: undefined,
-			base: { details: [], map: new Map() }
-		}
-
-		return new Observable<{ base: BaseResult<R>[], value: T }>((subscriber) => {
-
-			function next() {
-				if (current.base.map.values().every((value) => value?.result != undefined)) {
-					subscriber.next({
-						base: current.base.details.map((value) => current.base.map.get(value)!.result),
-						value: current.value!,
-					})
-				}
-			}
-
-			const subscription = source$.subscribe(({ base, value }) => {
-				current.value = value
-
-				if (base.length == 0) {
-					for (const subscription of subscriptions.values()) {
-						subscription.unsubscribe()
-					}
-					subscriptions.clear()
-					subscriber.next({
-						base: [],
-						value: current.value!
-					})
-				}
-				else {
-					current.base = {
-						details: base,
-						map: new Map(base.values().map((detail) => [detail, current.base.map.get(detail)]))
-					}
-
-					for (const [detail, subscription] of subscriptions.entries().filter(([detail]) => !base.includes(detail))) {
-						subscription.unsubscribe()
-						subscriptions.delete(detail)
-					}
-
-					for (const detail of base) {
-						subscriptions.getOrInsertComputed(detail, () => open({ stack, detail }).subscribe((result) => {
-							current.base.map.set(detail, { result })
-							next()
-						}))
-					}
-
-					next()
-				}
-			})
-
-			return () => {
-				for (const subscription of subscriptions.values()) {
-					subscription.unsubscribe()
-				}
-				subscription.unsubscribe()
-				subscriptions.clear()
-				current.base?.map.clear()
-			}
-		})
-	}
+export function combineLatestBaseFiles<T extends { base: string[] }, R>(config: CombineLatestBaseFilesConfig<R>) {
+	const { stack, open } = config
+	return combineLatestPersistent<T, { key: string }, BaseResult<R>, { value: T, base: BaseResult<R>[] }>({
+		entries: (value) => value.base.map((base) => ({ key: base })),
+		observableSelector: (entry) => open({ stack: stack, detail: entry.key }),
+		resultSelector: (value, results) => ({ value: value, base: results })
+	})
 }

@@ -358,7 +358,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 				}),
 			}),
 			map(({ base: results, value }) => {
-				const map = this.getTemplatesMap(value)
+				const map = this.getTemplatesMap(value.value)
 
 				for (const baseMap of results.values().filter((result) => result.type == BaseResultType.Success)) {
 					for (const [key, base] of baseMap.value) {
