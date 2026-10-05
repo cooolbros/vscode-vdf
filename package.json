@@ -461,14 +461,14 @@
                 }
             },
             {
-                "language": "vmt",
-                "scopeName": "source.vmt",
-                "path": "./packages/syntaxes/dist/vmt.tmLanguage.json"
-            },
-            {
                 "language": "vdf",
                 "scopeName": "source.vdf",
                 "path": "./packages/syntaxes/dist/vdf.tmLanguage.json"
+            },
+            {
+                "language": "vmt",
+                "scopeName": "source.vmt",
+                "path": "./packages/syntaxes/dist/vmt.tmLanguage.json"
             }
         ],
         "languages": [
