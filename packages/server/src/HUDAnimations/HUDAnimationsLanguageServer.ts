@@ -77,18 +77,18 @@ export class HUDAnimationsLanguageServer extends LanguageServer<
 			servers: new Set(["vdf"]),
 			capabilities: {},
 			createDocument: async (init, documentConfiguration$) => {
-				const [{ teamFortress2Folder, workspaceUris }, workspaceRoot] = await Promise.all([
+				const [{ teamFortress2Folder, workspaceUris }, hudRoot] = await Promise.all([
 					this.workspaceUris.promise,
-					this.trpc.client.searchForWorkspaceRoot.query({ uri: init.uri })
+					this.trpc.client.searchForHUDRoot.query({ uri: init.uri })
 				])
 
 				const paths: FileSystemKey[] = [
-					...(workspaceRoot ? [{ type: <const>"folder", folder: workspaceRoot }] : []),
+					...(hudRoot ? [{ type: <const>"folder", folder: hudRoot }] : []),
 					{ type: "tf2", teamFortress2Folder: teamFortress2Folder },
 				]
 
-				const workspace = workspaceRoot != null
-					? this.workspaces.get(workspaceRoot)
+				const workspace = hudRoot != null
+					? this.workspaces.get(hudRoot)
 					: null
 
 				return new HUDAnimationsTextDocument(
