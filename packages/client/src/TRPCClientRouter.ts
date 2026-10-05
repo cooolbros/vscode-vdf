@@ -12,7 +12,7 @@ import { concat, concatMap, distinctUntilChanged, filter, from, switchAll } from
 import vscode from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
-import type { Decorations } from "./decorations"
+import type { Decorations } from "./Decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { searchForHUDRoot } from "./searchForHUDRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"

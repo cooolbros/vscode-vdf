@@ -12,7 +12,7 @@ import { VDFPosition, VDFRange } from "vdf"
 import vscode from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
-import type { Decorations } from "./decorations"
+import type { Decorations } from "./Decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { TRPCClientRouter } from "./TRPCClientRouter"
 
