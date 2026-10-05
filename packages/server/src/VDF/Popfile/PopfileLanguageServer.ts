@@ -91,15 +91,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 		const stack = new AsyncDisposableStack()
 		stack.use(await super.onDidOpen(event))
 
-		const key = await this.trpc.client.window.createTextEditorDecorationType.mutate({
-			options: {
-				after: {
-					margin: "0 0 0 0.5rem",
-					color: "#99999959",
-				}
-			}
-		})
-
 		const subscriptions: Subscription[] = []
 		stack.defer(() => {
 			for (const subscription of subscriptions) {
@@ -111,7 +102,6 @@ export class PopfileLanguageServer extends VDFLanguageServer<
 			event.document.decorations$.subscribe((decorations) => {
 				this.trpc.client.textDocument.decoration.mutate({
 					uri: event.document.uri,
-					key: key,
 					decorations: decorations
 				})
 			})

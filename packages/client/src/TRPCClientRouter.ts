@@ -12,7 +12,7 @@ import { concat, concatMap, distinctUntilChanged, filter, from, switchAll } from
 import vscode from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
-import { decorationTypes, editorDecorations } from "./decorations"
+import type { Decorations } from "./decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { searchForWorkspaceRoot } from "./searchForWorkspaceRoot"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
@@ -30,6 +30,7 @@ const UTF16LEDecoder = new TextDecoder("utf-16le")
 export function TRPCClientRouter(
 	t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>,
 	context: vscode.ExtensionContext,
+	decorations: Decorations,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
@@ -174,31 +175,11 @@ export function TRPCClientRouter(
 				using vtf = new VTF(await vscode.workspace.fs.readFile(input.uri))
 				return VTFToPNGBase64(vtf, 256)
 			}),
-		window: {
-			createTextEditorDecorationType: t
-				.procedure
-				.input(
-					z.object({
-						options: z.object({
-							after: z.object({
-								margin: z.string(),
-								color: z.string()
-							})
-						})
-					})
-				)
-				.mutation(async ({ input }) => {
-					const decorationType = vscode.window.createTextEditorDecorationType(input.options)
-					decorationTypes.set(decorationType.key, decorationType)
-					return decorationType.key
-				}),
-		},
 		textDocument: {
 			decoration: t
 				.procedure
 				.input(
 					URISchema.extend({
-						key: z.string(),
 						decorations: z.array(
 							z.object({
 								range: VSCodeRangeSchema,
@@ -212,27 +193,7 @@ export function TRPCClientRouter(
 					})
 				)
 				.mutation(async ({ input }) => {
-
-					const decorationType = decorationTypes.get(input.key)
-					if (!decorationType) {
-						return
-					}
-
-					editorDecorations.set(
-						input.uri.toString(),
-						{
-							decorationType: decorationType,
-							decorations: input.decorations
-						}
-					)
-
-					const editor = vscode.window.visibleTextEditors.find((editor) => editor.document.uri.toString() == input.uri.toString())
-					if (editor) {
-						editor.setDecorations(
-							decorationType,
-							input.decorations
-						)
-					}
+					decorations.setDecorations(input.uri, input.decorations)
 				})
 		},
 		popfile: {

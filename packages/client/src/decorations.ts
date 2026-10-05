@@ -1,13 +1,49 @@
+import type { Uri } from "common/Uri"
 import vscode from "vscode"
 
-export const decorationTypes = new Map<string, vscode.TextEditorDecorationType>()
-export const editorDecorations = new Map<string, { decorationType: vscode.TextEditorDecorationType, decorations: vscode.DecorationOptions[] }>()
+export class Decorations {
 
-export const onDidChangeActiveTextEditor = (editor: vscode.TextEditor | undefined) => {
-	if (editor) {
-		const decorations = editorDecorations.get(editor.document.uri.toString())
-		if (decorations) {
-			editor.setDecorations(decorations.decorationType, decorations.decorations)
+	private readonly stack: DisposableStack
+	private readonly decorationType: vscode.TextEditorDecorationType
+	private readonly decorations: Map<string, vscode.DecorationOptions[]>
+
+	constructor() {
+		this.stack = new DisposableStack()
+
+		this.decorationType = this.stack.adopt(
+			vscode.window.createTextEditorDecorationType({
+				after: {
+					margin: "0 0 0 0.5rem",
+					color: "#99999959",
+				}
+			}),
+			(decorationType) => decorationType.dispose()
+		)
+
+		this.decorations = new Map()
+
+		this.stack.adopt(
+			vscode.window.onDidChangeActiveTextEditor((editor) => {
+				if (editor) {
+					const decorations = this.decorations.get(editor.document.uri.toString())
+					if (decorations) {
+						editor.setDecorations(this.decorationType, decorations)
+					}
+				}
+			}),
+			(disposable) => disposable.dispose()
+		)
+	}
+
+	public setDecorations(uri: Uri, decorations: vscode.DecorationOptions[]) {
+		this.decorations.set(uri.toString(), decorations)
+		const editor = vscode.window.visibleTextEditors.find((editor) => editor.document.uri.toString() == uri.toString())
+		if (editor) {
+			editor.setDecorations(this.decorationType, decorations)
 		}
+	}
+
+	public dispose() {
+		this.stack.dispose()
 	}
 }

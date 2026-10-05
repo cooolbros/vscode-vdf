@@ -12,6 +12,7 @@ import { VDFPosition, VDFRange } from "vdf"
 import vscode from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
+import type { Decorations } from "./decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
 import { TRPCClientRouter } from "./TRPCClientRouter"
 
@@ -33,6 +34,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 
 	constructor(
 		context: vscode.ExtensionContext,
+		decorations: Decorations,
 		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
 		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
@@ -62,6 +64,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 					isDev: true,
 				}),
 			context,
+			decorations,
 			fileSystemMountPointFactory,
 			fileSystemWatcherFactory,
 			bspFactory

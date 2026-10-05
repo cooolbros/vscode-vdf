@@ -9,7 +9,7 @@ import { setVTFFlags } from "client/commands/setVTFFlags"
 import { showReferences } from "client/commands/showReferences"
 import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
 import { VDFToJSON } from "client/commands/VDFToJSON"
-import { onDidChangeActiveTextEditor } from "client/decorations"
+import { Decorations } from "client/decorations"
 import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
 import { createMiddleware } from "client/middleware"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
@@ -75,7 +75,8 @@ export function activate(context: vscode.ExtensionContext): void {
 	subscriptions.push(vscode.commands.registerTextEditorCommand("vscode-vdf.VDFToJSON", VDFToJSON))
 
 	// Window
-	subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditor))
+	const decorations = new Decorations()
+	subscriptions.push(decorations)
 	subscriptions.push(vscode.window.registerCustomEditorProvider("vscode-vdf.VTFEditor", new VTFEditor(context.extensionUri, fileSystemWatcherFactory, subscriptions)))
 
 	// Workspace
@@ -114,6 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		const client = languageClients[languageId] = new Client(
 			context,
+			decorations,
 			languageClients,
 			startServer,
 			fileSystemMountPointFactory,
