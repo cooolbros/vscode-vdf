@@ -8,7 +8,7 @@ export class RemoteResourceFileSystemProvider implements vscode.FileSystemProvid
 
 	public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]>
 
-	constructor() {
+	public constructor() {
 		this.onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>().event
 	}
 
@@ -24,13 +24,13 @@ export class RemoteResourceFileSystemProvider implements vscode.FileSystemProvid
 
 		switch (response.status) {
 			case 200:
-				return z.object({
+				return <vscode.FileStat>z.object({
 					type: z.number(),
 					ctime: z.number(),
 					mtime: z.number(),
 					size: z.number(),
 					permissions: z.number().optional(),
-				}).parse(await response.json()) as vscode.FileStat
+				}).parse(await response.json())
 			case 404:
 				throw vscode.FileSystemError.FileNotFound()
 			default:

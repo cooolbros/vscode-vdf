@@ -17,7 +17,7 @@ import { quote } from "vdf-format"
 import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InsertTextFormat, MarkupKind, TextEdit, type CodeLens, type CodeLensParams, type Connection, type DocumentFormattingParams, type InlayHint, type WorkspaceEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition } from "../DefinitionReferences"
 import { types, type DefinitionType } from "../DefinitionTypes"
-import { TextDocumentBase, type ColourInformationStringify, type Decoration, type DocumentLinkResolve, type PartialDiagnosticCodeActionReference, type TextDocumentContent, type TextDocumentData, type TextDocumentDiagnosticsParams, type TextDocumentInit, type VDFCompletionItem, type VDFCompletionList, type VDFCompletionParams, type VDFRenameParams } from "../TextDocumentBase"
+import { TextDocumentBase, type ColourInformationStringify, type Decoration, type DocumentLinkResolve, type PartialDiagnosticCodeActionReference, type TextDocumentData, type TextDocumentDiagnosticsParams, type TextDocumentInit, type VDFCompletionItem, type VDFCompletionList, type VDFCompletionParams, type VDFRenameParams } from "../TextDocumentBase"
 import clientscheme from "../VDF/clientscheme.json"
 import type { TextDocument, VDFLanguageServer } from "../VDFLanguageServer"
 import type { GlobalDefinitionReferences, VDFWorkspace } from "../VDFWorkspace"
@@ -32,7 +32,7 @@ interface Globals {
 
 export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Globals, HUDAnimationsDocumentSymbols> {
 
-	private static readonly eventScopes = new Map<keyof typeof eventFiles, number>(Object.entries(eventFiles).map(([event, path], index) => <const>[<keyof typeof eventFiles>event, index]))
+	private static readonly eventScopes = new Map<keyof typeof eventFiles, number>(Object.entries(eventFiles).map(([event, _path], index) => <const>[<keyof typeof eventFiles>event, index]))
 
 	private static readonly keywords = <const>[
 		"Animate",
@@ -169,16 +169,16 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 		}
 	}
 
-	public readonly languageId: "hudanimations" = "hudanimations"
+	public readonly languageId = <const>"hudanimations"
 
 	private readonly workspace: VDFWorkspace
 	private readonly elementDependencies: Map<string, { path: string, uri: Uri, definitions: Definitions }>
-	private readonly elementReferences: Map<string, { collection$: BehaviorSubject<Collection<VDFText>>, references$: BehaviorSubject<Map<string, References>>, remove: { remove: () => void } }>
+	private readonly elementReferences: Map<string, { collection$: BehaviorSubject<Collection<VDFText>>, references$: BehaviorSubject<Map<string, References>>, remove: { remove(): void } }>
 
 	protected getDiagnostics: (params: TextDocumentDiagnosticsParams<Dependencies, Globals, HUDAnimationsDocumentSymbols>) => void
 	public readonly decorations$: Observable<Decoration[]>
 
-	constructor(
+	public constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
@@ -197,165 +197,148 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					clientScheme: workspace.clientScheme
 				},
 				content$: defer(() => {
-					if (workspace != null) {
-						return workspace.HUDAnimations$.pipe(
-							map((HUDAnimations) => ({ HUDAnimations: HUDAnimations, some: HUDAnimations.values().some((document) => Uri.equals(document.uri, this.uri)) })),
-							distinctUntilChanged((previous, current) => previous.some == current.some),
-							switchMap(({ HUDAnimations, some }) => {
-								if (some) {
-									const references = this.references.detach()
-									const remove = workspace.setFileReferences("scripts/hudanimations_manifest.txt", this.uri, references)
+					return workspace.HUDAnimations$.pipe(
+						map((HUDAnimations) => ({ HUDAnimations: HUDAnimations, some: HUDAnimations.values().some((document) => Uri.equals(document.uri, this.uri)) })),
+						distinctUntilChanged((previous, current) => previous.some == current.some),
+						switchMap(({ HUDAnimations, some }) => {
+							if (some) {
+								const references = this.references.detach()
+								const remove = workspace.setFileReferences("scripts/hudanimations_manifest.txt", this.uri, references)
 
-									return combineLatest(HUDAnimations.map((file) => file.document$)).pipe(
-										map((documents) => {
-											const self = documents.find((document) => document != null && Uri.equals(document.uri, this.uri))
-											if (!self) {
-												throw new Error()
+								return combineLatest(HUDAnimations.map((file) => file.document$)).pipe(
+									map((documents) => {
+										const self = documents.find((document) => document != null && Uri.equals(document.uri, this.uri))
+										if (!self) {
+											throw new Error()
+										}
+
+										const version: number[] = []
+										const definitions = new Collection<Definition>()
+
+										for (const document of documents.values().filter((document) => document != null)) {
+											version.push(document.version)
+
+											// Copy event definitions to definitions, used for Go to Definition
+											for (const [key, value] of document.definitionReferences.definitions.ofType(null, types.event)) {
+												definitions.set(null, types.event, key, ...value)
 											}
-
-											const version: number[] = []
-											const definitions = new Collection<Definition>()
-
-											for (const document of documents.values().filter((document) => document != null)) {
-												version.push(document.version)
-
-												// Copy event definitions to definitions, used for Go to Definition
-												for (const [key, value] of document.definitionReferences.definitions.ofType(null, types.event)) {
-													definitions.set(null, types.event, key, ...value)
-												}
-											}
-
-											return {
-												documentSymbols: self.documentSymbols,
-												definitionReferences: {
-													scopes: self.definitionReferences.scopes,
-													definitions: new Definitions(version, definitions),
-													references: self.definitionReferences.references,
-													elementReferences: self.definitionReferences.elementReferences,
-												}
-											}
-										}),
-										finalize(() => remove.remove())
-									)
-								}
-								else {
-									return this.documentSymbols$.pipe(
-										map((documentSymbols) => {
-											const { scopes, definitions, references, elementReferences } = HUDAnimationsTextDocument.definitionReferences(this, documentSymbols)
-											return {
-												documentSymbols: documentSymbols,
-												definitionReferences: {
-													scopes: scopes,
-													definitions: new Definitions([this.version], definitions),
-													references: references,
-													elementReferences: elementReferences
-												}
-											}
-										}),
-									)
-								}
-							}),
-							map(({ documentSymbols, definitionReferences }) => {
-								for (const [path, elementReferences] of this.elementReferences) {
-									if (!definitionReferences.elementReferences.has(path)) {
-										elementReferences.remove.remove()
-										this.elementReferences.delete(path)
-									}
-								}
-
-								for (const [path, collection] of definitionReferences.elementReferences) {
-									this.elementReferences.getOrInsertComputed(path, () => {
-										const collection$ = new BehaviorSubject(new Collection<VDFText>())
-										const references$ = new BehaviorSubject(new Map<string, References>())
+										}
 
 										return {
-											collection$: collection$,
-											references$: references$,
-											remove: workspace.setFileReferences(path, this.uri, new References(this.uri, collection$, references$))
-										}
-									}).collection$.next(collection)
-								}
-
-								return {
-									documentSymbols: documentSymbols,
-									definitionReferences: definitionReferences,
-									eventNames: new Set(
-										documentSymbols
-											.values()
-											.map((documentSymbol) => documentSymbol.eventName.text.toLowerCase())
-											.filter((eventName) => ((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName))
-									),
-								}
-							}),
-							combineLatestPersistent({
-								entries: (value) => {
-									return value.definitionReferences.elementReferences
-										.keys()
-										.map((path) => ({ key: path }))
-										.toArray()
-								},
-								observableSelector: (entry) => {
-									return workspace.elements(entry.key).pipe(
-										map(({ uri, definitions }) => ({ path: entry.key, uri, definitions })),
-									)
-								},
-								resultSelector: (value, results) => {
-									const set = new Set(results.values().map((result) => result.path))
-									for (const key of this.elementDependencies.keys()) {
-										if (!set.has(key)) {
-											this.elementDependencies.delete(key)
-										}
-									}
-
-									for (const result of results) {
-										this.elementDependencies.set(result.path, result)
-									}
-
-									const version = value.definitionReferences.definitions.version
-									const definitions = value.definitionReferences.definitions.collection.clone()
-
-									for (const eventName of value.eventNames) {
-										const eventFile = eventFiles[eventName]
-										const eventScope = HUDAnimationsTextDocument.eventScopes.get(eventName)!
-										const paths = Array.isArray(eventFile) ? eventFile : [eventFile]
-
-										// Copy element definitions to document, used for Go to Definition
-										for (const path of paths) {
-											const elementDefinitions = this.elementDependencies.get(path)!.definitions
-											version.push(...elementDefinitions.version)
-											for (const { scope, type, key, value } of elementDefinitions) {
-												definitions.set(eventScope, type, key, ...value)
+											documentSymbols: self.documentSymbols,
+											definitionReferences: {
+												scopes: self.definitionReferences.scopes,
+												definitions: new Definitions(version, definitions),
+												references: self.definitionReferences.references,
+												elementReferences: self.definitionReferences.elementReferences,
 											}
 										}
-									}
+									}),
+									finalize(() => remove.remove())
+								)
+							}
+							else {
+								return this.documentSymbols$.pipe(
+									map((documentSymbols) => {
+										const { scopes, definitions, references, elementReferences } = HUDAnimationsTextDocument.definitionReferences(this, documentSymbols)
+										return {
+											documentSymbols: documentSymbols,
+											definitionReferences: {
+												scopes: scopes,
+												definitions: new Definitions([this.version], definitions),
+												references: references,
+												elementReferences: elementReferences
+											}
+										}
+									}),
+								)
+							}
+						}),
+						map(({ documentSymbols, definitionReferences }) => {
+							for (const [path, elementReferences] of this.elementReferences) {
+								if (!definitionReferences.elementReferences.has(path)) {
+									elementReferences.remove.remove()
+									this.elementReferences.delete(path)
+								}
+							}
+
+							for (const [path, collection] of definitionReferences.elementReferences) {
+								this.elementReferences.getOrInsertComputed(path, () => {
+									const collection$ = new BehaviorSubject(new Collection<VDFText>())
+									const references$ = new BehaviorSubject(new Map<string, References>())
 
 									return {
-										documentSymbols: value.documentSymbols,
-										definitionReferences: {
-											scopes: value.definitionReferences.scopes,
-											definitions: new Definitions(version, definitions),
-											references: value.definitionReferences.references
-										},
+										collection$: collection$,
+										references$: references$,
+										remove: workspace.setFileReferences(path, this.uri, new References(this.uri, collection$, references$))
 									}
-								},
-							})
-						)
-					}
-					else {
-						return this.documentSymbols$.pipe(
-							map((documentSymbols) => {
-								const { scopes, definitions, references, elementReferences } = HUDAnimationsTextDocument.definitionReferences(this, documentSymbols)
+								}).collection$.next(collection)
+							}
+
+							return {
+								documentSymbols: documentSymbols,
+								definitionReferences: definitionReferences,
+								eventNames: new Set(
+									documentSymbols
+										.values()
+										.map((documentSymbol) => documentSymbol.eventName.text.toLowerCase())
+										.filter((eventName) => ((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName))
+								),
+							}
+						}),
+						combineLatestPersistent({
+							entries: (value) => {
+								return value.definitionReferences.elementReferences
+									.keys()
+									.map((path) => ({ key: path }))
+									.toArray()
+							},
+							observableSelector: (entry) => {
+								return workspace.elements(entry.key).pipe(
+									map(({ uri, definitions }) => ({ path: entry.key, uri, definitions })),
+								)
+							},
+							resultSelector: (value, results) => {
+								const set = new Set(results.values().map((result) => result.path))
+								for (const key of this.elementDependencies.keys()) {
+									if (!set.has(key)) {
+										this.elementDependencies.delete(key)
+									}
+								}
+
+								for (const result of results) {
+									this.elementDependencies.set(result.path, result)
+								}
+
+								const version = value.definitionReferences.definitions.version
+								const definitions = value.definitionReferences.definitions.collection.clone()
+
+								for (const eventName of value.eventNames) {
+									const eventFile = eventFiles[eventName]
+									const eventScope = HUDAnimationsTextDocument.eventScopes.get(eventName)!
+									const paths = Array.isArray(eventFile) ? eventFile : [eventFile]
+
+									// Copy element definitions to document, used for Go to Definition
+									for (const path of paths) {
+										const elementDefinitions = this.elementDependencies.get(path)!.definitions
+										version.push(...elementDefinitions.version)
+										for (const { scope: _scope, type, key, value } of elementDefinitions) {
+											definitions.set(eventScope, type, key, ...value)
+										}
+									}
+								}
+
 								return {
-									documentSymbols: documentSymbols,
+									documentSymbols: value.documentSymbols,
 									definitionReferences: {
-										scopes: scopes,
-										definitions: new Definitions([this.version], definitions),
-										references: references,
+										scopes: value.definitionReferences.scopes,
+										definitions: new Definitions(version, definitions),
+										references: value.definitionReferences.references
 									},
-								} satisfies TextDocumentContent<HUDAnimationsDocumentSymbols>
-							})
-						)
-					}
+								}
+							},
+						})
+					)
 				})
 			}),
 		})
@@ -383,7 +366,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			}
 		}
 
-		this.getDiagnostics = ({ dependencies, globals, content, diagnostics, subscriptions, dispose$, next }) => {
+		this.getDiagnostics = ({ dependencies: _dependencies, globals, content, diagnostics, subscriptions, dispose$, next }) => {
 			const { documentSymbols, definitionReferences: { definitions } } = content
 
 			const soundReferences = new Map<string, PartialDiagnosticCodeActionReference[]>()
@@ -524,7 +507,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 								message: `Invalid interpolator '${interpolator.value.text}'.`,
 								data: {
 									fix: ({ createDocumentWorkspaceEdit }) => {
-										const complexInterpolatorsParams: Record<string, string> = {
+										const complexInterpolatorsParams: { [key: string]: string } = {
 											"Bias": "bias",
 											"Flicker": "randomness",
 											"Gain": "bias",
@@ -606,7 +589,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 								break
 							}
 							case EntryType.File: {
-								for (const { index, range, detail } of values) {
+								for (const { index, range: _range, detail: _detail } of values) {
 									diagnostics[index] = null
 								}
 								break
@@ -657,9 +640,9 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 		this.connect()
 	}
 
-	public async onDidOpenTextDocument(server: VDFLanguageServer, connection: Connection): Promise<AsyncDisposable> {
-		this.workspace.HUDAnimationsReferences()
-		this.workspace.VGUIReferences()
+	public async onDidOpenTextDocument(_server: VDFLanguageServer, _connection: Connection): Promise<AsyncDisposable> {
+		void this.workspace.HUDAnimationsReferences()
+		void this.workspace.VGUIReferences()
 		return {
 			[Symbol.asyncDispose]: async () => { }
 		}
@@ -706,25 +689,25 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 		return []
 	}
 
-	public async onInlayHint(params: { range: VDFRange }): Promise<InlayHint[]> {
+	public async onInlayHint(_params: { range: VDFRange }): Promise<InlayHint[]> {
 		return []
 	}
 
 	protected async getRename(params: VDFRenameParams): Promise<WorkspaceEdit> {
-		let { scope, ...rest } = params
-		if (rest.type == types.element && scope != null) {
-			scope = null
-		}
-
-		if (rest.type == types.event) {
+		if (params.type == types.event) {
 			await this.workspace.HUDAnimationsReferences()
 		}
 
-		if (rest.type == types.element || rest.type == types.colour || rest.type == types.font) {
+		if (params.type == types.element || params.type == types.colour || params.type == types.font) {
 			await this.workspace.VGUIReferences()
 		}
 
-		return await super.getRename({ scope, ...rest })
+		return await super.getRename({
+			...params,
+			scope: params.type == types.element && params.scope != null
+				? null
+				: params.scope
+		})
 	}
 
 	protected async getCompletion(params: VDFCompletionParams): Promise<VDFCompletionList | null> {
@@ -749,7 +732,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			const data = await firstValueFrom(this.data$)
 
 			const [definitions, scope] = global == null
-				? [data.content.definitionReferences.definitions, data.content.definitionReferences.scopes.get(type)?.entries().find(([scope, ranges]) => ranges.some((range) => range.contains(params.position)))?.[0] ?? null]
+				? [data.content.definitionReferences.definitions, data.content.definitionReferences.scopes.get(type)?.entries().find(([_scope, ranges]) => ranges.some((range) => range.contains(params.position)))?.[0] ?? null]
 				: [await firstValueFrom(data.globals.get(global).definitions$), null]
 
 			const definition = definitions.ofType(scope, type)
@@ -875,18 +858,18 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "animate": {
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
+							? await elements(params.tokens[1])
 							: properties()
 					case 3:
 						return params.includes(params.tokens[2])
 							? properties(params.tokens[2])
-							: HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? colours() : null
+							: HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? await colours() : null
 					case 4:
 						return params.includes(params.tokens[3])
-							? HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? colours(params.tokens[3]) : null
+							? HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? await colours(params.tokens[3]) : null
 							: interpolators()
 					case 5:
 						return params.includes(params.tokens[4])
@@ -912,10 +895,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "stopevent": {
 				switch (params.tokens.length) {
 					case 1:
-						return events()
+						return await events()
 					case 2:
 						return params.includes(params.tokens[1])
-							? events(params.tokens[1])
+							? await events(params.tokens[1])
 							: numbers() /* delay */
 					case 3:
 						return params.includes(params.tokens[2])
@@ -932,10 +915,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "setvisible":
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
+							? await elements(params.tokens[1])
 							: params.bits() /* visible */
 					case 3:
 						return params.includes(params.tokens[2])
@@ -974,14 +957,14 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "runeventchild":
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
-							: events()
+							? await elements(params.tokens[1])
+							: await events()
 					case 3:
 						return params.includes(params.tokens[2])
-							? events(params.tokens[2])
+							? await events(params.tokens[2])
 							: numbers() /* delay */
 					case 4:
 						return params.includes(params.tokens[3])
@@ -997,10 +980,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "setinputenabled":
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
+							? await elements(params.tokens[1])
 							: params.bits() /* enabled */
 					case 3:
 						return params.includes(params.tokens[2])
@@ -1024,10 +1007,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 2:
 						return params.includes(params.tokens[1])
 							? numbers(params.tokens[1]) /* delay */
-							: sounds()
+							: await sounds()
 					case 3:
 						return params.includes(params.tokens[2])
-							? sounds(params.tokens[2])
+							? await sounds(params.tokens[2])
 							: params.conditionals()
 					case 4:
 						return params.includes(params.tokens[3])
@@ -1039,10 +1022,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "stoppanelanimations":
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
+							? await elements(params.tokens[1])
 							: numbers() /* delay */
 					case 3:
 						return params.includes(params.tokens[2])
@@ -1058,18 +1041,18 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "setfont":
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
+							? await elements(params.tokens[1])
 							: fontProperties()
 					case 3:
 						return params.includes(params.tokens[2])
 							? fontProperties(params.tokens[2])
-							: fonts()
+							: await fonts()
 					case 4:
 						return params.includes(params.tokens[3])
-							? fonts(params.tokens[3])
+							? await fonts(params.tokens[3])
 							: numbers() /* delay */
 					case 5:
 						return params.includes(params.tokens[4])
@@ -1086,10 +1069,10 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "setstring":
 				switch (params.tokens.length) {
 					case 1:
-						return elements()
+						return await elements()
 					case 2:
 						return params.includes(params.tokens[1])
-							? elements(params.tokens[1])
+							? await elements(params.tokens[1])
 							: null /* property */
 					case 3:
 						return params.includes(params.tokens[2])

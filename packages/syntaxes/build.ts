@@ -29,13 +29,13 @@ const preprocessors = {
 
 const map = new Map()
 
-for (const name of readdirSync(SRC).filter((value) => posix.extname(value) == ".yaml")) {
-	let text = readFileSync(`${SRC}/${name}`, "utf-8")
+for (const file of readdirSync(SRC).filter((value) => posix.extname(value) == ".yaml")) {
+	let text = readFileSync(`${SRC}/${file}`, "utf-8")
 
-	const preprocessor = preprocessors[name.split(".")[0]]
-	if (preprocessor) {
-		for (const key in preprocessor) {
-			text = text.replace(`{${key}}`, [...new Set(preprocessor[key])].toSorted().join("|"))
+	const name = file.split(".")[0]
+	if (((file): file is keyof typeof preprocessors => file in preprocessors)(file)) {
+		for (const [key, keys] of Object.entries(preprocessors[file])) {
+			text = text.replace(`{${key}}`, [...new Set(keys)].toSorted().join("|"))
 		}
 	}
 

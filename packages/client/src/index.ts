@@ -28,7 +28,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 
 	public readonly client: T
 
-	constructor(
+	public constructor(
 		context: vscode.ExtensionContext,
 		decorations: Decorations,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
@@ -38,7 +38,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 	) {
 		super()
 
-		this.client = this.stack.adopt(client, (disposable) => disposable.dispose())
+		this.client = this.stack.adopt(client, async (disposable) => await disposable.dispose())
 
 		this.stack.adopt(
 			this.client.onRequest("vscode-vdf/trpc", TRPCRequestHandler({

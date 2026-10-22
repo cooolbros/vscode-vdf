@@ -17,7 +17,7 @@ export class VPKFileSystemProvider implements vscode.FileSystemProvider {
 
 	public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]>
 
-	constructor() {
+	public constructor() {
 		this.vpks = new Map()
 		this.onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>().event
 	}
@@ -128,12 +128,9 @@ export class VPKFileSystemProvider implements vscode.FileSystemProvider {
 			path: posix.join(posix.dirname(vpkUri.path), posix.basename(vpkUri.path).replace("_dir.vpk", `_${entry.value.archiveIndex == 255 ? "_dir" : entry.value.archiveIndex.toString().padStart(3, "0")}.vpk`))
 		})
 
-		const file = await open(archiveUri.fsPath, "r")
+		await using file = await open(archiveUri.fsPath, "r")
 		const buf = Buffer.alloc(entry.value.entryLength)
-
 		await file.read(buf, 0, entry.value.entryLength, entry.value.entryOffset)
-		file.close()
-
 		return buf
 	}
 

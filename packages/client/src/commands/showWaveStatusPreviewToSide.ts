@@ -117,7 +117,7 @@ export function showWaveStatusPreviewToSide(
 		webviewPanel.iconPath = new vscode.ThemeIcon("output")
 
 		const stack = new AsyncDisposableStack()
-		webviewPanel.onDidDispose(() => stack.disposeAsync())
+		webviewPanel.onDidDispose(async () => await stack.disposeAsync())
 
 		webviewPanels.set(id, webviewPanel)
 		stack.defer(() => void webviewPanels.delete(id))
@@ -152,7 +152,7 @@ export function showWaveStatusPreviewToSide(
 
 		const language$ = combineLatest({ fileSystem: fileSystem$, configuration: configuration$ }).pipe(
 			switchMap(({ fileSystem, configuration }) => {
-				const files: Record<string, string> = {
+				const files: { [key: string]: string } = {
 					// "korean": "koreana",
 					"simplified_chinese": "schinese",
 					"traditional_chinese": "tchinese",
@@ -187,7 +187,7 @@ export function showWaveStatusPreviewToSide(
 					tokens
 						.values()
 						.filter((documentSymbol) => documentSymbol.value != undefined)
-						.map((documentSymbol) => [documentSymbol.key.text.toLowerCase() as Lowercase<string>, documentSymbol.value!.text])
+						.map((documentSymbol) => [<Lowercase<string>>documentSymbol.key.text.toLowerCase(), documentSymbol.value!.text])
 				)
 			}),
 			shareReplayUntilDisposed(dispose$),
@@ -207,10 +207,10 @@ export function showWaveStatusPreviewToSide(
 					return documentSymbols[0].children!
 				})
 
-				const mvm_maps = items_game.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "mvm_maps")?.children!
+				const mvm_maps = items_game.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "mvm_maps")!.children!
 
 				for (const map of mvm_maps) {
-					const missions = map.children!.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "missions")?.children!
+					const missions = map.children!.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "missions")!.children!
 					const mission = missions.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == name.toLowerCase())?.children
 					if (mission) {
 						let display_name = mission.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "display_name")!.value!.text
@@ -224,7 +224,7 @@ export function showWaveStatusPreviewToSide(
 							map: map.key.text.substring("mvm_".length),
 							reverse: false,
 							difficulty: difficulty ?? null,
-							mission: language.get(display_name.toLowerCase() as Lowercase<string>) ?? name
+							mission: language.get(<Lowercase<string>>display_name.toLowerCase()) ?? name
 						})
 					}
 				}
@@ -259,7 +259,7 @@ export function showWaveStatusPreviewToSide(
 							let mapCompleted = false
 
 							for (const segment of name.substring("mvm_".length).split("_")) {
-								let str = segment.toLowerCase()
+								const str = segment.toLowerCase()
 								if (str == "rev") {
 									mapCompleted = true
 									if (reverse == null) {
@@ -432,7 +432,7 @@ export function showWaveStatusPreviewToSide(
 								}
 
 								let beginAtWave = parseInt(children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "BeginAtWave".toLowerCase())?.value?.text ?? "")
-								let runForThisManyWaves = parseInt(children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.value?.text ?? "")
+								const runForThisManyWaves = parseInt(children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.value?.text ?? "")
 
 								if (!isNaN(beginAtWave)) {
 									beginAtWave += -1
@@ -525,7 +525,7 @@ export function showWaveStatusPreviewToSide(
 									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.text.toLowerCase()))
 
 									for (const i of Array.from({ length: totalCount }).keys()) {
-										const member = children[i % children.length]
+										const member = children[i % children.length]!
 										switch (member.key.text.toLowerCase()) {
 											case "TFBot".toLowerCase(): {
 												addIcon({
@@ -560,8 +560,8 @@ export function showWaveStatusPreviewToSide(
 
 									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.text.toLowerCase()))
 
-									for (const i of Array.from({ length: totalCount }).keys()) {
-										const member = children[Math.floor(Math.random() * children.length)]
+									for (const _i of Array.from({ length: totalCount }).keys()) {
+										const member = children[Math.floor(Math.random() * children.length)]!
 										switch (member.key.text.toLowerCase()) {
 											case "TFBot".toLowerCase(): {
 												addIcon({
@@ -717,7 +717,7 @@ export function showWaveStatusPreviewToSide(
 							try {
 								return getVDFDocumentSymbols(text, { multilineStrings: false })
 							}
-							catch (error) {
+							catch {
 								return index != 0
 									? null
 									: new VDFDocumentSymbols()
@@ -725,7 +725,7 @@ export function showWaveStatusPreviewToSide(
 						}),
 						filter((documentSymbols) => documentSymbols != null),
 						switchMap((documentSymbols) => {
-							const header = documentSymbols?.values().map((documentSymbol) => documentSymbol.children).find((children) => children != undefined)
+							const header = documentSymbols.values().map((documentSymbol) => documentSymbol.children).find((children) => children != undefined)
 							if (!header) {
 								return of(null)
 							}
@@ -742,7 +742,7 @@ export function showWaveStatusPreviewToSide(
 									}
 
 									const [buf] = await Promise.all([
-										await vscode.workspace.fs.readFile(entry.uri),
+										vscode.workspace.fs.readFile(entry.uri),
 										initVTFPNG(context)
 									])
 
@@ -807,13 +807,16 @@ export function showWaveStatusPreviewToSide(
 
 										await using bsp = await bspFactory.get(entry.uri)
 										const entities = bsp.entities()
-										const skyname = entities[0]["skyname"]
+										const skyname = entities[0]?.["skyname"]
+										if (!skyname) {
+											return of(null)
+										}
 
 										// bk
 										// ft
 										// lf
 										// rt
-										return vtf(fileSystem, `materials/skybox/${skyname}ft.vmt`)
+										return vtf(fileSystem, `materials/skybox/${Array.isArray(skyname) ? skyname[0] : skyname}ft.vmt`)
 									}),
 									switchAll()
 								)

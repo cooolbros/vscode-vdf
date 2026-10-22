@@ -19,13 +19,13 @@ export class VPK {
 	private readonly decoder = new TextDecoder()
 	private readonly tree: VPKDirectoryEntry = { type: VPKFileType.Directory, value: new Map() }
 
-	constructor(data: DataView) {
+	public constructor(data: DataView) {
 
 		let i = 0
 
 		const signature = data.getUint32(i, true)
 		if (signature != 1437209140) {
-			throw new Error(`Invalid VPK Signature: Expected ${1437209140}, got ${signature}`)
+			throw new Error(`Invalid VPK Signature: Expected 1437209140, got ${signature}`)
 		}
 		i += 4
 
@@ -36,16 +36,16 @@ export class VPK {
 		i += 4
 
 		if (version == 2) {
-			const fileDataSectionSize = data.getUint32(i, true)
+			const _fileDataSectionSize = data.getUint32(i, true)
 			i += 4
 
-			const archiveMD5SectionSize = data.getUint32(i, true)
+			const _archiveMD5SectionSize = data.getUint32(i, true)
 			i += 4
 
-			const otherMD5SectionSize = data.getUint32(i, true)
+			const _otherMD5SectionSize = data.getUint32(i, true)
 			i += 4
 
-			const signatureSectionSize = data.getUint32(i, true)
+			const _signatureSectionSize = data.getUint32(i, true)
 			i += 4
 		}
 

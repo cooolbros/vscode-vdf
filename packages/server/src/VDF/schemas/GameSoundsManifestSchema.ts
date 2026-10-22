@@ -73,11 +73,11 @@ export const GameSoundsManifestSchema = (document: VDFTextDocument) => {
 		getDocumentColor: async () => {
 			return []
 		},
-		onInlayHint: async (params) => {
+		onInlayHint: async (_params) => {
 			return []
 		},
 		completion: {
-			keys: async (params, path, token) => {
+			keys: async (params, path, _token) => {
 				switch (path.length) {
 					case 0: {
 						return {

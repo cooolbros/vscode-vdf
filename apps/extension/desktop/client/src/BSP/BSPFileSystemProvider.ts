@@ -5,11 +5,15 @@ import type { BSPFactory } from "../BSPFactory"
 
 export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 
+	private readonly bspFactory: BSPFactory
+	private readonly subscriptions: vscode.Disposable[]
 	private readonly bsps: Map<string, Promise<{ stat: vscode.FileStat, bsp: { pakfile: Pakfile, files: Files } }>>
 
 	public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]>
 
-	constructor(private readonly bspFactory: BSPFactory, private readonly subscriptions: vscode.Disposable[]) {
+	public constructor(bspFactory: BSPFactory, subscriptions: vscode.Disposable[]) {
+		this.bspFactory = bspFactory
+		this.subscriptions = subscriptions
 		this.bsps = new Map()
 		this.onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>().event
 	}
@@ -26,8 +30,8 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 					this.bspFactory.get(new Uri(bspUri))
 				])
 
-				this.subscriptions.push(new vscode.Disposable(() => {
-					bsp[Symbol.asyncDispose]()
+				this.subscriptions.push(new vscode.Disposable(async () => {
+					await bsp[Symbol.asyncDispose]()
 				}))
 
 				const pakfile = bsp.pakfile()
@@ -80,13 +84,13 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 		}
 	}
 
-	public watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[] }): vscode.Disposable {
+	public watch(_uri: vscode.Uri, _options: { readonly recursive: boolean; readonly excludes: readonly string[] }): vscode.Disposable {
 		return vscode.Disposable.from()
 	}
 
 	public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
 
-		const { bsp, entry } = await this.entry(uri)
+		const { bsp: _bsp, entry } = await this.entry(uri)
 		if (!entry) {
 			throw vscode.FileSystemError.FileNotFound()
 		}
@@ -118,7 +122,7 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 
 	public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
 
-		const { bsp, entry } = await this.entry(uri)
+		const { bsp: _bsp, entry } = await this.entry(uri)
 		if (!entry) {
 			throw vscode.FileSystemError.FileNotFound()
 		}
@@ -134,7 +138,7 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 			.toArray()
 	}
 
-	public createDirectory(uri: vscode.Uri): void {
+	public createDirectory(_uri: vscode.Uri): void {
 		throw vscode.FileSystemError.Unavailable()
 	}
 
@@ -152,19 +156,19 @@ export class BSPFileSystemProvider implements vscode.FileSystemProvider {
 		return bsp.pakfile.read(entry.value.index)
 	}
 
-	public writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean }): void | Thenable<void> {
+	public writeFile(_uri: vscode.Uri, _content: Uint8Array, _options: { readonly create: boolean; readonly overwrite: boolean }): void | Thenable<void> {
 		throw vscode.FileSystemError.Unavailable()
 	}
 
-	public delete(uri: vscode.Uri, options: { readonly recursive: boolean }): void | Thenable<void> {
+	public delete(_uri: vscode.Uri, _options: { readonly recursive: boolean }): void | Thenable<void> {
 		throw vscode.FileSystemError.Unavailable()
 	}
 
-	public rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean }): void | Thenable<void> {
+	public rename(_oldUri: vscode.Uri, _newUri: vscode.Uri, _options: { readonly overwrite: boolean }): void | Thenable<void> {
 		throw vscode.FileSystemError.Unavailable()
 	}
 
-	public copy?(source: vscode.Uri, destination: vscode.Uri, options: { readonly overwrite: boolean }): void | Thenable<void> {
+	public copy?(_source: vscode.Uri, _destination: vscode.Uri, _options: { readonly overwrite: boolean }): void | Thenable<void> {
 		throw vscode.FileSystemError.Unavailable()
 	}
 }

@@ -16,7 +16,7 @@ export class VDFRange implements RangeLike {
 	public readonly start: VDFPosition
 	public readonly end: VDFPosition
 
-	constructor(start: VDFPosition, end: VDFPosition = start) {
+	public constructor(start: VDFPosition, end: VDFPosition = start) {
 		this.start = start
 		this.end = end
 	}

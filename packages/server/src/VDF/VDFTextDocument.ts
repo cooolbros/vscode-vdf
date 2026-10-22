@@ -72,7 +72,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 	public static async getCompletion(
 		document: VDFTextDocumentLike,
 		params: VDFCompletionParams,
-		keys: (params: VDFCompletionParams, path: VDFDocumentSymbol[], token?: CompletionToken) => Promise<{ before?: VDFCompletionItem[], field?: { kind?: CompletionItemKind, one?: string[], many?: string[], values?: Record<string, string[]> }, cls?: { one?: string[], many?: string[] }, after?: VDFCompletionItem[], } | null>,
+		keys: (params: VDFCompletionParams, path: VDFDocumentSymbol[], token?: CompletionToken) => Promise<{ before?: VDFCompletionItem[], field?: { kind?: CompletionItemKind, one?: string[], many?: string[], values?: { [key: string]: string[] } }, cls?: { one?: string[], many?: string[] }, after?: VDFCompletionItem[], } | null>,
 		values: (params: VDFCompletionParams, path: VDFDocumentSymbol[], key: string, token?: CompletionToken) => Promise<VDFCompletionList | null>
 	): Promise<VDFCompletionList | null> {
 
@@ -229,7 +229,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 				}
 			}
 			case 3: {
-				const [key, value, conditional] = params.tokens
+				const [_key, _value, conditional] = params.tokens
 				if (params.includes(conditional)) {
 					return params.conditionals(conditional)
 				}
@@ -243,7 +243,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 		}
 	}
 
-	public readonly languageId: "vdf" = "vdf"
+	public readonly languageId = <const>"vdf"
 
 	public readonly workspace: VDFWorkspace
 	public readonly VDFParserOptions: VDFParserOptions
@@ -252,7 +252,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 	protected getDiagnostics: (params: TextDocumentDiagnosticsParams<Dependencies, Globals, VDFDocumentSymbols>) => void
 	public readonly decorations$: Observable<Decoration[]>
 
-	constructor(
+	public constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
@@ -295,7 +295,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 		}
 
 		this.schema$ = defer(() => {
-			if (workspace != null && path != null) {
+			if (path != null) {
 				return workspace.fileType(path)
 			}
 
@@ -312,7 +312,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 						break
 					case VDFFileType.ClientScheme:
 						schema = ClientSchemeSchema(this)
-						if (workspace != null && path?.toLowerCase() != "resource/clientscheme.res") {
+						if (path?.toLowerCase() != "resource/clientscheme.res") {
 							globals = {
 								clientScheme: {
 									definitions$: workspace.clientScheme.definitions$.pipe(
@@ -402,8 +402,8 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 		this.connect()
 	}
 
-	public async onDidOpenTextDocument(server: VDFLanguageServer, connection: Connection): Promise<AsyncDisposable> {
-		this.workspace.VGUIReferences()
+	public async onDidOpenTextDocument(_server: VDFLanguageServer, _connection: Connection): Promise<AsyncDisposable> {
+		void this.workspace.VGUIReferences()
 		return {
 			[Symbol.asyncDispose]: async () => { }
 		}

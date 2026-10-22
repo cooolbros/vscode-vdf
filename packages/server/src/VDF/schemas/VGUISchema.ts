@@ -369,7 +369,7 @@ export const VGUISchema = (document: VDFTextDocument) => {
 					.values()
 					.map((documentSymbol) => documentSymbol.children?.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "ControlName".toLowerCase())?.value?.text.toLowerCase())
 					.filter((controlName) => controlName != undefined)
-					.find((controlName) => ((type): type is keyof typeof keys => controlName in keys)(controlName))
+					.find((controlName) => ((_type): _type is keyof typeof keys => controlName in keys)(controlName))
 					?? <const>"panel"
 
 				const include = (k: keyof typeof keys): string[] => {

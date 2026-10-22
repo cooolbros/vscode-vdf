@@ -94,7 +94,7 @@
 				)
 
 				if (!icons.size) {
-					return of({ waveStatus: waveStatus, icons: {} as Record<string, ImageBitmap | null> })
+					return of({ waveStatus: waveStatus, icons: <{ [key: string]: ImageBitmap | null }>{} })
 				}
 
 				for (const path of icons.values().filter((path) => !images.has(path))) {

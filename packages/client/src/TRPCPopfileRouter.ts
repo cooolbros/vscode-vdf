@@ -27,7 +27,7 @@ const MarkdownStringSchema = z.object({
 	value: z.string(),
 })
 
-const CodeLensSchema = z.array(
+const _CodeLensSchema = z.array(
 	z.object({
 		range: VDFRange.schema,
 		command: z.object({
@@ -105,7 +105,7 @@ const LinkSchema = z.array(
 	})
 )
 
-const PrepareRenameProviderSchema = z.object({
+const _PrepareRenameProviderSchema = z.object({
 	range: VDFRange.schema,
 	placeholder: z.string(),
 })
@@ -139,7 +139,7 @@ const SignatureHelpProviderSchema = z.object({
 	activeParameter: z.number().optional(),
 }).optional()
 
-const WorkspaceEditSchema = z
+const _WorkspaceEditSchema = z
 	.instanceof(vscode.WorkspaceEdit)
 	.transform((workspaceEdit) => ({ changes: Object.fromEntries(workspaceEdit.entries().map(([uri, edits]) => [new Uri(uri).toString(), edits.map((edit) => ({ range: VDFRange.schema.parse(edit.range), newText: edit.newText }))])) }))
 
@@ -176,7 +176,7 @@ export function TRPCPopfileRouter(
 							z.looseObject({
 								classname: z.string(),
 								targetname: z.string().optional(),
-							}).catchall(z.union([z.string(), z.array(z.string())]))
+							}).catchall(z.union([z.string(), z.array(z.string())]).optional())
 						).parse(bsp.entities())
 					}
 					catch (error) {

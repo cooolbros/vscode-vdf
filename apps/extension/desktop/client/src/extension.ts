@@ -133,9 +133,9 @@ export function activate(context: vscode.ExtensionContext): void {
 									throw new Error()
 								}
 
-								const [key, type, value] = line.trim().split(TAB)
+								const [key, _type, value] = line.trim().split(TAB)
 								const map = result.getOrInsertComputed(active, () => new Map())
-								map.set(key, value)
+								map.set(key!, value!)
 							}
 							else {
 								active = line
@@ -359,26 +359,26 @@ export function activate(context: vscode.ExtensionContext): void {
 					)
 				)
 
-				subscriptions.push(new vscode.Disposable(() => client[Symbol.asyncDispose]()))
+				subscriptions.push(new vscode.Disposable(async () => await client[Symbol.asyncDispose]()))
 				await client.start()
 
 				subscriptions.push(
-					vscode.commands.registerCommand("vscode-vdf.restartVDFLanguageServer", () => {
-						client.client.restart()
+					vscode.commands.registerCommand("vscode-vdf.restartVDFLanguageServer", async () => {
+						await client.client.restart()
 					})
 				)
 
 				const teamFortress2FolderSubscription = teamFortress2Folder$.pipe(
 					skip(1)
-				).subscribe((value) => {
+				).subscribe(async (value) => {
 					teamFortress2Folder = value
-					client.client.restart()
+					await client.client.restart()
 				})
 
 				subscriptions.push(new vscode.Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
 
-				subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => {
-					client.client.restart()
+				subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+					await client.client.restart()
 				}))
 
 				return client

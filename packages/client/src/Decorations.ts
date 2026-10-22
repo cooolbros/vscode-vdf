@@ -7,7 +7,7 @@ export class Decorations {
 	private readonly decorationType: vscode.TextEditorDecorationType
 	private readonly decorations: Map<string, vscode.DecorationOptions[]>
 
-	constructor() {
+	public constructor() {
 		this.stack = new DisposableStack()
 
 		this.decorationType = this.stack.adopt(

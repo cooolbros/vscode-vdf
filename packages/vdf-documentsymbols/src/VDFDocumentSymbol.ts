@@ -71,8 +71,9 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly documentation?: string
 
-	constructor(key: VDFText, conditional: `[${string}]` | null, documentation: string | undefined, range: VDFRange, value: { type: 0, token: VDFText } | { type: 1, children: VDFDocumentSymbols, range: VDFRange }) {
-		this.name = `${key.text || `""`}${conditional ? " " + conditional : ""}`
+	public constructor(key: VDFText, conditional: `[${string}]` | null, documentation: string | undefined, range: VDFRange, value: { type: 0, token: VDFText } | { type: 1, children: VDFDocumentSymbols, range: VDFRange }) {
+		// oxlint-disable-next-line typescript/no-deprecated
+		this.name = `${key.text || `""`}${conditional ? ` ${conditional}` : ""}`
 		this.key = key
 		this.conditional = conditional
 		this.range = range
@@ -96,7 +97,9 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 
 	public toJSON(): DocumentSymbol {
 		return {
+			// oxlint-disable-next-line typescript/no-deprecated
 			name: this.name,
+			// oxlint-disable-next-line typescript/no-deprecated
 			detail: this.detail,
 			kind: this.kind,
 			range: this.range,

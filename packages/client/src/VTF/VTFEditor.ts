@@ -57,19 +57,19 @@ export class VTFEditor implements vscode.CustomEditorProvider<VTFDocument> {
 		)
 	}
 
-	public async saveCustomDocument(document: VTFDocument, cancellation: vscode.CancellationToken): Promise<void> {
+	public async saveCustomDocument(document: VTFDocument, _cancellation: vscode.CancellationToken): Promise<void> {
 		return await vscode.workspace.fs.writeFile(document.uri, document.save())
 	}
 
-	public async saveCustomDocumentAs(document: VTFDocument, destination: vscode.Uri, cancellation: vscode.CancellationToken): Promise<void> {
+	public async saveCustomDocumentAs(document: VTFDocument, destination: vscode.Uri, _cancellation: vscode.CancellationToken): Promise<void> {
 		return await vscode.workspace.fs.writeFile(destination, document.saveAs())
 	}
 
-	public async revertCustomDocument(document: VTFDocument, cancellation: vscode.CancellationToken): Promise<void> {
+	public async revertCustomDocument(document: VTFDocument, _cancellation: vscode.CancellationToken): Promise<void> {
 		await document.revert()
 	}
 
-	public async backupCustomDocument(document: VTFDocument, context: vscode.CustomDocumentBackupContext, cancellation: vscode.CancellationToken): Promise<vscode.CustomDocumentBackup> {
+	public async backupCustomDocument(document: VTFDocument, context: vscode.CustomDocumentBackupContext, _cancellation: vscode.CancellationToken): Promise<vscode.CustomDocumentBackup> {
 		await vscode.workspace.fs.writeFile(context.destination, document.backup())
 		return {
 			id: context.destination.toString(),
@@ -77,7 +77,7 @@ export class VTFEditor implements vscode.CustomEditorProvider<VTFDocument> {
 		}
 	}
 
-	public async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext, token: vscode.CancellationToken): Promise<VTFDocument> {
+	public async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<VTFDocument> {
 		const [readonly, buf, watcher$, flags] = await Promise.all([
 			Promise.try(async () => {
 				const stat = await vscode.workspace.fs.stat(uri)
@@ -86,10 +86,10 @@ export class VTFEditor implements vscode.CustomEditorProvider<VTFDocument> {
 					: false
 			}),
 			Promise.try(async () => new Uint8Array(await vscode.workspace.fs.readFile(uri))),
-			usingAsync(async () => await this.fileSystemWatcherFactory.get(new Uri(uri))).pipe(
+			Promise.resolve(usingAsync(async () => await this.fileSystemWatcherFactory.get(new Uri(uri))).pipe(
 				switchAll(),
 				concatMap(async () => await vscode.workspace.fs.readFile(uri))
-			),
+			)),
 			openContext.backupId != undefined
 				? Promise.try(async () => new DataView((await vscode.workspace.fs.readFile(new Uri(openContext.backupId!))).buffer).getUint32(0, true))
 				: Promise.resolve(null),
@@ -98,10 +98,10 @@ export class VTFEditor implements vscode.CustomEditorProvider<VTFDocument> {
 		return new VTFDocument(uri, readonly, buf, watcher$, flags)
 	}
 
-	public async resolveCustomEditor(document: VTFDocument, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
+	public async resolveCustomEditor(document: VTFDocument, webviewPanel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
 
 		const stack = new AsyncDisposableStack()
-		webviewPanel.onDidDispose(() => stack.disposeAsync())
+		webviewPanel.onDidDispose(async () => await stack.disposeAsync())
 
 		const id = document.uri.toString()
 		this.webviewPanels.set(id, webviewPanel)
@@ -127,7 +127,7 @@ export class VTFEditor implements vscode.CustomEditorProvider<VTFDocument> {
 
 		webviewPanel.webview.options = { enableScripts: true }
 		webviewPanel.webview.html = html
-			.replace("%URI%", `${document.uri}`)
+			.replace("%URI%", document.uri.toString())
 			.replace("%READONLY%", `${document.readonly}`)
 			.replace("%BASE%", `${webviewPanel.webview.asWebviewUri(dist).toString()}/`)
 

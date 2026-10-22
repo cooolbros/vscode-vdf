@@ -2,6 +2,7 @@
     "recommendations": [
         "bierner.comment-tagged-templates",
         "github.vscode-github-actions",
+        "oxc.oxc-vscode",
         "pedro-w.tmlanguage",
         "svelte.svelte-vscode",
     ]

@@ -5,7 +5,7 @@ export abstract class AsyncDisposableBase implements AsyncDisposable {
 	protected readonly stack: AsyncDisposableStack
 	public readonly dispose$: Observable<void>
 
-	constructor() {
+	public constructor() {
 		const stack = new AsyncDisposableStack()
 
 		const dispose$ = new ReplaySubject<void>(1)

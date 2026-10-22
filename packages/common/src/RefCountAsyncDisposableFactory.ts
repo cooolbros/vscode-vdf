@@ -2,11 +2,15 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 
 	private static id = 0
 
+	private readonly keyHash: (key: TKey) => string
+	private readonly factory: (key: TKey, factory: RefCountAsyncDisposableFactory<TKey, TValue>) => Promise<TValue>
 	protected readonly map: Map<string, { count: number, value: Promise<TValue> }>
 	private readonly registry: FinalizationRegistry<string>
 	private readonly set: Set<number>
 
-	constructor(private readonly keyHash: (key: TKey) => string, private readonly factory: (key: TKey, factory: RefCountAsyncDisposableFactory<TKey, TValue>) => Promise<TValue>) {
+	public constructor(keyHash: (key: TKey) => string, factory: (key: TKey, factory: RefCountAsyncDisposableFactory<TKey, TValue>) => Promise<TValue>) {
+		this.keyHash = keyHash
+		this.factory = factory
 		this.map = new Map()
 		this.set = new Set<number>()
 
@@ -68,6 +72,6 @@ export class RefCountAsyncDisposableFactory<TKey, TValue extends AsyncDisposable
 		this.set.add(id)
 
 		value.count++
-		return proxy as any
+		return <any>proxy
 	}
 }

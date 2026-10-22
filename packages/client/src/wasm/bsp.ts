@@ -5,7 +5,7 @@ import { readFile } from "./readFile"
 // @ts-ignore
 import bsp_bg_url from "bsp/pkg/bsp_bg.wasm?url"
 
-let BSPWASM: import("bsp").InitOutput
+let BSPWASM: import("bsp").InitOutput | undefined
 
 export async function initBSP(context: vscode.ExtensionContext) {
 	BSPWASM ??= await init({ module_or_path: readFile(context, bsp_bg_url) })

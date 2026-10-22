@@ -50,7 +50,7 @@ export const GameSoundsSchema = (document: VDFTextDocument) => {
 				}
 			})
 		),
-		getDiagnostics: (diagnostics, context) => { },
+		getDiagnostics: (_diagnostics, _context) => { },
 		getDocumentLinks: async () => {
 			const documentSymbols = await firstValueFrom(document.documentSymbols$)
 
@@ -60,7 +60,7 @@ export const GameSoundsSchema = (document: VDFTextDocument) => {
 						range: documentSymbol.value.range!,
 						data: {
 							resolve: async () => {
-								const { chars, value } = removeSoundChars(documentSymbol.value!.text)
+								const { chars: _chars, value } = removeSoundChars(documentSymbol.value!.text)
 								return (await firstValueFrom(document.fileSystem.resolve(resolvePath(`sound/${value}`)))).uri
 							}
 						}
@@ -99,7 +99,7 @@ export const GameSoundsSchema = (document: VDFTextDocument) => {
 		getDocumentColor: async () => {
 			return []
 		},
-		onInlayHint: async (params) => {
+		onInlayHint: async (_params) => {
 			return []
 		},
 		completion: {

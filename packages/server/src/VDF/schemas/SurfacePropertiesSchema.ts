@@ -46,14 +46,14 @@ export const SurfacePropertiesSchema = (document: VDFTextDocument) => {
 				}
 			})
 		),
-		getDiagnostics: (diagnostics, context) => { },
+		getDiagnostics: (_diagnostics, _context) => { },
 		getDocumentLinks: async () => {
 			return []
 		},
 		getDocumentColor: async () => {
 			return []
 		},
-		onInlayHint: async (params) => {
+		onInlayHint: async (_params) => {
 			return []
 		},
 		completion: {

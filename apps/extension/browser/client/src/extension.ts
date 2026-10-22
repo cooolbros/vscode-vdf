@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	const fileSystemMountPointFactory = new RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>(
 		(paths) => JSON.stringify(paths),
-		async (path, factory) => {
+		async (path, _factory) => {
 			switch (path.type) {
 				case "folder": {
 					return await FolderFileSystem(path.folder)
@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 			client = Promise.try(async () => {
 				const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/server/dist/server.js").toString(true)
-				let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+				const teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
 
 				const client = new Client<LanguageClient>(
 					context,
@@ -121,7 +121,7 @@ export function activate(context: vscode.ExtensionContext): void {
 					)
 				)
 
-				subscriptions.push(new vscode.Disposable(() => client[Symbol.asyncDispose]()))
+				subscriptions.push(new vscode.Disposable(async () => await client[Symbol.asyncDispose]()))
 				await client.start()
 				return client
 			})

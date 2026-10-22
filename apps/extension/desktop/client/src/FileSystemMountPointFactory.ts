@@ -57,7 +57,7 @@ function ObservableFileSystem(fileSystem$: Observable<FileSystemMountPoint>): Fi
 			return inner$.pipe(switchMap((fileSystem) => fileSystem.resolve(path)))
 		},
 		readDirectory: async (path, options) => {
-			return (await firstValueFrom(inner$)).readDirectory(path, options).catch(() => [])
+			return await (await firstValueFrom(inner$)).readDirectory(path, options).catch(() => [])
 		},
 		watchDirectory: (path, options) => {
 			return inner$.pipe(switchMap((fileSystem) => fileSystem.watchDirectory(path, options)))
@@ -73,10 +73,10 @@ function ObservableFileSystem(fileSystem$: Observable<FileSystemMountPoint>): Fi
  */
 function EmptyFileSystem(): FileSystemMountPoint {
 	return {
-		resolve: (path) => of({ type: EntryType.None, uri: null }),
-		readDirectory: () => Promise.resolve([]),
+		resolve: (_path) => of({ type: EntryType.None, uri: null }),
+		readDirectory: async () => await Promise.resolve([]),
 		watchDirectory: () => of([]),
-		[Symbol.asyncDispose]: () => Promise.resolve(),
+		[Symbol.asyncDispose]: async () => await Promise.resolve(),
 	}
 }
 
@@ -87,8 +87,11 @@ class SortedArray<T> extends Array<T> {
 		return Array
 	}
 
-	constructor(private readonly compareFn: (a: T, b: T) => number, ...items: T[]) {
+	private readonly compareFn: (a: T, b: T) => number
+
+	public constructor(compareFn: (a: T, b: T) => number, ...items: T[]) {
 		super(...items.sort(compareFn))
+		this.compareFn = compareFn
 	}
 
 	private update() {
@@ -114,7 +117,7 @@ class SortedArray<T> extends Array<T> {
 export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPointFactory): Promise<FileSystemMountPoint> {
 
 	if (uri.basename() != "*") {
-		throw new Error(`${uri} is not a *.`)
+		throw new Error(`${uri.toString()} != *`)
 	}
 
 	const dirname = uri.dirname()
@@ -195,7 +198,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 						observableSelector: (entry) => entry.fileSystem.resolve(path),
 						resultSelector: (value, results) => results,
 					}),
-					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? { type: <const>EntryType.None, uri: null } as Entry),
+					map((entries) => entries.find((entry) => entry.type != EntryType.None) ?? <Entry>{ type: <const>EntryType.None, uri: null }),
 					distinctUntilChanged((a, b) => a.type == b.type && Uri.equals(a.uri, b.uri)),
 					finalize(() => observables.delete(path)),
 					shareReplay({ bufferSize: 1, refCount: true })
@@ -203,7 +206,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 			})
 		},
 		readDirectory: async (path, options) => {
-			const results = await Promise.allSettled(fileSystems$.value.map(({ fileSystem }) => fileSystem.readDirectory(path, options)))
+			const results = await Promise.allSettled(fileSystems$.value.map(async ({ fileSystem }) => await fileSystem.readDirectory(path, options)))
 			const map = new Map<string, vscode.FileType>()
 			for (const result of results.values().filter((result) => result.status == "fulfilled")) {
 				for (const [name, type] of result.value) {
@@ -238,7 +241,7 @@ export async function WildcardFileSystem(uri: Uri, factory: FileSystemMountPoint
 
 export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint> {
 
-	constructor(context: vscode.ExtensionContext) {
+	public constructor(context: vscode.ExtensionContext) {
 		super(
 			(path) => JSON.stringify(path),
 			async (path, factory) => {
@@ -277,7 +280,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 										return path.teamFortress2Folder.joinPath(relativePath)
 									})
 
-								return VirtualFileSystem(
+								return await VirtualFileSystem(
 									uris
 										.filter((uri, index) => uris.findIndex((u) => Uri.equals(u, uri)) == index)
 										.map(async (uri) => {
@@ -311,7 +314,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 								try {
 									await vscode.workspace.fs.stat(root)
 								}
-								catch (error) {
+								catch {
 									context.subscriptions.push(vscode.workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: true, isReadonly: true }))
 								}
 
@@ -328,7 +331,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 					}
 					case "popfile:bsp": {
 						if (path.popfile.extname() != ".pop") {
-							throw new Error(`[FileSystemMountPointFactory.popfile:bsp] "${path.popfile}" != ".pop"`)
+							throw new Error(`[FileSystemMountPointFactory.popfile:bsp] "${path.popfile.toString()}" != ".pop"`)
 						}
 
 						return ObservableFileSystem(
@@ -352,7 +355,7 @@ export class FileSystemMountPointFactory extends RefCountAsyncDisposableFactory<
 					}
 					case "bsp": {
 						if (path.bsp.extname() != ".bsp") {
-							throw new Error(`[FileSystemMountPointFactory.bsp] "${path.bsp}" != ".bsp"`)
+							throw new Error(`[FileSystemMountPointFactory.bsp] "${path.bsp.toString()}" != ".bsp"`)
 						}
 
 						return await BSPFileSystem(path.bsp)

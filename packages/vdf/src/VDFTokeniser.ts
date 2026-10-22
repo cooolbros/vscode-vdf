@@ -44,7 +44,7 @@ export class VDFTokeniser {
 	private peeked: { token: VDFToken | null, index: number, line: number, character: number } | null = null
 	private _EOFRead: boolean = false
 
-	constructor(str: string) {
+	public constructor(str: string) {
 		this.str = str
 	}
 
@@ -318,7 +318,7 @@ export class VDFTokeniser {
 					return null
 				}
 			}
-			catch (error) {
+			catch {
 				return null
 			}
 		}

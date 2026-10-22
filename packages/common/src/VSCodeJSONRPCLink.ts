@@ -9,8 +9,8 @@ export interface VSCodeJSONRPCLinkOptions {
 	stack?: AsyncDisposableStack
 	client: { name: string }
 	transformer: DataTransformer
-	onNotification: (type: "vscode-vdf/trpc", handler: (param: unknown) => Promise<void>) => Disposable
-	sendRequest: (method: "vscode-vdf/trpc", param: unknown) => Promise<unknown>
+	onNotification(type: "vscode-vdf/trpc", handler: (param: unknown) => Promise<void>): Disposable
+	sendRequest(method: "vscode-vdf/trpc", param: unknown): Promise<unknown>
 }
 
 const notificationSchema = z.discriminatedUnion("type", [
@@ -78,9 +78,9 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions): TRPCLink<AnyT
 				switch (op.type) {
 					case "query":
 					case "mutation":
-						opts.sendRequest("vscode-vdf/trpc", { type: "request", op: op }).then((json) => {
+						void opts.sendRequest("vscode-vdf/trpc", { type: "request", op: op }).then((json) => {
 							const transformed = transformResult(
-								json as TRPCResponse,
+								<TRPCResponse>json,
 								opts.transformer,
 							)
 
@@ -96,7 +96,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions): TRPCLink<AnyT
 					case "subscription":
 						const subject = new Subject<any>()
 						subjects.set(op.id, subject)
-						opts.sendRequest("vscode-vdf/trpc", { type: "request", op: op })
+						void opts.sendRequest("vscode-vdf/trpc", { type: "request", op: op })
 						return subject.pipe(
 							finalize(() => {
 								// Only send unsubscribe request if "C" complete notification not received

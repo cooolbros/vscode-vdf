@@ -85,7 +85,7 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 					.reduce((a, b, index) => `${a}${index != 0 ? eol.repeat(2) : ""}${b}`, "")
 					.split(eol).map((line) => `${line != "" ? "\t".repeat(2) : ""}${line}`).join(eol)
 
-				let insertPosition = templatesBlock?.children!.at(-1)?.range.end
+				const insertPosition = templatesBlock?.children!.at(-1)?.range.end
 				if (insertPosition) {
 					edit.insert(
 						document.uri,

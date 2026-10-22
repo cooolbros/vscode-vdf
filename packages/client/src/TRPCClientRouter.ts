@@ -56,7 +56,7 @@ export function TRPCClientRouter(
 						.query(async ({ input }) => {
 							const buf = await vscode.workspace.fs.readFile(input.uri)
 							if (buf[0] == 255 && buf[1] == 254 && input.encoding != "utf-16le") {
-								console.warn(`Reading ${input.uri} with LE BOM as ${input.encoding}`)
+								console.warn(`Reading ${input.uri.toString()} with LE BOM as ${input.encoding}`)
 							}
 							return decoders[input.encoding].decode(buf)
 						}),

@@ -1,3 +1,4 @@
+// oxlint-disable typescript/parameter-properties
 import type { VDFRange, VDFToken, VDFTokenType } from "vdf"
 import type { VDFText } from "vdf-documentsymbols"
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver"
@@ -15,7 +16,8 @@ export class HUDAnimationsEventDocumentSymbol implements DocumentSymbol {
 	public readonly children: HUDAnimationsStatementDocumentSymbols
 	public readonly documentation?: string
 
-	constructor(event: VDFText, conditional: Extract<VDFToken, { type: VDFTokenType.Conditional }> | null, range: VDFRange, children: HUDAnimationsStatementDocumentSymbols, documentation?: string) {
+	public constructor(event: VDFText, conditional: Extract<VDFToken, { type: VDFTokenType.Conditional }> | null, range: VDFRange, children: HUDAnimationsStatementDocumentSymbols, documentation?: string) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.name = `${event.text}${conditional ? ` ${conditional.value}` : ""}`
 		this.eventName = event
 		this.conditional = conditional
@@ -53,7 +55,8 @@ abstract class HUDAnimationsStatementDocumentSymbolBase implements DocumentSymbo
 	public readonly range: VDFRange
 	public readonly selectionRange: VDFRange
 
-	constructor(name: string, range: VDFRange) {
+	public constructor(name: string, range: VDFRange) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.name = name
 		this.kind = SymbolKind.Variable
 		this.range = range
@@ -62,6 +65,7 @@ abstract class HUDAnimationsStatementDocumentSymbolBase implements DocumentSymbo
 
 	public toJSON(): DocumentSymbol {
 		return {
+			// oxlint-disable-next-line typescript/no-deprecated
 			name: this.name,
 			kind: this.kind,
 			range: this.range,
@@ -72,7 +76,7 @@ abstract class HUDAnimationsStatementDocumentSymbolBase implements DocumentSymbo
 
 export class AnimateDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.Animate
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly property: VDFText,
 		public readonly value: VDFText,
@@ -88,7 +92,7 @@ export class AnimateDocumentSymbol extends HUDAnimationsStatementDocumentSymbolB
 
 export class Linear {
 	public readonly type = <const>"Linear"
-	constructor(public readonly range: VDFRange) { }
+	public constructor(public readonly range: VDFRange) { }
 	public toString(): string {
 		return "Linear"
 	}
@@ -96,7 +100,7 @@ export class Linear {
 
 export class Accel {
 	public readonly type = <const>"Accel"
-	constructor(public readonly range: VDFRange) { }
+	public constructor(public readonly range: VDFRange) { }
 	public toString(): string {
 		return "Accel"
 	}
@@ -104,7 +108,7 @@ export class Accel {
 
 export class DeAccel {
 	public readonly type = <const>"DeAccel"
-	constructor(public readonly range: VDFRange) { }
+	public constructor(public readonly range: VDFRange) { }
 	public toString(): string {
 		return "DeAccel"
 	}
@@ -112,7 +116,7 @@ export class DeAccel {
 
 export class Spline {
 	public readonly type = <const>"Spline"
-	constructor(public readonly range: VDFRange) { }
+	public constructor(public readonly range: VDFRange) { }
 	public toString(): string {
 		return "Spline"
 	}
@@ -120,7 +124,7 @@ export class Spline {
 
 export class Bounce {
 	public readonly type = <const>"Bounce"
-	constructor(public readonly range: VDFRange) { }
+	public constructor(public readonly range: VDFRange) { }
 	public toString(): string {
 		return "Bounce"
 	}
@@ -172,7 +176,7 @@ export class Bias {
 
 export class Unknown {
 	public readonly type = <const>"Unknown"
-	constructor(public readonly range: VDFRange, public readonly value: VDFText) { }
+	public constructor(public readonly range: VDFRange, public readonly value: VDFText) { }
 	public toString(): string {
 		return this.value.text
 	}
@@ -194,7 +198,7 @@ export type Interpolator = (
 export class RunEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.RunEvent
 
-	constructor(
+	public constructor(
 		public readonly event: VDFText,
 		public readonly delay: VDFText,
 		conditional: `[${string}]` | null,
@@ -207,7 +211,7 @@ export class RunEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbol
 export class StopEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.StopEvent
 
-	constructor(
+	public constructor(
 		public readonly event: VDFText,
 		public readonly delay: VDFText,
 		conditional: `[${string}]` | null,
@@ -220,7 +224,7 @@ export class StopEventDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 export class SetVisibleDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetVisible
 
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly visible: VDFText,
 		public readonly delay: VDFText,
@@ -233,7 +237,7 @@ export class SetVisibleDocumentSymbol extends HUDAnimationsStatementDocumentSymb
 
 export class FireCommandDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.FireCommand
-	constructor(
+	public constructor(
 		public readonly delay: VDFText,
 		public readonly command: VDFText,
 		conditional: `[${string}]` | null,
@@ -245,7 +249,7 @@ export class FireCommandDocumentSymbol extends HUDAnimationsStatementDocumentSym
 
 export class RunEventChildDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.RunEventChild
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly event: VDFText,
 		public readonly delay: VDFText,
@@ -258,7 +262,7 @@ export class RunEventChildDocumentSymbol extends HUDAnimationsStatementDocumentS
 
 export class SetInputEnabledDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetInputEnabled
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly enabled: VDFText,
 		public readonly delay: VDFText,
@@ -271,7 +275,7 @@ export class SetInputEnabledDocumentSymbol extends HUDAnimationsStatementDocumen
 
 export class PlaySoundDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.PlaySound
-	constructor(
+	public constructor(
 		public readonly delay: VDFText,
 		public readonly sound: VDFText,
 		conditional: `[${string}]` | null,
@@ -283,7 +287,7 @@ export class PlaySoundDocumentSymbol extends HUDAnimationsStatementDocumentSymbo
 
 export class StopPanelAnimationsDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.StopPanelAnimations
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly delay: VDFText,
 		conditional: `[${string}]` | null,
@@ -295,7 +299,7 @@ export class StopPanelAnimationsDocumentSymbol extends HUDAnimationsStatementDoc
 
 export class StopAnimationDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.StopAnimation
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly property: VDFText,
 		public readonly delay: VDFText,
@@ -308,7 +312,7 @@ export class StopAnimationDocumentSymbol extends HUDAnimationsStatementDocumentS
 
 export class SetFontDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetFont
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly property: VDFText,
 		public readonly font: VDFText,
@@ -322,7 +326,7 @@ export class SetFontDocumentSymbol extends HUDAnimationsStatementDocumentSymbolB
 
 export class SetTextureDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetTexture
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly property: VDFText,
 		public readonly value: VDFText,
@@ -336,7 +340,7 @@ export class SetTextureDocumentSymbol extends HUDAnimationsStatementDocumentSymb
 
 export class SetStringDocumentSymbol extends HUDAnimationsStatementDocumentSymbolBase {
 	public readonly type = HUDAnimationStatementType.SetString
-	constructor(
+	public constructor(
 		public readonly element: VDFText,
 		public readonly property: VDFText,
 		public readonly value: VDFText,

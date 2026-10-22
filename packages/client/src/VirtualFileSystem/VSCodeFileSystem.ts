@@ -9,7 +9,7 @@ interface VSCodeFileSystem {
 	root: Uri,
 	type: vscode.FileType,
 	watch: boolean,
-	resolvePath: (path: string) => Uri,
+	resolvePath(this: void, path: string): Uri,
 }
 
 export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCodeFileSystem): Promise<FileSystemMountPoint> {
@@ -20,7 +20,7 @@ export async function VSCodeFileSystem({ root, type, watch, resolvePath }: VSCod
 	}
 
 	const subjects = new Map<string, Subject<Entry>>()
-	let watcher: vscode.FileSystemWatcher
+	let watcher: vscode.FileSystemWatcher | undefined
 
 	if (watch) {
 		watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.from(root), "**/**"), false, true, false)

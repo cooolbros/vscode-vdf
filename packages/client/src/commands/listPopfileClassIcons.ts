@@ -16,29 +16,29 @@ class Table {
 	private header: string[]
 	private rows: string[][]
 
-	constructor(columns: number) {
+	public constructor(columns: number) {
 		this.columns = columns
 		this.header = []
 		this.rows = []
 	}
 
-	setHeader(data: string[]): void {
+	public setHeader(data: string[]): void {
 		if (data.length != this.columns) {
 			throw new RangeError()
 		}
 		this.header = data
 	}
 
-	addRow(data: string[]): void {
+	public addRow(data: string[]): void {
 		if (data.length != this.columns) {
 			throw new RangeError()
 		}
 		this.rows.push(data)
 	}
 
-	getText(eol: string): string {
+	public getText(eol: string): string {
 		const max = [...this.header, ...this.rows].flat().reduce((total, current) => Math.max(total, current.length), 0)
-		const hr = `+${new Array({ length: this.columns }).fill("-".repeat(max + 2)).join("+")}+`
+		const hr = `+${Array.from({ length: this.columns }, () => "-".repeat(max + 2)).join("+")}+`
 		return [
 			``,
 			hr,

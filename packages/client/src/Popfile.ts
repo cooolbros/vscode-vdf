@@ -5,7 +5,7 @@ import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDispo
 import { usingAsync } from "common/operators/usingAsync"
 import { waveSpawnKeys } from "common/popfile/waveSpawnKeys"
 import { Uri } from "common/Uri"
-import { combineLatest, concat, defer, distinctUntilChanged, filter, from, map, NEVER, Observable, of, shareReplay, switchAll, switchMap, withLatestFrom } from "rxjs"
+import { combineLatest, concat, concatMap, defer, distinctUntilChanged, filter, from, map, NEVER, Observable, of, shareReplay, switchAll, switchMap, withLatestFrom } from "rxjs"
 import { VDFSyntaxError, type RangeLike } from "vdf"
 import type { VDFDocumentSymbol, VDFDocumentSymbols } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -20,9 +20,11 @@ export interface VSCodeDocumentLike {
 }
 
 export class UriSyntaxError extends Error {
+	public readonly uri: Uri
 	public readonly cause: VDFSyntaxError
-	constructor(public readonly uri: Uri, error: VDFSyntaxError) {
+	public constructor(uri: Uri, error: VDFSyntaxError) {
 		super(error.message)
+		this.uri = uri
 		this.cause = error
 	}
 }
@@ -84,7 +86,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 	public readonly referencedTemplates$: Observable<Set<string>>
 	public readonly classIcons$: Observable<string[]>
 
-	constructor(uri: Uri, document$: Observable<VSCodeDocumentLike>, fileSystem: FileSystemMountPoint, fileSystemWatcherFactory: FileSystemWatcherFactory, onDidChangeTextDocument$: Observable<vscode.TextDocumentChangeEvent>) {
+	public constructor(uri: Uri, document$: Observable<VSCodeDocumentLike>, fileSystem: FileSystemMountPoint, fileSystemWatcherFactory: FileSystemWatcherFactory, onDidChangeTextDocument$: Observable<vscode.TextDocumentChangeEvent>) {
 		super()
 
 		this.uri = uri
@@ -94,14 +96,14 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 		this.onDidChangeTextDocument$ = onDidChangeTextDocument$
 
 		this.documentSymbols$ = this.document$.pipe(
-			map((document, index) => {
+			concatMap(async (document, index) => {
 				try {
 					return getVDFDocumentSymbols(document.getText(), { multilineStrings: new Set(["Param".toLowerCase(), "Tag".toLowerCase()]) })
 				}
 				catch (error) {
 					if (error instanceof UriSyntaxError) {
 						if (index == 0) {
-							Promise.allSettled([Promise.try(async () => {
+							await Promise.allSettled([Promise.try(async () => {
 								await vscode.commands.executeCommand("vscode.open", error.uri)
 								await Promise.all([
 									vscode.commands.executeCommand("revealLine", { lineNumber: error.cause.range.start.line, at: "top" }),
@@ -151,7 +153,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 		)
 
 		this.eventPopfile$ = this.waveSchedule$.pipe(
-			map(({ waveSchedule }) => waveSchedule.get("EventPopfile".toLowerCase())?.at(-1)?.detail?.toLowerCase() == "Halloween".toLowerCase() ? <const>"Halloween" : null),
+			map(({ waveSchedule }) => waveSchedule.get("EventPopfile".toLowerCase())?.at(-1)?.value?.text.toLowerCase() == "Halloween".toLowerCase() ? <const>"Halloween" : null),
 			distinctUntilChanged(),
 		)
 
@@ -310,7 +312,7 @@ export abstract class PopfileBase extends AsyncDisposableBase {
 	protected getTemplates(stack: Stack): Observable<Map<string, TemplateBuilder>> {
 		const open = fs({
 			current: this.uri,
-			documentSelector: (uri, detail, ambient) => {
+			documentSelector: (uri, _detail, _ambient) => {
 				return usingAsync(async () => {
 					return new BasePopfile(
 						uri,
@@ -414,7 +416,7 @@ export class MissionPopfile extends PopfileBase {
 		const templatesBlock = templatesBlocks[0]
 		if (templatesBlock != undefined) {
 			const seen = new Set<string>()
-			for (const template of templatesBlock?.children ?? []) {
+			for (const template of templatesBlock.children ?? []) {
 				const key = template.key.text.toLowerCase()
 				if (seen.has(key)) {
 					continue
@@ -437,7 +439,7 @@ class BasePopfile extends PopfileBase {
 
 		for (const templatesBlock of templatesBlocks) {
 			const seen = new Set<string>()
-			for (const template of templatesBlock?.children ?? []) {
+			for (const template of templatesBlock.children ?? []) {
 				const key = template.key.text.toLowerCase()
 				if (seen.has(key)) {
 					continue
@@ -461,7 +463,7 @@ export class Template {
 	public readonly uri: Uri
 	public readonly documentSymbols: VDFDocumentSymbol[]
 
-	constructor(builder: TemplateBuilder, templates: Map<string, TemplateBuilder>) {
+	public constructor(builder: TemplateBuilder, templates: Map<string, TemplateBuilder>) {
 		this.name = builder.name
 		this.uri = builder.uri
 

@@ -5,7 +5,7 @@ import type { Uri } from "../Uri"
 
 export function findMap(uri: Uri, fileSystem: FileSystemMountPoint): Observable<`mvm_${string}.bsp` | null> {
 	if (uri.extname() != ".pop") {
-		throw new Error(`[findMap] "${uri}" != ".pop"`)
+		throw new Error(`[findMap] "${uri.toString()}" != ".pop"`)
 	}
 
 	const basename = uri.basename()
@@ -26,7 +26,7 @@ export function findMap(uri: Uri, fileSystem: FileSystemMountPoint): Observable<
 				return null
 			}
 
-			return <const>`${bsp as `mvm_${string}`}.bsp`
+			return <const>`${<`mvm_${string}`>bsp}.bsp`
 		}),
 		distinctUntilChanged(),
 	)

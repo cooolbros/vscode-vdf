@@ -7,7 +7,7 @@ import { combineLatestPersistent } from "./combineLatestPersistent"
 
 export interface BaseConfig<D extends DocumentLike> {
 	current: Uri
-	documentSelector: (uri: Uri, detail: string, ambient: boolean) => Observable<BaseResult<D>>
+	documentSelector(this: void, uri: Uri, detail: string, ambient: boolean): Observable<BaseResult<D>>
 }
 
 export interface DocumentLike {
@@ -16,7 +16,7 @@ export interface DocumentLike {
 }
 
 export interface AmbientConfig<D extends DocumentLike> extends BaseConfig<D> {
-	watch: (uri: Uri) => Observable<WatchEvent>,
+	watch(this: void, uri: Uri): Observable<WatchEvent>,
 	preserve: boolean
 }
 
@@ -27,7 +27,7 @@ export interface FSConfig<D extends DocumentLike> extends AmbientConfig<D> {
 
 export interface CombineLatestBaseFilesConfig<R> {
 	stack: Stack
-	open: (base: BaseValue) => Observable<BaseResult<R>>
+	open(this: void, base: BaseValue): Observable<BaseResult<R>>
 }
 
 export type Stack = { path: string, uri: Uri }[]

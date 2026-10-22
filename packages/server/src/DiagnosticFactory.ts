@@ -55,7 +55,7 @@ export function DiagnosticFactory<
 	document: TextDocument,
 	distinct: KeyDistinct,
 	transform: (key: string) => string,
-	unknownDiagnostic: (...args: [...Parameters<Validate<VDFDocumentSymbol, TContext>>]) => void = (name, value, path, diagnostics, context) => diagnostics.push({
+	unknownDiagnostic: (...args: [...Parameters<Validate<VDFDocumentSymbol, TContext>>]) => void = (name, value, path, diagnostics, _context) => diagnostics.push({
 		range: value.key.range,
 		severity: DiagnosticSeverity.Warning,
 		code: "unknown-key",
@@ -131,7 +131,7 @@ export function DiagnosticFactory<
 		name: string,
 		key: VDFText,
 		diagnostics: PartialDiagnosticCodeAction[],
-		edit?: { uri?: () => Uri, range?: () => VDFRange, newText?: (name: string) => string }
+		edit?: { uri?(): Uri, range?(): VDFRange, newText?(name: string): string }
 	) => {
 		if (name != key.text) {
 			diagnostics.push({
@@ -172,7 +172,7 @@ export function DiagnosticFactory<
 		header: (validate: Validate<VDFDocumentSymbol, TContext>) => {
 			return (diagnostics: PartialDiagnosticCodeAction[], context: TContext) => {
 
-				const { base = [], rest: headers = [] } = Object.groupBy(
+				const { base: _base = [], rest: headers = [] } = Object.groupBy(
 					context.content.documentSymbols,
 					(documentSymbol) => documentSymbol.key.text.toLowerCase() == "#base" ? "base" : "rest"
 				)
@@ -219,7 +219,7 @@ export function DiagnosticFactory<
 				}
 			}
 		},
-		documentSymbols: (schema: Record<string, Validate<VDFDocumentSymbol, TContext> | [Validate<VDFDocumentSymbol, TContext>, KeyDistinct]> & Record<symbol, Validate<VDFDocumentSymbol, TContext>>): Validate<VDFDocumentSymbol, TContext> => {
+		documentSymbols: (schema: { [key: string]: Validate<VDFDocumentSymbol, TContext> | [Validate<VDFDocumentSymbol, TContext>, KeyDistinct] } & { [key: symbol]: Validate<VDFDocumentSymbol, TContext> }): Validate<VDFDocumentSymbol, TContext> => {
 			const validateUnknown = unknown in schema ? schema[unknown] : unknownDiagnostic
 			const map = new Map(Object.entries(schema).map(([key, entry]) => [key.toLowerCase(), Array.isArray(entry) ? ({ key, validate: entry[0], distinct: entry[1] }) : ({ key, validate: entry, distinct: distinct })]))
 
@@ -267,7 +267,7 @@ export function DiagnosticFactory<
 			}
 		},
 		integer: (): RefineString<TContext> => {
-			return (name, detail, documentSymbol, path, diagnostics, context) => {
+			return (name, detail, documentSymbol, path, diagnostics, _context) => {
 				if (/\D/.test(detail.text)) {
 					diagnostics.push({
 						range: detail.range,
@@ -280,7 +280,7 @@ export function DiagnosticFactory<
 			}
 		},
 		float: (): RefineString<TContext> => {
-			return (name, detail, documentSymbol, path, diagnostics, context) => {
+			return (name, detail, documentSymbol, path, diagnostics, _context) => {
 				if (!/^\d*\.?\d+$/.test(detail.text)) {
 					diagnostics.push({
 						range: detail.range,
@@ -292,9 +292,9 @@ export function DiagnosticFactory<
 				}
 			}
 		},
-		set: (values: string[], fix?: Record<string, string>): RefineString<TContext> => {
+		set: (values: string[], _fix?: { [key: string]: string }): RefineString<TContext> => {
 			const map = new Map(values.map((value) => [value.toLowerCase(), value]))
-			return (name, detail, documentSymbol, path, diagnostics, context) => {
+			return (name, detail, documentSymbol, path, diagnostics, _context) => {
 				const text = detail.text.toLowerCase()
 				if (!map.has(text)) {
 					diagnostics.push({
@@ -333,7 +333,7 @@ export function DiagnosticFactory<
 					return
 				}
 
-				const scope = context.content.definitionReferences.scopes.get(type)?.entries().find(([scope, ranges]) => ranges.some((range) => range.contains(detail.range)))?.[0] ?? null
+				const scope = context.content.definitionReferences.scopes.get(type)?.entries().find(([_scope, ranges]) => ranges.some((range) => range.contains(detail.range)))?.[0] ?? null
 				const definitions = getDefinitions(context).get(scope, type, type.toDefinition(detail.text))
 
 				if (!definitions || !definitions.length) {
@@ -450,13 +450,13 @@ export function DiagnosticFactory<
 									break
 								}
 								case EntryType.File: {
-									for (const { index, detail, name, range } of values) {
+									for (const { index, detail: _detail, name: _name, range: _range } of values) {
 										diagnostics[index] = null
 									}
 									break
 								}
 								case EntryType.Directory: {
-									for (const { index, detail, name, range } of values) {
+									for (const { index, detail: _detail, name, range } of values) {
 										diagnostics[index] = {
 											range: range,
 											severity: DiagnosticSeverity.Warning,
@@ -480,7 +480,7 @@ export function DiagnosticFactory<
 				connect,
 			}
 		},
-		next: (schema: Record<string, RefineString<TContext>>): Validate<VDFDocumentSymbol, TContext> => {
+		next: (schema: { [key: string]: RefineString<TContext> }): Validate<VDFDocumentSymbol, TContext> => {
 			const map = new Map(Object.entries(schema).map(([name, refine]) => <const>[name.toLowerCase(), { name, refine }]))
 			return (key, documentSymbol, path, diagnostics, context) => {
 				const data = map.get(key)

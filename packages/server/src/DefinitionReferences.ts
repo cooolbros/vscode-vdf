@@ -10,7 +10,7 @@ export class Collection<T> {
 
 	private readonly map: Map<number | null, Map<DefinitionType, Map<string, T[]>>>
 
-	public constructor(map: Map<number | null, Map<DefinitionType, Map<string, T[]>>> = new Map()) {
+	public constructor(map = new Map<number | null, Map<DefinitionType, Map<string, T[]>>>()) {
 		this.map = map
 	}
 
@@ -69,7 +69,7 @@ export class Definitions {
 	public readonly version: number[]
 	public readonly collection: Collection<Definition>
 
-	constructor(version: number[], collection: Collection<Definition>) {
+	public constructor(version: number[], collection: Collection<Definition>) {
 		this.version = version
 		this.collection = collection
 	}
@@ -102,7 +102,7 @@ export class References {
 	public readonly references$: BehaviorSubject<Map<string /* Uri */, References>>
 	public readonly next$: Observable<void>
 
-	constructor(
+	public constructor(
 		uri: Uri,
 		collection$: BehaviorSubject<Collection<VDFText>>,
 		references$: BehaviorSubject<Map<string, References>>,

@@ -139,7 +139,7 @@ export class VTFDocument implements vscode.CustomDocument {
 			unsubscribe
 		)
 
-		this.dispose = () => stack.disposeAsync()
+		this.dispose = async () => await stack.disposeAsync()
 	}
 
 	public show() {

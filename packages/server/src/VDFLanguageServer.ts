@@ -36,13 +36,13 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 	private readonly trpc: TRPCClient<ClientRouter>
 	private readonly fileSystems: RefCountAsyncDisposableFactory<FileSystemKey[], FileSystemMountPoint>
-	private readonly workspaces: { get: (uri: Uri) => Promise<VDFWorkspace> }
+	private readonly workspaces: { get(uri: Uri): Promise<VDFWorkspace> }
 	private readonly documents: RefCountAsyncDisposableFactory<Uri, TextDocument>
 
 	private readonly diagnostic = { id: 0 }
 	private readonly documentsDiagnostics: Map<string, Map<number, DiagnosticCodeAction>>
 
-	constructor(connection: Connection, platform: string) {
+	public constructor(connection: Connection, platform: string) {
 		super()
 
 		// "Restart VDF Language Server"
@@ -85,7 +85,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 		this.fileSystems = new RefCountAsyncDisposableFactory(
 			(paths) => JSON.stringify(paths),
-			async (paths, factory) => {
+			async (paths, _factory) => {
 				const { key } = await this.trpc.teamFortress2FileSystem.open.mutate({ paths })
 				const files = new Map<string, Observable<Entry>>()
 				const directories = new Map<string, Observable<[string, vscode.FileType][]>>()
@@ -120,7 +120,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 		const workspaces = new Map<string, Promise<VDFWorkspace>>()
 		this.stack.defer(async () => {
-			await Promise.all(workspaces.values().map(async (promise) => (await promise)[Symbol.asyncDispose]()))
+			await Promise.all(workspaces.values().map(async (promise) => await (await promise)[Symbol.asyncDispose]()))
 		})
 
 		this.workspaces = {
@@ -278,7 +278,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 					return new VMTTextDocument(init, documentConfiguration$, fileSystem, this.documents, this.trpc, workspace, path)
 				}
 				default: {
-					throw new Error(`Invalid language: ${init.languageId} ${init.uri}`)
+					throw new Error(`Invalid language: ${init.languageId} ${init.uri.toString()}`)
 				}
 			}
 		}
@@ -351,43 +351,43 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 			}
 		})
 
-		connection.onInitialized(async (params) => {
+		connection.onInitialized(async (_params) => {
 			await connection.client.register(DidChangeConfigurationNotification.type, { section: "vscode-vdf" })
 		})
 
-		connection.onDidChangeConfiguration((params) => {
+		connection.onDidChangeConfiguration((_params) => {
 			onDidChangeConfiguration$.next()
 		})
 
 		const onDidClose = new Map<string, Promise<AsyncDisposable>>()
 		this.stack.defer(async () => {
-			await Promise.all(onDidClose.values().map(async (promise) => (await promise)[Symbol.asyncDispose]()))
+			await Promise.all(onDidClose.values().map(async (promise) => await (await promise)[Symbol.asyncDispose]()))
 		})
 
 		const codeLensRefresh$ = new Subject<void>()
 		const codeLensRequest$ = new Subject<void>()
 
-		codeLensRefresh$.pipe(buffer(codeLensRequest$)).subscribe((requests) => {
+		codeLensRefresh$.pipe(buffer(codeLensRequest$)).subscribe(async (requests) => {
 			if (requests.length) {
 				console.log(`${CodeLensRefreshRequest.method} ${requests.length}`)
-				connection.sendRequest(CodeLensRefreshRequest.method)
+				await connection.sendRequest(CodeLensRefreshRequest.method)
 			}
 		})
 
-		const sendDiagnostics = (document: TextDocument, diagnostics: DiagnosticCodeAction[]) => {
+		const sendDiagnostics = async (document: TextDocument, diagnostics: DiagnosticCodeAction[]) => {
 			const result: Diagnostic[] = []
 			const map = new Map<number, DiagnosticCodeAction>()
 
 			for (const diagnostic of diagnostics) {
 				const id = this.diagnostic.id++
-				const { data, ...rest } = diagnostic
+				const { data: _data, ...rest } = diagnostic
 				map.set(id, diagnostic)
 				result.push({ ...rest, data: { id } })
 			}
 
 			this.documentsDiagnostics.set(document.uri.toString(), map)
 
-			connection.sendDiagnostics({
+			await connection.sendDiagnostics({
 				uri: document.uri.toString(),
 				diagnostics: result
 			})
@@ -402,7 +402,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 			const stack = new AsyncDisposableStack()
 
-			const document = stack.use(await this.documents.get(uri, async (uri) => createDocument({ ...params.textDocument, uri: uri })))
+			const document = stack.use(await this.documents.get(uri, async (uri) => await createDocument({ ...params.textDocument, uri: uri })))
 			stack.use(await document.onDidOpenTextDocument(this, connection))
 
 			stack.defer(async () => {
@@ -417,11 +417,11 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 							? document.diagnostics$
 							: EMPTY
 					})
-				).subscribe((diagnostics) => {
-					sendDiagnostics(document, diagnostics)
+				).subscribe(async (diagnostics) => {
+					await sendDiagnostics(document, diagnostics)
 				}),
-				(subscription) => {
-					sendDiagnostics(document, [])
+				async (subscription) => {
+					await sendDiagnostics(document, [])
 					subscription.unsubscribe()
 				}
 			)
@@ -429,15 +429,15 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 			stack.adopt(
 				document.codeLens$.pipe(
 					skip(1 /* First codeLens should not trigger refresh request */)
-				).subscribe((codeLens$) => {
+				).subscribe((_codeLens$) => {
 					codeLensRefresh$.next()
 				}),
 				(subscription) => subscription.unsubscribe()
 			)
 
 			stack.adopt(
-				document.decorations$.subscribe((decorations) => {
-					this.trpc.textDocument.decoration.mutate({
+				document.decorations$.subscribe(async (decorations) => {
+					await this.trpc.textDocument.decoration.mutate({
 						uri: uri,
 						decorations: decorations
 					})
@@ -472,7 +472,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 			if (documentConfiguration.updateDiagnosticsEvent == "save") {
 				const diagnostics = await firstValueFrom(document.diagnostics$)
-				sendDiagnostics(document, diagnostics)
+				await sendDiagnostics(document, diagnostics)
 			}
 		})
 
@@ -557,7 +557,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 					.values()
 					.filter((codeActions) => codeActions.length > 1)
 					.map((codeActions) => {
-						const changes: Record<string, TextEdit[]> = {}
+						const changes: { [key: string]: TextEdit[] } = {}
 						const commands: { command: string, rest?: any[] }[] = []
 
 						for (const codeAction of codeActions) {
@@ -572,7 +572,7 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 						}
 
 						return {
-							title: `Fix all issues of kind '${codeActions[0].diagnostics[0].message}' (${codeActions[0].diagnostics})`,
+							title: `Fix all issues of kind '${<string>codeActions[0].diagnostics[0].message}' (${<string>codeActions[0].diagnostics[0].code})`,
 							diagnostics: codeActions.map((codeAction) => codeAction.diagnostics[0]),
 							...(Object.keys(changes).length && {
 								edit: {

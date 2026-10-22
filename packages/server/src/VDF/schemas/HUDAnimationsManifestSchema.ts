@@ -49,7 +49,7 @@ export const HUDAnimationsManifestSchema = (document: VDFTextDocument) => {
 						finalize(() => remove.remove())
 					)
 				},
-				resultSelector: (value, results) => {
+				resultSelector: (value, _results) => {
 					const scopes = new Map<DefinitionType, Map<number, VDFRange[]>>()
 					const definitions = new Collection<Definition>()
 					const references = new Collection<VDFText>()
@@ -97,11 +97,11 @@ export const HUDAnimationsManifestSchema = (document: VDFTextDocument) => {
 		getDocumentColor: async () => {
 			return []
 		},
-		onInlayHint: async (params) => {
+		onInlayHint: async (_params) => {
 			return []
 		},
 		completion: {
-			keys: async (params, path, token) => {
+			keys: async (params, path, _token) => {
 				switch (path.length) {
 					case 0: {
 						return {

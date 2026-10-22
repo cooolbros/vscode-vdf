@@ -5,6 +5,7 @@ import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoin
 import { generateTokens, type CompletionToken } from "common/generateTokens"
 import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { resolvePath } from "common/resolvePath"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import dedent from "dedent"
@@ -26,12 +27,17 @@ export interface TextDocumentInit extends Omit<TextDocumentItem, "uri"> {
 	uri: Uri
 }
 
-export type GlobalsLike<TGlobals> = Record<keyof TGlobals, GlobalDefinitionReferences>
+export type GlobalsLike<TGlobals> = { [P in keyof TGlobals]: GlobalDefinitionReferences }
 
 export type GlobalsDefinitions<TGlobals extends GlobalsLike<TGlobals>> = { [P in keyof TGlobals]: ObservedValueOf<TGlobals[P]["definitions$"]> }
 
 class Globals<TGlobals extends GlobalsLike<TGlobals>> {
-	constructor(private readonly globals: TGlobals) { }
+
+	private readonly globals: TGlobals
+
+	public constructor(globals: TGlobals) {
+		this.globals = globals
+	}
 
 	public get(key: keyof TGlobals): GlobalDefinitionReferences {
 		return this.globals[key]
@@ -84,7 +90,7 @@ export interface TextDocumentDiagnosticsParams<TDependencies, TGlobals extends G
 	content: TextDocumentContent<TDocumentSymbols>
 	subscriptions: Subscription[]
 	dispose$: Subject<void>
-	next: () => void
+	next(this: void): void
 }
 
 /**
@@ -92,7 +98,7 @@ export interface TextDocumentDiagnosticsParams<TDependencies, TGlobals extends G
  */
 export type DiagnosticCodeAction = Omit<Diagnostic, "data"> & { data?: { fix: DiagnosticFix } }
 
-export type DiagnosticFix = (params: { params: CodeActionParams, createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit }) => Omit<CodeAction, "diagnostics"> | null
+export type DiagnosticFix = (params: { params: CodeActionParams, createDocumentWorkspaceEdit(this: void, edit: TextEdit): WorkspaceEdit }) => Omit<CodeAction, "diagnostics"> | null
 
 /**
  * Partial {@link DiagnosticCodeAction}
@@ -117,9 +123,9 @@ export interface Decoration {
 	}
 }
 
-export type DocumentLinkResolve = Omit<DocumentLink, "range" | "target" | "data"> & { range: VDFRange, data: { resolve: () => Promise<Uri | null> } }
+export type DocumentLinkResolve = Omit<DocumentLink, "range" | "target" | "data"> & { range: VDFRange, data: { resolve(this: void): Promise<Uri | null> } }
 
-export type ColourInformationStringify = ColorInformation & { stringify: (colour: Color) => string }
+export type ColourInformationStringify = ColorInformation & { stringify(this: void, colour: Color): string }
 
 export interface VDFRenameParams {
 	readonly scope: number | null
@@ -144,7 +150,7 @@ export interface VDFCompletionFilesParams {
 	token: CompletionToken | undefined,
 	fileSystem?: Pick<FileSystemMountPoint, "readDirectory">,
 	basenamePattern?: string,
-	filter?: ([name, type]: [string, number], startsWithFilter: (name: string) => boolean) => boolean,
+	filter?(this: void, [name, type]: [string, number], startsWithFilter: (name: string) => boolean): boolean,
 	map?: "name" | ((name: string) => string),
 	image?: boolean
 }
@@ -224,14 +230,14 @@ export abstract class TextDocumentBase<
 		documentation: ({ documentation, range }: { documentation?: string, range: VDFRange }) => {
 			return [
 				...(documentation != undefined ? [documentation.replaceAll("\n", "\n\n")] : []),
-				"```" + this.languageId,
+				`\`\`\`${this.languageId}`,
 				dedent(this.getText(range)),
 				"```",
 			].join("\n")
 		}
 	}
 
-	constructor(
+	public constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
@@ -515,7 +521,7 @@ export abstract class TextDocumentBase<
 		this.stack.adopt(this.data$.connect(), (connection) => connection.unsubscribe())
 	}
 
-	public async onDidOpenTextDocument(server: VDFLanguageServer, connection: Connection): Promise<AsyncDisposable> {
+	public async onDidOpenTextDocument(_server: VDFLanguageServer, _connection: Connection): Promise<AsyncDisposable> {
 		return {
 			[Symbol.asyncDispose]: async () => { }
 		}
@@ -534,11 +540,11 @@ export abstract class TextDocumentBase<
 		return this.document.offsetAt(position)
 	}
 
-	public setReferences(uri: Uri, references: References): { remove: () => void } {
+	public setReferences(uri: Uri, references: References): { remove(): void } {
 		const key = uri.toString()
 
 		if (this.referenceSubscriptions.has(key)) {
-			throw new Error(`[TextDocumentBase] Already set ${uri} references for ${this.uri}`)
+			throw new Error(`[TextDocumentBase] Already set ${uri.toString()} references for ${this.uri.toString()}`)
 		}
 
 		this.references.references$.value.set(key, references)
@@ -664,7 +670,7 @@ export abstract class TextDocumentBase<
 		}
 	}
 
-	public async onCodeLens(params: CodeLensParams): Promise<CodeLens[]> {
+	public async onCodeLens(_params: CodeLensParams): Promise<CodeLens[]> {
 		return await firstValueFrom(this.codeLens$.pipe(switchAll()))
 	}
 
@@ -680,7 +686,7 @@ export abstract class TextDocumentBase<
 						return {
 							...documentLink,
 							data: {
-								resolve: documentLink.data.resolve,
+								resolve: async () => await documentLink.data.resolve(),
 								uri: this.uri,
 								index: index,
 							}
@@ -846,7 +852,7 @@ export abstract class TextDocumentBase<
 				for (const token of this.references.collection$.value.get(rename.scope, rename.type, rename.key) ?? []) {
 					edits.push(TextDocumentBase.replaceTokenTextEdit(token, rename.type.renameReference(token.text, params.newName)))
 				}
-				return { changes: { [`${this.uri.toString()}`]: edits } }
+				return { changes: { [this.uri.toString()]: edits } }
 			}
 		}
 	}
@@ -932,7 +938,7 @@ export abstract class TextDocumentBase<
 		return {
 			documentChanges: changes
 				.entries()
-				.filter(([uri, annotatedTextEdits]) => annotatedTextEdits.length > 0)
+				.filter(([_uri, annotatedTextEdits]) => annotatedTextEdits.length > 0)
 				.map(([uri, annotatedTextEdits]) => TextDocumentEdit.create({ uri: uri, version: null }, annotatedTextEdits))
 				.toArray(),
 			changeAnnotations: {
@@ -1017,12 +1023,10 @@ export abstract class TextDocumentBase<
 
 			filter ??= (value) => startsWithFilter(value[0])
 
-			folder = posix.resolve(`/${folder}`).substring(1)
+			folder = resolvePath(folder)
 			const recursive = documentConfiguration.filesAutoCompletionKind == "all"
 			const pattern = basenamePattern && `${recursive ? "**/" : ""}${basenamePattern}`
 			const entries = await fileSystem.readDirectory(folder, { recursive, pattern })
-
-			const incremental = documentConfiguration.filesAutoCompletionKind == "incremental"
 
 			const newText = typeof map == "string"
 				? (name: string) => posix.parse(name).name

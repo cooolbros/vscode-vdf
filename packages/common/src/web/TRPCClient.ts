@@ -13,7 +13,7 @@ export interface CreateTRPCClientOptions {
 
 export function createTRPCClient<T extends AnyTRPCRouter>(opts: CreateTRPCClientOptions) {
 	const { name, vscode } = opts
-	const requests = new Map<number, { resolve: (value: any) => void }>()
+	const requests = new Map<number, { resolve(value: any): void }>()
 
 	const messageSchema = z.discriminatedUnion("type", [
 		z.object({
@@ -63,7 +63,7 @@ export function createTRPCClient<T extends AnyTRPCRouter>(opts: CreateTRPCClient
 				onNotification: (type, handler) => {
 					const subscription = onNotification$.subscribe((notification) => {
 						if (notification.method == type) {
-							handler(notification.param)
+							void handler(notification.param)
 						}
 					})
 					return { [Symbol.dispose]: () => subscription.unsubscribe() }
@@ -73,7 +73,7 @@ export function createTRPCClient<T extends AnyTRPCRouter>(opts: CreateTRPCClient
 					const { promise, resolve } = Promise.withResolvers()
 					requests.set(requestID, { resolve })
 					vscode.postMessage({ id: requestID, message: param })
-					return promise
+					return await promise
 				},
 			}),
 		],

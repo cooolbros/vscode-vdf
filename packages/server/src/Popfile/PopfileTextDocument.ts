@@ -57,7 +57,10 @@ function collectTFBotItems(path: VDFDocumentSymbol[], definitions: Definitions) 
 			return { TFClass: undefined, items: [] }
 		}
 
-		let { template, TFClass, items } = definition[0].data as { template?: string, TFClass?: string, items: string[] }
+		const data = <{ template?: string, TFClass?: string, items: string[] }>definition[0].data
+		const { template, items } = data
+		let TFClass = data.TFClass
+
 		if (template != undefined && !seen.has(template.toLowerCase())) {
 			seen.add(template.toLowerCase())
 			const result = collectTemplateAttributes(template, definitions, seen)
@@ -224,7 +227,7 @@ const MissionSchema: PopfileSchema = {
 			yield template
 		}
 	},
-	validateClassIcon: (d) => {
+	validateClassIcon: (_d) => {
 		return (name, detail, documentSymbol, path, diagnostics, context) => {
 			context.classIcons.getOrInsertComputed(detail.text, () => []).push({
 				index: diagnostics.length,
@@ -248,7 +251,7 @@ const MissionSchema: PopfileSchema = {
 					source: "popfile",
 					message: `Unknown event '${value.key.text}'. Expected '${[...events.values()].join("' | '")}'`,
 					data: {
-						fix: ({ params, createDocumentWorkspaceEdit }) => {
+						fix: ({ params: _params, createDocumentWorkspaceEdit }) => {
 							const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
 							if (!conditional) {
 								return null
@@ -312,7 +315,7 @@ const MissionSchema: PopfileSchema = {
 								}
 							],
 							data: {
-								fix: ({ params, createDocumentWorkspaceEdit }) => {
+								fix: ({ params: _params, createDocumentWorkspaceEdit }) => {
 									const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
 									if (!conditional) {
 										return null
@@ -353,18 +356,18 @@ const BaseSchema: PopfileSchema = {
 			}
 		}
 	},
-	validateClassIcon: (d) => {
-		return (name, detail, documentSymbol, path, diagnostics, context) => {
+	validateClassIcon: (_d) => {
+		return (_name, _detail, _documentSymbol, _path, _diagnostics, _context) => {
 			// Don't push diagnostics for ClassIcon references in files with no .bsp because the BSP packed ClassIcons are not yet known
 		}
 	},
-	validateEventName: (d) => {
-		return (name, value, path, diagnostics, context) => {
+	validateEventName: (_d) => {
+		return (_name, _value, _path, _diagnostics, _context) => {
 			// Don't push diagnostics for event references in files with no .bsp because the valid events are not yet known
 		}
 	},
-	validateTemplateReference: (d) => {
-		return (name, detail, path, diagnostics, context) => {
+	validateTemplateReference: (_d) => {
+		return (_name, _detail, _path, _diagnostics, _context) => {
 			// Don't push diagnostics for template references in files with no .bsp because the valid events are not yet known
 		}
 	},
@@ -389,7 +392,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 	private static readonly virtualTextDocumentContents = new Map<string, { uri: Uri, text: string }>()
 	private static open = false
 
-	public readonly languageId: "popfile" = "popfile"
+	public readonly languageId = <const>"popfile"
 
 	private readonly workspace: VDFWorkspace
 	private readonly base: BaseDocument
@@ -404,7 +407,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 	protected getDiagnostics: (params: TextDocumentDiagnosticsParams<Dependencies, Globals, VDFDocumentSymbols>) => void
 	public readonly decorations$: Observable<Decoration[]>
 
-	constructor(
+	public constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
@@ -517,7 +520,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 									})
 								}
 
-								for (const [index, documentSymbol] of documentSymbols.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Mission".toLowerCase()).entries()) {
+								for (const [_index, documentSymbol] of documentSymbols.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Mission".toLowerCase()).entries()) {
 									const children = documentSymbol.children ?? []
 									for (const documentSymbol of children) {
 										if (!missionSpawnKeys.includes(documentSymbol.key.text.toLowerCase())) {
@@ -736,10 +739,10 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 						return clear(text)
 					}
 					else {
-						let content = clear(text.slice(0, this.offsetAt(ranges[0].start)))
+						let content = clear(text.slice(0, this.offsetAt(ranges[0]!.start)))
 						for (const [index, range] of ranges.entries()) {
 							content += translate(this.getText(range))
-							const end = ranges[index + 1]?.start
+							const end = index + 1 < ranges.length ? ranges[index + 1].start : undefined
 							content += clear(text.slice(this.offsetAt(range.end), end && this.offsetAt(end)))
 						}
 						return content
@@ -759,7 +762,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			source: this.languageId,
 			message: `Unknown attribute '${value.key.text}' in ${parent} definition.`,
 			data: {
-				fix: ({ params, createDocumentWorkspaceEdit }) => {
+				fix: ({ params: _params, createDocumentWorkspaceEdit }) => {
 					const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
 					if (!conditional) {
 						return null
@@ -787,7 +790,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 		)
 
 		const length = (max: number): RefineString<PopfileTextDocumentDiagnosticsContext> => {
-			return (name, detail, documentSymbol, path, diagnostics, context) => {
+			return (name, detail, documentSymbol, path, diagnostics, _context) => {
 				const length = detail.text.length + "\0".length
 				if (length > max) {
 					diagnostics.push({
@@ -845,7 +848,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 				}
 			}),
 			// https://github.com/cooolbros/vscode-vdf/issues/33
-			(name, value, path, diagnostics, context) => {
+			(name, value, path, diagnostics, _context) => {
 				if (value.children?.length == 1 && value.children[0].key.text.toLowerCase() == "TFBot".toLowerCase()) {
 					diagnostics.push({
 						range: value.range,
@@ -920,7 +923,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 					"ItemName": d.string(d.reference(types.item, "itemsGame", validateItemNameOwner)),
 					[unknown]: () => { },
 				}),
-				(name, value, path, diagnostics, context) => {
+				(name, value, path, diagnostics, _context) => {
 					if (value.children) {
 						const itemName = value.children.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "ItemName".toLowerCase() && documentSymbol.value != undefined)?.value
 						if (itemName == undefined) {
@@ -937,7 +940,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			)
 		}
 
-		const dynamicAttributes: Record<string, Validate<VDFDocumentSymbol, PopfileTextDocumentDiagnosticsContext> | [Validate<VDFDocumentSymbol, PopfileTextDocumentDiagnosticsContext>, KeyDistinct]> = {
+		const dynamicAttributes: { [key: string]: Validate<VDFDocumentSymbol, PopfileTextDocumentDiagnosticsContext> | [Validate<VDFDocumentSymbol, PopfileTextDocumentDiagnosticsContext>, KeyDistinct] } = {
 			"Attributes": [d.string(d.set(values.attributes)), KeyDistinct.None],
 			"BehaviorModifiers": d.string(d.set(values.behaviormodifiers)),
 			"CharacterAttributes": d.documentSymbols({ [unknown]: () => { } }),
@@ -956,7 +959,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			[unknown]: d.sequence(
 				this.schema.validateEventName(d),
 				d.documentSymbols(dynamicAttributes),
-				(name, value, path, diagnostics, context) => d.distinct(KeyDistinct.First, value, path.at(-1)!.children!, diagnostics)
+				(name, value, path, diagnostics, _context) => d.distinct(KeyDistinct.First, value, path.at(-1)!.children!, diagnostics)
 			)
 		})
 
@@ -1048,7 +1051,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 
 		const validateWaitBetweenSpawns = d.sequence(
 			d.string(d.float()),
-			(name, value, path, diagnostics, context) => {
+			(name, value, path, diagnostics, _context) => {
 				const children = path.at(-1)!.children!
 
 				// Not supporting conditionals here
@@ -1067,7 +1070,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 
 		const validateWaitBetweenSpawnsAfterDeath = d.sequence(
 			d.string(d.float()),
-			(name, value, path, diagnostics, context) => {
+			(name, value, path, diagnostics, _context) => {
 				const children = path.at(-1)!.children!
 
 				// Not supporting conditionals here
@@ -1138,7 +1141,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 				[unknown]: validatePopulator(),
 			}),
 			// https://github.com/cooolbros/vscode-vdf/issues/34
-			(name, value, path, diagnostics, context) => {
+			(name, value, path, diagnostics, _context) => {
 				if (value.children) {
 					const maxActive = parseInt(value.children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "MaxActive".toLowerCase())?.value?.text ?? "")
 					const spawnCount = parseInt(value.children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "SpawnCount".toLowerCase())?.value?.text ?? "")
@@ -1398,12 +1401,12 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 
 			const documentSymbols = await firstValueFrom(this.documentSymbols$)
 			if (documentSymbols.findRecursive((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Action".toLowerCase() && (documentSymbol.value?.text.toLowerCase() == "RunScriptCode".toLowerCase() || documentSymbol.value?.text.toLowerCase() == "RunScriptFile".toLowerCase()))) {
-				this.trpc.popfile.vscript.install.query({ name: this.uri.basename() })
+				void this.trpc.popfile.vscript.install.query({ name: this.uri.basename() })
 			}
 		}
 
 		const subscription = this.virtualDocumentRanges$.subscribe(() => {
-			connection.workspace.textDocumentContent.refresh(this.virtualUri.toString())
+			void connection.workspace.textDocumentContent.refresh(this.virtualUri.toString())
 		})
 
 		return {
@@ -1628,7 +1631,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 		}
 	}
 
-	private async onFoldingRanges(params: FoldingRangeParams): Promise<FoldingRange[] | undefined> {
+	private async onFoldingRanges(_params: FoldingRangeParams): Promise<FoldingRange[] | undefined> {
 		const ranges = await firstValueFrom(this.virtualDocumentRanges$)
 		return ranges.map((range) => FoldingRange.create(range.start.line, range.end.line, range.start.character, range.end.character, FoldingRangeKind.Region))
 	}
@@ -1883,7 +1886,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 				const data = await firstValueFrom(this.data$)
 				for (const { type, keys, global } of definitionTypes) {
 					if (keys.has(key)) {
-						const scope = data.content.definitionReferences.scopes.get(type)?.entries().find(([scope, ranges]) => ranges.some((range) => range.contains(params.position)))?.[0] ?? null
+						const scope = data.content.definitionReferences.scopes.get(type)?.entries().find(([_scope, ranges]) => ranges.some((range) => range.contains(params.position)))?.[0] ?? null
 						const definitions = (await firstValueFrom(global == null ? this.definitions$ : this.data$.pipe(switchMap((data) => data.globals.get(global).definitions$)))).ofType(scope, type)
 						return {
 							length: definitions.size,

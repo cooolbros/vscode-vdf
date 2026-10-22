@@ -8,7 +8,7 @@ export interface TRPCRequestHandlerOptions<T extends z.util.EnumLike> {
 	router: AnyTRPCRouter
 	schema: z.ZodEnum<T>
 	stack: AsyncDisposableStack
-	sendNotification: (client: z.infer<z.ZodEnum<T>>, method: "vscode-vdf/trpc", param: unknown) => Promise<void>
+	sendNotification(client: z.infer<z.ZodEnum<T>>, method: "vscode-vdf/trpc", param: unknown): Promise<void>
 }
 
 function next(): never {
@@ -25,7 +25,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 			op: z.object({
 				id: z.number(),
 				type: z.enum(procedureTypes),
-				input: z.unknown().optional().transform((arg) => transformer.input.deserialize(arg) as {}),
+				input: z.unknown().optional().transform((arg) => <{}>transformer.input.deserialize(arg)),
 				path: z.string(),
 				context: z.object({ client: opts.schema }),
 				signal: z.instanceof(AbortSignal).nullable().default(null),
@@ -90,7 +90,7 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 								next: (value) => {
 									// Don't check (value.result.type == "data") because tRPC doesn't include { type: "data" } in "data" results
 									if ("data" in value.result) {
-										opts.sendNotification(client, "vscode-vdf/trpc", { type: "next", value: { id: op.id, value: { kind: "N", value: transformer.output.serialize(value) } } })
+										void opts.sendNotification(client, "vscode-vdf/trpc", { type: "next", value: { id: op.id, value: { kind: "N", value: transformer.output.serialize(value) } } })
 									}
 								},
 								error: (err) => {
@@ -104,11 +104,11 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 										ctx: op.context,
 									})
 									console.dir(error)
-									opts.sendNotification(client, "vscode-vdf/trpc", { type: "next", value: { id: op.id, value: { kind: "E", error: error } } })
+									void opts.sendNotification(client, "vscode-vdf/trpc", { type: "next", value: { id: op.id, value: { kind: "E", error: error } } })
 								},
 								complete: () => {
 									if (subscriptions.get(client)?.has(op.id)) {
-										opts.sendNotification(client, "vscode-vdf/trpc", { type: "next", value: { id: op.id, value: { kind: "C" } } },)
+										void opts.sendNotification(client, "vscode-vdf/trpc", { type: "next", value: { id: op.id, value: { kind: "C" } } },)
 									}
 								},
 							})

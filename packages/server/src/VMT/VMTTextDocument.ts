@@ -61,7 +61,7 @@ interface Globals {
 
 export class VMTTextDocument extends TextDocumentBase<Dependencies, Globals, VDFDocumentSymbols> {
 
-	public readonly languageId: "vmt" = "vmt"
+	public readonly languageId = <const>"vmt"
 
 	private readonly workspace: VDFWorkspace
 	private readonly base: BaseDocument
@@ -71,7 +71,7 @@ export class VMTTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 	public readonly decorations$: Observable<Decoration[]>
 	public readonly baseTexture$: Observable<string | null>
 
-	constructor(
+	public constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
@@ -246,7 +246,7 @@ export class VMTTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 		})
 	}
 
-	public async onInlayHint(params: { range: VDFRange }): Promise<InlayHint[]> {
+	public async onInlayHint(_params: { range: VDFRange }): Promise<InlayHint[]> {
 		return []
 	}
 
@@ -273,7 +273,7 @@ export class VMTTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 			async (params, path, key, token) => {
 				key = key.toLowerCase()
 				if (key == "#base") {
-					return this.base.completionBaseValues(params)
+					return await this.base.completionBaseValues(params)
 				}
 
 				// Static

@@ -506,7 +506,7 @@ export const ItemsGameSchema = (document: VDFTextDocument) => {
 				}
 			})
 		),
-		getDiagnostics: (diagnostics, context) => {
+		getDiagnostics: (_diagnostics, _context) => {
 			// items_game.txt does not use #base
 			// items_game.txt is readonly
 		},
@@ -715,11 +715,11 @@ export const ItemsGameSchema = (document: VDFTextDocument) => {
 						.values()
 						.filter((reference) => params.range.contains(reference.range))
 						.map((reference) => {
-							return {
+							return <InlayHint>{
 								position: reference.range.end,
 								label: [definition[0].inlayHintLabel!],
 								paddingLeft: true,
-							} as InlayHint
+							}
 						})
 				})
 				.toArray()

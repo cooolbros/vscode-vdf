@@ -24,7 +24,7 @@ interface VDFTextDocumentBaseLike {
 	uri: Uri,
 	base$: Observable<string[]>,
 	definitions$: Observable<Definitions>
-	setReferences: TextDocumentBase<unknown, Record<string, GlobalDefinitionReferences>, VDFDocumentSymbols>["setReferences"]
+	setReferences: TextDocumentBase<unknown, { [key: string]: GlobalDefinitionReferences }, VDFDocumentSymbols>["setReferences"]
 }
 
 /**
@@ -48,7 +48,7 @@ export class BaseDocument {
 	 */
 	public readonly base$: Observable<string[]>
 
-	constructor(document: VDFTextDocumentLike) {
+	public constructor(document: VDFTextDocumentLike) {
 		this.document = document
 		this.context = new Map()
 
@@ -191,8 +191,7 @@ export class BaseDocument {
 										}
 									}),
 									distinctUntilChanged((previous, current) => {
-										return true
-											&& previous.value.version.length == current.value.version.length
+										return previous.value.version.length == current.value.version.length
 											&& previous.value.version.every((value, index) => value == current.value.version[index])
 									}),
 								)
@@ -232,7 +231,7 @@ export class BaseDocument {
 		}
 	}
 
-	public getDiagnostics(diagnostics: PartialDiagnosticCodeAction[], context: DiagnosticsContext<{}, Record<string, GlobalDefinitionReferences>, VDFDocumentSymbols>) {
+	public getDiagnostics(diagnostics: PartialDiagnosticCodeAction[], context: DiagnosticsContext<{}, { [key: string]: GlobalDefinitionReferences }, VDFDocumentSymbols>) {
 		const base = new Map<string, PartialDiagnosticCodeActionReference[]>()
 
 		for (const documentSymbol of context.content.documentSymbols) {
@@ -310,7 +309,7 @@ export class BaseDocument {
 					observable$.subscribe((result) => {
 						switch (result.type) {
 							case BaseResultType.None: {
-								for (const { index, range, detail } of values) {
+								for (const { index, range, detail: _detail } of values) {
 									diagnostics[index] = {
 										range: range,
 										severity: DiagnosticSeverity.Hint,
@@ -325,7 +324,7 @@ export class BaseDocument {
 							}
 							case BaseResultType.Success: {
 								if (result.ambient) {
-									for (const { index, range, detail } of values) {
+									for (const { index, range, detail: _detail } of values) {
 										diagnostics[index] = {
 											range: range,
 											severity: DiagnosticSeverity.Hint,
@@ -335,7 +334,7 @@ export class BaseDocument {
 									}
 								}
 								else {
-									for (const { index, range, detail } of values) {
+									for (const { index, range: _range, detail: _detail } of values) {
 										diagnostics[index] = null
 									}
 								}
@@ -343,7 +342,7 @@ export class BaseDocument {
 							}
 							case BaseResultType.Error: {
 								const diagnostic = result.errors.flatMap((error) => this.getBaseErrorDiagnostics(error))
-								for (const { index, range, name, detail } of values) {
+								for (const { index, range, name: _name, detail: _detail } of values) {
 									diagnostics[index] = diagnostic.map((rest) => ({
 										range: range,
 										...rest
@@ -358,7 +357,7 @@ export class BaseDocument {
 				)
 			}
 			else {
-				for (const { index, range, detail } of values) {
+				for (const { index, range: _range, detail: _detail } of values) {
 					diagnostics[index] = null
 				}
 			}
@@ -446,9 +445,9 @@ export class BaseDocument {
 				const path = error.path
 				return error.errors.flatMap((error) => {
 					return this.getBaseErrorDiagnostics(error).map((diagnostic) => {
-						const { message, data, ...rest } = diagnostic
+						const { message: _message, data: _data, ...rest } = diagnostic
 						return {
-							message: `#base error in "${path}": ${diagnostic.message}`,
+							message: `#base error in "${path}": ${<string>diagnostic.message}`,
 							...rest
 						}
 					})
@@ -510,7 +509,7 @@ export class BaseDocument {
 				folder: this.document.relativePath.folder ?? "",
 				params: params,
 				token: token,
-				filter: ([name, type], startsWithFilter) => {
+				filter: ([name, _type], _startsWithFilter) => {
 					const nameLowerCase = name.toLowerCase()
 					return nameLowerCase != basename && !bases.has(nameLowerCase)
 				},
@@ -534,7 +533,7 @@ export class BaseDocument {
 				params: params,
 				token: token,
 				fileSystem: fileSystem,
-				filter: ([name, type], startsWithFilter) => {
+				filter: ([name, _type], startsWithFilter) => {
 					const nameLowerCase = name.toLowerCase()
 					return startsWithFilter(name) && nameLowerCase != basename && !bases.has(nameLowerCase)
 				},

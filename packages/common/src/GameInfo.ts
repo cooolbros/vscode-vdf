@@ -7,7 +7,7 @@ export class GameInfo {
 	public readonly uri: Uri
 	public readonly searchPaths: Uri[]
 
-	constructor(uri: Uri, text: string) {
+	public constructor(uri: Uri, text: string) {
 		this.uri = uri
 
 		const gameInfo = VDF.parse(text)

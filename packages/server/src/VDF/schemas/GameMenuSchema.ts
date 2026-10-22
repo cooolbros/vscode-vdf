@@ -130,11 +130,11 @@ export const GameMenuSchema = (document: VDFTextDocument) => {
 						.values()
 						.filter((reference) => params.range.contains(reference.range))
 						.map((reference) => {
-							return {
+							return <InlayHint>{
 								position: reference.range.end,
 								label: [definition[0].inlayHintLabel!],
 								paddingLeft: true,
-							} as InlayHint
+							}
 						})
 				})
 				.toArray()
@@ -189,7 +189,7 @@ export const GameMenuSchema = (document: VDFTextDocument) => {
 			values: async (params, path, key, token) => {
 				key = key.toLowerCase()
 				if (key == "#base") {
-					return base.completionBaseValues(params, token)
+					return await base.completionBaseValues(params, token)
 				}
 
 				switch (key.toLowerCase()) {

@@ -5,7 +5,10 @@ import type { Uri } from "common/Uri"
 import vscode from "vscode"
 
 export class BSPFactory extends RefCountAsyncDisposableFactory<Uri, BSP> {
-	constructor(private readonly context: vscode.ExtensionContext) {
+
+	private readonly context: vscode.ExtensionContext
+
+	public constructor(context: vscode.ExtensionContext) {
 		super(
 			(uri) => uri.toString(),
 			async (uri) => {
@@ -17,5 +20,7 @@ export class BSPFactory extends RefCountAsyncDisposableFactory<Uri, BSP> {
 				return new BSP(buffer)
 			}
 		)
+
+		this.context = context
 	}
 }

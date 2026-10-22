@@ -13,7 +13,7 @@ export type KeyValues = { [key: string]: string | KeyValues | (string | KeyValue
  * Provides support for parsing and stringifying VDF objects
  */
 export class VDF {
-	static parse(str: string): KeyValues {
+	public static parse(str: string): KeyValues {
 		const tokeniser = new VDFTokeniser(str)
 
 		const parse = (obj: boolean) => {
@@ -104,7 +104,7 @@ export class VDF {
 		return parse(false)
 	}
 
-	static stringify(keyValues: KeyValues, options?: Partial<VDFStringifyOptions>): string {
+	public static stringify(keyValues: KeyValues, options?: Partial<VDFStringifyOptions>): string {
 
 		const _options: VDFStringifyOptions = {
 			indentation: options?.indentation ?? VDFIndentation.Tabs,

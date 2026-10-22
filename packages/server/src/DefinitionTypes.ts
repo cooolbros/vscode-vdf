@@ -1,7 +1,7 @@
 import { removeSoundChars } from "common/soundChars"
 
 const defaults = {
-	test: (value: string) => true,
+	test: (_value: string) => true,
 	toDefinition: (reference: string) => reference,
 	renameReference: (oldReference: string, newReference: string) => newReference,
 }

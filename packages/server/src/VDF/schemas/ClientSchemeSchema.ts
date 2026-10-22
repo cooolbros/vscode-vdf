@@ -737,7 +737,7 @@ export const ClientSchemeSchema = (document: VDFTextDocument) => {
 				switch (path.length) {
 					case 0: {
 						if (key == "#base") {
-							return base.completionBaseValues(params, token)
+							return await base.completionBaseValues(params, token)
 						}
 						else {
 							return null
@@ -751,7 +751,7 @@ export const ClientSchemeSchema = (document: VDFTextDocument) => {
 						// "Scheme" -> <type> -> ""
 						switch (path[1].key.text.toLowerCase()) {
 							case "Borders".toLowerCase(): {
-								return borders()
+								return await borders()
 							}
 							default: {
 								return null
@@ -803,7 +803,7 @@ export const ClientSchemeSchema = (document: VDFTextDocument) => {
 								if (borderType == "image") {
 									switch (key) {
 										case "image": {
-											return images()
+											return await images()
 										}
 										case "tiled": {
 											return params.bits()
@@ -875,7 +875,7 @@ export const ClientSchemeSchema = (document: VDFTextDocument) => {
 							case "Borders".toLowerCase(): {
 								switch (key) {
 									case "color": {
-										return colours()
+										return await colours()
 									}
 									case "offset": {
 										return {

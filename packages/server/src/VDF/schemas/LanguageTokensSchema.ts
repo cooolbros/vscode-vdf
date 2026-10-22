@@ -43,7 +43,7 @@ export const LanguageTokensSchema = (document: VDFTextDocument) => {
 							conditional: documentSymbol.conditional ?? undefined,
 							inlayHintLabel: {
 								value: documentSymbol.value.text.includes("\\n") ? `${documentSymbol.value.text.split("\\n")[0]}…` : documentSymbol.value.text,
-								tooltip: { kind: MarkupKind.Markdown, value: "```txt\n" + documentSymbol.value.text.replaceAll("\\n", "\n") + "\n```" },
+								tooltip: { kind: MarkupKind.Markdown, value: `\`\`\`txt\n${documentSymbol.value.text.replaceAll("\\n", "\n")}\n\`\`\`` },
 							},
 							completionItem: {
 								label: documentSymbol.key.text,
@@ -73,7 +73,7 @@ export const LanguageTokensSchema = (document: VDFTextDocument) => {
 		getDocumentColor: async () => {
 			return []
 		},
-		onInlayHint: async (params) => {
+		onInlayHint: async (_params) => {
 			return []
 		},
 		completion: {

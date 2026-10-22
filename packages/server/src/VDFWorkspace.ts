@@ -23,7 +23,7 @@ import type { TextDocument } from "./VDFLanguageServer"
 
 export interface GlobalDefinitionReferences {
 	readonly definitions$: Observable<Definitions>
-	setReferences?(uri: Uri, references: References): { remove: () => void }
+	setReferences?(uri: Uri, references: References): { remove(): void }
 }
 
 export const enum VDFFileType {
@@ -202,7 +202,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 		{
 			readonly document$: Observable<{ previous: TextDocument | null, current: TextDocument | null }>,
 			readonly deleteOnRefCountZero: boolean,
-			readonly documentReferences: Map<string, { readonly references: References, connected: boolean, remove?: { remove: () => void } }>
+			readonly documentReferences: Map<string, { readonly references: References, connected: boolean, remove?: { remove(): void } }>
 			subscription?: Subscription
 			refCount: number,
 		}
@@ -211,7 +211,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 	private _hudAnimationsReferences?: Promise<void>
 	private _vguiReferences?: Promise<void>
 
-	constructor({
+	public constructor({
 		uri,
 		connection,
 		fileSystem,
@@ -275,8 +275,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 			return this.getDocument(path, encoding).pipe(
 				switchMap((document) => document.definitions$),
 				distinctUntilChanged((previous, current) => {
-					return true
-						&& previous.version.length == current.version.length
+					return previous.version.length == current.version.length
 						&& previous.version.every((value, index) => value == current.version[index])
 				}),
 				shareReplayUntilDisposed(this.dispose$),
@@ -538,7 +537,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 				for (const documentSymbol of items) {
 					const prefab = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "prefab")?.value?.text.toLowerCase()
 					if (prefab == "valve paint_can" || prefab == "valve paint_can_team_color") {
-						const item_name = types.string.toDefinition(documentSymbol.children?.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "item_name")?.value?.text!)
+						const item_name = types.string.toDefinition(documentSymbol.children!.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "item_name")!.value!.text)
 						const attributes = documentSymbol.children?.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "attributes")?.children
 						if (!item_name || !attributes) {
 							continue
@@ -641,7 +640,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 	}
 
 	public async HUDAnimationsReferences() {
-		return this._hudAnimationsReferences ??= firstValueFrom(
+		return await (this._hudAnimationsReferences ??= firstValueFrom(
 			this.HUDAnimations$.pipe(
 				switchMap((HUDAnimations) => {
 					return HUDAnimations.length > 0
@@ -650,11 +649,11 @@ export class VDFWorkspace extends AsyncDisposableBase {
 				}),
 				map(() => undefined)
 			)
-		)
+		))
 	}
 
 	public async VGUIReferences() {
-		return this._vguiReferences ??= Promise.try(async () => {
+		return await (this._vguiReferences ??= Promise.try(async () => {
 			const reporter = await this.connection.window.createWorkDoneProgress()
 			reporter.begin("Indexing", 0)
 
@@ -670,8 +669,8 @@ export class VDFWorkspace extends AsyncDisposableBase {
 				const entries = await fileSystem.readDirectory(folder, options)
 				yield* entries
 					.values()
-					.filter(([path, type]) => type == 1)
-					.map(([path, type]) => posix.join(folder, path))
+					.filter(([_path, type]) => type == 1)
+					.map(([path, _type]) => posix.join(folder, path))
 			}
 
 			const entries = async function*() {
@@ -705,7 +704,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 			setTimeout(() => {
 				reporter.done()
 			}, 1000)
-		})
+		}))
 	}
 
 	public fileType(path: string) {
@@ -726,7 +725,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 	public entities(uri: Uri) {
 		const extname = uri.extname()
 		if (extname != ".pop") {
-			throw new Error(`${uri}: "${extname}" != ".pop"`)
+			throw new Error(`${uri.toString()}: "${extname}" != ".pop"`)
 		}
 
 		return findMap(uri, this.fileSystem).pipe(
@@ -754,7 +753,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 						...new Set(
 							entities
 								.get("info_player_teamspawn")
-								?.toSorted((a, b) => (<string>b["TeamNum"])?.localeCompare(<string>a["TeamNum"]) || a.targetname?.localeCompare(b.targetname!) || 0)
+								?.toSorted((a, b) => (<string | undefined>b["TeamNum"])?.localeCompare(<string>a["TeamNum"]) || a.targetname?.localeCompare(b.targetname!) || 0)
 								.values()
 								.map((entity) => entity.targetname)
 								.filter((targetname) => targetname != undefined)
@@ -796,7 +795,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 					const events = new Map([["default", "Default"]])
 					for (const logic_relay of entities.get("logic_relay") ?? []) {
 						for (const trigger of OnTriggerSchema.safeParse(logic_relay["OnTrigger"]).data ?? []) {
-							const [target, input, parameter, delay, once] = trigger.split(",")
+							const [target, input, parameter, _delay, _once] = trigger.split(",")
 							if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes" || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
 								events.getOrInsert(parameter.toLowerCase(), parameter)
 							}
@@ -815,7 +814,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 		)
 	}
 
-	public setFileReferences(path: string, uri: Uri, references: References): { remove: () => void } {
+	public setFileReferences(path: string, uri: Uri, references: References): { remove(): void } {
 		const pathReferences = this.filesReferences.getOrInsertComputed(path, () => {
 			return {
 				document$: this.getDocument(path).pipe(
@@ -851,7 +850,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 
 		let documentReferences = pathReferences.documentReferences.get(key)
 		if (documentReferences?.connected) {
-			throw new Error(`[VDFWorkspace] Already set ${uri} references for ${path}`)
+			throw new Error(`[VDFWorkspace] Already set ${uri.toString()} references for ${path}`)
 		}
 
 		documentReferences = pathReferences.documentReferences.getOrInsertComputed(key, () => ({ references, connected: true }))

@@ -15,7 +15,7 @@ export class VDFPosition implements PositionLike {
 	public readonly line: number
 	public readonly character: number
 
-	constructor(line: number, character: number) {
+	public constructor(line: number, character: number) {
 		this.line = line
 		this.character = character
 	}

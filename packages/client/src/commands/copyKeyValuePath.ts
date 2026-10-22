@@ -34,7 +34,7 @@ export async function copyKeyValuePath(editor: vscode.TextEditor): Promise<void>
 	const documentSymbolsPath = [
 		...path.map((documentSymbol) => documentSymbol.key),
 		...(path.at(-1)?.value?.range.contains(editor.selection.start) ? [path.at(-1)!.value!] : [])
-	].map((value) => quote(value.text) ? `"${value}"` : value)
+	].map((value) => quote(value.text) ? `"${value.text}"` : value.text)
 
 	const result = `${filePath.split(/[/\\]+/).join("/")} ${documentSymbolsPath.join(" > ")}`
 
