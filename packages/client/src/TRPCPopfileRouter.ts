@@ -148,7 +148,7 @@ const executeCommand = async <T extends z.ZodType>(schema: T, command: string, .
 		return schema.parse(await vscode.commands.executeCommand(command, ...rest))
 	}
 	catch (error) {
-		console.error(error instanceof z.ZodError ? z.prettifyError(error) : error)
+		console.error(command, error instanceof z.ZodError ? z.prettifyError(error) : error)
 	}
 }
 
