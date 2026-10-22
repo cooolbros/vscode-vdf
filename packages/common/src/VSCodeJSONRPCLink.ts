@@ -32,10 +32,6 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions): TRPCLink<AnyT
 	let id = 0
 	const subjects = new Map<number, Subject<any>>()
 
-	if (!opts.stack) {
-		console.warn(`No stack passed to VSCodeJSONRPCLink, subscriptions will be leaked!`)
-	}
-
 	opts.stack?.defer(async () => {
 		if (subjects.size) {
 			debugger

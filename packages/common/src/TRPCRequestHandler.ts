@@ -7,6 +7,7 @@ import { z } from "zod"
 export interface TRPCRequestHandlerOptions<T extends z.util.EnumLike> {
 	router: AnyTRPCRouter
 	schema: z.ZodEnum<T>
+	stack: AsyncDisposableStack
 	sendNotification: (client: z.infer<z.ZodEnum<T>>, method: "vscode-vdf/trpc", param: unknown) => Promise<void>
 }
 
@@ -38,6 +39,14 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 	])
 
 	const subscriptions = new Map<z.infer<z.ZodEnum<T>>, Map<number, Unsubscribable>>()
+
+	opts.stack.defer(async () => {
+		for (const map of subscriptions.values()) {
+			for (const subscription of map.values()) {
+				subscription.unsubscribe()
+			}
+		}
+	})
 
 	return async (param: unknown) => {
 		const request = requestSchema.parse(param)
