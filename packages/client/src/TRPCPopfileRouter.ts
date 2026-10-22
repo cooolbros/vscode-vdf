@@ -44,7 +44,10 @@ const CompletionItemProviderSchema = z.object({
 	items: z.array(
 		z.object({
 			label: z.string(),
-			kind: z.enum(CompletionItemKind).optional(),
+			kind: z.union([
+				z.literal(0) /* editor.wordBasedSuggestions */,
+				z.enum(CompletionItemKind).optional()
+			]),
 			tags: z.array(z.enum(CompletionItemTag)).optional(),
 			detail: z.string().optional(),
 			documentation: MarkdownStringSchema.optional(),
