@@ -21,6 +21,7 @@ export function TRPCWebViewRequestHandler<T extends z.util.EnumLike>(opts: TRPCW
 	const trpc = TRPCRequestHandler({
 		router: router,
 		schema: schema,
+		stack: stack,
 		sendNotification: async (server, method, param) => {
 			await webview.postMessage({
 				type: "notification",

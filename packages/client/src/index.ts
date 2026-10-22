@@ -66,6 +66,7 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 					bspFactory
 				),
 				schema: z.enum(["vdf"]),
+				stack: this.stack,
 				sendNotification: async (server, method, param) => {
 					await client.sendNotification(method, param)
 				}
