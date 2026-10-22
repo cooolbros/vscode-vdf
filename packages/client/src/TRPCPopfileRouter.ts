@@ -137,7 +137,7 @@ const SignatureHelpProviderSchema = z.object({
 	),
 	activeSignature: z.number(),
 	activeParameter: z.number().optional(),
-})
+}).optional()
 
 const WorkspaceEditSchema = z
 	.instanceof(vscode.WorkspaceEdit)
