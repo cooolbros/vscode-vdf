@@ -4,8 +4,8 @@
         "directory": "dist"
     },
     "scripts": {
-        "dev": "node --watch-path=./src build",
-        "build": "node build"
+        "dev": "node --watch-path=./src build.ts",
+        "build": "node build.ts"
     },
     "devDependencies": {
         "@types/js-yaml": "^4.0.9",
