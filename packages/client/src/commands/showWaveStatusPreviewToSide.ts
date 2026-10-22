@@ -173,20 +173,21 @@ export function showWaveStatusPreviewToSide(
 			map((text) => {
 				const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: true })
 
-				const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "lang".toLowerCase())?.children
+				const lang = documentSymbols.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "lang".toLowerCase())?.children
 				if (!lang) {
 					throw new Error("lang")
 				}
 
-				const tokens = lang.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Tokens".toLowerCase())?.children
+				const tokens = lang.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Tokens".toLowerCase())?.children
 				if (!tokens) {
 					throw new Error("Tokens")
 				}
 
 				return new Map<Lowercase<string>, string>(
 					tokens
-						.filter((documentSymbol) => documentSymbol.detail != undefined)
-						.map((documentSymbol) => [documentSymbol.key.toLowerCase() as Lowercase<string>, documentSymbol.detail!])
+						.values()
+						.filter((documentSymbol) => documentSymbol.value != undefined)
+						.map((documentSymbol) => [documentSymbol.key.text.toLowerCase() as Lowercase<string>, documentSymbol.value!.text])
 				)
 			}),
 			shareReplayUntilDisposed(dispose$),
@@ -206,21 +207,21 @@ export function showWaveStatusPreviewToSide(
 					return documentSymbols[0].children!
 				})
 
-				const mvm_maps = items_game.find((documentSymbol) => documentSymbol.key.toLowerCase() == "mvm_maps")?.children!
+				const mvm_maps = items_game.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "mvm_maps")?.children!
 
 				for (const map of mvm_maps) {
-					const missions = map.children!.find((documentSymbol) => documentSymbol.key.toLowerCase() == "missions")?.children!
-					const mission = missions.find((documentSymbol) => documentSymbol.key.toLowerCase() == name.toLowerCase())?.children
+					const missions = map.children!.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "missions")?.children!
+					const mission = missions.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == name.toLowerCase())?.children
 					if (mission) {
-						let display_name = mission.find((documentSymbol) => documentSymbol.key.toLowerCase() == "display_name")?.detail!
+						let display_name = mission.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "display_name")!.value!.text
 						if (display_name[0] == "#") {
 							display_name = display_name.substring(1)
 						}
 
-						const difficulty = difficultySchema.safeParse(mission.find((documentSymbol) => documentSymbol.key.toLowerCase() == "difficulty")?.detail!).data
+						const difficulty = difficultySchema.safeParse(mission.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "difficulty")?.value!.text).data
 						const language = await firstValueFrom(language$)
 						return of({
-							map: map.key.substring("mvm_".length),
+							map: map.key.text.substring("mvm_".length),
 							reverse: false,
 							difficulty: difficulty ?? null,
 							mission: language.get(display_name.toLowerCase() as Lowercase<string>) ?? name
@@ -348,22 +349,22 @@ export function showWaveStatusPreviewToSide(
 					}
 
 					key = key.toLowerCase()
-					const check = (documentSymbol: VDFDocumentSymbol) => documentSymbol.key.toLowerCase() == "Attributes".toLowerCase() && documentSymbol.detail?.toLowerCase() == key
+					const check = (documentSymbol: VDFDocumentSymbol) => documentSymbol.key.text.toLowerCase() == "Attributes".toLowerCase() && documentSymbol.value?.text.toLowerCase() == key
 
 					const value = documentSymbols.some(check)
 					if (value) {
 						return true
 					}
 
-					for (const eventChangeAttributes of documentSymbols.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "EventChangeAttributes".toLowerCase() && documentSymbol.children)) {
-						const defaultEvent = eventChangeAttributes.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Default".toLowerCase())?.children
+					for (const eventChangeAttributes of documentSymbols.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "EventChangeAttributes".toLowerCase() && documentSymbol.children)) {
+						const defaultEvent = eventChangeAttributes.children!.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Default".toLowerCase())?.children
 						const value = defaultEvent?.some(check)
 						if (value) {
 							return true
 						}
 					}
 
-					const templateName = documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+					const templateName = documentSymbols.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Template".toLowerCase())?.value?.text.toLowerCase()
 					if (templateName) {
 						const template = templates.get(templateName)
 						if (template != undefined) {
@@ -382,12 +383,12 @@ export function showWaveStatusPreviewToSide(
 						return null
 					}
 
-					const icon = documentSymbols.findLast(({ key }) => key.toLowerCase() == "ClassIcon".toLowerCase())?.detail?.toLowerCase()
+					const icon = documentSymbols.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "ClassIcon".toLowerCase())?.value?.text.toLowerCase()
 					if (icon) {
 						return icon
 					}
 
-					const TFClass = documentSymbols.findLast(({ key }) => key.toLowerCase() == "Class".toLowerCase())?.detail?.toLowerCase()
+					const TFClass = documentSymbols.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Class".toLowerCase())?.value?.text.toLowerCase()
 					if (TFClass) {
 						if (TFClass == "Demoman".toLowerCase()) {
 							return "Demo".toLowerCase()
@@ -400,7 +401,7 @@ export function showWaveStatusPreviewToSide(
 						}
 					}
 
-					const templateName = documentSymbols.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+					const templateName = documentSymbols.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Template".toLowerCase())?.value?.text.toLowerCase()
 					if (templateName) {
 						const icon = getClassIcon(templates.get(templateName)?.documentSymbols)
 						if (icon) {
@@ -425,13 +426,13 @@ export function showWaveStatusPreviewToSide(
 									return null
 								}
 
-								const objective = children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Objective".toLowerCase())
-								if (objective?.detail?.toLowerCase() == "DestroySentries".toLowerCase()) {
+								const objective = children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Objective".toLowerCase())
+								if (objective?.value?.text.toLowerCase() == "DestroySentries".toLowerCase()) {
 									return null
 								}
 
-								let beginAtWave = parseInt(children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "BeginAtWave".toLowerCase())?.detail ?? "")
-								let runForThisManyWaves = parseInt(children.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.detail ?? "")
+								let beginAtWave = parseInt(children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "BeginAtWave".toLowerCase())?.value?.text ?? "")
+								let runForThisManyWaves = parseInt(children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "RunForThisManyWaves".toLowerCase())?.value?.text ?? "")
 
 								if (!isNaN(beginAtWave)) {
 									beginAtWave += -1
@@ -445,12 +446,12 @@ export function showWaveStatusPreviewToSide(
 									}
 								}
 
-								return children.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+								return children.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.text.toLowerCase()))
 							})
 							.filter((value) => value != null)
 							.toArray()
 
-						const waveSpawns = documentSymbol.children!.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children)
+						const waveSpawns = documentSymbol.children!.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "WaveSpawn".toLowerCase() && documentSymbol.children)
 
 						function hashSpawner(documentSymbols: VDFDocumentSymbol[], findLast: (documentSymbol: VDFDocumentSymbol) => boolean): string[] {
 							return [
@@ -461,16 +462,16 @@ export function showWaveStatusPreviewToSide(
 										return []
 									}
 
-									switch (spawner.key.toLowerCase()) {
+									switch (spawner.key.text.toLowerCase()) {
 										case "TFBot".toLowerCase():
-											const templateName = spawner.children.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+											const templateName = spawner.children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Template".toLowerCase())?.value?.text.toLowerCase()
 											return templateName != undefined ? [templates.get(templateName.toLowerCase())?.toString("\n") ?? ""] : []
 										case "Squad".toLowerCase():
 										case "RandomChoice".toLowerCase():
 											return spawner.children
-												.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "TFBot".toLowerCase() && documentSymbol.children)
+												.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "TFBot".toLowerCase() && documentSymbol.children)
 												.flatMap((documentSymbol) => {
-													const templateName = documentSymbol.children!.findLast(({ key }) => key.toLowerCase() == "Template".toLowerCase())?.detail?.toLowerCase()
+													const templateName = documentSymbol.children!.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Template".toLowerCase())?.value?.text.toLowerCase()
 													return templateName != undefined ? [templates.get(templateName.toLowerCase())?.toString("\n") ?? ""] : []
 												})
 										case "Tank".toLowerCase():
@@ -483,8 +484,8 @@ export function showWaveStatusPreviewToSide(
 						}
 
 						const key = JSON.stringify([
-							hashSpawner(waveSpawns, (documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase())),
-							hashSpawner(missionSpawns, (documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase())),
+							hashSpawner(waveSpawns, (documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.text.toLowerCase())),
+							hashSpawner(missionSpawns, (documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.text.toLowerCase())),
 						])
 
 						const cached = cache.get(index)?.get(key)
@@ -503,7 +504,7 @@ export function showWaveStatusPreviewToSide(
 						let actual = 0
 
 						function addSpawner({ type, spawner, totalCount }: { type: Type, spawner: VDFDocumentSymbol, totalCount: number }) {
-							switch (spawner.key.toLowerCase()) {
+							switch (spawner.key.text.toLowerCase()) {
 								case "TFBot".toLowerCase(): {
 									if (totalCount > 0 || type == Type.Support) {
 										addIcon({
@@ -521,11 +522,11 @@ export function showWaveStatusPreviewToSide(
 										return
 									}
 
-									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
+									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.text.toLowerCase()))
 
 									for (const i of Array.from({ length: totalCount }).keys()) {
 										const member = children[i % children.length]
-										switch (member.key.toLowerCase()) {
+										switch (member.key.text.toLowerCase()) {
 											case "TFBot".toLowerCase(): {
 												addIcon({
 													type: type,
@@ -557,11 +558,11 @@ export function showWaveStatusPreviewToSide(
 										return
 									}
 
-									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.toLowerCase()))
+									const children = spawner.children.filter((documentSymbol) => populationSpawnerKeys.includes(documentSymbol.key.text.toLowerCase()))
 
 									for (const i of Array.from({ length: totalCount }).keys()) {
 										const member = children[Math.floor(Math.random() * children.length)]
-										switch (member.key.toLowerCase()) {
+										switch (member.key.text.toLowerCase()) {
 											case "TFBot".toLowerCase(): {
 												addIcon({
 													type: type,
@@ -639,13 +640,13 @@ export function showWaveStatusPreviewToSide(
 
 						for (const waveSpawn of waveSpawns) {
 
-							const totalCurrency = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCurrency".toLowerCase())?.detail ?? "") || 0
+							const totalCurrency = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "TotalCurrency".toLowerCase())?.value?.text ?? "") || 0
 							if (totalCurrency > 0) {
 								currency += totalCurrency
 							}
 
-							const support = waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "Support".toLowerCase())?.detail != undefined
-							const totalCount = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.toLowerCase() == "TotalCount".toLowerCase())?.detail ?? "") || 0
+							const support = waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Support".toLowerCase())?.value != undefined
+							const totalCount = parseInt(waveSpawn.children!.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "TotalCount".toLowerCase())?.value?.text ?? "") || 0
 
 							if (!support) {
 								if (totalCount > 0) {
@@ -656,7 +657,7 @@ export function showWaveStatusPreviewToSide(
 								}
 							}
 
-							const spawner = waveSpawn.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.toLowerCase()))
+							const spawner = waveSpawn.children!.findLast((documentSymbol) => !waveSpawnKeys.includes(documentSymbol.key.text.toLowerCase()))
 							if (spawner) {
 								addSpawner({
 									type: support ? Type.Support : Type.Normal,
@@ -729,7 +730,7 @@ export function showWaveStatusPreviewToSide(
 								return of(null)
 							}
 
-							const baseTexture = header.find((documentSymbol) => documentSymbol.name.toLowerCase() == "$baseTexture".toLowerCase())?.detail ?? null
+							const baseTexture = header.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "$baseTexture".toLowerCase())?.value?.text ?? null
 							if (!baseTexture) {
 								return of(null)
 							}

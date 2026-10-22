@@ -23,7 +23,7 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 
 			await using popfile = new MissionPopfile(
 				new Uri(document.uri),
-				of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.parse(range)) }),
+				of({ getText: (range?: RangeLike) => document.getText(VSCodeDocumentGetTextSchema.decode(range)) }),
 				fileSystem,
 				fileSystemWatcherFactory,
 				EMPTY
@@ -54,7 +54,7 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 
 			const templatesBlocks = waveSchedule.waveSchedule.get("Templates".toLowerCase()) ?? []
 			const templatesBlock = templatesBlocks.at(0)
-			const templatesInFile = new Map(templatesBlock?.children?.map((documentSymbol) => [documentSymbol.key.toLowerCase(), documentSymbol]))
+			const templatesInFile = new Map(templatesBlock?.children?.map((documentSymbol) => [documentSymbol.key.text.toLowerCase(), documentSymbol]))
 
 			const edit = new vscode.WorkspaceEdit()
 			const eol = document.eol == vscode.EndOfLine.CRLF ? "\r\n" : "\n"
@@ -65,7 +65,7 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 				if (documentSymbol.children != undefined && template.documentSymbols.length > documentSymbol.children.length) {
 					edit.replace(
 						document.uri,
-						VSCodeRangeSchema.parse(documentSymbol.range),
+						VSCodeRangeSchema.decode(documentSymbol.range),
 						template.toString(eol).split(eol).map((line, index) => `${index != 0 ? "\t".repeat(2) : ""}${line}`).join(eol)
 					)
 				}
@@ -89,24 +89,25 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 				if (insertPosition) {
 					edit.insert(
 						document.uri,
-						VSCodePositionSchema.parse(insertPosition),
+						VSCodePositionSchema.decode(insertPosition),
 						`${eol.repeat(2)}${text}`
 					)
 				}
 				else if (templatesBlock?.childrenRange) {
+					// Empty Templates block
 					edit.insert(
 						document.uri,
-						VSCodePositionSchema.parse(templatesBlock.childrenRange),
-						`${eol}${text}`
+						VSCodePositionSchema.decode(templatesBlock.childrenRange.start.with({ character: templatesBlock.childrenRange.start.character + "{".length })),
+						`${eol}${text}${eol}`
 					)
 				}
 				else {
 					text = `${eol}\tTemplates${eol}\t{${eol}${text}${eol}\t}${eol}`
 
 					let position = waveSchedule.documentSymbol.children!.find((documentSymbol, index, obj) =>
-						documentSymbol.key.toLowerCase() != "Mission".toLowerCase()
-						&& documentSymbol.key.toLowerCase() != "Wave".toLowerCase()
-						&& ["Mission".toLowerCase(), "Wave".toLowerCase()].includes(obj[index + 1]?.key.toLowerCase())
+						documentSymbol.key.text.toLowerCase() != "Mission".toLowerCase()
+						&& documentSymbol.key.text.toLowerCase() != "Wave".toLowerCase()
+						&& ["Mission".toLowerCase(), "Wave".toLowerCase()].includes(obj[index + 1]?.key.text.toLowerCase())
 					)?.range.end
 
 					if (position) {
@@ -125,15 +126,15 @@ export function importPopfileTemplates(teamFortress2Folder$: Observable<Uri>, fi
 			}
 
 			// Remove #base files
-			for (const documentSymbol of documentSymbols.values().filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base")) {
-				if (!documentSymbol.detail || !PopfileBase.robot.has(posix.resolve(`/scripts/population/${documentSymbol.detail}`).substring(1))) {
-					edit.delete(document.uri, VSCodeRangeSchema.parse(documentSymbol.range))
+			for (const documentSymbol of documentSymbols.values().filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "#base")) {
+				if (!documentSymbol.value || !PopfileBase.robot.has(posix.resolve(`/scripts/population/${documentSymbol.value.text}`).substring(1))) {
+					edit.delete(document.uri, VSCodeRangeSchema.decode(documentSymbol.range))
 				}
 			}
 
 			// Remove rest of Templates blocks
 			for (const templateBlock of templatesBlocks.values().drop(1)) {
-				edit.delete(document.uri, VSCodeRangeSchema.parse(templateBlock.range))
+				edit.delete(document.uri, VSCodeRangeSchema.decode(templateBlock.range))
 			}
 
 			await vscode.workspace.applyEdit(edit)
