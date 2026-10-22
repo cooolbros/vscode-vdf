@@ -4,7 +4,11 @@ import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 
 export default defineConfig({
 	entry: {
-		extension: [import.meta.resolve("common/getOrInsert"), "./src/extension.ts"]
+		extension: [
+			import.meta.resolve("common/stackTraceLimit"),
+			import.meta.resolve("common/getOrInsert"),
+			"./src/extension.ts"
+		]
 	},
 	output: {
 		clean: true,
