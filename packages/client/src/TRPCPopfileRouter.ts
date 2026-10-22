@@ -147,10 +147,13 @@ const WorkspaceEditSchema = z
 	.transform((workspaceEdit) => ({ changes: Object.fromEntries(workspaceEdit.entries().map(([uri, edits]) => [new Uri(uri).toString(), edits.map((edit) => ({ range: VDFRange.schema.parse(edit.range), newText: edit.newText }))])) }))
 
 const executeCommand = async <T extends z.ZodType>(schema: T, command: string, ...rest: any[]) => {
+	let input: any
 	try {
-		return schema.parse(await vscode.commands.executeCommand(command, ...rest))
+		input = await vscode.commands.executeCommand(command, ...rest)
+		return schema.parse(input)
 	}
 	catch (error) {
+		console.log(input)
 		console.error(command, error instanceof z.ZodError ? z.prettifyError(error) : error)
 	}
 }
