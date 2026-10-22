@@ -1,32 +1,32 @@
 import { Uri } from "common/Uri"
-import { BehaviorSubject } from "rxjs"
+import { BehaviorSubject, combineLatest, map, shareReplay, type Observable } from "rxjs"
 import { VDFRange } from "vdf"
-import { MarkupKind, type CompletionItemKind } from "vscode-languageserver"
-import { z } from "zod"
+import type { VDFText } from "vdf-documentsymbols"
+import { type InlayHintLabelPart, type MarkupContent } from "vscode-languageserver"
+import type { DefinitionType } from "./DefinitionTypes"
+import type { VDFCompletionItem } from "./TextDocumentBase"
 
 export class Collection<T> {
 
-	public static readonly createSchema = <T extends z.ZodType>(schema: T) => z.map(
-		z.number().nullable(),
-		z.map(
-			z.symbol(),
-			z.map(
-				z.string(),
-				z.array(schema)
-			)
-		)
-	).transform((arg) => new Collection(arg))
-	private readonly map: Map<number | null, Map<symbol, Map<string, T[]>>>
+	private readonly map: Map<number | null, Map<DefinitionType, Map<string, T[]>>>
 
-	public constructor(map: Map<number | null, Map<symbol, Map<string, T[]>>> = new Map()) {
+	public constructor(map: Map<number | null, Map<DefinitionType, Map<string, T[]>>> = new Map()) {
 		this.map = map
 	}
 
-	public get(scope: number | null, type: symbol, key: string) {
+	public ofScope(scope: number | null): ReadonlyMap<DefinitionType, ReadonlyMap<string, T[]>> {
+		return this.map.get(scope) ?? new Map()
+	}
+
+	public ofType(scope: number | null, type: DefinitionType): ReadonlyMap<string, T[]> {
+		return this.map.get(scope)?.get(type) ?? new Map()
+	}
+
+	public get(scope: number | null, type: DefinitionType, key: string) {
 		return Object.freeze(this.map.get(scope)?.get(type)?.get(key.toLowerCase())) ?? null
 	}
 
-	public set(scope: number | null, type: symbol, key: string, ...value: T[]) {
+	public set(scope: number | null, type: DefinitionType, key: string, ...value: T[]) {
 		this.map
 			.getOrInsertComputed(scope, () => new Map())
 			.getOrInsertComputed(type, () => new Map())
@@ -34,11 +34,7 @@ export class Collection<T> {
 			.push(...value)
 	}
 
-	public ofType(scope: number | null, type: symbol): ReadonlyMap<string, T[]> {
-		return this.map.get(scope)?.get(type) ?? new Map()
-	}
-
-	public *[Symbol.iterator](): Iterator<{ scope: number | null, type: symbol, key: string, value: T[] }> {
+	public *[Symbol.iterator](): Iterator<{ scope: number | null, type: DefinitionType, key: string, value: T[] }> {
 		for (const [scope, typeCollection] of this.map) {
 			for (const [type, keyCollection] of typeCollection) {
 				for (const [key, value] of keyCollection) {
@@ -52,102 +48,46 @@ export class Collection<T> {
 		// structuredClone does not support Symbols
 		return new Collection<T>(new Map(this.map.entries().map(([scope, map]) => <const>[scope, new Map(map.entries().map(([type, map]) => <const>[type, new Map(map.entries().map(([key, value]) => <const>[key, [...value]]))]))])))
 	}
-
-	public toJSON() {
-		return this.map
-	}
 }
 
-export const definitionSchema = z.object({
-	uri: Uri.schema,
-	key: z.string(),
-	range: VDFRange.schema,
-	keyRange: VDFRange.schema,
-	nameRange: VDFRange.schema.optional(),
-	detail: z.string().optional(),
-	documentation: z.string().optional(),
-	conditional: z.templateLiteral(["[", z.string(), "]"]).optional(),
-	completionItem: z.object({
-		labelDetails: z.object({
-			detail: z.string().optional(),
-			description: z.string().optional()
-		}).optional(),
-		kind: z.number().min(1).max(25).transform((arg) => <CompletionItemKind>arg).optional(),
-		documentation: z.union([
-			z.string(),
-			z.object({
-				kind: z.enum([MarkupKind.PlainText, MarkupKind.Markdown]),
-				value: z.string()
-			})
-		]).optional(),
-		filterText: z.string().optional(),
-		insertText: z.string().optional(),
-		data: z.any().optional(),
-	}).optional(),
-	data: z.any().optional(),
-})
-
-export type Definition = Readonly<z.infer<typeof definitionSchema>>
+export interface Definition {
+	readonly uri: Uri
+	readonly key: string
+	readonly range: VDFRange
+	readonly keyToken: VDFText
+	readonly nameToken?: VDFText
+	readonly detail?: string
+	readonly documentation?: MarkupContent
+	readonly conditional?: `[${string}]`
+	readonly inlayHintLabel?: InlayHintLabelPart
+	readonly completionItem: VDFCompletionItem
+	readonly data?: any
+}
 
 export class Definitions {
 
-	public static readonly schema = z.object({
-		version: z.array(z.number()),
-		collection: Collection.createSchema(definitionSchema)
-	}).transform((arg) => new Definitions({ version: arg.version, collection: arg.collection }))
-
 	public readonly version: number[]
-	private readonly collection: Collection<Definition>
-	private readonly globals: GlobalDefinitionReferences[]
+	public readonly collection: Collection<Definition>
 
-	constructor({ version, collection = new Collection(), globals = [] }: { version: number[], collection?: Collection<Definition>, globals?: GlobalDefinitionReferences[] }) {
+	constructor(version: number[], collection: Collection<Definition>) {
 		this.version = version
 		this.collection = collection
-		this.globals = globals
 	}
 
-	public get(scope: number | null, type: symbol, key: string): readonly Definition[] | null {
-		const definitions = this.collection.get(scope, type, key)
-		if (definitions != null) {
-			return definitions
-		}
-
-		for (const global of this.globals) {
-			const definitions = global.definitions.get(scope, type, key)
-			if (definitions != null) {
-				return definitions
-			}
-		}
-
-		return null
+	public ofScope(scope: number | null): ReadonlyMap<DefinitionType, ReadonlyMap<string, ReadonlyArray<Definition>>> {
+		return this.collection.ofScope(scope)
 	}
 
-	public ofType(scope: number | null, type: symbol): ReadonlyMap<string, Definition[]> {
+	public ofType(scope: number | null, type: DefinitionType): ReadonlyMap<string, ReadonlyArray<Definition>> {
+		return this.collection.ofType(scope, type)
+	}
 
-		const map = this.collection.ofType(scope, type)
-		if (map.size) {
-			return map
-		}
-
-		for (const global of this.globals) {
-			const map = global.definitions.ofType(scope, type)
-			if (map.size) {
-				return map
-			}
-		}
-
-		return new Map()
+	public get(scope: number | null, type: DefinitionType, key: string): ReadonlyArray<Definition> | null {
+		return this.collection.get(scope, type, key)
 	}
 
 	public [Symbol.iterator]() {
 		return this.collection[Symbol.iterator]()
-	}
-
-	public toJSON() {
-		return {
-			version: this.version,
-			collection: this.collection.toJSON()
-		}
 	}
 }
 
@@ -155,112 +95,61 @@ export interface SetDocumentReferences {
 	setDocumentReferences(references: Map<string /* Uri */, References | null>, notify: boolean): void
 }
 
-export class References implements SetDocumentReferences {
-
-	public static readonly schema: z.ZodType<References> = z.object({
-		uri: Uri.schema,
-		collection: Collection.createSchema(VDFRange.schema),
-		get dependencies() {
-			return z.array(References.schema)
-		},
-		get references() {
-			return z.map(z.string(), References.schema)
-		}
-	}).transform((arg) => {
-		return new References(arg.uri, arg.collection, arg.dependencies, new BehaviorSubject(arg.references))
-	})
+export class References {
 
 	public readonly uri: Uri
-	public readonly collection: Collection<VDFRange>
-	private readonly dependencies: SetDocumentReferences[]
-
-	public readonly references$: BehaviorSubject<Map<string, References>>
+	public readonly collection$: BehaviorSubject<Collection<VDFText>>
+	public readonly references$: BehaviorSubject<Map<string /* Uri */, References>>
+	public readonly next$: Observable<void>
 
 	constructor(
 		uri: Uri,
-		collection = new Collection<VDFRange>(),
-		dependencies: SetDocumentReferences[],
-		references$ = new BehaviorSubject(new Map<string, References>())
+		collection$: BehaviorSubject<Collection<VDFText>>,
+		references$: BehaviorSubject<Map<string, References>>,
 	) {
 		this.uri = uri
-		this.collection = collection
-		this.dependencies = dependencies
+		this.collection$ = collection$
 		this.references$ = references$
-
-		const map = new Map<string, References | null>()
-		map.set(this.uri.toString(), this)
-
-		for (const dependency of this.dependencies) {
-			dependency.setDocumentReferences(map, false)
-		}
+		this.next$ = combineLatest([this.collection$, this.references$]).pipe(
+			map(() => undefined),
+			shareReplay({ bufferSize: 1, refCount: true })
+		)
 	}
 
-	public *document() {
-		yield* this.collection
-		yield* this.references$.value.get(this.uri.toString())?.collection ?? []
-	}
+	public *collect(scope: number | null, type: DefinitionType, key: string): Generator<{ uri: Uri, reference: VDFText }> {
+		const seen = new Set<string>()
 
-	public get(scope: number | null, type: symbol, key: string) {
-		return this.collection.get(scope, type, key) ?? []
-	}
-
-	public [Symbol.iterator]() {
-		return this.collection[Symbol.iterator]()
-	}
-
-	public setDocumentReferences(references: Map<string, References | null>, notify: boolean): void {
-		for (const [uri, documentReferences] of references) {
-			if (documentReferences != null) {
-				this.references$.value.set(uri, documentReferences)
+		function* walk(references: References): Generator<{ uri: Uri, reference: VDFText }> {
+			// Skip already seen uris, this happens in 2 places
+			// 1. resource/clientscheme.res's #base files add references to global clientscheme, so that definitions can be referenced before they are defined
+			// 2. scripts/hudanimations_manifest.txt's HUD animations files add references to all HUD animations manifest files through scripts/hudanimations_manifest.txt
+			const uri = references.uri.toString()
+			if (seen.has(uri)) {
+				return
 			}
-			else {
-				this.references$.value.delete(uri)
-			}
-		}
+			seen.add(uri)
 
-		const map = new Map<string, References | null>()
-		map.set(this.uri.toString(), this)
-
-		for (const dependency of this.dependencies) {
-			dependency.setDocumentReferences(map, notify)
-		}
-
-		if (notify) {
-			this.references$.next(this.references$.value)
-		}
-	}
-
-	public *collect(scope: number | null, type: symbol, key: string) {
-		function* walk(references: References): Generator<{ uri: Uri, range: VDFRange }> {
-			for (const range of references.get(scope, type, key)) {
-				yield { uri: references.uri, range: range }
+			for (const reference of references.collection$.value.get(scope, type, key) ?? []) {
+				yield { uri: references.uri, reference: reference }
 			}
 
 			for (const dependency of references.references$.value.values()) {
-				yield* dependency.collect(scope, type, key)
+				yield* walk(dependency)
 			}
 		}
 
 		yield* walk(this)
 	}
 
-	public toJSON() {
-		return {
-			uri: this.uri,
-			collection: this.collection.toJSON(),
-			dependencies: this.dependencies,
-			references: this.references$.value
-		}
+	public detach(): References {
+		const references$ = new BehaviorSubject(new Map())
+		this.collection$.subscribe({ complete: () => references$.complete() })
+		return new References(this.uri, this.collection$, references$)
 	}
 }
 
 export interface DefinitionReferences {
-	readonly scopes: Map<symbol, Map<number, VDFRange>>
-	readonly definitions: Definitions
-	readonly references: References
-}
-
-export interface GlobalDefinitionReferences {
-	readonly definitions: Definitions
-	readonly references: SetDocumentReferences
+	readonly scopes: Map<DefinitionType, Map<number, VDFRange[]>>
+	readonly definitions: Collection<Definition>
+	readonly references: Collection<VDFText>
 }

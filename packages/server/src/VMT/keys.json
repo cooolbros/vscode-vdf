@@ -1,0 +1,15 @@
+{
+    "unlitgeneric": [
+        "$additive",
+        "$baseTexture",
+        "$color",
+        "$ignorez",
+        "$model",
+        "$nocull",
+        "$nolod",
+        "$translucent",
+        "$vertexalpha",
+        "$vertexcolor",
+        "%keywords"
+    ]
+}

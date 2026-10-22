@@ -69,18 +69,6 @@
                 "when": "editorLangId == popfile"
             },
             {
-                "category": "HUD Animations",
-                "title": "Restart HUD Animations Language Server",
-                "command": "vscode-vdf.restartHUDAnimationsLanguageServer",
-                "enablement": "!isWeb"
-            },
-            {
-                "category": "Popfile",
-                "title": "Restart Popfile Language Server",
-                "command": "vscode-vdf.restartPopfileLanguageServer",
-                "enablement": "!isWeb"
-            },
-            {
                 "category": "Popfile",
                 "title": "Open Wave Status Preview to the Side",
                 "command": "vscode-vdf.showWaveStatusPreviewToSide",
@@ -90,12 +78,6 @@
                 "category": "VDF",
                 "title": "Restart VDF Language Server",
                 "command": "vscode-vdf.restartVDFLanguageServer",
-                "enablement": "!isWeb"
-            },
-            {
-                "category": "VMT",
-                "title": "Restart VMT Language Server",
-                "command": "vscode-vdf.restartVMTLanguageServer",
                 "enablement": "!isWeb"
             },
             {
@@ -480,8 +462,9 @@
                 "extensions": [
                     ".hudanimations"
                 ],
-                "filenamePatterns": [
-                    "*hudanimations*.txt"
+                "filenames": [
+                    "hudanimations.txt",
+                    "hudanimations_tf.txt"
                 ],
                 "configuration": "./language-configuration/hudanimations-language-configuration.json"
             },
@@ -506,11 +489,13 @@
                 ],
                 "filenames": [
                     "chapterbackgrounds.txt",
+                    "game_sounds_manifest.txt",
                     "game_sounds.txt",
                     "gameinfo.txt",
                     "hudanimations_manifest.txt",
                     "items_game.txt",
                     "mod_textures.txt",
+                    "surfaceproperties_manifest.txt",
                     "surfaceproperties.txt"
                 ],
                 "filenamePatterns": [
@@ -534,24 +519,6 @@
             }
         ],
         "menus": {
-            "commandPalette": [
-                {
-                    "command": "vscode-vdf.restartHUDAnimationsLanguageServer",
-                    "when": "editorLangId == hudanimations"
-                },
-                {
-                    "command": "vscode-vdf.restartPopfileLanguageServer",
-                    "when": "editorLangId == popfile"
-                },
-                {
-                    "command": "vscode-vdf.restartVDFLanguageServer",
-                    "when": "editorLangId == vdf"
-                },
-                {
-                    "command": "vscode-vdf.restartVMTLanguageServer",
-                    "when": "editorLangId == vmt"
-                }
-            ],
             "editor/title": [
                 {
                     "command": "vscode-vdf.extractVPKFileToWorkspace",
@@ -607,12 +574,13 @@
         "@types/vscode": "^1.110.0",
         "@vscode/test-web": "^0.0.81",
         "@vscode/vsce": "^3.7.1",
+        "minimatch": "^10.2.6",
         "path-browserify": "^1.0.1",
         "rxjs": "^7.8.2",
         "ts-checker-rspack-plugin": "^1.4.0",
         "turbo": "^2.10.0",
         "typescript": "^6.0.3",
-        "vscode-languageserver-textdocument": "^1.0.11",
+        "vscode-languageserver-textdocument": "^1.0.15",
         "zod": "^4.3.6"
     },
     "vsce": {

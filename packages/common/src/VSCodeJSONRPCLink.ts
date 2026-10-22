@@ -1,4 +1,4 @@
-import { TRPCClientError, type Operation, type TRPCLink } from "@trpc/client"
+import { TRPCClientError, type TRPCLink } from "@trpc/client"
 import type { AnyTRPCRouter, DataTransformer } from "@trpc/server"
 import { observable } from "@trpc/server/observable"
 import { transformResult, type TRPCResponse } from '@trpc/server/unstable-core-do-not-import'
@@ -15,9 +15,6 @@ export interface VSCodeJSONRPCLinkOptions {
 
 const notificationSchema = z.discriminatedUnion("type", [
 	z.object({
-		type: z.literal("start"),
-	}),
-	z.object({
 		type: z.literal("next"),
 		value: z.object({
 			id: z.number(),
@@ -28,67 +25,53 @@ const notificationSchema = z.discriminatedUnion("type", [
 			])
 		})
 	}),
-	z.object({
-		type: z.literal("exit"),
-	})
 ])
 
 export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions): TRPCLink<AnyTRPCRouter> {
 
 	let id = 0
-	let connected = true
-	const subscriptions = new Map<number, { op: Operation<unknown>, subject: Subject<any> }>()
+	const subjects = new Map<number, Subject<any>>()
+
+	if (!opts.stack) {
+		console.warn(`No stack passed to VSCodeJSONRPCLink, subscriptions will be leaked!`)
+	}
 
 	opts.stack?.defer(async () => {
-		if (subscriptions.size) {
-			console.warn(`[VSCodeJSONRPCLink] ${subscriptions.size} subscriptions`)
+		if (subjects.size) {
+			debugger
+			console.warn(`[VSCodeJSONRPCLink] ${subjects.size} subscriptions`)
 		}
 	})
 
 	const promises = new Map<number, Promise<void>>()
 	opts.stack?.defer(async () => void await Promise.all(promises.values()))
 
-	opts.stack?.use(
-		opts.onNotification("vscode-vdf/trpc", async (param) => {
-			const notification = notificationSchema.parse(param)
-			switch (notification.type) {
-				case "start": {
-					if (!connected) {
-						for (const { op } of subscriptions.values()) {
-							opts.sendRequest("vscode-vdf/trpc", { type: "request", op: op })
-						}
-					}
-					break
-				}
-				case "next": {
-					const { id, value } = notification.value
+	const disposable = opts.onNotification("vscode-vdf/trpc", async (param) => {
+		const notification = notificationSchema.parse(param)
+		const { id, value } = notification.value
 
-					const subscription = subscriptions.get(id)
-					if (!subscription) {
-						throw new Error(`${id}: ${JSON.stringify(value)}`)
-					}
+		const subject = subjects.get(id)
+		if (!subject) {
+			throw new Error(`${id}: ${JSON.stringify(value)}`)
+		}
 
-					switch (value.kind) {
-						case "N":
-							subscription.subject.next(opts.transformer.deserialize(value.value))
-							break
-						case "E":
-							subscription.subject.error(TRPCClientError.from(value.error))
-							break
-						case "C":
-							subscriptions.delete(id)
-							subscription.subject.complete()
-							break
-					}
-					break
-				}
-				case "exit": {
-					connected = false
-					break
-				}
-			}
-		})
-	)
+		switch (value.kind) {
+			case "N":
+				subject.next(opts.transformer.deserialize(value.value))
+				break
+			case "E":
+				subject.error(TRPCClientError.from(value.error))
+				break
+			case "C":
+				subjects.delete(id)
+				subject.complete()
+				break
+		}
+	})
+
+	if (opts.stack) {
+		opts.stack.use(disposable)
+	}
 
 	return () => {
 		return ({ op }) => {
@@ -115,13 +98,13 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions): TRPCLink<AnyT
 						})
 						break
 					case "subscription":
-						const subscription = { op: op, subject: new Subject<any>() }
-						subscriptions.set(op.id, subscription)
+						const subject = new Subject<any>()
+						subjects.set(op.id, subject)
 						opts.sendRequest("vscode-vdf/trpc", { type: "request", op: op })
-						return subscription.subject.pipe(
+						return subject.pipe(
 							finalize(() => {
 								// Only send unsubscribe request if "C" complete notification not received
-								if (subscriptions.has(op.id)) {
+								if (subjects.has(op.id)) {
 									promises.set(
 										op.id,
 										opts
@@ -129,7 +112,7 @@ export function VSCodeJSONRPCLink(opts: VSCodeJSONRPCLinkOptions): TRPCLink<AnyT
 											.then(() => void promises.delete(op.id))
 									)
 								}
-								subscriptions.delete(op.id)
+								subjects.delete(op.id)
 							})
 						).subscribe({
 							next: (value) => observer.next(value),

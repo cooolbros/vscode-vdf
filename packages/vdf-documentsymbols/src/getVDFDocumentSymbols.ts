@@ -1,7 +1,7 @@
 import { UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFParserOptions, type VDFToken } from "vdf"
-import { SymbolKind } from "vscode-languageserver"
 import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
+import type { VDFText } from "./VDFText"
 
 export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): VDFDocumentSymbols {
 
@@ -21,27 +21,30 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 			: null
 
 		while (true) {
-			const keyToken = tokeniser.format()
+			const token = tokeniser.format()
 
-			if (keyToken != null && terminator != null ? (keyToken.type == terminator) : keyToken == terminator) {
+			if (token != null && terminator != null ? (token.type == terminator) : token == terminator) {
 				break
 			}
-			else if (keyToken == null) {
+			else if (token == null) {
 				throw new UnexpectedEndOfFileError(["key", "'}'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
 			}
 
-			switch (keyToken.type) {
+			switch (token.type) {
 				case VDFTokenType.String: {
-					const key = keyToken.value
-					const keyRange = keyToken.exteriorRange
+					const keyToken: VDFText = {
+						text: token.value,
+						range: token.textRange,
+						tokenRange: token.range,
+						quoted: token.quoted
+					}
 
-					let value: string | VDFDocumentSymbols
-					let valueRange: VDFRange | null
+					let value: { type: 0, token: VDFText } | { type: 1, children: VDFDocumentSymbols, range: VDFRange }
 					let conditional: `[${string}]` | null
 
 					tokeniser.allowMultilineString = typeof options.multilineStrings == "boolean"
 						? options.multilineStrings
-						: options.multilineStrings.has(key.toLowerCase())
+						: options.multilineStrings.has(keyToken.text.toLowerCase())
 
 					let valueToken: VDFToken | null
 					let newline = false
@@ -86,22 +89,22 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 					switch (valueToken.type) {
 						case VDFTokenType.String: {
 							if (newline && !tokeniser.allowMultilineString) {
-								throw new UnexpectedTokenError(`'\\n'`, ["'{'", "value"], new VDFRange(keyRange.start, valueToken.exteriorRange.end))
+								throw new UnexpectedTokenError(`'\\n'`, ["'{'", "value"], new VDFRange(keyToken.range.start, valueToken.range.end))
 							}
 							tokeniser.allowMultilineString = false
 
-							value = valueToken.value
-							valueRange = valueToken.range
+							value = { type: 0, token: { text: valueToken.value, range: valueToken.textRange, tokenRange: valueToken.range, quoted: valueToken.quoted } }
 							conditional = tokeniser.conditional()
 							break
 						}
 						case VDFTokenType.OpeningBrace: {
 							tokeniser.allowMultilineString = false
 
-							const start = new VDFPosition(tokeniser.line, tokeniser.character)
-							value = parseObject(true)
-							const end = new VDFPosition(tokeniser.line, tokeniser.character - 1)
-							valueRange = new VDFRange(start, end)
+							const start = valueToken.range.start
+							const children = parseObject(true)
+							const end = new VDFPosition(tokeniser.line, tokeniser.character)
+
+							value = { type: 1, children: children, range: new VDFRange(start, end) }
 							conditional ??= null
 							break
 						}
@@ -114,34 +117,30 @@ export function getVDFDocumentSymbols(str: string, options: VDFParserOptions): V
 					}
 
 					const endPosition = new VDFPosition(tokeniser.line, tokeniser.character)
-					const selectionRange = new VDFRange(keyRange.start, endPosition)
+					const selectionRange = new VDFRange(keyToken.tokenRange.start, endPosition)
 
 					documentSymbols.push(new VDFDocumentSymbol(
-						key || "\"\"",
-						keyRange,
-						typeof value == "object" ? SymbolKind.Object : SymbolKind.String,
+						keyToken,
 						conditional,
 						comments?.join("\n"),
 						selectionRange,
-						typeof value == "string"
-							? { detail: value, range: valueRange! }
-							: { children: value, range: valueRange! },
+						value,
 					))
 
 					comments = undefined
 					break
 				}
 				case VDFTokenType.OpeningBrace: {
-					throw new UnexpectedTokenError(`'{'`, ["key"], keyToken.range)
+					throw new UnexpectedTokenError(`'{'`, ["key"], token.range)
 				}
 				case VDFTokenType.ClosingBrace: {
-					throw new UnexpectedTokenError(`'}'`, ["key"], keyToken.range)
+					throw new UnexpectedTokenError(`'}'`, ["key"], token.range)
 				}
 				case VDFTokenType.Conditional: {
-					throw new UnexpectedTokenError(`'${keyToken.value}'`, ["key"], keyToken.range)
+					throw new UnexpectedTokenError(`'${token.value}'`, ["key"], token.range)
 				}
 				case VDFTokenType.Comment: {
-					(comments ??= []).push(keyToken.value)
+					(comments ??= []).push(token.value)
 					break
 				}
 			}

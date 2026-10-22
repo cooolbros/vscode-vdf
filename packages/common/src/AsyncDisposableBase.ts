@@ -2,8 +2,8 @@ import { ReplaySubject, type Observable } from "rxjs"
 
 export abstract class AsyncDisposableBase implements AsyncDisposable {
 
-	protected readonly dispose$: Observable<void>
 	protected readonly stack: AsyncDisposableStack
+	public readonly dispose$: Observable<void>
 
 	constructor() {
 		const stack = new AsyncDisposableStack()

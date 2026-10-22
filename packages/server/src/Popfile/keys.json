@@ -1,0 +1,278 @@
+{
+    "totalcurrency": {
+        "documentation": "Total amount of currency dropped by this wave. Should be cleanly divisible by TotalCount, so bots all drop the same amount."
+    },
+    "doneoutput": {
+        "reference": "startwaveoutput"
+    },
+    "firstspawnoutput": {
+        "reference": "startwaveoutput"
+    },
+    "initwaveoutput": {
+        "reference": "startwaveoutput"
+    },
+    "lastspawnoutput": {
+        "reference": "startwaveoutput"
+    },
+    "maxactive": {
+        "documentation": "Defines the maximum number of entities from this WaveSpawn that can be alive at the same time"
+    },
+    "mission": {
+        "documentation": "A \"mission\" defines a set of TFBots that the \"AI Director\" can send in to accomplish certain context-specific goals",
+        "value": {
+            "field": {
+                "one": [
+                    "BeginAtWave",
+                    "CooldownTime",
+                    "DesiredCount",
+                    "InitialCooldown",
+                    "Objective",
+                    "RunForThisManyWaves"
+                ],
+                "many": [
+                    "Where"
+                ]
+            },
+            "cls": {
+                "one": [
+                    "TFBot"
+                ]
+            }
+        }
+    },
+    "mob": {
+        "documentation": "Spawns N instances of the spawner it contains, ie: 15 TFBots."
+    },
+    "name": {
+        "documentation": "Name of the wavespawn. Not required, but if another wavespawn is waiting for this wavespawn, this wavespawn needs a name."
+    },
+    "objective": {
+        "documentation": ""
+    },
+    "periodicspawn": {
+        "documentation": "A PeriodicSpawn Populator invokes its Spawner periodically. For example, a PeriodicSpawn might spawn a TFBot every 30 seconds."
+    },
+    "population": {
+        "reference": "waveschedule"
+    },
+    "randomchoice": {
+        "documentation": "Contains a set of spawners and invokes one at random."
+    },
+    "randomplacement": {
+        "documentation": "A RandomPlacement Populator is invoked once at the start of each round, and spawns entities at random locations throughout the map. For example, a RandomPlacement might place random Sentry guns throughout a map."
+    },
+    "sentrygun": {
+        "documentation": "Spawns unowned Sentry guns at a specified upgrade level.",
+        "value": {
+            "field": {
+                "one": [
+                    "Level"
+                ]
+            }
+        }
+    },
+    "spawncount": {
+        "documentation": "Defines the number of entities to spawn at a time as a group. Default is 1."
+    },
+    "squad": {
+        "documentation": "Contains a set of spawners, all are invoked and collected into a \"squad\".",
+        "value": {
+            "field": {
+                "one": [
+                    "FormationSize",
+                    "ShouldPreserveSquad"
+                ]
+            },
+            "cls": {
+                "many": [
+                    "Mob",
+                    "RandomChoice",
+                    "SentryGun",
+                    "Squad",
+                    "Tank",
+                    "TFBot"
+                ]
+            }
+        }
+    },
+    "startingcurrency": {
+        "documentation": "Specifies the amount of currency that players should start with"
+    },
+    "startwaveoutput": {
+        "value": {
+            "field": {
+                "one": [
+                    "Target",
+                    "Action",
+                    "Param",
+                    "Delay"
+                ]
+            }
+        }
+    },
+    "tank": {
+        "value": {
+            "field": {
+                "one": [
+                    "Health",
+                    "Name",
+                    "Skin",
+                    "Speed",
+                    "StartingPathTrackNode"
+                ]
+            },
+            "cls": {
+                "one": [
+                    "OnBombDroppedOutput",
+                    "OnKilledOutput"
+                ]
+            }
+        }
+    },
+    "templates": {
+        "reference": "tfbot"
+    },
+    "tfbot": {
+        "documentation": "Spawns TFBots of a specified class and skill.",
+        "value": {
+            "field": {
+                "one": [
+                    "AutoJumpMax",
+                    "AutoJumpMin",
+                    "BehaviorModifiers",
+                    "Class",
+                    "ClassIcon",
+                    "Health",
+                    "MaxVisionRange",
+                    "Name",
+                    "Scale",
+                    "Skill",
+                    "Template",
+                    "WeaponRestrictions"
+                ],
+                "many": [
+                    "Attributes",
+                    "Item",
+                    "Tag",
+                    "TeleportWhere"
+                ]
+            },
+            "cls": {
+                "one": [
+                    "CharacterAttributes",
+                    "EventChangeAttributes"
+                ]
+            },
+            "after": [
+                {
+                    "label": "ItemAttributes",
+                    "labelDetails": {
+                        "description": "{ ItemName }"
+                    },
+                    "kind": 7,
+                    "textEditText": "ItemAttributes\n{\n\tItemName\t\"$0\"\n}",
+                    "insertTextFormat": 2,
+                    "command": {
+                        "title": "Trigger Suggest",
+                        "command": "editor.action.triggerSuggest"
+                    }
+                }
+            ]
+        }
+    },
+    "totalcount": {
+        "documentation": "Defines the total number of times the Spawner will be invoked in this wave"
+    },
+    "wave": {
+        "value": {
+            "field": {
+                "one": [
+                    "Checkpoint",
+                    "Description",
+                    "Sound",
+                    "WaitWhenDone"
+                ]
+            },
+            "cls": {
+                "one": [
+                    "DoneOutput",
+                    "StartWaveOutput",
+                    "InitWaveOutput"
+                ],
+                "many": [
+                    "WaveSpawn"
+                ]
+            }
+        }
+    },
+    "waveschedule": {
+        "value": {
+            "field": {
+                "one": [
+                    "AddSentryBusterWhenDamageDealtExceeds",
+                    "AddSentryBusterWhenKillCountExceeds",
+                    "Advanced",
+                    "CanBotsAttackWhileInSpawnRoom",
+                    "EventPopfile",
+                    "FixedRespawnWaveTime",
+                    "IsEndless",
+                    "RespawnWaveTime",
+                    "StartingCurrency"
+                ]
+            },
+            "cls": {
+                "one": [
+                    "Templates"
+                ],
+                "many": [
+                    "Mission",
+                    "Wave"
+                ]
+            }
+        }
+    },
+    "wavespawn": {
+        "documentation": "A WaveSpawn Populator spawns a \"wave\" of N entities, and has the special property that only ONE WaveSpawn at a time in a .pop file is active - the first one. Once that WaveSpawn is finished, it shuts off and the next WaveSpawn in the file becomes active, and so on.",
+        "value": {
+            "field": {
+                "one": [
+                    "DoneWarningSound",
+                    "FirstSpawnWarningSound",
+                    "LastSpawnWarningSound",
+                    "MaxActive",
+                    "Name",
+                    "RandomSpawn",
+                    "SpawnCount",
+                    "StartWaveWarningSound",
+                    "Support",
+                    "TotalCount",
+                    "TotalCurrency",
+                    "WaitBeforeStarting",
+                    "WaitBetweenSpawns",
+                    "WaitBetweenSpawnsAfterDeath",
+                    "WaitForAllDead",
+                    "WaitForAllSpawned"
+                ],
+                "many": [
+                    "Where"
+                ]
+            },
+            "cls": {
+                "one": [
+                    "DoneOutput",
+                    "FirstSpawnOutput",
+                    "LastSpawnOutput",
+                    "StartWaveOutput"
+                ],
+                "many": [
+                    "Mob",
+                    "RandomChoice",
+                    "SentryGun",
+                    "Squad",
+                    "Tank",
+                    "TFBot"
+                ]
+            }
+        }
+    }
+}

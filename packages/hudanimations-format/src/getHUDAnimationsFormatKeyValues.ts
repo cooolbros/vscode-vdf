@@ -1,6 +1,6 @@
-import { Accel, Bias, Bounce, DeAccel, Flicker, Gain, HUDAnimationStatementType, Linear, Pulse, Spline } from "hudanimations-documentsymbols"
+import { HUDAnimationStatementType, Spline } from "hudanimations-documentsymbols"
 import { VDFTokeniser, VDFTokenType } from "vdf"
-import type { Animate, Animation, FireCommand, FormatInterpolator, HUDAnimationsFormatKeyValue, PlaySound, RunEvent, RunEventChild, SetFont, SetInputEnabled, SetString, SetTexture, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatKeyValues"
+import type { AccelInterpolator, Animate, Animation, BiasInterpolator, BounceInterpolator, DeAccelInterpolator, FireCommand, FlickerInterpolator, FormatInterpolator, GainInterpolator, HUDAnimationsFormatKeyValue, LinearInterpolator, PlaySound, PulseInterpolator, RunEvent, RunEventChild, SetFont, SetInputEnabled, SetString, SetTexture, SetVisible, StopAnimation, StopEvent, StopPanelAnimations } from "./HUDAnimationsFormatKeyValues"
 
 export function getHUDAnimationsFormatKeyValues(str: string): HUDAnimationsFormatKeyValue[] {
 
@@ -193,14 +193,14 @@ export function getHUDAnimationsFormatKeyValues(str: string): HUDAnimationsForma
 					value: readStringValue(),
 					interpolator: ((): FormatInterpolator => {
 						switch (readStringValue().toLowerCase()) {
-							case "accel": return <Accel>{ type: "Accel" }
-							case "bias": return <Bias>{ type: "Bias", bias: readStringValue() }
-							case "bounce": return <Bounce>{ type: "Bounce" }
-							case "deaccel": return <DeAccel>{ type: "DeAccel" }
-							case "flicker": return <Flicker>{ type: "Flicker", randomness: readStringValue() }
-							case "gain": return <Gain>{ type: "Gain", bias: readStringValue() }
-							case "linear": return <Linear>{ type: "Linear" }
-							case "pulse": return <Pulse>{ type: "Pulse", frequency: readStringValue() }
+							case "accel": return <AccelInterpolator>{ type: "Accel" }
+							case "bias": return <BiasInterpolator>{ type: "Bias", bias: readStringValue() }
+							case "bounce": return <BounceInterpolator>{ type: "Bounce" }
+							case "deaccel": return <DeAccelInterpolator>{ type: "DeAccel" }
+							case "flicker": return <FlickerInterpolator>{ type: "Flicker", randomness: readStringValue() }
+							case "gain": return <GainInterpolator>{ type: "Gain", bias: readStringValue() }
+							case "linear": return <LinearInterpolator>{ type: "Linear" }
+							case "pulse": return <PulseInterpolator>{ type: "Pulse", frequency: readStringValue() }
 							case "spline": return <Spline>{ type: "Spline" }
 							default: throw new Error("")
 						}

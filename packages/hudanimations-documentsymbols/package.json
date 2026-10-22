@@ -4,6 +4,7 @@
     "devDependencies": {
         "tsconfig": "workspace:*",
         "vdf": "workspace:*",
+        "vdf-documentsymbols": "workspace:*",
         "vscode-languageserver": "catalog:"
     }
 }

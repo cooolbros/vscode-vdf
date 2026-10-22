@@ -92,7 +92,6 @@ export class VDFTokeniser {
 					type: VDFTokenType.NewLine,
 					value: "\n",
 					range: range,
-					exteriorRange: range
 				}
 
 				index++
@@ -109,8 +108,7 @@ export class VDFTokeniser {
 				token = {
 					type: VDFTokenType.OpeningBrace,
 					value: "{",
-					range: range,
-					exteriorRange: range
+					range,
 				}
 
 				index++
@@ -127,7 +125,6 @@ export class VDFTokeniser {
 					type: VDFTokenType.ClosingBrace,
 					value: "}",
 					range: range,
-					exteriorRange: range
 				}
 
 				index++
@@ -152,15 +149,11 @@ export class VDFTokeniser {
 				const end = index
 				const endPosition = new VDFPosition(line, character)
 				const value = this.str.slice(start, end)
-				const range = new VDFRange(
-					startPosition,
-					endPosition
-				)
+				const range = new VDFRange(startPosition, endPosition)
 				token = {
 					type: VDFTokenType.Conditional,
 					value: <`[${string}]`>value,
 					range: range,
-					exteriorRange: range,
 				}
 				break
 			}
@@ -205,8 +198,9 @@ export class VDFTokeniser {
 				token = {
 					type: VDFTokenType.String,
 					value: this.str.slice(start, end),
-					range: new VDFRange(startPosition, endPosition),
-					exteriorRange: new VDFRange(exteriorStartPosition, exteriorEndPosition)
+					range: new VDFRange(exteriorStartPosition, exteriorEndPosition),
+					quoted: false,
+					textRange: new VDFRange(startPosition, endPosition),
 				}
 				break
 			}
@@ -224,17 +218,12 @@ export class VDFTokeniser {
 
 					const end = index
 					const endPosition = new VDFPosition(line, character)
-
-					const range = new VDFRange(
-						startPosition,
-						endPosition
-					)
+					const range = new VDFRange(startPosition, endPosition)
 
 					token = {
 						type: VDFTokenType.Comment,
 						value: <`//${string}`>this.str.slice(start, end),
 						range: range,
-						exteriorRange: range
 					}
 				}
 				else {
@@ -258,7 +247,8 @@ export class VDFTokeniser {
 						type: VDFTokenType.String,
 						value: value,
 						range: range,
-						exteriorRange: range
+						quoted: false,
+						textRange: range,
 					}
 				}
 				break
@@ -303,9 +293,9 @@ export class VDFTokeniser {
 	 * Consumes and returns the next non-newline/comment token if it is a conditional, consuming comments and newlines if the next non-newline/comment token is a conditional
 	 */
 	public conditional(): Extract<VDFToken, { type: VDFTokenType.Conditional }>["value"] | null {
-		let index = this.index
-		let line = this.line
-		let character = this.character
+		const index = this.index
+		const line = this.line
+		const character = this.character
 
 		while (true) {
 			try {

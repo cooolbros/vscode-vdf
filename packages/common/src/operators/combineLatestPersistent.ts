@@ -21,26 +21,29 @@ export function combineLatestPersistent<T, E extends { key: string }, O, R>(conf
 				}
 			}
 
-			const subscription = source$.subscribe((value) => {
-				current = value
-				entries = config.entries(value)
+			const subscription = source$.subscribe({
+				next: (value) => {
+					current = value
+					entries = config.entries(value)
 
-				for (const [key, subscription] of subscriptions) {
-					if (!entries.some((entry) => entry.key == key)) {
-						subscription.unsubscribe()
-						subscriptions.delete(key)
-						map.delete(key)
+					for (const [key, subscription] of subscriptions) {
+						if (!entries.some((entry) => entry.key == key)) {
+							subscription.unsubscribe()
+							subscriptions.delete(key)
+							map.delete(key)
+						}
 					}
-				}
 
-				for (const entry of entries) {
-					subscriptions.getOrInsertComputed(entry.key, (key) => config.observableSelector(entry).subscribe((value) => {
-						map.set(key, value)
-						next()
-					}))
-				}
+					for (const entry of entries) {
+						subscriptions.getOrInsertComputed(entry.key, (key) => config.observableSelector(entry).subscribe((value) => {
+							map.set(key, value)
+							next()
+						}))
+					}
 
-				next()
+					next()
+				},
+				error: (err) => subscriber.error(err)
 			})
 
 			return () => {

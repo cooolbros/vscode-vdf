@@ -1,25 +1,87 @@
-import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import type { TRPCClient } from "@trpc/client"
+import type { ClientRouter } from "client/TRPCClientRouter"
+import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { type CompletionToken } from "common/generateTokens"
+import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
+import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
+import { resolvePath } from "common/resolvePath"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
 import { getHUDAnimationsDocumentSymbols, HUDAnimationsDocumentSymbols, HUDAnimationStatementType } from "hudanimations-documentsymbols"
-import { posix } from "path"
-import { combineLatest, combineLatestWith, defer, firstValueFrom, map, of, switchMap, type Observable } from "rxjs"
+import { formatHUDAnimations, type HUDAnimationsFormatStringifyOptions } from "hudanimations-format"
+import { BehaviorSubject, combineLatest, defer, distinctUntilChanged, finalize, firstValueFrom, identity, map, Observable, of, ReplaySubject, share, switchMap } from "rxjs"
+import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
-import { DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
-import { Collection, Definitions, References, type Definition, type DefinitionReferences } from "../DefinitionReferences"
-import { TextDocumentBase, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
-import clientscheme from "../VDF/VGUI/clientscheme.json"
+import type { VDFText } from "vdf-documentsymbols"
+import { quote } from "vdf-format"
+import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InsertTextFormat, MarkupKind, TextEdit, type CodeLens, type CodeLensParams, type Connection, type DocumentFormattingParams, type InlayHint, type WorkspaceEdit } from "vscode-languageserver"
+import { Collection, Definitions, References, type Definition } from "../DefinitionReferences"
+import { types, type DefinitionType } from "../DefinitionTypes"
+import { TextDocumentBase, type ColourInformationStringify, type Decoration, type DocumentLinkResolve, type PartialDiagnosticCodeActionReference, type TextDocumentContent, type TextDocumentData, type TextDocumentDiagnosticsParams, type TextDocumentInit, type VDFCompletionItem, type VDFCompletionList, type VDFCompletionParams, type VDFRenameParams } from "../TextDocumentBase"
+import clientscheme from "../VDF/clientscheme.json"
+import type { TextDocument, VDFLanguageServer } from "../VDFLanguageServer"
+import type { GlobalDefinitionReferences, VDFWorkspace } from "../VDFWorkspace"
 import eventFiles from "./eventFiles.json"
-import type { HUDAnimationsWorkspace } from "./HUDAnimationsWorkspace"
 
-export const EventType = Symbol.for("event")
-
-export interface HUDAnimationsTextDocumentDependencies {
+interface Dependencies {
 }
 
-export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDocumentSymbols, HUDAnimationsTextDocumentDependencies> {
+interface Globals {
+	clientScheme: GlobalDefinitionReferences
+}
 
-	public static readonly colourProperties = new Set([
+export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Globals, HUDAnimationsDocumentSymbols> {
+
+	private static readonly eventScopes = new Map<keyof typeof eventFiles, number>(Object.entries(eventFiles).map(([event, path], index) => <const>[<keyof typeof eventFiles>event, index]))
+
+	private static readonly keywords = <const>[
+		"Animate",
+		"RunEvent",
+		"StopEvent",
+		"SetVisible",
+		"FireCommand",
+		"RunEventChild",
+		"SetInputEnabled",
+		"PlaySound",
+		"StopPanelAnimations",
+		"SetFont",
+		"SetTexture",
+		"SetString",
+	]
+
+	private static readonly properties = <const>[
+		"Alpha",
+		"Ammo2Color",
+		"BgColor",
+		"Blur",
+		"FgColor",
+		"HintSize",
+		"icon_expand",
+		"ItemColor",
+		"MenuColor",
+		"Position",
+		"PulseAmount",
+		"SelectionAlpha",
+		"Size",
+		"tall",
+		"TextScan",
+		"wide",
+		"xpos",
+		"ypos"
+	]
+
+	private static readonly interpolators = <const>[
+		"Linear",
+		"Accel",
+		"Deaccel",
+		"Spline",
+		"Pulse",
+		"Flicker",
+		"Gain",
+		"Bias",
+	]
+
+	private static readonly colourProperties = new Set([
 		"SelectedBoxColor",
 		"SelectedFgColor",
 		"TextColor",
@@ -30,502 +92,553 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 		"MenuColor",
 	].map((i) => i.toLowerCase()))
 
-	public static readonly fontProperties = new Set(clientscheme.Fonts.map((i) => i.toLowerCase()))
+	public static definitionReferences(document: HUDAnimationsTextDocument, documentSymbols: HUDAnimationsDocumentSymbols) {
+		const scopes = new Map<DefinitionType, Map<number, VDFRange[]>>()
+		const definitions = new Collection<Definition>()
+		const references = new Collection<VDFText>()
+		const elementReferences = new Map<string, Collection<VDFText>>()
 
-	protected getDiagnostics: (dependencies: HUDAnimationsTextDocumentDependencies, documentConfiguration: VSCodeVDFConfiguration, documentSymbols: HUDAnimationsDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
+		for (const documentSymbol of documentSymbols) {
+			const documentation = document.definitions.documentation(documentSymbol)
+			definitions.set(null, types.event, documentSymbol.eventName.text, {
+				uri: document.uri,
+				key: documentSymbol.eventName.text,
+				range: documentSymbol.range,
+				keyToken: documentSymbol.eventName,
+				documentation: { kind: MarkupKind.Markdown, value: documentation },
+				conditional: documentSymbol.conditional?.value,
+				completionItem: {
+					label: documentSymbol.eventName.text,
+					kind: CompletionItemKind.Event,
+					documentation: { kind: MarkupKind.Markdown, value: documentation }
+				}
+			})
 
-	public readonly workspace: HUDAnimationsWorkspace | null
-	public readonly decorations$: Observable<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>
+			const eventName = documentSymbol.eventName.text.toLowerCase()
+
+			let scope: number | null
+			let paths: string[]
+
+			if (((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName)) {
+				scope = HUDAnimationsTextDocument.eventScopes.get(eventName)!
+
+				scopes
+					.getOrInsertComputed(types.element, () => new Map<number, VDFRange[]>())
+					.getOrInsertComputed(scope, () => [])
+					.push(documentSymbol.range)
+
+				const eventFile = eventFiles[eventName]
+				paths = Array.isArray(eventFile) ? eventFile : [eventFile]
+			}
+			else {
+				scope = null
+				paths = []
+			}
+
+			for (const path of paths) {
+				elementReferences.getOrInsertComputed(path, () => new Collection<VDFText>())
+			}
+
+			for (const statement of documentSymbol.children) {
+				if ("event" in statement) {
+					references.set(null, types.event, statement.event.text, statement.event)
+				}
+
+				if ("element" in statement) {
+					references.set(scope, types.element, statement.element.text, statement.element)
+					for (const path of paths) {
+						elementReferences.get(path)!.set(null, types.element, statement.element.text, statement.element)
+					}
+				}
+
+				if (statement.type == HUDAnimationStatementType.Animate && HUDAnimationsTextDocument.colourProperties.has(statement.property.text.toLowerCase()) && types.colour.test(statement.value.text)) {
+					references.set(null, types.colour, statement.value.text, statement.value)
+				}
+
+				if ("font" in statement) {
+					references.set(null, types.font, statement.font.text, statement.font)
+				}
+			}
+		}
+
+		return {
+			scopes,
+			definitions,
+			references,
+			elementReferences,
+		}
+	}
+
+	public readonly languageId: "hudanimations" = "hudanimations"
+
+	private readonly workspace: VDFWorkspace
+	private readonly elementDependencies: Map<string, { path: string, uri: Uri, definitions: Definitions }>
+	private readonly elementReferences: Map<string, { collection$: BehaviorSubject<Collection<VDFText>>, references$: BehaviorSubject<Map<string, References>>, remove: { remove: () => void } }>
+
+	protected getDiagnostics: (params: TextDocumentDiagnosticsParams<Dependencies, Globals, HUDAnimationsDocumentSymbols>) => void
+	public readonly decorations$: Observable<Decoration[]>
 
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
-		workspace: HUDAnimationsWorkspace | null,
+		documents: RefCountAsyncDisposableFactory<Uri, TextDocument>,
+		trpc: TRPCClient<ClientRouter>,
+		workspace: VDFWorkspace,
+		path: string | null,
 	) {
-		super(init, documentConfiguration$, fileSystem, {
+		super(init, documentConfiguration$, fileSystem, documents, trpc, {
+			path: path,
 			getDocumentSymbols: (text: string) => getHUDAnimationsDocumentSymbols(text),
 			defaultDocumentSymbols: new HUDAnimationsDocumentSymbols(),
-			definitionReferences$: defer(() => {
-				if (workspace != null) {
-					return workspace.hudanimations_manifest$.pipe(
-						combineLatestWith(defer(() => this.documentConfiguration$)),
-						switchMap(([documents, documentConfiguration]) => {
-							// Do not use documents.includes(this) or documentSymbols.get(this)! because documents is a Proxy(HUDAnimationsTextDocument)[]
-							if (documents.some((document) => Uri.equals(document.uri, this.uri))) {
-								return workspace.definitionReferences$.pipe(
-									map(({ documentSymbols, definitionReferences }) => {
-										return {
-											dependencies: {},
-											documentConfiguration: documentConfiguration,
-											documentSymbols: documentSymbols.get(this.uri.toString())!,
-											definitionReferences: definitionReferences,
-										}
-									})
-								)
-							}
-							else {
-								return this.documentSymbols$.pipe(
-									combineLatestWith(workspace.clientScheme$),
-									switchMap(([documentSymbols, clientScheme]) => {
+			data$: of<TextDocumentData<Dependencies, Globals, HUDAnimationsDocumentSymbols>>({
+				dependencies: {},
+				globals: {
+					clientScheme: workspace.clientScheme
+				},
+				content$: defer(() => {
+					if (workspace != null) {
+						return workspace.HUDAnimations$.pipe(
+							map((HUDAnimations) => ({ HUDAnimations: HUDAnimations, some: HUDAnimations.values().some((document) => Uri.equals(document.uri, this.uri)) })),
+							distinctUntilChanged((previous, current) => previous.some == current.some),
+							switchMap(({ HUDAnimations, some }) => {
+								if (some) {
+									const references = this.references.detach()
+									const remove = workspace.setFileReferences("scripts/hudanimations_manifest.txt", this.uri, references)
 
-										const eventNames = new Set<string>()
+									return combineLatest(HUDAnimations.map((file) => file.document$)).pipe(
+										map((documents) => {
+											const self = documents.find((document) => document != null && Uri.equals(document.uri, this.uri))
+											if (!self) {
+												throw new Error()
+											}
 
-										const definitions = new Collection<Definition>()
-										const references = new Collection<VDFRange>()
+											const version: number[] = []
+											const definitions = new Collection<Definition>()
 
-										for (const documentSymbol of documentSymbols) {
-											const key = documentSymbol.eventName.toLowerCase()
+											for (const document of documents.values().filter((document) => document != null)) {
+												version.push(document.version)
 
-											eventNames.add(key)
-											definitions.set(null, EventType, documentSymbol.eventName, {
-												uri: this.uri,
-												key: documentSymbol.eventName,
-												range: documentSymbol.range,
-												documentation: this.definitions.documentation(documentSymbol),
-												keyRange: documentSymbol.eventNameRange,
-												conditional: documentSymbol.conditional?.value
-											})
-
-											for (const statement of documentSymbol.children) {
-												if ("event" in statement) {
-													references.set(null, EventType, statement.event, statement.eventRange)
-												}
-
-												if ("element" in statement) {
-													references.set(null, Symbol.for(key), statement.element, statement.elementRange)
-												}
-
-												if (statement.type == HUDAnimationStatementType.Animate) {
-													if (HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase())) {
-														references.set(null, Symbol.for("color"), statement.value, statement.valueRange)
-													}
-												}
-
-												if ("font" in statement) {
-													references.set(null, Symbol.for("font"), statement.font, statement.fontRange)
+												// Copy event definitions to definitions, used for Go to Definition
+												for (const [key, value] of document.definitionReferences.definitions.ofType(null, types.event)) {
+													definitions.set(null, types.event, key, ...value)
 												}
 											}
-										}
 
-										return (
-											eventNames.size != 0
-												? combineLatest(eventNames.values().map((eventName) => workspace.getEventDefinitions(eventName)).filter((observable) => observable != null).toArray())
-												: of([])
-										).pipe(
-											map((elements) => {
-												const color = Symbol.for("color")
-												const font = Symbol.for("font")
-												const element = Symbol.for("element")
-
-												const workspaceFilesReferences = new Map<string, Map<string, Collection<VDFRange> | null>>()
-
-												for (const { scope, type, key, value: ranges } of references) {
-													if (scope != null) {
-														continue
-													}
-
-													let target: { paths: string[], type: symbol } | null
-
-													if (type == color || type == font) {
-														target = { paths: ["resource/clientscheme.res"], type: type }
-													}
-													else {
-														const key = Symbol.keyFor(type)!
-														if (((key): key is keyof typeof eventFiles => key in eventFiles)(key)) {
-															const eventFile = eventFiles[key]
-															target = { paths: typeof eventFile == "string" ? [eventFile] : eventFile, type: element }
-														}
-														else {
-															target = null
-														}
-													}
-
-													if (target == null) {
-														continue
-													}
-
-													for (const path of target.paths) {
-														workspaceFilesReferences
-															.getOrInsertComputed(path, () => new Map<string, Collection<VDFRange>>())
-															.getOrInsertComputed(this.uri.toString(), () => new Collection<VDFRange>())!
-															.set(null, target.type, key, ...ranges)
-													}
+											return {
+												documentSymbols: self.documentSymbols,
+												definitionReferences: {
+													scopes: self.definitionReferences.scopes,
+													definitions: new Definitions(version, definitions),
+													references: self.definitionReferences.references,
+													elementReferences: self.definitionReferences.elementReferences,
 												}
-
-												workspaceFilesReferences.getOrInsertComputed("resource/clientscheme.res", () => new Map<string, null>([[this.uri.toString(), null]]))
-
-												for (const event in eventFiles) {
-													// @ts-ignore
-													const eventFile: string | string[] = eventFiles[event]
-													for (const path of typeof eventFile == "string" ? [eventFile] : eventFile) {
-														workspaceFilesReferences
-															.getOrInsertComputed(path, () => new Map<string, Collection<VDFRange>>())
-															.getOrInsertComputed(this.uri.toString(), () => null)
-													}
+											}
+										}),
+										finalize(() => remove.remove())
+									)
+								}
+								else {
+									return this.documentSymbols$.pipe(
+										map((documentSymbols) => {
+											const { scopes, definitions, references, elementReferences } = HUDAnimationsTextDocument.definitionReferences(this, documentSymbols)
+											return {
+												documentSymbols: documentSymbols,
+												definitionReferences: {
+													scopes: scopes,
+													definitions: new Definitions([this.version], definitions),
+													references: references,
+													elementReferences: elementReferences
 												}
-
-												workspace.setWorkspaceReferences(workspaceFilesReferences)
-
-												return {
-													dependencies: {},
-													documentConfiguration: documentConfiguration,
-													documentSymbols: documentSymbols,
-													definitionReferences: {
-														scopes: new Map(),
-														definitions: new Definitions({
-															version: [this.version],
-															collection: definitions,
-															globals: [
-																...elements.map((element) => element.definitions),
-																clientScheme
-															]
-														}),
-														references: new References(this.uri, references, [], this.references$)
-													} satisfies DefinitionReferences
-												}
-											})
-										)
-									})
-								)
-							}
-						})
-					)
-				}
-				else {
-					return combineLatest({
-						documentConfiguration: this.documentConfiguration$,
-						documentSymbols: this.documentSymbols$
-					}).pipe(
-						map(({ documentConfiguration, documentSymbols }) => {
-							const definitions = new Collection<Definition>()
-							const references = new Collection<VDFRange>()
-
-							for (const documentSymbol of documentSymbols) {
-								definitions.set(null, EventType, documentSymbol.eventName.toLowerCase(), {
-									uri: this.uri,
-									key: documentSymbol.eventName,
-									range: documentSymbol.range,
-									documentation: this.definitions.documentation(documentSymbol),
-									keyRange: documentSymbol.eventNameRange,
-									conditional: documentSymbol.conditional?.value
-								})
-
-								for (const statement of documentSymbol.children) {
-									if ("event" in statement) {
-										references.set(null, EventType, statement.event, statement.eventRange)
+											}
+										}),
+									)
+								}
+							}),
+							map(({ documentSymbols, definitionReferences }) => {
+								for (const [path, elementReferences] of this.elementReferences) {
+									if (!definitionReferences.elementReferences.has(path)) {
+										elementReferences.remove.remove()
+										this.elementReferences.delete(path)
 									}
 								}
-							}
 
-							return {
-								dependencies: {},
-								documentConfiguration: documentConfiguration,
-								documentSymbols: documentSymbols,
-								definitionReferences: {
-									scopes: new Map(),
-									definitions: new Definitions({ version: [this.version], collection: definitions }),
-									references: new References(this.uri, references, [], this.references$)
-								} satisfies DefinitionReferences
-							}
-						})
-					)
-				}
-			})
+								for (const [path, collection] of definitionReferences.elementReferences) {
+									this.elementReferences.getOrInsertComputed(path, () => {
+										const collection$ = new BehaviorSubject(new Collection<VDFText>())
+										const references$ = new BehaviorSubject(new Map<string, References>())
+
+										return {
+											collection$: collection$,
+											references$: references$,
+											remove: workspace.setFileReferences(path, this.uri, new References(this.uri, collection$, references$))
+										}
+									}).collection$.next(collection)
+								}
+
+								return {
+									documentSymbols: documentSymbols,
+									definitionReferences: definitionReferences,
+									eventNames: new Set(
+										documentSymbols
+											.values()
+											.map((documentSymbol) => documentSymbol.eventName.text.toLowerCase())
+											.filter((eventName) => ((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName))
+									),
+								}
+							}),
+							combineLatestPersistent({
+								entries: (value) => {
+									return value.definitionReferences.elementReferences
+										.keys()
+										.map((path) => ({ key: path }))
+										.toArray()
+								},
+								observableSelector: (entry) => {
+									return workspace.elements(entry.key).pipe(
+										map(({ uri, definitions }) => ({ path: entry.key, uri, definitions })),
+									)
+								},
+								resultSelector: (value, results) => {
+									const set = new Set(results.values().map((result) => result.path))
+									for (const key of this.elementDependencies.keys()) {
+										if (!set.has(key)) {
+											this.elementDependencies.delete(key)
+										}
+									}
+
+									for (const result of results) {
+										this.elementDependencies.set(result.path, result)
+									}
+
+									const version = value.definitionReferences.definitions.version
+									const definitions = value.definitionReferences.definitions.collection.clone()
+
+									for (const eventName of value.eventNames) {
+										const eventFile = eventFiles[eventName]
+										const eventScope = HUDAnimationsTextDocument.eventScopes.get(eventName)!
+										const paths = Array.isArray(eventFile) ? eventFile : [eventFile]
+
+										// Copy element definitions to document, used for Go to Definition
+										for (const path of paths) {
+											const elementDefinitions = this.elementDependencies.get(path)!.definitions
+											version.push(...elementDefinitions.version)
+											for (const { scope, type, key, value } of elementDefinitions) {
+												definitions.set(eventScope, type, key, ...value)
+											}
+										}
+									}
+
+									return {
+										documentSymbols: value.documentSymbols,
+										definitionReferences: {
+											scopes: value.definitionReferences.scopes,
+											definitions: new Definitions(version, definitions),
+											references: value.definitionReferences.references
+										},
+									}
+								},
+							})
+						)
+					}
+					else {
+						return this.documentSymbols$.pipe(
+							map((documentSymbols) => {
+								const { scopes, definitions, references, elementReferences } = HUDAnimationsTextDocument.definitionReferences(this, documentSymbols)
+								return {
+									documentSymbols: documentSymbols,
+									definitionReferences: {
+										scopes: scopes,
+										definitions: new Definitions([this.version], definitions),
+										references: references,
+									},
+								} satisfies TextDocumentContent<HUDAnimationsDocumentSymbols>
+							})
+						)
+					}
+				})
+			}),
 		})
 
 		this.workspace = workspace
+		this.elementDependencies = new Map()
+		this.elementReferences = new Map()
 
-		this.getDiagnostics = (dependencies, documentConfiguration, documentSymbols, definitionReferences) => {
-			return documentSymbols.reduce(
-				(diagnostics, documentSymbol) => {
-					const key = documentSymbol.eventName.toLowerCase()
+		const sounds = new Map<string, Observable<Entry>>()
 
-					const events = definitionReferences.definitions.get(null, EventType, key)
-					const definition = events?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
+		const createBestDefinitionMatchCodeAction = (definitions: Definitions, type: DefinitionType, name: string, value: string, range: VDFRange, createDocumentWorkspaceEdit: (edit: TextEdit) => WorkspaceEdit) => {
+			const definition = [...definitions.ofType(null, type).values()].map((definition) => definition[0].key)
+			if (!definition.length) {
+				return null
+			}
 
-					if (!definition || !Uri.equals(definition.uri, this.uri) || definition.keyRange != documentSymbol.eventNameRange) {
-						diagnostics.push({
-							range: documentSymbol.range,
-							severity: DiagnosticSeverity.Hint,
-							code: "duplicate-event",
-							source: "hudanimations",
-							message: "Unreachable code detected.",
-							tags: [
-								DiagnosticTag.Unnecessary
-							],
-							relatedInformation: events?.map((event) => ({
-								location: {
-									uri: event.uri.toString(),
-									range: event.keyRange
-								},
-								message: `${event.key} is declared here.`
-							})),
-							data: {
-								fix: ({ createDocumentWorkspaceEdit }) => {
-									return {
-										title: "Remove duplicate event",
-										isPreferred: true,
-										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-									}
-								},
-							}
-						})
-					}
+			const match = findBestMatch(value, definition).bestMatch
+			if (match.rating < 0.5) {
+				return null
+			}
 
-					for (const statement of documentSymbol.children) {
-						if ("event" in statement) {
-							const event = definitionReferences.definitions.get(null, EventType, statement.event.toLowerCase())
-							if (!event || !event.length) {
-								diagnostics.push({
-									range: statement.eventRange,
-									severity: DiagnosticSeverity.Warning,
-									code: "invalid-reference",
-									source: "hudanimations",
-									message: `Cannot find event '${statement.event}'.`,
-									data: {
-										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+			return {
+				title: `Change ${name} to '${match.target}'`,
+				edit: createDocumentWorkspaceEdit(TextEdit.replace(range, match.target))
+			}
+		}
 
-											const newText = findBestMatch(
-												statement.event,
-												[...definitionReferences.definitions.ofType(null, EventType).values()].flatMap((definitions) => definitions.map((definition) => definition.key))
-											)
+		this.getDiagnostics = ({ dependencies, globals, content, diagnostics, subscriptions, dispose$, next }) => {
+			const { documentSymbols, definitionReferences: { definitions } } = content
 
-											if (!newText) {
-												return null
-											}
+			const soundReferences = new Map<string, PartialDiagnosticCodeActionReference[]>()
 
-											return {
-												title: `Change event to '${newText}'`,
-												edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.eventRange, newText))
-											}
-										},
-									}
-								})
-							}
-							else {
-								diagnostics.push(TextDocumentBase.diagnostics.key(event[0].key, statement.event, statement.eventRange))
-							}
-						}
+			for (const documentSymbol of documentSymbols) {
+				const eventName = documentSymbol.eventName.text.toLowerCase()
+				const eventDefinitions = definitions.get(null, types.event, eventName)
 
-						if ("element" in statement && workspace != null && documentSymbol.eventName.toLowerCase() in eventFiles) {
-							const type = Symbol.for(documentSymbol.eventName.toLowerCase())
-							const definitions = definitionReferences.definitions.get(null, type, statement.element)
-
-							if (!definitions || !definitions.length) {
-								const files = workspace.files.get(documentSymbol.eventName.toLowerCase())
-								if (files) {
-									diagnostics.push(
-										files.pipe(
-											map((files) => {
-												return {
-													range: statement.elementRange,
-													severity: DiagnosticSeverity.Warning,
-													code: "invalid-reference",
-													source: "hudanimations",
-													message: `Cannot find element '${statement.element}'.`,
-													relatedInformation: files.uris.map((uri) => ({
-														location: {
-															uri: uri.toString(),
-															range: new VDFRange(new VDFPosition(0, 0))
-														},
-														message: "Elements are declared here."
-													})),
-													data: {
-														fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-
-															const newText = findBestMatch(
-																statement.element,
-																definitionReferences
-																	.definitions
-																	.ofType(null, type)
-																	.values()
-																	.filter((definitions) => definitions.length)
-																	.map((definitions) => definitions[0].key)
-																	.toArray()
-															)
-
-															if (!newText) {
-																return null
-															}
-
-															return {
-																title: `Change element to '${newText}'`,
-																edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.elementRange, newText))
-															}
-														},
-													}
-												}
-											})
-										)
-									)
+				const definition = eventDefinitions?.find((definition) => definition.conditional?.toLowerCase() == documentSymbol.conditional?.value.toLowerCase())
+				if (!definition || !Uri.equals(definition.uri, this.uri) || definition.keyToken != documentSymbol.eventName) {
+					diagnostics.push({
+						range: documentSymbol.range,
+						severity: DiagnosticSeverity.Hint,
+						code: "duplicate-event",
+						source: "hudanimations",
+						message: "Unreachable code detected.",
+						tags: [
+							DiagnosticTag.Unnecessary
+						],
+						relatedInformation: eventDefinitions?.map((definition) => ({
+							location: {
+								uri: definition.uri.toString(),
+								range: definition.keyToken.range,
+							},
+							message: `${definition.key} is declared here.`
+						})),
+						data: {
+							fix: ({ createDocumentWorkspaceEdit }) => {
+								return {
+									title: "Remove duplicate event",
+									kind: CodeActionKind.QuickFix,
+									isPreferred: true,
+									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
 								}
 							}
-							else {
-								diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, statement.element, statement.elementRange))
-							}
 						}
+					})
+				}
 
-						if ("interpolator" in statement) {
-							if (statement.interpolator.type == "Unknown") {
-								const interpolator = statement.interpolator
-								diagnostics.push({
-									range: interpolator.range,
-									severity: DiagnosticSeverity.Warning,
-									code: "invalid-interpolator",
-									source: "hudanimations",
-									message: `Invalid interpolator '${interpolator.value}'.`,
-									data: {
-										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-											const complexInterpolatorsParams: Record<string, string> = {
-												"Bias": "bias",
-												"Flicker": "randomness",
-												"Gain": "bias",
-												"Pulse": "frequency"
-											}
-
-											const complexInterpolators = Object.keys(complexInterpolatorsParams)
-											const newInterpolator = findBestMatch(interpolator.value, ["Accel", "Bounce", "DeAccel", "Linear", "Spline", ...complexInterpolators].toSorted()) ?? "Linear"
-											const complex = complexInterpolators.includes(newInterpolator)
-											const arg = "0"
-											const newText = complex ? `${newInterpolator} ${arg}` : newInterpolator
-
-											return {
-												title: `Change interpolator to '${newInterpolator}'${complex ? ` with ${complexInterpolatorsParams[newInterpolator]} ${arg}` : ""}`,
-												edit: createDocumentWorkspaceEdit(TextEdit.replace(interpolator.range, newText))
-											}
-										}
+				for (const statement of documentSymbol.children) {
+					if ("event" in statement) {
+						const definition = definitions.get(null, types.event, statement.event.text)
+						if (!definition || !definition.length) {
+							diagnostics.push({
+								range: statement.event.range,
+								severity: DiagnosticSeverity.Warning,
+								code: "invalid-reference",
+								source: this.languageId,
+								message: `Cannot find event '${statement.event.text}'.`,
+								data: {
+									fix: ({ createDocumentWorkspaceEdit }) => {
+										return createBestDefinitionMatchCodeAction(
+											definitions,
+											types.event,
+											"event",
+											statement.event.text,
+											statement.event.range,
+											createDocumentWorkspaceEdit
+										)
 									}
-								})
-							}
-						}
-
-						if ("font" in statement && workspace != null) {
-							const definitions = definitionReferences.definitions.get(null, Symbol.for("font"), statement.font)
-							if (!definitions || !definitions.length) {
-								diagnostics.push({
-									range: statement.fontRange,
-									severity: DiagnosticSeverity.Warning,
-									code: "invalid-reference",
-									source: "hudanimations",
-									message: `Cannot find font '${statement.font}'.`,
-									data: {
-										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-											const newText = findBestMatch(
-												statement.font,
-												definitionReferences
-													.definitions
-													.ofType(null, Symbol.for("font"))
-													.values()
-													.filter((definitions) => definitions.length)
-													.map((definitions) => definitions[0].key)
-													.toArray()
-											)
-
-											if (!newText) {
-												return null
-											}
-
-											return {
-												title: `Change font to '${newText}'`,
-												edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.fontRange, newText))
-											}
-										}
-									}
-								})
-							}
-							else {
-								diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, statement.font, statement.fontRange))
-							}
-						}
-
-						if (statement.type == HUDAnimationStatementType.Animate && workspace != null && HUDAnimationsTextDocument.colourProperties.has(statement.property.toLowerCase()) && !/^\s*\d+\s+\d+\s+\d+\s+\d+\s*$/.test(statement.value)) {
-							const type = Symbol.for("color")
-							const definitions = definitionReferences.definitions.get(null, type, statement.value)
-							if (!definitions || !definitions.length) {
-								diagnostics.push({
-									range: statement.valueRange,
-									severity: DiagnosticSeverity.Warning,
-									code: "invalid-reference",
-									source: "hudanimations",
-									message: `Cannot find colour '${statement.value}'.`,
-									data: {
-										fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-											const newText = findBestMatch(
-												statement.value,
-												definitionReferences
-													.definitions
-													.ofType(null, type)
-													.values()
-													.filter((definitions) => definitions.length)
-													.map((definitions) => definitions[0].key)
-													.toArray()
-											)
-
-											if (!newText) {
-												return null
-											}
-
-											return {
-												title: `Change colour to '${newText}'`,
-												edit: createDocumentWorkspaceEdit(TextEdit.replace(statement.valueRange, newText))
-											}
-										}
-									}
-								})
-							}
-							else {
-								diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, statement.value, statement.valueRange))
-							}
-						}
-
-						if ("sound" in statement) {
-							const path = posix.resolve(`/sound`, statement.sound.replaceAll(/[/\\]+/g, "/")).substring(1)
-							diagnostics.push(
-								fileSystem.resolve(path).pipe(
-									map((entry) => {
-										switch (entry.type) {
-											case EntryType.None:
-												return {
-													range: statement.soundRange,
-													severity: DiagnosticSeverity.Warning,
-													source: "hudanimations",
-													message: `Cannot find sound file '${statement.sound}'.`,
-												}
-											case EntryType.File:
-												return null
-											case EntryType.Directory:
-												return {
-													range: statement.soundRange,
-													severity: DiagnosticSeverity.Warning,
-													source: "hudanimations",
-													message: `Sound file '${statement.sound}' references a directory.`,
-												}
-										}
-									})
-								)
-							)
+								}
+							})
 						}
 					}
 
-					return diagnostics
-				},
-				<DiagnosticCodeActions>[]
-			)
+					if ("element" in statement) {
+						const eventName = documentSymbol.eventName.text.toLowerCase()
+						if (((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName)) {
+							const scope = HUDAnimationsTextDocument.eventScopes.get(eventName)!
+							const definition = definitions.get(scope, types.element, statement.element.text)
+							if (!definition || !definition.length) {
+								const eventFile = eventFiles[eventName]
+								diagnostics.push({
+									range: statement.element.range,
+									severity: DiagnosticSeverity.Warning,
+									code: "invalid-reference",
+									source: "hudanimations",
+									message: `Cannot find element '${statement.element.text}'.`,
+									relatedInformation: (Array.isArray(eventFile) ? eventFile : [eventFile]).map((path) => {
+										return {
+											location: {
+												uri: this.elementDependencies.get(path)!.uri.toString(),
+												range: new VDFRange(new VDFPosition(0, 0))
+											},
+											message: "Elements are declared here."
+										}
+									}),
+									data: {
+										fix: ({ createDocumentWorkspaceEdit }) => {
+											return createBestDefinitionMatchCodeAction(
+												definitions,
+												types.element,
+												"element",
+												statement.element.text,
+												statement.element.range,
+												createDocumentWorkspaceEdit
+											)
+										}
+									}
+								})
+							}
+						}
+					}
+
+					if (statement.type == HUDAnimationStatementType.Animate) {
+						if (HUDAnimationsTextDocument.colourProperties.has(statement.property.text.toLowerCase()) && types.colour.test(statement.value.text)) {
+							const definition = globals.clientScheme.get(null, types.colour, statement.value.text)
+							if (!definition || !definition.length) {
+								diagnostics.push({
+									range: statement.value.range,
+									severity: DiagnosticSeverity.Warning,
+									code: "invalid-reference",
+									source: "hudanimations",
+									message: `Cannot find colour '${statement.value.text}'.`,
+									data: {
+										fix: ({ createDocumentWorkspaceEdit }) => {
+											return createBestDefinitionMatchCodeAction(
+												definitions,
+												types.colour,
+												"colour",
+												statement.value.text,
+												statement.value.range,
+												createDocumentWorkspaceEdit
+											)
+										}
+									}
+								})
+							}
+						}
+
+						if (statement.interpolator.type == "Unknown") {
+							const interpolator = statement.interpolator
+							diagnostics.push({
+								range: interpolator.range,
+								severity: DiagnosticSeverity.Warning,
+								code: "invalid-interpolator",
+								source: "hudanimations",
+								message: `Invalid interpolator '${interpolator.value.text}'.`,
+								data: {
+									fix: ({ createDocumentWorkspaceEdit }) => {
+										const complexInterpolatorsParams: Record<string, string> = {
+											"Bias": "bias",
+											"Flicker": "randomness",
+											"Gain": "bias",
+											"Pulse": "frequency"
+										}
+
+										const complexInterpolators = Object.keys(complexInterpolatorsParams)
+										const match = findBestMatch(interpolator.value.text, ["Accel", "Bounce", "DeAccel", "Linear", "Spline", ...complexInterpolators].toSorted())
+										const newInterpolator = match.bestMatch.rating < 0.5
+											? "Linear"
+											: match.bestMatch.target
+
+										const complex = complexInterpolators.includes(newInterpolator)
+										const arg = "0"
+										const newText = complex ? `${newInterpolator} ${arg}` : newInterpolator
+
+										return {
+											title: `Change interpolator to '${newInterpolator}'${complex ? ` with ${complexInterpolatorsParams[newInterpolator]} ${arg}` : ""}`,
+											edit: createDocumentWorkspaceEdit(TextEdit.replace(interpolator.range, newText))
+										}
+									}
+								}
+							})
+						}
+					}
+
+					if ("font" in statement) {
+						const definition = definitions.get(null, types.font, statement.font.text)
+						if (!definition || !definition.length) {
+							diagnostics.push({
+								range: statement.font.range,
+								severity: DiagnosticSeverity.Warning,
+								code: "invalid-reference",
+								source: "hudanimations",
+								message: `Cannot find font '${statement.font.text}'.`,
+								data: {
+									fix: ({ createDocumentWorkspaceEdit }) => {
+										return createBestDefinitionMatchCodeAction(
+											definitions,
+											types.font,
+											"font",
+											statement.font.text,
+											statement.font.range,
+											createDocumentWorkspaceEdit
+										)
+									}
+								}
+							})
+						}
+					}
+
+					if ("sound" in statement) {
+						const path = resolvePath(`sound/${statement.sound.text}`)
+						soundReferences.getOrInsertComputed(path, () => []).push({ index: diagnostics.length, range: statement.sound.range, name: "sound", detail: statement.sound.text })
+						diagnostics.push(undefined)
+					}
+				}
+			}
+
+			for (const [path, values] of soundReferences) {
+				subscriptions.push(
+					sounds.getOrInsertComputed(
+						path,
+						() => this.fileSystem.resolve(path).pipe(
+							finalize(() => sounds.delete(path)),
+							share({ connector: () => new ReplaySubject(1), resetOnRefCountZero: () => dispose$ })
+						)
+					).subscribe((entry) => {
+						switch (entry.type) {
+							case EntryType.None: {
+								for (const { index, range, detail } of values) {
+									diagnostics[index] = {
+										range: range,
+										severity: DiagnosticSeverity.Warning,
+										source: "hudanimations",
+										message: `Cannot find sound file '${detail}'.`,
+									}
+								}
+								break
+							}
+							case EntryType.File: {
+								for (const { index, range, detail } of values) {
+									diagnostics[index] = null
+								}
+								break
+							}
+							case EntryType.Directory: {
+								for (const { index, range, detail } of values) {
+									diagnostics[index] = {
+										range: range,
+										severity: DiagnosticSeverity.Warning,
+										source: "hudanimations",
+										message: `Sound file '${detail}' references a directory.`,
+									}
+								}
+								break
+							}
+						}
+
+						next()
+					})
+				)
+			}
 		}
 
 		this.decorations$ = this.documentSymbols$.pipe(
 			map((documentSymbols) => {
 				return documentSymbols.reduce(
 					(decorations, documentSymbol) => {
-
-						const eventName = documentSymbol.eventName.toLowerCase()
-
-						// @ts-ignore
-						const eventFile = eventFiles[eventName]
-						if (eventFile) {
+						const eventName = documentSymbol.eventName.text.toLowerCase()
+						if (((eventName): eventName is keyof typeof eventFiles => eventName in eventFiles)(eventName)) {
+							const eventFile = eventFiles[eventName]
 							decorations.push({
-								range: documentSymbol.conditional?.range ?? documentSymbol.eventNameRange,
+								range: documentSymbol.conditional?.range ?? documentSymbol.eventName.range,
 								renderOptions: {
 									after: {
 										contentText: Array.isArray(eventFile) ? eventFile.join(", ") : eventFile
@@ -536,40 +649,469 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<HUDAnimationsDoc
 
 						return decorations
 					},
-					<{ range: VDFRange, renderOptions: { after: { contentText: string } } }[]>[]
+					<Decoration[]>[]
 				)
 			})
 		)
+
+		this.connect()
 	}
 
-	public async getLinks(): Promise<DocumentLinkData[]> {
+	public async onDidOpenTextDocument(server: VDFLanguageServer, connection: Connection): Promise<AsyncDisposable> {
+		this.workspace.HUDAnimationsReferences()
+		this.workspace.VGUIReferences()
+		return {
+			[Symbol.asyncDispose]: async () => { }
+		}
+	}
+
+	public async onCodeLens(params: CodeLensParams): Promise<CodeLens[]> {
+		await this.workspace.HUDAnimationsReferences()
+		return await super.onCodeLens(params)
+	}
+
+	public async onDocumentFormatting(params: DocumentFormattingParams): Promise<string> {
+		const documentFormattingConfiguration = (await firstValueFrom(this.documentConfiguration$)).hudanimations.format
+
+		const options: HUDAnimationsFormatStringifyOptions = {
+			layoutScope: documentFormattingConfiguration.layoutScope,
+			tabs: documentFormattingConfiguration.tabs,
+			breakAfterEvent: documentFormattingConfiguration.insertNewlineAfterEvents,
+			insertFinalNewline: params.options.insertFinalNewline ?? false,
+		}
+
+		return formatHUDAnimations(this.getText(), options)
+	}
+
+	public async getDocumentLinks(): Promise<DocumentLinkResolve[]> {
 		const documentSymbols = await firstValueFrom(this.documentSymbols$)
-		return documentSymbols.flatMap((documentSymbol) => {
-			return documentSymbol.children.reduce(
-				(links, statement) => {
-					if (statement.type == HUDAnimationStatementType.PlaySound) {
-						links.push({
-							range: statement.soundRange,
-							data: {
-								resolve: async () => {
-									const path = posix.resolve(`/sound/${statement.sound.replaceAll(/[/\\]+/g, "/")}`).substring(1)
-									return (await firstValueFrom(this.fileSystem.resolve(path))).uri
-								}
-							}
-						})
+		const documentLinks: DocumentLinkResolve[] = []
+		documentSymbols.forAllStatements((statement) => {
+			if (statement.type == HUDAnimationStatementType.PlaySound) {
+				documentLinks.push({
+					range: statement.sound.range,
+					data: {
+						resolve: async () => {
+							const path = resolvePath(`sound/${statement.sound.text}`)
+							return (await firstValueFrom(this.fileSystem.resolve(path))).uri
+						}
 					}
-					return links
-				},
-				<DocumentLinkData[]>[]
-			)
+				})
+			}
 		})
+		return documentLinks
 	}
 
-	public async getColours() {
+	public async getDocumentColor(): Promise<ColourInformationStringify[]> {
 		return []
 	}
 
-	public async getInlayHints(): Promise<InlayHint[]> {
+	public async onInlayHint(params: { range: VDFRange }): Promise<InlayHint[]> {
 		return []
+	}
+
+	protected async getRename(params: VDFRenameParams): Promise<WorkspaceEdit> {
+		let { scope, ...rest } = params
+		if (rest.type == types.element && scope != null) {
+			scope = null
+		}
+
+		if (rest.type == types.event) {
+			await this.workspace.HUDAnimationsReferences()
+		}
+
+		if (rest.type == types.element || rest.type == types.colour || rest.type == types.font) {
+			await this.workspace.VGUIReferences()
+		}
+
+		return await super.getRename({ scope, ...rest })
+	}
+
+	protected async getCompletion(params: VDFCompletionParams): Promise<VDFCompletionList | null> {
+
+		const text = (key: string, token: CompletionToken | undefined, getText: (text: string) => string = identity): Partial<VDFCompletionItem> => {
+			const text = token?.quoted || quote(key) ? `"${key}"` : key
+			return { textEditText: getText(text) }
+		}
+
+		const keywords = (token?: CompletionToken): VDFCompletionList => {
+			return {
+				token: token,
+				length: HUDAnimationsTextDocument.keywords.length,
+				items: HUDAnimationsTextDocument
+					.keywords
+					.values()
+					.map((str) => ({ label: str, kind: CompletionItemKind.Keyword, ...text(str, token) }))
+			}
+		}
+
+		const definitions = async (type: DefinitionType, global: keyof Globals | null, token?: CompletionToken): Promise<VDFCompletionList> => {
+			const data = await firstValueFrom(this.data$)
+
+			const [definitions, scope] = global == null
+				? [data.content.definitionReferences.definitions, data.content.definitionReferences.scopes.get(type)?.entries().find(([scope, ranges]) => ranges.some((range) => range.contains(params.position)))?.[0] ?? null]
+				: [await firstValueFrom(data.globals.get(global).definitions$), null]
+
+			const definition = definitions.ofType(scope, type)
+
+			return {
+				token: token,
+				length: definition.size,
+				items: definition
+					.values()
+					.filter((definition) => definition.length)
+					.map((definition) => ({ ...definition[0].completionItem, ...text(definition[0].completionItem.label, token) }))
+			}
+		}
+
+		const elements = async (token?: CompletionToken) => {
+			if (!eventDocumentSymbol) {
+				throw new Error("unreachable")
+			}
+
+			return await definitions(types.element, null, token)
+		}
+
+		const properties = (token?: CompletionToken): VDFCompletionList => {
+			return {
+				token: token,
+				length: HUDAnimationsTextDocument.properties.length,
+				items: HUDAnimationsTextDocument
+					.properties
+					.values()
+					.map((key) => ({ label: key, kind: CompletionItemKind.Keyword, ...text(key, token) }))
+			}
+		}
+
+		const fontProperties = (token?: CompletionToken): VDFCompletionList => {
+			return {
+				token: token,
+				length: clientscheme.Fonts.length,
+				items: clientscheme.Fonts
+					.values()
+					.map((key) => ({ label: key, kind: CompletionItemKind.Property, ...text(key, token) }))
+			}
+		}
+
+		const colours = async (token?: CompletionToken): Promise<VDFCompletionList> => {
+			return await definitions(types.colour, "clientScheme", token)
+		}
+
+		const fonts = async (token?: CompletionToken): Promise<VDFCompletionList> => {
+			return await definitions(types.font, "clientScheme", token)
+		}
+
+		const interpolators = (token?: CompletionToken): VDFCompletionList => {
+			return {
+				token: token,
+				length: HUDAnimationsTextDocument.interpolators.length,
+				items: HUDAnimationsTextDocument
+					.interpolators
+					.values()
+					.map((key) => ({ label: key, kind: CompletionItemKind.Interface, ...text(key, token) }))
+			}
+		}
+
+		const numbers = (token?: CompletionToken): VDFCompletionList => {
+			return {
+				token: token,
+				length: 10,
+				items: Array
+					.from({ length: 10 }, (_, index) => (index * 0.1).toFixed(1))
+					.values()
+					.map((key) => ({ label: key, kind: CompletionItemKind.Unit, ...text(key, token) }))
+			}
+		}
+
+		const events = async (token?: CompletionToken): Promise<VDFCompletionList> => {
+			return await definitions(types.event, null, token)
+		}
+
+		const sounds = async (token?: CompletionToken) => {
+			return await params.files({ folder: "sound", params: params, token: token })
+		}
+
+		const documentSymbols = await firstValueFrom(this.documentSymbols$)
+		const eventDocumentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.range.contains(params.position))
+
+		if (!eventDocumentSymbol) {
+			return {
+				token: params.tokens[0],
+				length: 1,
+				items: [
+					{
+						label: "event",
+						labelDetails: { description: "{}" },
+						kind: CompletionItemKind.Keyword,
+						insertTextFormat: InsertTextFormat.Snippet,
+						...text("event", params.tokens[0], (text) => `${text} $1\n{\n\t$0\n}`),
+					}
+				]
+			}
+		}
+
+		if (params.tokens.length == 0) {
+			return keywords()
+		}
+		else if (params.tokens.length == 1 && params.includes(params.tokens[0])) {
+			return keywords(params.tokens[0])
+		}
+
+		switch (params.tokens[0].value.toLowerCase()) {
+			case "event": {
+				switch (params.tokens.length) {
+					case 2:
+						return params.includes(params.tokens[1])
+							? null
+							: params.conditionals()
+					case 3:
+						return params.includes(params.tokens[2])
+							? params.conditionals(params.tokens[2])
+							: null
+					default:
+						return null
+				}
+			}
+			case "animate": {
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: properties()
+					case 3:
+						return params.includes(params.tokens[2])
+							? properties(params.tokens[2])
+							: HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? colours() : null
+					case 4:
+						return params.includes(params.tokens[3])
+							? HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? colours(params.tokens[3]) : null
+							: interpolators()
+					case 5:
+						return params.includes(params.tokens[4])
+							? interpolators(params.tokens[4])
+							: numbers() /* delay */
+					case 6:
+						return params.includes(params.tokens[5])
+							? numbers(params.tokens[5]) /* delay */
+							: numbers() /* duration */
+					case 7:
+						return params.includes(params.tokens[6])
+							? numbers(params.tokens[6]) /* duration */
+							: params.conditionals()
+					case 8:
+						return params.includes(params.tokens[7])
+							? params.conditionals(params.tokens[7])
+							: null
+					default:
+						return null
+				}
+			}
+			case "runevent":
+			case "stopevent": {
+				switch (params.tokens.length) {
+					case 1:
+						return events()
+					case 2:
+						return params.includes(params.tokens[1])
+							? events(params.tokens[1])
+							: numbers() /* delay */
+					case 3:
+						return params.includes(params.tokens[2])
+							? numbers(params.tokens[2]) /* delay */
+							: params.conditionals()
+					case 4:
+						return params.includes(params.tokens[3])
+							? params.conditionals(params.tokens[3])
+							: null
+					default:
+						return null
+				}
+			}
+			case "setvisible":
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: params.bits() /* visible */
+					case 3:
+						return params.includes(params.tokens[2])
+							? params.bits() /* visible */
+							: numbers() /* delay */
+					case 4:
+						return params.includes(params.tokens[3])
+							? numbers(params.tokens[3]) /* delay */
+							: params.conditionals()
+					case 5:
+						return params.includes(params.tokens[4])
+							? params.conditionals(params.tokens[4])
+							: null
+					default:
+						return null
+				}
+			case "firecommand":
+				switch (params.tokens.length) {
+					case 1:
+						return numbers() /* delay */
+					case 2:
+						return params.includes(params.tokens[1])
+							? numbers(params.tokens[1]) /* delay */
+							: null /* command */
+					case 3:
+						return params.includes(params.tokens[2])
+							? null /* command */
+							: params.conditionals() /* delay */
+					case 4:
+						return params.includes(params.tokens[3])
+							? params.conditionals(params.tokens[3]) /* conditionals */
+							: null
+					default:
+						return null
+				}
+			case "runeventchild":
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: events()
+					case 3:
+						return params.includes(params.tokens[2])
+							? events(params.tokens[2])
+							: numbers() /* delay */
+					case 4:
+						return params.includes(params.tokens[3])
+							? numbers(params.tokens[3]) /* delay */
+							: params.conditionals()
+					case 5:
+						return params.includes(params.tokens[4])
+							? params.conditionals(params.tokens[4])
+							: null
+					default:
+						return null
+				}
+			case "setinputenabled":
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: params.bits() /* enabled */
+					case 3:
+						return params.includes(params.tokens[2])
+							? params.bits() /* enabled */
+							: numbers() /* delay */
+					case 4:
+						return params.includes(params.tokens[3])
+							? numbers(params.tokens[3]) /* delay */
+							: params.conditionals()
+					case 5:
+						return params.includes(params.tokens[4])
+							? params.conditionals(params.tokens[4])
+							: null
+					default:
+						return null
+				}
+			case "playsound":
+				switch (params.tokens.length) {
+					case 1:
+						return numbers() /* delay */
+					case 2:
+						return params.includes(params.tokens[1])
+							? numbers(params.tokens[1]) /* delay */
+							: sounds()
+					case 3:
+						return params.includes(params.tokens[2])
+							? sounds(params.tokens[2])
+							: params.conditionals()
+					case 4:
+						return params.includes(params.tokens[3])
+							? params.conditionals(params.tokens[3])
+							: null
+					default:
+						return null
+				}
+			case "stoppanelanimations":
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: numbers() /* delay */
+					case 3:
+						return params.includes(params.tokens[2])
+							? numbers(params.tokens[2]) /* delay */
+							: params.conditionals()
+					case 4:
+						return params.includes(params.tokens[3])
+							? params.conditionals(params.tokens[3])
+							: null
+					default:
+						return null
+				}
+			case "setfont":
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: fontProperties()
+					case 3:
+						return params.includes(params.tokens[2])
+							? fontProperties(params.tokens[2])
+							: fonts()
+					case 4:
+						return params.includes(params.tokens[3])
+							? fonts(params.tokens[3])
+							: numbers() /* delay */
+					case 5:
+						return params.includes(params.tokens[4])
+							? numbers(params.tokens[4]) /* delay */
+							: params.conditionals()
+					case 6:
+						return params.includes(params.tokens[5])
+							? params.conditionals(params.tokens[5])
+							: null
+					default:
+						return null
+				}
+			case "settexture":
+			case "setstring":
+				switch (params.tokens.length) {
+					case 1:
+						return elements()
+					case 2:
+						return params.includes(params.tokens[1])
+							? elements(params.tokens[1])
+							: null /* property */
+					case 3:
+						return params.includes(params.tokens[2])
+							? null /* property */
+							: null /* value */
+					case 4:
+						return params.includes(params.tokens[3])
+							? null /* value */
+							: numbers() /* delay */
+					case 5:
+						return params.includes(params.tokens[4])
+							? numbers(params.tokens[4]) /* delay */
+							: params.conditionals()
+					case 6:
+						return params.includes(params.tokens[5])
+							? params.conditionals(params.tokens[5])
+							: null
+					default:
+						return null
+				}
+			default:
+				return null
+		}
 	}
 }

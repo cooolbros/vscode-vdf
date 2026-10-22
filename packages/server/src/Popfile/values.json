@@ -1,0 +1,92 @@
+{
+    "advanced": [
+        "1",
+        "0"
+    ],
+    "attributes": [
+        "Aggressive",
+        "AirChargeOnly",
+        "AlwaysCrit",
+        "AlwaysFireWeapon",
+        "AutoJump",
+        "BecomeSpectatorOnDeath",
+        "BlastImmune",
+        "BulletImmune",
+        "DisableDodge",
+        "FireImmune",
+        "HoldFireUntilFullReload",
+        "IgnoreEnemies",
+        "IgnoreFlag",
+        "MiniBoss",
+        "Parachute",
+        "ProjectileShield",
+        "RemoveOnDeath",
+        "RetainBuildings",
+        "SpawnWithFullCharge",
+        "SuppressFire",
+        "TeleportToHint",
+        "UseBossHealthBar",
+        "VaccinatorBlast",
+        "VaccinatorBullets",
+        "VaccinatorFire"
+    ],
+    "behaviormodifiers": [
+        "Mobber",
+        "Push"
+    ],
+    "canbotsattackwhileinspawnroom": [
+        "No"
+    ],
+    "checkpoint": [
+        "Yes"
+    ],
+    "class": [
+        "Scout",
+        "Soldier",
+        "Pyro",
+        "Demoman",
+        "Heavy",
+        "Heavyweapons",
+        "Engineer",
+        "Medic",
+        "Sniper",
+        "Spy"
+    ],
+    "eventpopfile": [
+        "Halloween"
+    ],
+    "fixedrespawnwavetime": [
+        "Yes"
+    ],
+    "objective": [
+        "DestroySentries",
+        "SeekAndDestroy",
+        "Sniper",
+        "Spy",
+        "Engineer"
+    ],
+    "randomspawn": [
+        "1",
+        "0"
+    ],
+    "skill": [
+        "Easy",
+        "Normal",
+        "Hard",
+        "Expert"
+    ],
+    "support": [
+        "1",
+        "Limited"
+    ],
+    "level": [
+        "1",
+        "2",
+        "3"
+    ],
+    "weaponrestrictions": [
+        "PrimaryOnly",
+        "SecondaryOnly",
+        "MeleeOnly"
+    ]
+}

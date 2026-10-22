@@ -1,5 +1,5 @@
 import { execSync } from "child_process"
-import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
+import { Client, VSCodeVDFLanguageIDSchema } from "client"
 import { Decorations } from "client/Decorations"
 import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
@@ -15,11 +15,10 @@ import { selectTeamFortress2Folder } from "client/commands/selectTeamFortress2Fo
 import { setVTFFlags } from "client/commands/setVTFFlags"
 import { showReferences } from "client/commands/showReferences"
 import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
-import { createMiddleware } from "client/middleware"
 import { Uri } from "common/Uri"
 import { homedir } from "os"
-import { join, posix, win32 } from "path"
-import { concat, concatMap, defer, distinctUntilChanged, filter, firstValueFrom, map, Observable, shareReplay } from "rxjs"
+import { posix, win32 } from "path"
+import { concat, concatMap, defer, distinctUntilChanged, filter, firstValueFrom, map, Observable, shareReplay, skip } from "rxjs"
 import { VDF } from "vdf"
 import vscode from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
@@ -28,8 +27,6 @@ import { BSPFileSystemProvider } from "./BSP/BSPFileSystemProvider"
 import { BSPFactory } from "./BSPFactory"
 import { FileSystemMountPointFactory } from "./FileSystemMountPointFactory"
 import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
-
-const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
 
 export function activate(context: vscode.ExtensionContext): void {
 
@@ -282,135 +279,110 @@ export function activate(context: vscode.ExtensionContext): void {
 	subscriptions.push(vscode.workspace.registerFileSystemProvider("vpk", new VPKFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
-	const onDidOpenTextDocument = async (e: vscode.TextDocument): Promise<void> => {
-		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
-		if (result.success) {
-			await startServer(result.data)
-		}
-	}
+	let client: Promise<Client<LanguageClient>> | undefined = undefined
 
-	const middleware = createMiddleware(context)
-
-	const startServer = async (languageId: VSCodeVDFLanguageID): Promise<void> => {
-
-		if (languageClients[languageId]) {
-			return
-		}
-
-		const serverModule = context.asAbsolutePath(join("apps/extension/desktop/servers/dist", `${languageId}.js`))
-		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
-
-		const languageStatusItem = vscode.languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
-		subscriptions.push(languageStatusItem)
-		languageStatusItem.busy = true
-
-		const languageStatusItemSubscription = teamFortress2FolderConfiguration$.subscribe((result) => {
-			switch (result.type) {
-				case "success":
-					languageStatusItem.text = `$(folder-active) ${result.uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
-					languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
-					languageStatusItem.command = undefined
-					break
-				case "empty":
-					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
-					languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
-					languageStatusItem.command = undefined
-					break
-				case "error":
-					languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
-					languageStatusItem.severity = vscode.LanguageStatusSeverity.Warning
-					languageStatusItem.command = { title: "Select Team Fortress 2 folder", command: "vscode-vdf.selectTeamFortress2Folder" }
-					break
+	const onDidOpenTextDocument = async (e: vscode.TextDocument) => {
+		if (VSCodeVDFLanguageIDSchema.safeParse(e.languageId).success) {
+			if (client != undefined) {
+				return
 			}
 
-			languageStatusItem.busy = false
-		})
+			const languageStatusItem = vscode.languages.createLanguageStatusItem("vscode-vdf.languageStatusItem", Client.documentSelector)
+			subscriptions.push(languageStatusItem)
 
-		subscriptions.push(new vscode.Disposable(() => languageStatusItemSubscription.unsubscribe()))
+			languageStatusItem.busy = true
 
-		const options = {
-			execArgv: ["--enable-source-maps"]
-		}
+			const languageStatusItemSubscription = teamFortress2FolderConfiguration$.subscribe((result) => {
+				switch (result.type) {
+					case "success":
+						languageStatusItem.text = `$(folder-active) ${result.uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
+						languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
+						languageStatusItem.command = undefined
+						break
+					case "empty":
+						languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
+						languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
+						languageStatusItem.command = undefined
+						break
+					case "error":
+						languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
+						languageStatusItem.severity = vscode.LanguageStatusSeverity.Warning
+						languageStatusItem.command = { title: "Select Team Fortress 2 folder", command: "vscode-vdf.selectTeamFortress2Folder" }
+						break
+				}
 
-		if (process.env.NODE_ENV != "production") {
-			options.execArgv.push(
-				"--nolazy",
-				`--inspect=${6000 + Object.keys(VSCodeVDFLanguageNameSchema.shape).indexOf(languageId)}`,
-			)
-		}
+				languageStatusItem.busy = false
+			})
 
-		let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+			subscriptions.push(new vscode.Disposable(() => languageStatusItemSubscription.unsubscribe()))
 
-		const client = languageClients[languageId] = new Client<LanguageClient>(
-			context,
-			decorations,
-			languageClients,
-			startServer,
-			fileSystemMountPointFactory,
-			fileSystemWatcherFactory,
-			bspFactory,
-			new LanguageClient(
-				`${languageId}-language-server`,
-				`${name} Language Server`,
-				{
-					run: {
-						module: serverModule,
-						transport: TransportKind.ipc,
-						options: options,
-					},
-					debug: {
-						module: serverModule,
-						transport: TransportKind.ipc,
-						options: options,
-					}
-				} satisfies ServerOptions,
-				{
-					documentSelector: [
-						languageId
-					],
-					initializationOptions: () => ({
-						teamFortress2Folder: teamFortress2Folder.toJSON(),
-						...client.initializationOptions()
-					}),
-					middleware: middleware[languageId],
-					...(process.env.NODE_ENV != "production" && {
-						connectionOptions: {
-							maxRestartCount: 1
-						}
+			client = Promise.try(async () => {
+				const serverModule = context.asAbsolutePath("apps/extension/desktop/server/dist/server.js")
+				let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+
+				const options = {
+					execArgv: ["--enable-source-maps"]
+				}
+
+				if (process.env.NODE_ENV != "production") {
+					options.execArgv.push(
+						"--nolazy",
+						"--inspect=6000",
+					)
+				}
+
+				const client = new Client<LanguageClient>(
+					context,
+					decorations,
+					fileSystemMountPointFactory,
+					fileSystemWatcherFactory,
+					bspFactory,
+					new LanguageClient(
+						"vdf-language-server",
+						"VDF Language Server",
+						{
+							module: serverModule,
+							transport: TransportKind.ipc,
+							options: options,
+						} satisfies ServerOptions,
+						{
+							documentSelector: Client.documentSelector,
+							initializationOptions: () => ({
+								teamFortress2Folder: teamFortress2Folder.toJSON()
+							}),
+							...(process.env.NODE_ENV != "production" && {
+								connectionOptions: {
+									maxRestartCount: 1
+								}
+							})
+						} satisfies LanguageClientOptions,
+					)
+				)
+
+				subscriptions.push(new vscode.Disposable(() => client[Symbol.asyncDispose]()))
+				await client.start()
+
+				subscriptions.push(
+					vscode.commands.registerCommand("vscode-vdf.restartVDFLanguageServer", () => {
+						client.client.restart()
 					})
-				} satisfies LanguageClientOptions
-			)
-		)
+				)
 
-		subscriptions.push(
-			new vscode.Disposable(() => client[Symbol.asyncDispose]()),
-			vscode.commands.registerCommand(`vscode-vdf.restart${name.replaceAll(" ", "")}LanguageServer`, () => {
-				client.client.restart()
+				const teamFortress2FolderSubscription = teamFortress2Folder$.pipe(
+					skip(1)
+				).subscribe((value) => {
+					teamFortress2Folder = value
+					client.client.restart()
+				})
+
+				subscriptions.push(new vscode.Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
+
+				subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => {
+					client.client.restart()
+				}))
+
+				return client
 			})
-		)
-
-		const result = await client.start()
-
-		const initializeResultSchema = z.object({
-			teamFortress2Folder: z.boolean().default(false),
-			workspaceFolders: z.boolean().default(false),
-		})
-
-		const { teamFortress2Folder: teamFortress2FolderReturned, workspaceFolders: workspaceFoldersReturned } = initializeResultSchema.parse(result)
-
-		if (teamFortress2FolderReturned) {
-			const teamFortress2FolderSubscription = teamFortress2Folder$.subscribe((value) => {
-				teamFortress2Folder = value
-				client.client.restart()
-			})
-
-			subscriptions.push(new vscode.Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
-		}
-
-		if (workspaceFoldersReturned) {
-			subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(() => {
-				client.client.restart()
-			}))
 		}
 	}
 

@@ -1,4 +1,4 @@
-import { Client, VSCodeVDFLanguageIDSchema, VSCodeVDFLanguageNameSchema, type VSCodeVDFLanguageID } from "client"
+import { Client, VSCodeVDFLanguageIDSchema } from "client"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { executeCommands } from "client/commands/executeCommands"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
@@ -11,7 +11,6 @@ import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPrevi
 import { VDFToJSON } from "client/commands/VDFToJSON"
 import { Decorations } from "client/Decorations"
 import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
-import { createMiddleware } from "client/middleware"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
 import { FolderFileSystem } from "client/VirtualFileSystem/FolderFileSystem"
 import { VSCodeFileSystem } from "client/VirtualFileSystem/VSCodeFileSystem"
@@ -23,8 +22,6 @@ import { Uri } from "common/Uri"
 import { firstValueFrom, of } from "rxjs"
 import vscode from "vscode"
 import { LanguageClient, type LanguageClientOptions } from "vscode-languageclient/browser"
-
-const languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<LanguageClient> } = {}
 
 export function activate(context: vscode.ExtensionContext): void {
 
@@ -83,62 +80,52 @@ export function activate(context: vscode.ExtensionContext): void {
 	subscriptions.push(vscode.workspace.registerFileSystemProvider(RemoteResourceFileSystemProvider.scheme, new RemoteResourceFileSystemProvider(), { isCaseSensitive: false, isReadonly: true }))
 
 	// Language Server
-	const onDidOpenTextDocument = async (e: vscode.TextDocument): Promise<void> => {
-		const result = VSCodeVDFLanguageIDSchema.safeParse(e.languageId)
-		if (result.success) {
-			await startServer(result.data)
+	let client: Promise<Client<LanguageClient>> | undefined = undefined
+
+	const onDidOpenTextDocument = async (e: vscode.TextDocument) => {
+		if (VSCodeVDFLanguageIDSchema.safeParse(e.languageId).success) {
+			if (client != undefined) {
+				return
+			}
+
+			const languageStatusItem = vscode.languages.createLanguageStatusItem("vscode-vdf.languageStatusItem", Client.documentSelector)
+			subscriptions.push(languageStatusItem)
+
+			languageStatusItem.text = "$(cloud)"
+			languageStatusItem.command = {
+				title: RemoteResourceFileSystemProvider.base,
+				command: "vscode.open",
+				arguments: [RemoteResourceFileSystemProvider.base]
+			}
+
+			client = Promise.try(async () => {
+				const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/server/dist/server.js").toString(true)
+				let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
+
+				const client = new Client<LanguageClient>(
+					context,
+					decorations,
+					fileSystemMountPointFactory,
+					fileSystemWatcherFactory,
+					null,
+					new LanguageClient(
+						"vdf-language-server",
+						"VDF Language Server",
+						new Worker(serverModule),
+						{
+							documentSelector: Client.documentSelector,
+							initializationOptions: () => ({
+								teamFortress2Folder: teamFortress2Folder.toJSON()
+							}),
+						} satisfies LanguageClientOptions,
+					)
+				)
+
+				subscriptions.push(new vscode.Disposable(() => client[Symbol.asyncDispose]()))
+				await client.start()
+				return client
+			})
 		}
-	}
-
-	const middleware = createMiddleware(context)
-
-	const startServer = async (languageId: VSCodeVDFLanguageID): Promise<void> => {
-
-		if (languageClients[languageId]) {
-			return
-		}
-
-		const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/servers/dist", `${languageId}.js`).toString(true)
-		const name = VSCodeVDFLanguageNameSchema.shape[languageId].value
-
-		const languageStatusItem = vscode.languages.createLanguageStatusItem(`vscode-vdf.${name.replaceAll(" ", "")}LanguageStatusItem`, languageId)
-		subscriptions.push(languageStatusItem)
-
-		languageStatusItem.text = "$(cloud)"
-		languageStatusItem.command = {
-			title: RemoteResourceFileSystemProvider.base,
-			command: "vscode.open",
-			arguments: [RemoteResourceFileSystemProvider.base]
-		}
-
-		let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
-
-		const client = languageClients[languageId] = new Client(
-			context,
-			decorations,
-			languageClients,
-			startServer,
-			fileSystemMountPointFactory,
-			fileSystemWatcherFactory,
-			null,
-			new LanguageClient(
-				`${languageId}-language-server`,
-				`${name} Language Server`,
-				{
-					documentSelector: [
-						languageId
-					],
-					initializationOptions: () => ({
-						teamFortress2Folder: teamFortress2Folder.toJSON()
-					}),
-					middleware: middleware[languageId],
-				} satisfies LanguageClientOptions,
-				new Worker(serverModule),
-			)
-		)
-
-		subscriptions.push(new vscode.Disposable(() => client[Symbol.asyncDispose]()))
-		await client.start()
 	}
 
 	vscode.workspace.textDocuments.forEach(onDidOpenTextDocument)

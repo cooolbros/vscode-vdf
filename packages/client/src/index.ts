@@ -7,7 +7,6 @@ import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
-import { VSCodeVDFLanguageIDSchema, type VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { VDFPosition, VDFRange } from "vdf"
 import vscode from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
@@ -20,23 +19,18 @@ export * from "common/VSCodeVDFLanguageID"
 
 export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 
-	private static readonly sendSchema = z.object({
-		server: VSCodeVDFLanguageIDSchema,
-		method: z.string(),
-		param: z.any()
-	})
+	public static readonly documentSelector = [
+		{ language: "hudanimations" },
+		{ language: "popfile" },
+		{ language: "vdf" },
+		{ language: "vmt" },
+	]
 
 	public readonly client: T
-
-	private readonly startServer: (languageId: VSCodeVDFLanguageID) => void
-	private readonly clients: Set<string>
-	private readonly router: ReturnType<typeof TRPCClientRouter>
 
 	constructor(
 		context: vscode.ExtensionContext,
 		decorations: Decorations,
-		languageClients: { -readonly [P in VSCodeVDFLanguageID]?: Client<T> },
-		startServer: (languageId: VSCodeVDFLanguageID) => void,
 		fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 		fileSystemWatcherFactory: FileSystemWatcherFactory,
 		bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
@@ -45,88 +39,42 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 		super()
 
 		this.client = this.stack.adopt(client, (disposable) => disposable.dispose())
-		this.startServer = startServer
-		this.clients = new Set()
-		this.router = TRPCClientRouter(
-			initTRPC
-				.context<{ client: VSCodeVDFLanguageID }>()
-				.create({
-					transformer: devalueTransformer({
-						reducers: {
-							Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
-						},
-						revivers: {
-							Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
-							VDFPosition: (value: ReturnType<VDFPosition["toJSON"]>) => VDFPosition.schema.parse(value),
-							VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
-						}
-					}),
-					isDev: true,
-				}),
-			context,
-			decorations,
-			fileSystemMountPointFactory,
-			fileSystemWatcherFactory,
-			bspFactory
-		)
 
 		this.stack.adopt(
 			this.client.onRequest("vscode-vdf/trpc", TRPCRequestHandler({
-				router: this.router,
-				schema: VSCodeVDFLanguageIDSchema,
+				router: TRPCClientRouter(
+					initTRPC
+						.context<{ client: "vdf" }>()
+						.create({
+							transformer: devalueTransformer({
+								reducers: {
+									Uri: (value: unknown) => value instanceof Uri ? value.toJSON() : undefined,
+									VDFPosition: (value: unknown) => value instanceof VDFPosition ? value.toJSON() : undefined,
+									VDFRange: (value: unknown) => value instanceof VDFRange ? value.toJSON() : undefined,
+								},
+								revivers: {
+									Uri: (value: ReturnType<Uri["toJSON"]>) => Uri.schema.parse(value),
+									VDFRange: (value: ReturnType<VDFRange["toJSON"]>) => VDFRange.schema.parse(value),
+								}
+							}),
+							isDev: true,
+						}),
+					context,
+					decorations,
+					fileSystemMountPointFactory,
+					fileSystemWatcherFactory,
+					bspFactory
+				),
+				schema: z.enum(["vdf"]),
 				sendNotification: async (server, method, param) => {
-					await languageClients[server]!.client.sendNotification(method, { server: null, notification: param })
+					await client.sendNotification(method, param)
 				}
 			})),
 			(disposable) => disposable.dispose()
 		)
-
-		this.stack.adopt(
-			this.client.onRequest("vscode-vdf/sendRequest", async (...params) => {
-				const { server, method, param } = Client.sendSchema.parse(params[0])
-				return await languageClients[server]!.client.sendRequest(method, param)
-			}),
-			(disposable) => disposable.dispose()
-		)
-
-		this.stack.adopt(
-			this.client.onNotification("vscode-vdf/sendNotification", async (...params) => {
-				const { server, method, param } = Client.sendSchema.parse(params[0])
-				await languageClients[server]!.client.sendNotification(method, param)
-			}),
-			(disposable) => disposable.dispose()
-		)
-
-		this.stack.adopt(
-			this.client.onNotification("vscode-vdf/exit", async (...params) => {
-				const { clients } = z.object({ clients: z.array(z.string()) }).parse(params[0])
-				for (const client of clients) {
-					this.clients.add(client)
-				}
-			}),
-			(disposable) => disposable.dispose()
-		)
 	}
 
-	public initializationOptions() {
-		const clients = [...this.clients]
-		this.clients.clear()
-		return {
-			clients: [...clients]
-		}
-	}
-
-	public async start(): Promise<Record<string, unknown>> {
+	public async start(): Promise<void> {
 		await this.client.start()
-
-		const { servers, ...rest } = z.looseObject({
-			servers: z.array(VSCodeVDFLanguageIDSchema).transform((arg) => new Set(arg))
-		}).parse(this.client.initializeResult?.["data"])
-
-		for (const languageId of servers) {
-			this.startServer(languageId)
-		}
-
-		return rest
 	}
 }

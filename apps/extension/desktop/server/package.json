@@ -1,0 +1,13 @@
+{
+    "name": "desktop-server",
+    "scripts": {
+        "dev": "rspack build --watch --mode none",
+        "build": "rspack build"
+    },
+    "devDependencies": {
+        "common": "workspace:*",
+        "server": "workspace:*",
+        "tsconfig": "workspace:*",
+        "vscode-languageserver": "catalog:"
+    }
+}
