@@ -1,7 +1,15 @@
+import { Uri } from "common/Uri"
 import { open } from "fs/promises"
 import { posix } from "path"
 import { VPK, VPKFileType, type VPKEntry } from "vpk"
 import vscode from "vscode"
+import z from "zod"
+
+const VPKUriSchema = z
+	.string()
+	.transform((arg) => JSON.parse(arg))
+	.pipe(Uri.schema)
+	.transform((arg) => vscode.Uri.from(arg))
 
 export class VPKFileSystemProvider implements vscode.FileSystemProvider {
 
@@ -16,7 +24,7 @@ export class VPKFileSystemProvider implements vscode.FileSystemProvider {
 
 	private async resolve(uri: vscode.Uri) {
 
-		const vpkUri = vscode.Uri.from(JSON.parse(new URLSearchParams(uri.query).get("root")!))
+		const vpkUri = VPKUriSchema.parse(new URLSearchParams(uri.query).get("root"))
 
 		let vpk = this.vpks.get(vpkUri.toString())
 		if (!vpk) {

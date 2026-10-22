@@ -1,0 +1,13 @@
+[
+    "$additive",
+    "$ignorez",
+    "$model",
+    "$no_fullbright",
+    "$nocull",
+    "$nolod",
+    "$phong",
+    "$ssbump",
+    "$translucent",
+    "$vertexalpha",
+    "$vertexcolor"
+]

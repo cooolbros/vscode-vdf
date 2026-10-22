@@ -4,25 +4,25 @@ import { EntryType, type FileSystemMountPoint } from "../FileSystemMountPoint"
 import { Uri } from "../Uri"
 import type { WatchEvent } from "../WatchEvent"
 import { combineLatestPersistent } from "./combineLatestPersistent"
-import { usingAsync } from "./usingAsync"
 
 export interface BaseConfig<D extends DocumentLike> {
 	current: Uri
-	documentSelector: (uri: Uri) => Promise<D>
+	documentSelector: (uri: Uri, detail: string, ambient: boolean) => Observable<BaseResult<D>>
 }
 
-export interface DocumentLike extends AsyncDisposable {
+export interface DocumentLike {
 	readonly uri: Uri
 	readonly base$: Observable<string[]>
 }
 
 export interface AmbientConfig<D extends DocumentLike> extends BaseConfig<D> {
 	watch: (uri: Uri) => Observable<WatchEvent>,
+	preserve: boolean
 }
 
 export interface FSConfig<D extends DocumentLike> extends AmbientConfig<D> {
 	fileSystem: FileSystemMountPoint
-	relativeFolderPath: string
+	relativeFolderPath: string | null
 }
 
 export interface CombineLatestBaseFilesConfig<R> {
@@ -52,6 +52,7 @@ export type BaseResult<T> = (
 export const enum BaseErrorType {
 	Self,
 	Directory,
+	Language,
 	Cyclic,
 	Base,
 }
@@ -59,18 +60,19 @@ export const enum BaseErrorType {
 export type BaseError = (
 	| { type: BaseErrorType.Self, self: string, detail: string, uri: Uri }
 	| { type: BaseErrorType.Directory, self: string, detail: string, uri: Uri }
+	| { type: BaseErrorType.Language, detail: string, language: { id: string, name: string } }
 	| { type: BaseErrorType.Cyclic, stack: Stack }
 	| { type: BaseErrorType.Base, path: string, errors: BaseError[] }
 )
 
 export const fs = <D extends DocumentLike>(config: FSConfig<D>) => {
-	const { current, documentSelector, watch, fileSystem, relativeFolderPath } = config
+	const { current, documentSelector, watch, preserve, fileSystem, relativeFolderPath } = config
 
-	const self = `${relativeFolderPath}/${current.basename()}`
-	const external = ambient({ current, documentSelector, watch })
+	const self = `${relativeFolderPath != null ? `${relativeFolderPath}/` : ""}${current.basename()}`
+	const external = ambient({ current, documentSelector, watch, preserve })
 
 	return ({ stack, detail }: BaseValue): Observable<BaseResult<D>> => {
-		const path = posix.resolve(`/${relativeFolderPath}/${detail}`).substring(1)
+		const path = posix.resolve(`/${relativeFolderPath != null ? `${relativeFolderPath}/` : ""}${detail}`).substring(1)
 
 		if (path.toLowerCase() == self.toLowerCase()) {
 			return concat(
@@ -93,18 +95,27 @@ export const fs = <D extends DocumentLike>(config: FSConfig<D>) => {
 					case EntryType.None:
 						return external({ stack, detail })
 					case EntryType.File:
-						return usingAsync(async () => await documentSelector(entry.uri)).pipe(
-							switchMap((document) => {
+						return documentSelector(entry.uri, detail, false).pipe(
+							switchMap((result) => {
+								if (result.type != BaseResultType.Success) {
+									return of(result)
+								}
+
+								const document = result.value
 								return document.base$.pipe(
-									map((base) => ({ base: base, value: undefined })),
+									map((base) => ({ base: base })),
 									combineLatestBaseFiles({
 										stack: [...stack, { path: self, uri: current }],
 										open: fs({
 											current: document.uri,
 											documentSelector,
 											watch,
+											preserve: true,
 											fileSystem,
-											relativeFolderPath: posix.dirname(path),
+											relativeFolderPath: (() => {
+												const dirname = posix.dirname(path)
+												return dirname != "." ? dirname : null
+											})(),
 										})
 									}),
 									map(({ base: results }) => {
@@ -153,7 +164,7 @@ export const fs = <D extends DocumentLike>(config: FSConfig<D>) => {
 }
 
 export const ambient = <D extends DocumentLike>(config: AmbientConfig<D>) => {
-	const { current, documentSelector, watch } = config
+	const { current, documentSelector, watch, preserve } = config
 
 	const self = current.fsPath
 	const dirname = current.dirname()
@@ -184,8 +195,13 @@ export const ambient = <D extends DocumentLike>(config: AmbientConfig<D>) => {
 					case "create":
 						switch (event.entry.type) {
 							case EntryType.File:
-								return usingAsync(async () => await documentSelector(event.entry.uri)).pipe(
-									switchMap((document) => {
+								return documentSelector(event.entry.uri, detail, true).pipe(
+									switchMap((result) => {
+										if (result.type != BaseResultType.Success) {
+											return of(result)
+										}
+
+										const document = result.value
 										return document.base$.pipe(
 											map((base) => ({ base: base, value: undefined })),
 											combineLatestBaseFiles({
@@ -194,13 +210,14 @@ export const ambient = <D extends DocumentLike>(config: AmbientConfig<D>) => {
 													current: document.uri,
 													documentSelector,
 													watch,
+													preserve,
 												}),
 											}),
 											map(({ base: results }) => {
 												if (results.every((result) => result.type == BaseResultType.None || result.type == BaseResultType.Success)) {
 													return {
 														type: <const>BaseResultType.Success,
-														ambient: true,
+														ambient: preserve,
 														value: document,
 													}
 												}

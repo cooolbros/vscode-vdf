@@ -1,39 +1,12 @@
 import { VDFRange } from "vdf"
-import type { DocumentSymbol, SymbolKind } from "vscode-languageserver"
-import { z } from "zod"
+import { SymbolKind, type DocumentSymbol } from "vscode-languageserver"
 import { VDFDocumentSymbols } from "./VDFDocumentSymbols"
+import type { VDFText } from "./VDFText"
 
 /**
  * VDFDocumentSymbol
  */
 export class VDFDocumentSymbol implements DocumentSymbol {
-
-	public static readonly schema: z.ZodType<VDFDocumentSymbol> = z.object({
-		name: z.string(),
-		key: z.string(),
-		nameRange: VDFRange.schema,
-		kind: z.number().min(1).max(26).transform((arg) => <SymbolKind>arg),
-		conditional: z.templateLiteral(["[", z.string(), "]"]).nullable(),
-		range: VDFRange.schema,
-		selectionRange: VDFRange.schema,
-		documentation: z.string().optional(),
-		detail: z.string().optional(),
-		detailRange: VDFRange.schema.optional(),
-		get children() {
-			return VDFDocumentSymbols.schema.optional()
-		},
-		childrenRange: VDFRange.schema.optional(),
-	}).transform((arg) => new VDFDocumentSymbol(
-		arg.key,
-		arg.nameRange,
-		arg.kind,
-		arg.conditional,
-		arg.documentation,
-		arg.range,
-		arg.detail != undefined
-			? { detail: arg.detail!, range: arg.detailRange! }
-			: { children: arg.children!, range: arg.childrenRange! }
-	))
 
 	/**
 	 * User visible document symbol name e.g. xpos [$WIN32]
@@ -46,12 +19,7 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 *
 	 * This key does not contain the conditional, instead access {@link conditional}
 	 */
-	public readonly key: string
-
-	/**
-	 * Document range containing key
-	 */
-	public readonly nameRange: VDFRange
+	public readonly key: VDFText
 
 	/**
 	 * The kind of this symbol.
@@ -66,12 +34,14 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	/**
 	 * VDF Document Symbol Primitive Value
 	 */
-	public readonly detail?: string
+	public readonly value?: VDFText
 
 	/**
-	 * VDF Document Symbol Primitive Value Range
+	 * @deprecated Use {@link value}
 	 */
-	public readonly detailRange?: VDFRange
+	public get detail() {
+		return this.value?.text
+	}
 
 	/**
 	 * The range enclosing this symbol not including leading/trailing whitespace but everything else
@@ -101,43 +71,37 @@ export class VDFDocumentSymbol implements DocumentSymbol {
 	 */
 	public readonly documentation?: string
 
-	constructor(key: string, nameRange: VDFRange, kind: SymbolKind, conditional: `[${string}]` | null, documentation: string | undefined, range: VDFRange, value: { detail: string, range: VDFRange } | { children: VDFDocumentSymbols, range: VDFRange }) {
-		this.name = `${key}${conditional ? " " + conditional : ""}`
+	constructor(key: VDFText, conditional: `[${string}]` | null, documentation: string | undefined, range: VDFRange, value: { type: 0, token: VDFText } | { type: 1, children: VDFDocumentSymbols, range: VDFRange }) {
+		this.name = `${key.text || `""`}${conditional ? " " + conditional : ""}`
 		this.key = key
-		this.nameRange = nameRange
-		this.kind = kind
 		this.conditional = conditional
 		this.range = range
 		this.selectionRange = range
 		this.documentation = documentation
 
-		if ("detail" in value) {
-			this.detail = value.detail
-			this.detailRange = value.range
+		if ("token" in value) {
+			// typeof value == "object" ? SymbolKind.Object : SymbolKind.String,
+			this.kind = SymbolKind.Field
+			this.value = value.token
 			this.children = undefined
 			this.childrenRange = undefined
 		}
 		else {
-			this.detail = undefined
-			this.detailRange = undefined
+			this.kind = SymbolKind.Object
+			this.value = undefined
 			this.children = value.children
 			this.childrenRange = value.range
 		}
 	}
 
-	public toJSON(): z.input<typeof VDFDocumentSymbol.schema> {
+	public toJSON(): DocumentSymbol {
 		return {
 			name: this.name,
-			key: this.key,
-			nameRange: this.nameRange.toJSON(),
-			kind: this.kind,
-			conditional: this.conditional,
-			range: this.range.toJSON(),
-			selectionRange: this.selectionRange.toJSON(),
 			detail: this.detail,
-			detailRange: this.detailRange?.toJSON(),
-			children: this.children?.toJSON(),
-			childrenRange: this.childrenRange?.toJSON(),
+			kind: this.kind,
+			range: this.range,
+			selectionRange: this.key.range,
+			children: <DocumentSymbol[] | undefined>this.children,
 		}
 	}
 }

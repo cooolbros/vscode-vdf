@@ -1,5 +1,12 @@
+export interface CompletionToken {
+	quoted: boolean
+	value: string
+	start: number
+	end: number
+}
+
 // Error tolerant VDF line tokeniser
-export function* generateTokens(line: string) {
+export function* generateTokens(line: string): Generator<CompletionToken> {
 	let i = 0
 
 	while (i < line.length) {
@@ -12,14 +19,16 @@ export function* generateTokens(line: string) {
 		}
 
 		if (line[i] == "\"") {
+			const rangeStart = i
 			i++
-			const start = i
+			const valueStart = i
 			while (i < line.length && line[i] != "\"") {
 				i++
 			}
-			const end = i
+			const valueEnd = i
 			i++
-			yield line.slice(start, end)
+			const rangeEnd = i
+			yield { quoted: true, value: line.slice(valueStart, valueEnd), start: rangeStart, end: rangeEnd, }
 		}
 		else {
 			const start = i
@@ -27,7 +36,7 @@ export function* generateTokens(line: string) {
 				i++
 			}
 			const end = i
-			yield line.slice(start, end)
+			yield { quoted: false, value: line.slice(start, end), start: start, end: end }
 		}
 	}
 }

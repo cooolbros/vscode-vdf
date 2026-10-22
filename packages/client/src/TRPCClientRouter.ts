@@ -1,4 +1,4 @@
-import type { DataTransformer, TRPCRootObject } from "@trpc/server"
+import { lazy, type DataTransformer, type TRPCRootObject } from "@trpc/server"
 import { observableToAsyncIterable } from "@trpc/server/observable"
 import { BSP } from "bsp"
 import type { FileSystemKey } from "common/FileSystemKey"
@@ -6,85 +6,104 @@ import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSys
 import { usingAsync } from "common/operators/usingAsync"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
-import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import type { WatchEvent } from "common/WatchEvent"
-import { concat, concatMap, distinctUntilChanged, filter, from, switchAll } from "rxjs"
+import { concat, from, switchAll } from "rxjs"
 import vscode from "vscode"
 import { VTF, VTFToPNGBase64 } from "vtf-png"
 import { z } from "zod"
-import { decorationTypes, editorDecorations } from "./decorations"
+import type { Decorations } from "./Decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
-import { searchForWorkspaceRoot } from "./searchForWorkspaceRoot"
+import { searchForHUDRoot } from "./searchForHUDRoot"
+import defer * as TRPCPopfileRouter from "./TRPCPopfileRouter"
 import { VirtualFileSystem } from "./VirtualFileSystem/VirtualFileSystem"
 import { VSCodeRangeSchema } from "./VSCodeSchemas"
-import { VTFDocument } from "./VTF/VTFDocument"
 import { initVTFPNG } from "./wasm/vtf"
+
+export type ClientRouter = ReturnType<typeof TRPCClientRouter>
 
 const URISchema = z.object({
 	uri: Uri.schema
 })
 
-const UTF8Decoder = new TextDecoder("utf-8")
-const UTF16LEDecoder = new TextDecoder("utf-16le")
-
 export function TRPCClientRouter(
-	t: TRPCRootObject<{ client: VSCodeVDFLanguageID }, object, { transformer: DataTransformer }>,
+	t: TRPCRootObject<{ client: "vdf" }, object, { transformer: DataTransformer }>,
 	context: vscode.ExtensionContext,
+	decorations: Decorations,
 	fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>,
 	fileSystemWatcherFactory: FileSystemWatcherFactory,
 	bspFactory: RefCountAsyncDisposableFactory<Uri, BSP> | null,
 ) {
+	const decoders = { "utf-8": new TextDecoder("utf-8"), "utf-16le": new TextDecoder("utf-16le") }
 	const fileSystems = new Map<string, FileSystemMountPoint>()
 	return t.router({
-		searchForWorkspaceRoot: t
+		vscode: {
+			workspace: {
+				fs: {
+					stat: t
+						.procedure
+						.input(URISchema)
+						.query(async ({ input }) => {
+							return await vscode.workspace.fs.stat(input.uri)
+						}),
+					readFile: t
+						.procedure
+						.input(
+							URISchema.extend({
+								// https://developer.mozilla.org/en-US/docs/Web/API/Encoding_API/Encodings
+								encoding: z.enum(["utf-8", "utf-16le"])
+							})
+						)
+						.query(async ({ input }) => {
+							const buf = await vscode.workspace.fs.readFile(input.uri)
+							if (buf[0] == 255 && buf[1] == 254 && input.encoding != "utf-16le") {
+								console.warn(`Reading ${input.uri} with LE BOM as ${input.encoding}`)
+							}
+							return decoders[input.encoding].decode(buf)
+						}),
+				},
+				createFileSystemWatcher: t
+					.procedure
+					.input(URISchema)
+					.subscription(async ({ input, signal }) => {
+						return observableToAsyncIterable<WatchEvent>(
+							concat(
+								from(vscode.workspace.fs.stat(input.uri).then(
+									(stat) => {
+										switch (stat.type) {
+											case vscode.FileType.File:
+												return { type: <const>"create", entry: { type: <const>EntryType.File, uri: input.uri } }
+											case vscode.FileType.Directory:
+												return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: input.uri } }
+											default:
+												return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }
+										}
+									},
+									() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
+								)),
+								usingAsync(async () => await fileSystemWatcherFactory.get(input.uri)).pipe(
+									switchAll()
+								)
+							),
+							signal!,
+						)
+					}),
+				getConfiguration: t
+					.procedure
+					.input(
+						z.object({
+							section: z.string(),
+						})
+					)
+					.query(async ({ input }) => {
+						const [last, ...rest] = input.section.split(".").reverse()
+						return vscode.workspace.getConfiguration(rest.reverse().join(".")).get(last)
+					})
+			},
+		},
+		searchForHUDRoot: t
 			.procedure
 			.input(URISchema)
-			.query(async ({ input }) => await searchForWorkspaceRoot(input.uri)),
-		workspace: {
-			openTextDocument: t
-				.procedure
-				.input(URISchema.extend({ languageId: z.string() }))
-				.query(async ({ input }) => {
-					return {
-						uri: input.uri,
-						languageId: input.languageId,
-						version: 1,
-						content: await (async () => {
-							const arr = await vscode.workspace.fs.readFile(input.uri)
-							if (arr[0] == 255 && arr[1] == 254) {
-								return UTF16LEDecoder.decode(arr)
-							}
-							return UTF8Decoder.decode(arr)
-						})()
-					}
-				}),
-			createFileSystemWatcher: t
-				.procedure
-				.input(URISchema)
-				.subscription(async ({ input, signal }) => {
-					return observableToAsyncIterable<WatchEvent>(
-						concat(
-							from(vscode.workspace.fs.stat(input.uri).then(
-								(stat) => {
-									switch (stat.type) {
-										case vscode.FileType.File:
-											return { type: <const>"create", entry: { type: <const>EntryType.File, uri: input.uri } }
-										case vscode.FileType.Directory:
-											return { type: <const>"create", entry: { type: <const>EntryType.Directory, uri: input.uri } }
-										default:
-											return { type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } }
-									}
-								},
-								() => ({ type: <const>"delete", entry: { type: <const>EntryType.None, uri: null } })
-							)),
-							usingAsync(async () => await fileSystemWatcherFactory.get(input.uri)).pipe(
-								switchAll()
-							)
-						),
-						signal!,
-					)
-				})
-		},
+			.query(async ({ input }) => await searchForHUDRoot(input.uri)),
 		teamFortress2FileSystem: {
 			open: t
 				.procedure
@@ -174,31 +193,11 @@ export function TRPCClientRouter(
 				using vtf = new VTF(await vscode.workspace.fs.readFile(input.uri))
 				return VTFToPNGBase64(vtf, 256)
 			}),
-		window: {
-			createTextEditorDecorationType: t
-				.procedure
-				.input(
-					z.object({
-						options: z.object({
-							after: z.object({
-								margin: z.string(),
-								color: z.string()
-							})
-						})
-					})
-				)
-				.mutation(async ({ input }) => {
-					const decorationType = vscode.window.createTextEditorDecorationType(input.options)
-					decorationTypes.set(decorationType.key, decorationType)
-					return decorationType.key
-				}),
-		},
 		textDocument: {
 			decoration: t
 				.procedure
 				.input(
 					URISchema.extend({
-						key: z.string(),
 						decorations: z.array(
 							z.object({
 								range: VSCodeRangeSchema,
@@ -212,104 +211,9 @@ export function TRPCClientRouter(
 					})
 				)
 				.mutation(async ({ input }) => {
-
-					const decorationType = decorationTypes.get(input.key)
-					if (!decorationType) {
-						return
-					}
-
-					editorDecorations.set(
-						input.uri.toString(),
-						{
-							decorationType: decorationType,
-							decorations: input.decorations
-						}
-					)
-
-					const editor = vscode.window.visibleTextEditors.find((editor) => editor.document.uri.toString() == input.uri.toString())
-					if (editor) {
-						editor.setDecorations(
-							decorationType,
-							input.decorations
-						)
-					}
+					decorations.setDecorations(input.uri, input.decorations)
 				})
 		},
-		popfile: {
-			bsp: {
-				entities: t
-					.procedure
-					.input(URISchema)
-					.query(async ({ input }) => {
-						if (!bspFactory) {
-							return null
-						}
-
-						try {
-							await using bsp = await bspFactory.get(input.uri)
-							return z.array(
-								z.looseObject({
-									classname: z.string(),
-									targetname: z.string().optional(),
-								}).catchall(z.union([z.string(), z.array(z.string())]))
-							).parse(bsp.entities())
-						}
-						catch (error) {
-							console.error(error)
-							return null
-						}
-					})
-			},
-			classIcon: {
-				flags: t
-					.procedure
-					.input(URISchema)
-					.subscription(({ input, signal }) => {
-						const flags = async () => VTFDocument.flags(await vscode.workspace.fs.readFile(input.uri))
-						return observableToAsyncIterable<number>(
-							concat(
-								from(Promise.try(flags)),
-								usingAsync(async () => await fileSystemWatcherFactory.get(input.uri)).pipe(
-									switchAll(),
-									filter((event) => event.type == "change"),
-									concatMap(flags),
-								)
-							).pipe(
-								distinctUntilChanged(),
-							),
-							signal!
-						)
-					})
-			},
-			vscript: {
-				install: t
-					.procedure
-					.input(
-						z.object({
-							name: z.string()
-						})
-					)
-					.query(async ({ input }) => {
-						const configuration = vscode.workspace.getConfiguration("vscode-vdf")
-						if (configuration.get("popfile.vscript.enable") == true) {
-							const languages = await vscode.languages.getLanguages()
-							const installed = languages.includes("squirrel") || languages.includes("tf2vscript")
-							if (!installed) {
-								const result = await vscode.window.showInformationMessage(`VScript detected in ${input.name}. Install the TF2 VScript Support extension?`, "Yes", "No", "Don't ask again")
-								switch (result) {
-									case "Yes":
-										await vscode.commands.executeCommand("vscode.open", vscode.Uri.from({ scheme: vscode.env.uriScheme, path: "extension/ocet247.tf2-vscript-support" }))
-										break
-									case "No":
-										break
-									case "Don't ask again":
-										configuration.update("popfile.vscript.enable", false, true)
-										break
-								}
-							}
-						}
-					})
-			}
-		}
+		popfile: lazy(async () => TRPCPopfileRouter.TRPCPopfileRouter(t, fileSystemWatcherFactory, bspFactory)),
 	})
 }

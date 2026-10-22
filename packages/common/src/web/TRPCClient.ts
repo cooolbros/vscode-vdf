@@ -49,7 +49,7 @@ export function createTRPCClient<T extends AnyTRPCRouter>(opts: CreateTRPCClient
 	})
 
 	onResponse$.subscribe((response) => {
-		requests.get(response.id)?.resolve(response.response)
+		requests.get(response.id)!.resolve(response.response)
 		requests.delete(response.id)
 	})
 

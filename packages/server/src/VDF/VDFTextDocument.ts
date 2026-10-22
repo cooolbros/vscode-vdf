@@ -1,975 +1,462 @@
-import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
-import { ambient, BaseErrorType, BaseResultType, combineLatestBaseFiles, fs, type BaseError, type BaseResult, type BaseValue } from "common/operators/combineLatestBaseFiles"
+import type { TRPCClient } from "@trpc/client"
+import type { ClientRouter } from "client/TRPCClientRouter"
+import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { type CompletionToken } from "common/generateTokens"
 import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDisposed"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import type { WatchEvent } from "common/WatchEvent"
-import { posix } from "path"
-import { combineLatest, concat, defer, distinctUntilChanged, finalize, firstValueFrom, map, NEVER, Observable, of, shareReplay, switchMap } from "rxjs"
-import { VDFPosition, VDFRange, type VDFParserOptions } from "vdf"
+import { defer, firstValueFrom, identity, map, Observable, of, startWith } from "rxjs"
+import { VDFIndentation, VDFNewLine, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
-import vscode from "vscode"
-import { CompletionItem, DiagnosticSeverity, DiagnosticTag, InlayHint, TextEdit } from "vscode-languageserver"
-import { Collection, Definitions, References, type Definition, type DefinitionReferences, type GlobalDefinitionReferences } from "../DefinitionReferences"
-import { TextDocumentBase, type ColourInformationStringify, type DiagnosticCodeAction, type DiagnosticCodeActions, type DocumentLinkData, type TextDocumentInit } from "../TextDocumentBase"
+import { formatVDF, quote, type VDFFormatStringifyOptions } from "vdf-format"
+import { CompletionItemKind, InsertTextFormat, type CodeLens, type CodeLensParams, type Connection, type DocumentFormattingParams, type InlayHint, type WorkspaceEdit } from "vscode-languageserver"
+import type { VDFTextDocumentLike } from "../BaseDocument"
+import { Collection, Definitions, type Definition } from "../DefinitionReferences"
+import type { DefinitionType } from "../DefinitionTypes"
+import type { DiagnosticsContext } from "../DiagnosticFactory"
+import type { ColourInformationStringify, Decoration, DocumentLinkResolve, PartialDiagnosticCodeAction, TextDocumentContent, TextDocumentDiagnosticsParams, TextDocumentInit, VDFCompletionItem, VDFCompletionList, VDFCompletionParams, VDFRenameParams } from "../TextDocumentBase"
+import { TextDocumentBase } from "../TextDocumentBase"
+import { type TextDocument, type VDFLanguageServer } from "../VDFLanguageServer"
+import { VDFFileType, VDFWorkspace, type GlobalDefinitionReferences } from "../VDFWorkspace"
+import { ClientSchemeSchema } from "./schemas/ClientSchemeSchema"
+import { GameMenuSchema } from "./schemas/GameMenuSchema"
+import { GameSoundsManifestSchema } from "./schemas/GameSoundsManifestSchema"
+import { GameSoundsSchema } from "./schemas/GameSoundsSchema"
+import { HUDAnimationsManifestSchema } from "./schemas/HUDAnimationsManifestSchema"
+import { ItemsGameSchema } from "./schemas/ItemsGameSchema"
+import { LanguageTokensSchema } from "./schemas/LanguageTokensSchema"
+import { SurfacePropertiesManifestSchema } from "./schemas/SurfacePropertiesManifestSchema"
+import { SurfacePropertiesSchema } from "./schemas/SurfacePropertiesSchema"
+import { VGUISchema } from "./schemas/VGUISchema"
 
-export interface VDFTextDocumentConfiguration<TDependencies extends VDFTextDocumentDependencies> {
-	relativeFolderPath: string | null
-	VDFParserOptions: VDFParserOptions
-	keyTransform: (key: string) => string,
-	dependencies$: Observable<TDependencies>
+export interface Dependencies {
+	readonly schema: VDFTextDocumentSchemaResult
 }
 
-export interface VDFTextDocumentDependencies {
-	schema: VDFTextDocumentSchema<this>
-	globals$: Observable<GlobalDefinitionReferences[]>
+export interface Globals extends Record<string, GlobalDefinitionReferences> {
 }
 
-export interface VDFTextDocumentSchema<TDependencies extends VDFTextDocumentDependencies> {
-	keys: Record<string, { reference?: string[], values?: { label: string, kind: number, multiple?: boolean }[] }>
-	values: Record<string, { kind: number, enumIndex?: boolean, values: string[], fix?: Record<string, string> }>
-	getDefinitionReferences(params: DefinitionReferencesHandlerParams<TDependencies>): { scopes: Map<symbol, Map<number, VDFRange>>, definitions: Collection<Definition>, references: Collection<VDFRange> }
-	definitionReferences: Map<symbol, { keys: Set<string>, toReference?: ((name: string) => string) }>
-	getDiagnostics(params: DiagnosticsHandlerParams<TDependencies>): DiagnosticCodeActions
-	getLinks(params: DocumentLinksHandlerParams): Promise<DocumentLinkData[]>
-	getColours(params: DocumentColoursHandlerParams): ColourInformationStringify[]
-	getInlayHints(params: DocumentInlayHintsHandlerParams<TDependencies>): Promise<InlayHint[]>
+export interface VDFTextDocumentSchema {
+	readonly id: string
+	readonly name: string
+	readonly definitionTypes: { type: DefinitionType, keys: Set<string> }[]
+	readonly content$: Observable<TextDocumentContent<VDFDocumentSymbols>>
+	getDiagnostics(diagnostics: PartialDiagnosticCodeAction[], context: DiagnosticsContext<Dependencies, Globals, VDFDocumentSymbols>): void
+	getDocumentLinks(): Promise<DocumentLinkResolve[]>
+	getDocumentColor(): Promise<ColourInformationStringify[]>
+	onInlayHint(params: { range: VDFRange }): Promise<InlayHint[]>
 	completion: {
-		root: CompletionItem[]
-		typeKey: string | null
-		defaultType: string | null
-		files: {
-			keys: Set<string>
-			folder: string | null
-			basenamePattern?: string
-			filter?: ([name, type]: [string, vscode.FileType], startsWithFilter: (name: string) => boolean) => boolean
-			map?: (item: CompletionItem, withoutExtension: (name: string) => string) => CompletionItem
-			asset?: VGUIAssetType
-		}[]
-		values?: Record<string, CompletionItem[] | ((args: { text?: string, position: VDFPosition }) => Promise<CompletionItem[]>)>
+		keys: Parameters<(typeof VDFTextDocument)["getCompletion"]>[2],
+		values: Parameters<(typeof VDFTextDocument)["getCompletion"]>[3],
 	}
+	[key: string]: unknown
 }
 
-export interface DefinitionReferencesHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
-	dependencies: TDependencies
-	getDocumentSymbols: () => VDFDocumentSymbols
-	getHeader: () => VDFDocumentSymbols
-}
+type VDFTextDocumentSchemaResult = (
+	| ReturnType<typeof ClientSchemeSchema>
+	| ReturnType<typeof GameMenuSchema>
+	| ReturnType<typeof GameSoundsManifestSchema>
+	| ReturnType<typeof GameSoundsSchema>
+	| ReturnType<typeof HUDAnimationsManifestSchema>
+	| ReturnType<typeof ItemsGameSchema>
+	| ReturnType<typeof LanguageTokensSchema>
+	| ReturnType<typeof SurfacePropertiesManifestSchema>
+	| ReturnType<typeof SurfacePropertiesSchema>
+	| ReturnType<typeof VGUISchema>
+)
 
-export interface DiagnosticsHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
-	dependencies: TDependencies
-	documentConfiguration: VSCodeVDFConfiguration
-	documentSymbols: VDFDocumentSymbol[]
-	definitionReferences: DefinitionReferences
-}
+export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDFDocumentSymbols> {
 
-export interface DocumentLinksHandlerParams {
-	documentSymbols: VDFDocumentSymbol[]
-	resolve: (value: string, extension?: `.${string}`) => string
-}
+	public static async getCompletion(
+		document: VDFTextDocumentLike,
+		params: VDFCompletionParams,
+		keys: (params: VDFCompletionParams, path: VDFDocumentSymbol[], token?: CompletionToken) => Promise<{ before?: VDFCompletionItem[], field?: { kind?: CompletionItemKind, one?: string[], many?: string[], values?: Record<string, string[]> }, cls?: { one?: string[], many?: string[] }, after?: VDFCompletionItem[], } | null>,
+		values: (params: VDFCompletionParams, path: VDFDocumentSymbol[], key: string, token?: CompletionToken) => Promise<VDFCompletionList | null>
+	): Promise<VDFCompletionList | null> {
 
-export interface DocumentColoursHandlerParams {
-	documentSymbols: VDFDocumentSymbol[]
-	next: (callback: (colours: ColourInformationStringify[], documentSymbol: VDFDocumentSymbol) => void) => ColourInformationStringify[]
-}
+		const add = (documentSymbols: VDFDocumentSymbols) => {
+			const path: VDFDocumentSymbol[] = []
+			const documentSymbol = documentSymbols.find((documentSymbol) => documentSymbol.range.contains(params.position))
+			if (documentSymbol != undefined) {
+				if (documentSymbol.children != undefined) {
+					path.push(documentSymbol)
+					path.push(...add(documentSymbol.children))
+				}
+			}
+			return path
+		}
 
-export interface DocumentInlayHintsHandlerParams<TDependencies extends VDFTextDocumentDependencies> {
-	dependencies: TDependencies
-	documentSymbols: VDFDocumentSymbol[]
-}
+		const _keys = async (token?: CompletionToken): Promise<VDFCompletionList | null> => {
+			const documentSymbols = await firstValueFrom(document.documentSymbols$)
+			const path = add(documentSymbols)
+			const set = new Set((path.at(-1)?.children ?? documentSymbols).map((documentSymbol) => documentSymbol.key.text.toLowerCase()))
 
-export const enum VGUIAssetType {
-	None = 0,
-	Image = 1
-}
+			const result = await keys(params, path, token)
+			if (result == null) {
+				return null
+			}
 
-export interface Context<TDependencies extends VDFTextDocumentDependencies> {
-	dependencies: TDependencies,
-	documentConfiguration: VSCodeVDFConfiguration,
-	documentSymbols: VDFDocumentSymbols | undefined,
-	definitionReferences: DefinitionReferences,
-}
+			const { before = [], field, cls, after = [] } = result
+			const fieldKind = field?.kind ?? CompletionItemKind.Field
+			const fieldValues = field?.values ?? {}
 
-export type Validate<TDependencies extends VDFTextDocumentDependencies> = (name: string, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDependencies>) => DiagnosticCodeActions
+			const fieldItem = (field: string): VDFCompletionItem => {
+				const quoted = token?.quoted || quote(field)
+				const text = quoted ? `"${field}"` : field
 
-export const enum KeyDistinct {
-	None,
-	First,
-	Last,
-}
+				let textEditText: VDFCompletionItem["textEditText"]
+				let insertTextFormat: VDFCompletionItem["insertTextFormat"]
+				let command: VDFCompletionItem["command"]
 
-export type RefineString<TDependencies extends VDFTextDocumentDependencies> = (name: string, detail: string, detailRange: VDFRange, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDependencies>) => DiagnosticCodeActions
+				const fieldLower = field.toLowerCase()
+				if (fieldLower in fieldValues) {
+					const values = fieldValues[fieldLower]
+					const q = quoted ? `"` : ``
 
-export type RefineReference<TDependencies extends VDFTextDocumentDependencies> = (...args: [...Parameters<RefineString<TDependencies>>, definitions: readonly Definition[]]) => DiagnosticCodeActions
-
-export type Fallback<TDependencies extends VDFTextDocumentDependencies> = (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[], context: Context<TDependencies>, unknown: () => DiagnosticCodeActions) => DiagnosticCodeActions
-
-export abstract class VDFTextDocument<
-	TDocument extends VDFTextDocument<TDocument, TDependencies>,
-	TDependencies extends VDFTextDocumentDependencies
-> extends TextDocumentBase<VDFDocumentSymbols, TDependencies> {
-
-	private static base(documentSymbols: VDFDocumentSymbols): string[] {
-		return documentSymbols
-			.values()
-			.filter((documentSymbol) => documentSymbol.key.toLowerCase() == "#base" && documentSymbol.detail != undefined && documentSymbol.detail.trim() != "")
-			.map((documentSymbol) => documentSymbol.detail!.replaceAll(/[/\\]+/g, "/"))
-			.toArray()
-	}
-
-	public readonly configuration: VDFTextDocumentConfiguration<TDependencies>
-
-	protected getDiagnostics: (dependencies: TDependencies, configuration: VSCodeVDFConfiguration, documentSymbols: VDFDocumentSymbols, definitionReferences: DefinitionReferences) => DiagnosticCodeActions
-
-	/**
-	 * #base
-	 */
-	public readonly base$: Observable<string[]>
-
-	private readonly context = new Map<string, Observable<BaseResult<TDocument>>>()
-
-	public readonly diagnostics = {
-		unreachable: (range: VDFRange, fix?: NonNullable<DiagnosticCodeAction["data"]>["fix"]): DiagnosticCodeAction => {
-			return {
-				range: range,
-				severity: DiagnosticSeverity.Hint,
-				message: "Unreachable code detected.",
-				tags: [
-					DiagnosticTag.Unnecessary
-				],
-				...(fix && {
-					data: {
-						fix: fix
+					if (values.length == 1) {
+						textEditText = `${text}\t\t${q}${values[0]}${q}`
 					}
-				})
-			}
-		},
-		any: () => [],
-		header: (validate: Validate<TDependencies>, multiple: boolean): VDFTextDocumentSchema<TDependencies>["getDiagnostics"] => {
-			return ({ dependencies, documentConfiguration, documentSymbols, definitionReferences }) => {
-				const diagnostics: DiagnosticCodeActions = []
-				const [header, ...rest] = documentSymbols
-				if (header != undefined) {
-					diagnostics.push(
-						...validate(
-							header.key,
-							header,
-							[],
-							{
-								dependencies: dependencies,
-								documentConfiguration: documentConfiguration,
-								documentSymbols: header.children,
-								definitionReferences: definitionReferences,
-							}
-						)
-					)
-				}
-
-				if (!multiple) {
-					diagnostics.push(...rest.map((documentSymbol) => this.diagnostics.unreachable(documentSymbol.range)))
-				}
-
-				return diagnostics
-			}
-		},
-		documentSymbols: (distinct: KeyDistinct, unknown: (key: string, parent: string, documentSymbol: VDFDocumentSymbol, context: Context<TDependencies>) => DiagnosticCodeActions = (key, parent, documentSymbol) => [{ range: documentSymbol.nameRange, severity: DiagnosticSeverity.Warning, code: "unknown-key", source: this.languageId, message: `Unknown key '${key}'.` }]) => {
-
-			const finds = {
-				[KeyDistinct.First]: Array.prototype.find,
-				[KeyDistinct.Last]: Array.prototype.findLast,
-			}
-
-			return (schema: Record<string, [Validate<TDependencies>] | [Validate<TDependencies>, KeyDistinct]>, fallback?: Fallback<TDependencies>): Validate<TDependencies> => {
-				const map = new Map(Object.entries(schema).map(([key, [validate, d = distinct]]) => [key.toLowerCase(), { key, validate, distinct: d }]))
-				return (name, documentSymbol, path, context) => {
-					const diagnostics: DiagnosticCodeActions = []
-					const parent = documentSymbol
-					if (parent.children == undefined) {
-						diagnostics.push({
-							range: documentSymbol.detailRange!,
-							severity: DiagnosticSeverity.Warning,
-							code: "invalid-type",
-							source: this.languageId,
-							message: `Invalid ${name} type.`,
-						})
+					else if (values.length == 2 && values[0] == "1" && values[1] == "0") {
+						// Ignore values where values[0] == "0" && values[1] == "1"
+						textEditText = `${text}\t\t${q}${values[0]}${q}`
+					}
+					else if (values.length < 64) {
+						// https://code.visualstudio.com/docs/editing/userdefinedsnippets#_choice
+						textEditText = `${text}\t\t${q}$\{1|${values.join(",")}|}${q}`
+						insertTextFormat = InsertTextFormat.Snippet
 					}
 					else {
-						parent.children.forEach((documentSymbol) => {
-							if (documentSymbol.conditional != null && documentSymbol.conditional.length > "[$]".length) {
-								const conditional = documentSymbol.conditional.toLowerCase()
-								if (TextDocumentBase.conditionals.values().map((c) => c.toLowerCase()).find((c) => c == conditional) == undefined) {
-									return
-								}
-							}
-
-							const data = map.get(documentSymbol.key.toLowerCase())
-							if (data == undefined) {
-								diagnostics.push(
-									...fallback?.(documentSymbol, [...path, parent], context, () => unknown(documentSymbol.key, name, documentSymbol, context))
-									?? unknown(documentSymbol.key, name, documentSymbol, context)
-								)
-							}
-							else {
-
-								// Distinct Keys
-								if (data.distinct != undefined && data.distinct != KeyDistinct.None) {
-									const first = finds[data.distinct].call(parent.children, (i: VDFDocumentSymbol) => i.key.toLowerCase() == documentSymbol.key.toLowerCase() && i.conditional?.toLowerCase() == documentSymbol.conditional?.toLowerCase())!
-									if (first != documentSymbol) {
-										diagnostics.push({
-											range: documentSymbol.nameRange,
-											severity: DiagnosticSeverity.Warning,
-											code: "duplicate-key",
-											source: this.languageId,
-											message: `Duplicate key '${first.key}'`,
-											relatedInformation: [
-												{
-													location: {
-														uri: this.uri.toString(),
-														range: first.nameRange
-													},
-													message: `${first.key} is declared here.`
-												}
-											],
-											data: {
-												fix: ({ createDocumentWorkspaceEdit }) => {
-													return {
-														title: `Remove duplicate ${documentSymbol.key}`,
-														edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-													}
-												}
-											}
-										})
-									}
-								}
-
-								diagnostics.push(TextDocumentBase.diagnostics.key(data.key, documentSymbol.key, documentSymbol.nameRange))
-								diagnostics.push(...data.validate(data.key, documentSymbol, [...path, parent], context))
-							}
-						})
-					}
-					return diagnostics
-				}
-			}
-		},
-		string: (refine?: RefineString<TDependencies>): Validate<TDependencies> => {
-			return (key, documentSymbol, path, context) => {
-				const diagnostics: DiagnosticCodeActions = []
-				if (documentSymbol.detail == undefined) {
-					diagnostics.push({
-						range: documentSymbol.childrenRange!,
-						severity: DiagnosticSeverity.Warning,
-						code: "invalid-type",
-						source: this.languageId,
-						message: `Invalid ${key} type.`,
-					})
-				}
-				else {
-					diagnostics.push(...refine?.(key, documentSymbol.detail, documentSymbol.detailRange!, documentSymbol, path, context) ?? [])
-				}
-
-				return diagnostics
-			}
-		},
-		length: (max: number): RefineString<TDependencies> => {
-			return (name, detail, detailRange, path, context) => {
-				const length = detail.length + "\0".length
-				if (length > max) {
-					return [{
-						range: detailRange,
-						severity: DiagnosticSeverity.Warning,
-						code: "invalid-length",
-						source: this.languageId,
-						message: `Value exceeds maximum buffer size (max: ${max}, size: ${length}).`,
-					}]
-				}
-				return []
-			}
-		},
-		integer: ((name, detail, detailRange, path, context) => {
-			if (/\D/.test(detail)) {
-				return [{
-					range: detailRange,
-					severity: DiagnosticSeverity.Warning,
-					code: "invalid-integer",
-					source: this.languageId,
-					message: `Invalid value for ${name}. Expected integer`,
-				}]
-			}
-			return []
-		}) satisfies RefineString<TDependencies>,
-		float: ((name, detail, detailRange, path, context) => {
-			if (!/^\d*\.?\d+$/.test(detail)) {
-				return [{
-					range: detailRange,
-					severity: DiagnosticSeverity.Warning,
-					code: "invalid-float",
-					source: this.languageId,
-					message: `Invalid value for ${name}. Expected float`,
-				}]
-			}
-			return []
-		}) satisfies RefineString<TDependencies>,
-		set: (values: string[], fix?: Record<string, string>): RefineString<TDependencies> => {
-			const set = new Set(values.map((value) => value.toLowerCase()))
-			return (name, detail, detailRange, path, context) => {
-				if (!set.has(detail.toLowerCase())) {
-					return [{
-						range: detailRange,
-						severity: DiagnosticSeverity.Warning,
-						code: "invalid-value",
-						source: this.languageId,
-						message: `'${detail}' is not a valid value for ${name}. Expected '${values.join("' | '")}'.`,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
-								const value = detail.toLowerCase()
-								const newText = fix != undefined && value in fix
-									? fix[value]
-									: findBestMatch(value, values)
-
-								if (!newText) {
-									return null
-								}
-
-								return {
-									title: `Change ${name} to '${newText}'`,
-									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, newText))
-								}
-							},
+						textEditText = `${text}\t\t${q}$0${q}`
+						insertTextFormat = InsertTextFormat.Snippet
+						command = {
+							title: "Trigger Suggest",
+							command: "editor.action.triggerSuggest"
 						}
-					}]
-				}
-				else {
-					const value = values.find((value) => value.toLowerCase() == detail!.toLowerCase())!
-					return [TextDocumentBase.diagnostics.key(value, detail, detailRange)]
-				}
-			}
-		},
-		dynamic: (key: string): RefineString<TDependencies> => {
-			const id = key.toLowerCase()
-			return (name, detail, detailRange, documentSymbol, path, context) => {
-				if (id in context.dependencies.schema.values) {
-					const values = context.dependencies.schema.values[id].values
-					if (!values.some((value) => value.toLowerCase() == detail.toLowerCase())) {
-						return [{
-							range: detailRange,
-							severity: DiagnosticSeverity.Warning,
-							code: "invalid-value",
-							source: this.languageId,
-							message: `'${detail}' is not a valid value for ${name}. Expected '${values.join("' | '")}'.`,
-						}]
 					}
 				}
-				return []
-			}
-		},
-		reference: (type: symbol, refine?: RefineReference<TDependencies>): RefineString<TDependencies> => {
-			return (key, detail, detailRange, documentSymbol, path, context) => {
-				const diagnostics: DiagnosticCodeActions = []
-				if (detail == "") {
-					return diagnostics
+				else {
+					textEditText = quoted ? `"${field}"` : field
+					insertTextFormat = InsertTextFormat.PlainText
 				}
 
-				const scope = context.definitionReferences.scopes.get(type)?.entries().find(([scope, range]) => range.contains(detailRange))?.[0] ?? null
-				const definitions = context.definitionReferences.definitions.get(scope, type, detail)
+				return {
+					label: field,
+					kind: fieldKind,
+					textEditText: textEditText,
+					insertTextFormat: insertTextFormat,
+					command: command,
+				}
+			}
 
-				if (!definitions || !definitions.length) {
-					diagnostics.push({
-						range: detailRange,
-						severity: DiagnosticSeverity.Warning,
-						code: "invalid-reference",
-						source: this.languageId,
-						message: `Cannot find ${Symbol.keyFor(type)} '${detail}'.`,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit, findBestMatch }) => {
+			const clsItem = (cls: string): VDFCompletionItem => {
+				const quoted = token?.quoted || quote(cls)
+				const textEditText = `${quoted ? `"${cls}"` : cls}\n{\n\t$0\n}`
+				return {
+					label: cls,
+					labelDetails: { description: "{}" },
+					kind: CompletionItemKind.Class,
+					textEditText: textEditText,
+					insertTextFormat: InsertTextFormat.Snippet,
+				}
+			}
 
-								const newText = findBestMatch(
-									detail,
-									context.definitionReferences
-										.definitions
-										.ofType(scope, type)
-										.values()
-										.filter((definitions) => definitions.length)
-										.map((definitions) => definitions[0].key)
-										.toArray()
-								)
+			const entries = function*() {
+				yield* (field?.one ?? []).filter((field) => !set.has(field.toLowerCase())).map(fieldItem)
+				yield* (field?.many ?? []).values().map(fieldItem)
+				yield* (cls?.one ?? []).values().filter((cls) => !set.has(cls.toLowerCase())).map(clsItem)
+				yield* (cls?.many ?? []).values().map(clsItem)
+			}
 
-								if (!newText) {
-									return null
-								}
+			return {
+				token: token,
+				length: (field?.one?.length ?? 0) + (field?.many?.length ?? 0) + (cls?.one?.length ?? 0) + (cls?.many?.length ?? 0),
+				items: (function*() {
+					yield* before
+					yield* entries()
+					yield* after
+				})()
+			}
+		}
 
-								return {
-									title: `Change ${key} to '${newText}'`,
-									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, newText))
-								}
-							},
-						}
-					})
+		const _values = async (key: string, token?: CompletionToken): Promise<VDFCompletionList | null> => {
+			const documentSymbols = await firstValueFrom(document.documentSymbols$)
+			const path = add(documentSymbols)
 
+			const result = await values(params, path, key, token)
+			if (result == null) {
+				return null
+			}
+
+			const map = result.token instanceof VDFRange
+				? identity
+				: (item: VDFCompletionItem) => {
+					const text = item.textEditText ?? item.label
+					if (token?.quoted || quote(text)) {
+						item.textEditText = `"${text}"`
+					}
+					return item
+				}
+
+			return {
+				token: result.token ?? token,
+				length: result.length,
+				items: Iterator.from(result.items).map(map)
+			}
+		}
+
+		switch (params.tokens.length) {
+			case 0: {
+				return await _keys()
+			}
+			case 1: {
+				const [key] = params.tokens
+				if (params.includes(key)) {
+					return await _keys(key)
 				}
 				else {
-					if (definitions.some((definition) => Uri.equals(definition.uri, this.uri) && definition.range.contains(detailRange))) {
-						diagnostics.push({
-							range: detailRange,
-							severity: DiagnosticSeverity.Warning,
-							code: "self-reference",
-							source: this.languageId,
-							message: `${key} '${detail}' references itself.`,
-							data: {
-								fix: ({ createDocumentWorkspaceEdit }) => {
-									return {
-										title: `Remove ${key}`,
-										isPreferred: true,
-										edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-									}
-								},
-							}
-						})
-					}
-
-					diagnostics.push(TextDocumentBase.diagnostics.key(definitions[0].key, detail, detailRange, { newText: (name) => context.dependencies.schema.definitionReferences.get(type)?.toReference?.(name) ?? name }))
-					diagnostics.push(...refine?.(key, detail, detailRange, documentSymbol, path, context, definitions) ?? [])
+					return await _values(key.value)
 				}
-
-				return diagnostics
 			}
-		},
-		file: (name: string, folder: string | null, extension: string | null): RefineString<TDependencies> => {
-			return (_name, detail, detailRange, path, context) => {
-				const diagnostics: DiagnosticCodeActions = []
-				if (detail == "") {
-					return diagnostics
+			case 2: {
+				const [key, value] = params.tokens
+				if (params.includes(value)) {
+					return await _values(key.value, value)
 				}
-
-				const value = detail.replaceAll(/[/\\]+/g, "/")
-
-				const newPath = folder != null
-					? posix.relative(`/${folder}`, posix.resolve(`/${folder}/${value}`))
-					: posix.resolve(`/${value}`).substring(1)
-
-				if (value != newPath) {
-					diagnostics.push({
-						range: detailRange,
-						severity: DiagnosticSeverity.Warning,
-						code: "useless-path",
-						source: this.languageId,
-						message: `Unnecessary relative file path. Expected '${newPath}'`,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit }) => {
-								return {
-									title: "Normalize file path",
-									edit: createDocumentWorkspaceEdit(TextEdit.replace(detailRange, newPath))
-								}
-							},
-						}
-					})
+				else {
+					return params.conditionals()
 				}
-
-				const file = posix.resolve(`/${folder ?? ""}/${extension != undefined && posix.extname(value) == "" ? `${value}${extension}` : value}`).substring(1)
-
-				diagnostics.push(
-					this.fileSystem.resolve(file).pipe(
-						map((entry) => {
-							switch (entry.type) {
-								case EntryType.None:
-									return {
-										range: detailRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "file-not-found",
-										source: this.languageId,
-										message: `Cannot find ${name} '${detail}'. (Resolved to "${file}")`,
-									}
-								case EntryType.File:
-									return null
-								case EntryType.Directory:
-									return {
-										range: detailRange,
-										severity: DiagnosticSeverity.Warning,
-										code: "file-is-directory",
-										source: this.languageId,
-										message: `${name} references a directory. (Resolved to "${file}")`,
-									}
-							}
-						})
-					)
-				)
-
-				return diagnostics
 			}
-		},
-		next: (schema: Record<string, RefineString<TDependencies>>): Validate<TDependencies> => {
-			const map = new Map(Object.entries(schema).map(([key, validate]) => <const>[key.toLowerCase(), { key, validate }]))
-			return (key, documentSymbol, path, context) => {
-				const data = map.get(key)
-				return data != undefined && documentSymbol.detail != undefined
-					? data.validate(data.key, documentSymbol.detail, documentSymbol.detailRange!, documentSymbol, path, context)
-					: []
+			case 3: {
+				const [key, value, conditional] = params.tokens
+				if (params.includes(conditional)) {
+					return params.conditionals(conditional)
+				}
+				else {
+					return null
+				}
+			}
+			default: {
+				return null
 			}
 		}
 	}
+
+	public readonly languageId: "vdf" = "vdf"
+
+	public readonly workspace: VDFWorkspace
+	public readonly VDFParserOptions: VDFParserOptions
+	public readonly schema$: Observable<{ schema: VDFTextDocumentSchemaResult, globals: Globals }>
+
+	protected getDiagnostics: (params: TextDocumentDiagnosticsParams<Dependencies, Globals, VDFDocumentSymbols>) => void
+	public readonly decorations$: Observable<Decoration[]>
 
 	constructor(
 		init: TextDocumentInit,
 		documentConfiguration$: Observable<VSCodeVDFConfiguration>,
 		fileSystem: FileSystemMountPoint,
-		watch: (uri: Uri) => Observable<WatchEvent>,
-		documents: RefCountAsyncDisposableFactory<Uri, TDocument>,
-		configuration: VDFTextDocumentConfiguration<TDependencies>,
+		documents: RefCountAsyncDisposableFactory<Uri, TextDocument>,
+		trpc: TRPCClient<ClientRouter>,
+		workspace: VDFWorkspace,
+		path: string | null,
 	) {
-		super(init, documentConfiguration$, fileSystem, {
-			getDocumentSymbols: (text) => {
-				return getVDFDocumentSymbols(text, configuration.VDFParserOptions)
-			},
+		super(init, documentConfiguration$, fileSystem, documents, trpc, {
+			path: path,
+			getDocumentSymbols: (text) => getVDFDocumentSymbols(text, this.VDFParserOptions),
 			defaultDocumentSymbols: new VDFDocumentSymbols(),
-			definitionReferences$: combineLatest({
-				documentConfiguration: documentConfiguration$,
-				value: defer(() => this.configuration.dependencies$).pipe(
-					switchMap((dependencies) => {
-						return combineLatest({
-							globals: dependencies.globals$,
-							value: this.documentSymbols$.pipe(
-								map((documentSymbols) => {
-									return {
-										base: VDFTextDocument.base(documentSymbols),
-										value: {
-											dependencies,
-											documentSymbols,
-											definitionReferences: dependencies.schema.getDefinitionReferences({
-												dependencies: dependencies,
-												getDocumentSymbols: () => documentSymbols,
-												getHeader: () => documentSymbols.find((documentSymbol) => documentSymbol.key.toLowerCase() != "#base")?.children ?? new VDFDocumentSymbols(),
-											}),
-										}
-									}
-								}),
-								(source$) => {
-									const documentSelector = async (uri: Uri) => await documents.get(uri)
-
-									let open: ({ stack, detail }: BaseValue) => Observable<BaseResult<TDocument>>
-									if (configuration.relativeFolderPath != null) {
-										open = fs({
-											current: init.uri,
-											documentSelector,
-											watch,
-											fileSystem,
-											relativeFolderPath: configuration.relativeFolderPath
-										})
-									}
-									else {
-										open = ambient({
-											current: init.uri,
-											documentSelector,
-											watch
-										})
-									}
-
-									return source$.pipe(
-										combineLatestBaseFiles({
-											stack: [],
-											open: ({ stack, detail }) => {
-												return this.context.getOrInsertComputed(detail, () => {
-													return open({ stack, detail }).pipe(
-														finalize(() => this.context.delete(detail)),
-														shareReplay({ bufferSize: 1, refCount: true }),
-													)
-												}).pipe(
-													switchMap((result) => {
-														if (result.type != BaseResultType.Success) {
-															return concat(of(result), NEVER)
-														}
-
-														return result.value.definitionReferences$.pipe(
-															map((definitions) => {
-																return {
-																	type: <const>BaseResultType.Success,
-																	ambient: result.ambient,
-																	value: definitions
-																}
-															}),
-															finalize(() => {
-																result.value.setDocumentReferences(new Map<string, References | null>([[this.uri.toString(), null]]))
-															})
-														)
-													})
-												)
-											},
-										}),
-										map(({ base: results, value }) => {
-											const { definitionReferences, ...rest } = value.value
-
-											const base = results
-												.values()
-												.filter((result) => result.type == BaseResultType.Success)
-												.map((result) => result.value)
-												.toArray()
-
-											const definitions = definitionReferences.definitions.clone()
-
-											for (const baseDefinitionReferences of base) {
-												for (const { scope, type, key, value: baseDefinitions } of baseDefinitionReferences.definitions) {
-													// Copy #base definitions to document, used for Goto Definition
-													if (scope == null) {
-														definitions.set(null, type, key, ...baseDefinitions)
-													}
-												}
-											}
-
-											return {
-												...rest,
-												base,
-												definitionReferences: {
-													scopes: definitionReferences.scopes,
-													definitions: definitions,
-													references: definitionReferences.references,
-												}
-											}
-										})
-									)
-								}
-							)
-						}).pipe(
-							map(({ globals, value }) => {
-								const map = new Map<string, References | null>()
-								map.set(this.uri.toString(), new References(this.uri, value.definitionReferences.references, []))
-
-								for (const global of globals) {
-									global.references.setDocumentReferences(map, true)
-								}
-
-								return {
-									dependencies: value.dependencies,
-									documentSymbols: value.documentSymbols,
-									definitionReferences: {
-										scopes: value.definitionReferences.scopes,
-										definitions: new Definitions({
-											version: [this.version, ...value.base.flatMap(({ definitions }) => definitions.version)],
-											collection: value.definitionReferences.definitions,
-											globals: globals
-										}),
-										references: new References(this.uri, value.definitionReferences.references, value.base.map(({ references }) => references), this.references$)
-									} satisfies DefinitionReferences
-								}
-							})
-						)
-					})
-				)
-			}).pipe(
-				map(({ documentConfiguration, value }) => {
+			data$: defer(() => this.schema$).pipe(
+				map((dependencies) => {
 					return {
-						dependencies: value.dependencies,
-						documentConfiguration: documentConfiguration,
-						documentSymbols: value.documentSymbols,
-						definitionReferences: value.definitionReferences
+						dependencies: {
+							schema: dependencies.schema
+						},
+						globals: dependencies.globals,
+						content$: dependencies.schema.content$,
 					}
-				})
-			),
+				}),
+			)
 		})
 
-		const { dependencies$, ...rest } = configuration
+		this.workspace = workspace
 
-		this.configuration = {
-			...rest,
-			dependencies$: dependencies$.pipe(
-				shareReplayUntilDisposed(this.dispose$)
-			)
-		}
-
-		const getBaseDiagnostics = (documentSymbol: VDFDocumentSymbol, error: BaseError): DiagnosticCodeAction[] => {
-			switch (error.type) {
-				case BaseErrorType.Self:
-					return [{
-						range: documentSymbol.detailRange!,
-						severity: DiagnosticSeverity.Error,
-						code: "base-self-reference",
-						source: "vdf",
-						message: `#base directive '${error.detail}' #bases itself.`,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit }) => {
-								return {
-									title: "Remove self #base",
-									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-								}
-							},
-						}
-					}]
-				case BaseErrorType.Directory:
-					return [{
-						range: documentSymbol.detailRange!,
-						severity: DiagnosticSeverity.Error,
-						code: "base-directory",
-						source: "vdf",
-						message: `#base directive '${error.detail}' #bases a directory.`,
-						data: {
-							fix: ({ createDocumentWorkspaceEdit }) => {
-								return {
-									title: "Remove directory #base",
-									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-								}
-							},
-						}
-					}]
-				case BaseErrorType.Cyclic:
-					return [{
-						range: documentSymbol.detailRange!,
-						severity: DiagnosticSeverity.Error,
-						code: "base-cyclic",
-						source: "vdf",
-						message: `#base directive is cyclic.`,
-						relatedInformation: error.stack.map(({ uri }, index) => ({
-							location: {
-								uri: uri.toString(),
-								range: new VDFRange(new VDFPosition(0, 0))
-							},
-							message: `#base -> "${error.stack[(index + 1) % error.stack.length].path}"`
-						})),
-						data: {
-							fix({ createDocumentWorkspaceEdit }) {
-								return {
-									title: "Remove cyclic #base",
-									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-								}
-							},
-						}
-					} satisfies DiagnosticCodeAction]
-				case BaseErrorType.Base:
-					const path = error.path
-					return error.errors.flatMap((error) => {
-						return getBaseDiagnostics(documentSymbol, error).map((diagnostic) => {
-							const { message, ...rest } = diagnostic
-							return {
-								message: `#base error in "${path}": ${diagnostic.message}`,
-								...rest
-							}
-						})
-					})
-			}
-		}
-
-		this.getDiagnostics = (dependencies, documentConfiguration, documentSymbols, definitionReferences) => {
-			const diagnostics: DiagnosticCodeActions = []
-
-			const { base = [], rest = [] } = Object.groupBy(
-				documentSymbols,
-				(documentSymbol) => {
-					return documentSymbol.key.toLowerCase() == "#base"
-						? "base"
-						: "rest"
+		this.VDFParserOptions = {
+			multilineStrings: (() => {
+				if (path == "resource/gamemenu.res") {
+					return new Set(["command"])
 				}
-			)
-
-			for (const documentSymbol of base) {
-				if (documentSymbol.children) {
-					diagnostics.push({
-						range: documentSymbol.childrenRange!,
-						severity: DiagnosticSeverity.Error,
-						code: "invalid-base",
-						source: "vdf",
-						message: "Invalid #base directive.",
-						data: {
-							fix: ({ createDocumentWorkspaceEdit }) => {
-								return {
-									title: "Remove invalid #base",
-									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-								}
-							},
-						}
-					})
-				}
-				else if (documentSymbol.detail!.trim() == "") {
-					diagnostics.push(this.diagnostics.unreachable(documentSymbol.range, ({ createDocumentWorkspaceEdit }) => {
-						return {
-							title: "Remove empty #base",
-							edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
-						}
-					}))
+				else if (/(tf|chat)_.*?\.txt/.test(init.uri.basename())) {
+					return true
 				}
 				else {
-					const detail = documentSymbol.detail!.replaceAll(/[/\\]+/g, "/")
-					const dirname = this.uri.dirname()
-
-					const baseUri = dirname.joinPath(detail)
-					const relative = dirname.relative(baseUri)
-
-					if (detail != relative) {
-						diagnostics.push({
-							range: documentSymbol.detailRange!,
-							severity: DiagnosticSeverity.Warning,
-							code: "useless-path",
-							source: "vdf",
-							message: `Unnecessary relative file path. (Expected "${relative}")`,
-							data: {
-								fix: ({ createDocumentWorkspaceEdit }) => {
-									return {
-										title: "Normalize file path",
-										edit: createDocumentWorkspaceEdit(TextEdit.replace(documentSymbol.detailRange!, relative))
-									}
-								},
-							}
-						})
-					}
-
-					if (!this.context.has(detail)) {
-						console.warn(`${this.uri.basename()}: !this.context.has("${detail}")`)
-					}
-
-					diagnostics.push(
-						this.context.get(detail)?.pipe(
-							map((result) => {
-								switch (result.type) {
-									case BaseResultType.None:
-										return this.diagnostics.unreachable(documentSymbol.range)
-									case BaseResultType.Success:
-										if (!result.ambient) {
-											return []
-										}
-
-										return [{
-											range: documentSymbol.detailRange!,
-											severity: DiagnosticSeverity.Hint,
-											source: "vdf",
-											message: "#base directive is ambient.",
-										}]
-									case BaseResultType.Error:
-										return result.errors.flatMap((error) => {
-											return getBaseDiagnostics(documentSymbol, error)
-										})
-								}
-							})
-						) ?? null
-					)
+					return false
 				}
-			}
-
-			diagnostics.push(
-				...dependencies.schema.getDiagnostics({
-					dependencies: dependencies,
-					documentConfiguration: documentConfiguration,
-					documentSymbols: rest,
-					definitionReferences: definitionReferences,
-				})
-			)
-
-			return diagnostics
+			})()
 		}
 
-		this.base$ = this.documentSymbols$.pipe(
-			map((documentSymbols) => VDFTextDocument.base(documentSymbols)),
-			distinctUntilChanged((previous, current) => previous.length == current.length && previous.every((detail, index) => detail == current[index])),
-			shareReplayUntilDisposed(this.dispose$),
-		)
-	}
-
-	public async getLinks(): Promise<DocumentLinkData[]> {
-		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
-			documentSymbols: this.documentSymbols$,
-			dependencies: this.configuration.dependencies$,
-		}))
-
-		const { base = [], rest = [] } = Object.groupBy(
-			documentSymbols,
-			(documentSymbol) => {
-				return documentSymbol.key.toLowerCase() == "#base"
-					? "base"
-					: "rest"
+		this.schema$ = defer(() => {
+			if (workspace != null && path != null) {
+				return workspace.fileType(path)
 			}
-		)
 
-		return [
-			...base
-				.values()
-				.filter((documentSymbol) => documentSymbol.detail?.trim().length)
-				.map((documentSymbol) => ({
-					range: documentSymbol.detailRange!,
-					data: {
-						resolve: async () => {
-							if (this.configuration.relativeFolderPath) {
-								const relativePath = posix.resolve(`/${this.configuration.relativeFolderPath}`, documentSymbol.detail!).substring(1)
+			return of(VDFFileType.None)
+		}).pipe(
+			map((type) => {
+				let schema: VDFTextDocumentSchemaResult
+				let globals: Globals
 
-								const target = (await firstValueFrom(this.fileSystem.resolve(relativePath))).uri
-								if (target) {
-									return target
+				switch (type) {
+					case VDFFileType.None:
+						schema = VGUISchema(this)
+						globals = { languageTokens: workspace.languageTokens, clientScheme: workspace.clientScheme }
+						break
+					case VDFFileType.ClientScheme:
+						schema = ClientSchemeSchema(this)
+						if (workspace != null && path?.toLowerCase() != "resource/clientscheme.res") {
+							globals = {
+								clientScheme: {
+									definitions$: workspace.clientScheme.definitions$.pipe(
+										map((definitions) => {
+											// Don't add clientscheme definitions already declared in current .res file
+											const collection = new Collection<Definition>()
+											for (const { scope, type, key, value } of definitions) {
+												const rest = value.filter((definition) => !Uri.equals(definition.uri, this.uri))
+												if (rest.length > 0) {
+													collection.set(scope, type, key, ...rest)
+												}
+											}
+
+											return new Definitions(definitions.version, collection)
+										}),
+										startWith(new Definitions([], new Collection<Definition>())),
+										shareReplayUntilDisposed(this.dispose$),
+									),
+									setReferences: (uri, references) => {
+										return workspace.clientScheme.setReferences!(uri, references)
+									}
 								}
 							}
-
-							const dirname = this.uri.dirname()
-							return dirname.with({ path: posix.resolve(dirname.path, documentSymbol.detail!) })
 						}
-					}
-				})),
-			...await dependencies.schema.getLinks({
-				documentSymbols: rest,
-				resolve: (value, extension) => {
-					value = value.replaceAll(/[/\\]+/g, "/")
-					if (extension != undefined && posix.extname(value) != extension) {
-						value += extension
-					}
-					return posix.resolve(`/${value}`).substring(1)
-				},
-			})
-		]
-	}
+						else {
+							globals = {}
+						}
+						break
+					case VDFFileType.SourceScheme:
+						schema = ClientSchemeSchema(this)
+						globals = {}
+						break
+					case VDFFileType.ChatScheme:
+						schema = ClientSchemeSchema(this)
+						globals = {}
+						break
+					case VDFFileType.LanguageTokens:
+						schema = LanguageTokensSchema(this)
+						globals = {}
+						break
+					case VDFFileType.GameMenu:
+						schema = GameMenuSchema(this)
+						globals = { languageTokens: workspace.languageTokens }
+						break
+					case VDFFileType.ItemsGame:
+						schema = ItemsGameSchema(this)
+						globals = { languageTokens: workspace.languageTokens, clientScheme: workspace.clientScheme }
+						break
+					case VDFFileType.HUDAnimationsManifest:
+						schema = HUDAnimationsManifestSchema(this)
+						globals = {}
+						break
+					case VDFFileType.GameSoundsManifest:
+						schema = GameSoundsManifestSchema(this)
+						globals = {}
+						break
+					case VDFFileType.GameSounds:
+						schema = GameSoundsSchema(this)
+						globals = {}
+						break
+					case VDFFileType.SurfacePropertiesManifest:
+						schema = SurfacePropertiesManifestSchema(this)
+						globals = {}
+						break
+					case VDFFileType.SurfaceProperties:
+						schema = SurfacePropertiesSchema(this)
+						globals = {}
+						break
+					default:
+						throw new Error("unreachable")
+				}
 
-	public async getColours(): Promise<ColourInformationStringify[]> {
-		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
-			documentSymbols: this.documentSymbols$,
-			dependencies: this.configuration.dependencies$
-		}))
-
-		const { base = [], rest = [] } = Object.groupBy(
-			documentSymbols,
-			(documentSymbol) => {
-				return documentSymbol.key.toLowerCase() == "#base"
-					? "base"
-					: "rest"
-			}
+				return {
+					schema,
+					globals,
+				}
+			}),
+			shareReplayUntilDisposed(this.dispose$),
 		)
 
-		return dependencies.schema.getColours({
-			documentSymbols: rest,
-			next: (callback) => {
-				return rest.reduce(
-					(colours, documentSymbol) => {
-						if (!documentSymbol.children) {
-							return colours
-						}
+		this.getDiagnostics = ({ diagnostics, ...params }) => {
+			params.dependencies.schema.getDiagnostics(diagnostics, params)
+		}
 
-						colours.push(
-							...documentSymbol.children.reduceRecursive(
-								<ColourInformationStringify[]>[],
-								(colours, documentSymbol) => {
-									callback(colours, documentSymbol)
-									return colours
-								}
-							)
-						)
+		this.decorations$ = of([])
 
-						return colours
-					},
-					<ColourInformationStringify[]>[]
-				)
-			},
-		})
+		this.connect()
 	}
 
-	public async getInlayHints(): Promise<InlayHint[]> {
-		const { documentSymbols, dependencies } = await firstValueFrom(combineLatest({
-			documentSymbols: this.documentSymbols$,
-			dependencies: this.configuration.dependencies$
-		}))
+	public async onDidOpenTextDocument(server: VDFLanguageServer, connection: Connection): Promise<AsyncDisposable> {
+		this.workspace.VGUIReferences()
+		return {
+			[Symbol.asyncDispose]: async () => { }
+		}
+	}
 
-		const { base = [], rest = [] } = Object.groupBy(
-			documentSymbols,
-			(documentSymbol) => {
-				return documentSymbol.key.toLowerCase() == "#base"
-					? "base"
-					: "rest"
-			}
+	public async onCodeLens(params: CodeLensParams): Promise<CodeLens[]> {
+		await this.workspace.VGUIReferences()
+		return await super.onCodeLens(params)
+	}
+
+	public async onDocumentFormatting(params: DocumentFormattingParams): Promise<string> {
+		const documentFormattingConfiguration = (await firstValueFrom(this.documentConfiguration$)).vdf.format
+
+		const options: VDFFormatStringifyOptions = {
+			indentation: params.options.insertSpaces ? VDFIndentation.Spaces : VDFIndentation.Tabs,
+			insertNewlineBeforeObjects: documentFormattingConfiguration.insertNewlineBeforeObjects,
+			quotes: documentFormattingConfiguration.quotes,
+			tabSize: params.options.tabSize,
+			tabs: documentFormattingConfiguration.tabs,
+			newLine: VDFNewLine.LF,
+			insertFinalNewline: params.options.insertFinalNewline ?? false,
+		}
+
+		return formatVDF(this.getText(), this.VDFParserOptions, options)
+	}
+
+	public async getDocumentLinks(): Promise<DocumentLinkResolve[]> {
+		const { schema } = await firstValueFrom(this.schema$)
+		return await schema.getDocumentLinks()
+	}
+
+	public async getDocumentColor(): Promise<ColourInformationStringify[]> {
+		const { schema } = await firstValueFrom(this.schema$)
+		return await schema.getDocumentColor()
+	}
+
+	public async onInlayHint(params: { range: VDFRange }): Promise<InlayHint[]> {
+		const { schema } = await firstValueFrom(this.schema$)
+		return await schema.onInlayHint(params)
+	}
+
+	protected async getRename(params: VDFRenameParams): Promise<WorkspaceEdit> {
+		await this.workspace.VGUIReferences()
+		return await super.getRename(params)
+	}
+
+	protected async getCompletion(params: VDFCompletionParams): Promise<VDFCompletionList | null> {
+		const { schema } = await firstValueFrom(this.schema$)
+		return await VDFTextDocument.getCompletion(
+			this,
+			params,
+			schema.completion.keys,
+			schema.completion.values,
 		)
-
-		return dependencies.schema.getInlayHints({
-			dependencies: dependencies,
-			documentSymbols: rest
-		})
 	}
 }

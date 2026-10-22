@@ -21,5 +21,5 @@ export const waveSpawnKeys = [
 	"WaitBetweenSpawnsAfterDeath",
 	"WaitForAllDead",
 	"WaitForAllSpawned",
-	"Where"
+	"Where",
 ].map((key) => key.toLowerCase())

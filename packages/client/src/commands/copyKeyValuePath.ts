@@ -3,7 +3,7 @@ import { posix } from "path"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { quote } from "vdf-format"
 import vscode from "vscode"
-import { searchForWorkspaceRoot } from "../searchForWorkspaceRoot"
+import { searchForHUDRoot } from "../searchForHUDRoot"
 
 export async function copyKeyValuePath(editor: vscode.TextEditor): Promise<void> {
 
@@ -15,10 +15,10 @@ export async function copyKeyValuePath(editor: vscode.TextEditor): Promise<void>
 		const uri = new Uri(editor.document.uri)
 
 		const fsPath = uri.fsPath
-		const workspaceRoot = await searchForWorkspaceRoot(uri)
+		const hudRoot = await searchForHUDRoot(uri)
 
-		return workspaceRoot != null
-			? posix.relative(workspaceRoot.fsPath, fsPath)
+		return hudRoot != null
+			? posix.relative(hudRoot.fsPath, fsPath)
 			: posix.basename(fsPath)
 	})()
 
@@ -33,8 +33,8 @@ export async function copyKeyValuePath(editor: vscode.TextEditor): Promise<void>
 
 	const documentSymbolsPath = [
 		...path.map((documentSymbol) => documentSymbol.key),
-		...(path.at(-1)?.detailRange?.contains(editor.selection.start) ? [path.at(-1)!.detail!] : [])
-	].map((value) => quote(value) ? `"${value}"` : value)
+		...(path.at(-1)?.value?.range.contains(editor.selection.start) ? [path.at(-1)!.value!] : [])
+	].map((value) => quote(value.text) ? `"${value}"` : value)
 
 	const result = `${filePath.split(/[/\\]+/).join("/")} ${documentSymbolsPath.join(" > ")}`
 

@@ -7,10 +7,8 @@ import { z } from "zod"
 export interface TRPCRequestHandlerOptions<T extends z.util.EnumLike> {
 	router: AnyTRPCRouter
 	schema: z.ZodEnum<T>
-	stack?: AsyncDisposableStack
+	stack: AsyncDisposableStack
 	sendNotification: (client: z.infer<z.ZodEnum<T>>, method: "vscode-vdf/trpc", param: unknown) => Promise<void>
-	start?: Promise<z.infer<z.ZodEnum<T>>[] | undefined>
-	onExit?: (clients: Set<z.infer<z.ZodEnum<T>>>) => Promise<void>
 }
 
 function next(): never {
@@ -42,24 +40,11 @@ export function TRPCRequestHandler<T extends z.util.EnumLike>(opts: TRPCRequestH
 
 	const subscriptions = new Map<z.infer<z.ZodEnum<T>>, Map<number, Unsubscribable>>()
 
-	opts.stack?.defer(async () => {
-		const clients = new Set(subscriptions.keys())
-		const promises: Promise<void>[] = [Promise.try(() => opts.onExit?.(clients))]
-
-		for (const [client, map] of subscriptions) {
+	opts.stack.defer(async () => {
+		for (const map of subscriptions.values()) {
 			for (const subscription of map.values()) {
 				subscription.unsubscribe()
 			}
-
-			promises.push(opts.sendNotification(client, "vscode-vdf/trpc", { type: "exit" }))
-		}
-
-		await Promise.all(promises)
-	})
-
-	opts.start?.then((clients) => {
-		for (const client of clients ?? []) {
-			opts.sendNotification(client, "vscode-vdf/trpc", { type: "start" })
 		}
 	})
 

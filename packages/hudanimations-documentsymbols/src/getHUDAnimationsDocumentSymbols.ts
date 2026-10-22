@@ -1,4 +1,5 @@
 import { UnexpectedCharacterError, UnexpectedEndOfFileError, UnexpectedTokenError, VDFPosition, VDFRange, VDFTokenType, VDFTokeniser, type VDFToken } from "vdf"
+import type { VDFText } from "vdf-documentsymbols"
 import { Accel, AnimateDocumentSymbol, Bias, Bounce, DeAccel, FireCommandDocumentSymbol, Flicker, Gain, HUDAnimationsEventDocumentSymbol, Linear, PlaySoundDocumentSymbol, Pulse, RunEventChildDocumentSymbol, RunEventDocumentSymbol, SetFontDocumentSymbol, SetInputEnabledDocumentSymbol, SetStringDocumentSymbol, SetTextureDocumentSymbol, SetVisibleDocumentSymbol, Spline, StopAnimationDocumentSymbol, StopEventDocumentSymbol, StopPanelAnimationsDocumentSymbol, Unknown, type HUDAnimationsStatementDocumentSymbol, type Interpolator } from "./HUDAnimationsDocumentSymbol"
 import { HUDAnimationsDocumentSymbols, HUDAnimationsStatementDocumentSymbols } from "./HUDAnimationsDocumentSymbols"
 
@@ -88,7 +89,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		}
 
 		return new HUDAnimationsEventDocumentSymbol(
-			eventName,
+			{ text: eventName.value, range: eventName.textRange, tokenRange: eventName.range, quoted: eventName.quoted },
 			conditional,
 			new VDFRange(eventToken.range.start, new VDFPosition(tokeniser.line, tokeniser.character)),
 			statements,
@@ -96,7 +97,7 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		)
 	}
 
-	function string(): VDFToken {
+	function string(): VDFText {
 		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["string"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -104,10 +105,16 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		if (token.type != VDFTokenType.String) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["string"], token.range)
 		}
-		return token
+
+		return {
+			text: token.value,
+			range: token.textRange,
+			tokenRange: token.range,
+			quoted: token.quoted,
+		}
 	}
 
-	function number(): Omit<VDFToken, "value"> & { value: number } {
+	function number(): VDFText {
 		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["number"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -115,13 +122,16 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		if (token.type != VDFTokenType.String || /[^\d.]/.test(token.value)) {
 			throw new UnexpectedTokenError(`'${token.value}'`, ["number"], token.range)
 		}
+
 		return {
-			...token,
-			value: parseFloat(token.value),
+			text: token.value,
+			range: token.textRange,
+			tokenRange: token.range,
+			quoted: token.quoted,
 		}
 	}
 
-	function bool(): Omit<VDFToken, "value"> & { value: boolean } {
+	function bool(): VDFText {
 		const token = tokeniser.token()
 		if (token == null) {
 			throw new UnexpectedEndOfFileError(["'0'", "'1'"], new VDFRange(new VDFPosition(tokeniser.line, tokeniser.character)))
@@ -132,8 +142,10 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 		}
 
 		return {
-			...token,
-			value: token.value == "1",
+			text: token.value,
+			range: token.textRange,
+			tokenRange: token.range,
+			quoted: token.quoted,
 		}
 	}
 
@@ -148,57 +160,52 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const value = string()
 				const interpolator = ((): Interpolator => {
 					const interpolator = string()
-					switch (interpolator.value.toLowerCase()) {
+					switch (interpolator.text.toLowerCase()) {
 						case "accel": {
 							return new Accel(interpolator.range,)
 						}
 						case "bias": {
 							const bias = string()
-							return new Bias(interpolator.range, bias.value, bias.range)
+							return new Bias(interpolator.range, bias)
 						}
 						case "bounce": {
-							return new Bounce(interpolator.range,)
+							return new Bounce(interpolator.range)
 						}
 						case "deaccel": {
-							return new DeAccel(interpolator.range,)
+							return new DeAccel(interpolator.range)
 						}
 						case "flicker": {
 							const randomnessToken = string()
-							return new Flicker(interpolator.range, randomnessToken.value, randomnessToken.range)
+							return new Flicker(interpolator.range, randomnessToken)
 						}
 						case "gain": {
 							const bias = string()
-							return new Gain(interpolator.range, bias.value, bias.range)
+							return new Gain(interpolator.range, bias)
 						}
 						case "linear": {
 							return new Linear(interpolator.range,)
 						}
 						case "pulse": {
 							const frequency = string()
-							return new Pulse(interpolator.range, frequency.value, frequency.range)
+							return new Pulse(interpolator.range, frequency)
 						}
 						case "spline": {
-							return new Spline(interpolator.range,)
+							return new Spline(interpolator.range)
 						}
 						default: {
-							return new Unknown(interpolator.value, interpolator.range)
+							return new Unknown(interpolator.range, interpolator)
 						}
 					}
 				})()
 				const delay = number()
 				const duration = number()
 				statement = new AnimateDocumentSymbol(
-					element.value,
-					element.range,
-					property.value,
-					property.range,
-					value.value,
-					value.range,
+					element,
+					property,
+					value,
 					interpolator,
-					delay.value,
-					delay.range,
-					duration.value,
-					duration.range,
+					delay,
+					duration,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -209,10 +216,8 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const event = string()
 				const delay = number()
 				statement = new RunEventDocumentSymbol(
-					event.value,
-					event.range,
-					delay.value,
-					delay.range,
+					event,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -222,10 +227,8 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const event = string()
 				const delay = number()
 				statement = new StopEventDocumentSymbol(
-					event.value,
-					event.range,
-					delay.value,
-					delay.range,
+					event,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -236,12 +239,9 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const visible = bool()
 				const delay = number()
 				statement = new SetVisibleDocumentSymbol(
-					element.value,
-					element.range,
-					visible.value,
-					visible.range,
-					delay.value,
-					delay.range,
+					element,
+					visible,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -251,10 +251,8 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const delay = number()
 				const command = string()
 				statement = new FireCommandDocumentSymbol(
-					delay.value,
-					delay.range,
-					command.value,
-					command.range,
+					delay,
+					command,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -265,12 +263,9 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const event = string()
 				const delay = number()
 				statement = new RunEventChildDocumentSymbol(
-					element.value,
-					element.range,
-					event.value,
-					event.range,
-					delay.value,
-					delay.range,
+					element,
+					event,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -281,12 +276,9 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const enabled = bool()
 				const delay = number()
 				statement = new SetInputEnabledDocumentSymbol(
-					element.value,
-					element.range,
-					enabled.value,
-					enabled.range,
-					delay.value,
-					delay.range,
+					element,
+					enabled,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -296,10 +288,8 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const delay = number()
 				const sound = string()
 				statement = new PlaySoundDocumentSymbol(
-					delay.value,
-					delay.range,
-					sound.value,
-					sound.range,
+					delay,
+					sound,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -309,10 +299,8 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const element = string()
 				const delay = number()
 				statement = new StopPanelAnimationsDocumentSymbol(
-					element.value,
-					element.range,
-					delay.value,
-					delay.range,
+					element,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -323,12 +311,9 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const property = string()
 				const delay = number()
 				statement = new StopAnimationDocumentSymbol(
-					element.value,
-					element.range,
-					property.value,
-					property.range,
-					delay.value,
-					delay.range,
+					element,
+					property,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -340,14 +325,10 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const font = string()
 				const delay = number()
 				statement = new SetFontDocumentSymbol(
-					element.value,
-					element.range,
-					property.value,
-					property.range,
-					font.value,
-					font.range,
-					delay.value,
-					delay.range,
+					element,
+					property,
+					font,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -359,14 +340,10 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const value = string()
 				const delay = number()
 				statement = new SetTextureDocumentSymbol(
-					element.value,
-					element.range,
-					property.value,
-					property.range,
-					value.value,
-					value.range,
-					delay.value,
-					delay.range,
+					element,
+					property,
+					value,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)
@@ -378,14 +355,10 @@ export function getHUDAnimationsDocumentSymbols(str: string): HUDAnimationsDocum
 				const value = string()
 				const delay = number()
 				statement = new SetStringDocumentSymbol(
-					element.value,
-					element.range,
-					property.value,
-					property.range,
-					value.value,
-					value.range,
-					delay.value,
-					delay.range,
+					element,
+					property,
+					value,
+					delay,
 					tokeniser.conditional(),
 					new VDFRange(typeRange.start, new VDFPosition(tokeniser.line, tokeniser.character))
 				)

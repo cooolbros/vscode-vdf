@@ -10,10 +10,10 @@ export const enum VDFTokenType {
 }
 
 export type VDFToken = (
-	| { type: VDFTokenType.String, value: string }
+	| { type: VDFTokenType.String, value: string, quoted: boolean, textRange: VDFRange }
 	| { type: VDFTokenType.OpeningBrace, value: "{" }
 	| { type: VDFTokenType.ClosingBrace, value: "}" }
 	| { type: VDFTokenType.Conditional, value: `[${string}]` }
 	| { type: VDFTokenType.Comment, value: `//${string}` }
 	| { type: VDFTokenType.NewLine, value: "\n" }
-) & { range: VDFRange, exteriorRange: VDFRange }
+) & { range: VDFRange }

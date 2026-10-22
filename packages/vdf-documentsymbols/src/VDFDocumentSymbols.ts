@@ -1,15 +1,6 @@
-import type { PositionLike } from "vdf"
-import { z } from "zod"
 import { VDFDocumentSymbol } from "./VDFDocumentSymbol"
 
 export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
-
-	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/species
-	public static get [Symbol.species]() {
-		return Array
-	}
-
-	public static readonly schema = z.array(z.lazy(() => VDFDocumentSymbol.schema)).transform((arg) => new VDFDocumentSymbols(...arg))
 
 	public forAll(callback: (documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => void, path: VDFDocumentSymbol[] = []): void {
 		const iterateDocumentSymbols = (documentSymbols: VDFDocumentSymbols): void => {
@@ -46,23 +37,11 @@ export class VDFDocumentSymbols extends Array<VDFDocumentSymbol> {
 		return iterateDocumentSymbols(this)
 	}
 
-	public getDocumentSymbolAtPosition(position: PositionLike): VDFDocumentSymbol | undefined {
-		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))?.documentSymbol
-	}
-
-	public getPathAtPosition(position: PositionLike): VDFDocumentSymbol[] | undefined {
-		return this.findRecursive((documentSymbol) => documentSymbol.range.contains(position))?.path
-	}
-
 	public reduceRecursive<T>(initialValue: T, callbackfn: (previousValue: T, documentSymbol: VDFDocumentSymbol, path: VDFDocumentSymbol[]) => T): T {
 		let result = initialValue
 		this.forAll((documentSymbol, path) => {
 			result = callbackfn(result, documentSymbol, path)
 		})
 		return result
-	}
-
-	public toJSON() {
-		return this.map((documentSymbol) => documentSymbol.toJSON())
 	}
 }
