@@ -111,8 +111,8 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 				let command: VDFCompletionItem["command"]
 
 				const fieldLower = field.toLowerCase()
-				if (fieldLower in fieldValues) {
-					const values = fieldValues[fieldLower]
+				const values = Object.entries((fieldValues)).find(([key, _values]) => key.toLowerCase() == fieldLower)?.[1]
+				if (values != undefined) {
 					const q = quoted ? `"` : ``
 
 					if (values.length == 1) {

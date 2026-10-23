@@ -84,6 +84,21 @@ const enumIndexKeys = new Map([
 	["pincorner", "pinCorner"],
 ])
 
+const fixes = {
+	textAlignment: {
+		"center-east": "east",
+		"center-west": "west",
+		"centereast": "east",
+		"centerwest": "west",
+		"left": "west",
+		"northeast": "north-east",
+		"northwest": "north-west",
+		"right": "east",
+		"southeast": "south-east",
+		"southwest": "south-west"
+	}
+}
+
 export const VGUISchema = (document: VDFTextDocument) => {
 
 	const base = new BaseDocument(document)
@@ -98,7 +113,7 @@ export const VGUISchema = (document: VDFTextDocument) => {
 	const font = d.reference(types.font, "clientScheme")
 
 	const next = d.next({
-		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, d.set(enumIndexKeys.has(key) ? [...value, ...value.map((_, index) => index.toString())] : value)])),
+		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, d.set(enumIndexKeys.has(key) ? [...value, ...value.map((_, index) => index.toString())] : value, ((key): key is keyof typeof fixes => key in fixes)(key) ? fixes[key] : undefined)])),
 		...Object.fromEntries(elements.map((value) => <const>[value, element])),
 		...Object.fromEntries(strings.map((value) => <const>[value, token])),
 		...Object.fromEntries(images.values().map((value) => <const>[value, image.validate])),
@@ -398,8 +413,8 @@ export const VGUISchema = (document: VDFTextDocument) => {
 				key = transform(key)
 
 				// Static
-				if (((key): key is keyof typeof values => key in values)(key)) {
-					const data = values[key]
+				const data = Object.entries((values)).find(([key, _values]) => key.toLowerCase() == key)?.[1]
+				if (data != undefined) {
 					return {
 						token: token,
 						length: data.length,

@@ -292,7 +292,7 @@ export function DiagnosticFactory<
 				}
 			}
 		},
-		set: (values: string[], _fix?: { [key: string]: string }): RefineString<TContext> => {
+		set: (values: string[], fix?: { [key: string]: string }): RefineString<TContext> => {
 			const map = new Map(values.map((value) => [value.toLowerCase(), value]))
 			return (name, detail, documentSymbol, path, diagnostics, _context) => {
 				const text = detail.text.toLowerCase()
@@ -305,14 +305,29 @@ export function DiagnosticFactory<
 						message: `'${detail.text}' is not a valid value for ${name}. Expected '${values.join("' | '")}'.`,
 						data: {
 							fix: ({ createDocumentWorkspaceEdit }) => {
-								const match = findBestMatch(detail.text, values).bestMatch
-								if (match.rating < 0.5) {
+								let text: string | undefined = undefined
+
+								if (fix != undefined) {
+									const value = detail.text.toLowerCase()
+									if (value in fix) {
+										text = fix[value]
+									}
+								}
+
+								if (!text) {
+									const match = findBestMatch(detail.text, values).bestMatch
+									if (match.rating >= 0.5) {
+										text = match.target
+									}
+								}
+
+								if (text == undefined) {
 									return null
 								}
 
 								return {
-									title: `Change ${name} to '${match.target}'`,
-									edit: createDocumentWorkspaceEdit(TextDocumentBase.replaceTokenTextEdit(detail, match.target))
+									title: `Change ${name} to '${text}'`,
+									edit: createDocumentWorkspaceEdit(TextDocumentBase.replaceTokenTextEdit(detail, text))
 								}
 							}
 						}

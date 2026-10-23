@@ -1,5 +1,5 @@
 {
-    "autoresize": [
+    "autoResize": [
         "AUTORESIZE_NO",
         "AUTORESIZE_RIGHT",
         "AUTORESIZE_DOWN",
@@ -9,7 +9,7 @@
         "1",
         "0"
     ],
-    "controlname": [
+    "ControlName": [
         "AnalogBar",
         "AnimatingImagePanel",
         "BuildModeDialog",
@@ -219,17 +219,17 @@
         "0",
         "1"
     ],
-    "paintbackground": [
+    "paintBackground": [
         "0",
         "1"
     ],
-    "paintbackgroundtype": [
+    "PaintBackgroundType": [
         "0",
         "1",
         "2",
         "3"
     ],
-    "paintborder": [
+    "paintBorder": [
         "0",
         "1"
     ],
@@ -255,7 +255,7 @@
         "PIN_CENTER_LEFT",
         "PIN_LAST"
     ],
-    "pincorner": [
+    "pinCorner": [
         "PIN_TOPLEFT",
         "PIN_TOPRIGHT",
         "PIN_BOTTOMLEFT",
@@ -270,11 +270,11 @@
         "1",
         "0"
     ],
-    "scaleimage": [
+    "scaleImage": [
         "1",
         "0"
     ],
-    "textalignment": [
+    "textAlignment": [
         "center",
         "east",
         "north-east",
