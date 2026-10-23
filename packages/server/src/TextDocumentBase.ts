@@ -550,14 +550,17 @@ export abstract class TextDocumentBase<
 		this.references.references$.value.set(key, references)
 
 		const subscription = references.next$.subscribe(() => this.references.references$.next(this.references.references$.value))
-		subscription.add(() => this.referenceSubscriptions.delete(key))
 		this.referenceSubscriptions.set(key, subscription)
 
 		return {
 			remove: () => {
-				subscription.unsubscribe()
+				// Delete references and key from this.referenceSubscriptions before unsubscribing because to prevent property access after dispose
+				this.referenceSubscriptions.delete(key)
 				this.references.references$.value.delete(key)
 				this.references.references$.next(this.references.references$.value)
+
+				// unsubscribe last to dispose
+				subscription.unsubscribe()
 			}
 		}
 	}
