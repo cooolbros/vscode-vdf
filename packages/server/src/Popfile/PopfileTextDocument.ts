@@ -231,9 +231,9 @@ const MissionSchema: PopfileSchema = {
 		return (name, detail, documentSymbol, path, diagnostics, context) => {
 			context.classIcons.getOrInsertComputed(detail.text, () => []).push({
 				index: diagnostics.length,
-				range: detail.range,
 				name: "ClassIcon",
-				detail: detail.text,
+				documentSymbolRange: documentSymbol.range,
+				value: detail,
 			})
 
 			diagnostics.push(undefined)
@@ -1244,9 +1244,9 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 						)
 					).subscribe((vtf) => {
 						if (!vtf) {
-							for (const { index, range } of values) {
+							for (const { index, value } of values) {
 								diagnostics[index] = {
-									range: range,
+									range: value.range,
 									severity: DiagnosticSeverity.Warning,
 									code: "missing-file",
 									source: "popfile",
@@ -1262,9 +1262,9 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 							const message = `flag${!noMip && !noLod ? "s" : ""} ${!noMip ? `"No Mipmap"` : ""}${!noMip && !noLod ? " and " : ""}${!noLod ? `"No Level Of Detail"` : ""}`
 
 							if (!noMip || !noLod) {
-								for (const { index, range } of values) {
+								for (const { index, value } of values) {
 									diagnostics[index] = {
-										range: range,
+										range: value.range,
 										severity: DiagnosticSeverity.Warning,
 										code: "missing-vtf-flags",
 										source: "popfile",

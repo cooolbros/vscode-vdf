@@ -112,7 +112,7 @@ export type DiagnosticFix = (params: { params: CodeActionParams, createDocumentW
  */
 export type PartialDiagnosticCodeAction = DiagnosticCodeAction | undefined | DiagnosticCodeAction[] | null
 
-export type PartialDiagnosticCodeActionReference = { index: number, range: VDFRange, name: string, detail: string }
+export type PartialDiagnosticCodeActionReference = { index: number, name: string, documentSymbolRange: VDFRange, value: VDFText }
 
 export interface Decoration {
 	range: VDFRange

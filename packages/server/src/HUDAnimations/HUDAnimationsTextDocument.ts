@@ -561,7 +561,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 
 					if ("sound" in statement) {
 						const path = resolvePath(`sound/${statement.sound.text}`)
-						soundReferences.getOrInsertComputed(path, () => []).push({ index: diagnostics.length, range: statement.sound.range, name: "sound", detail: statement.sound.text })
+						soundReferences.getOrInsertComputed(path, () => []).push({ index: diagnostics.length, name: "sound", documentSymbolRange: statement.range, value: statement.sound })
 						diagnostics.push(undefined)
 					}
 				}
@@ -578,29 +578,29 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					).subscribe((entry) => {
 						switch (entry.type) {
 							case EntryType.None: {
-								for (const { index, range, detail } of values) {
+								for (const { index, value } of values) {
 									diagnostics[index] = {
-										range: range,
+										range: value.range,
 										severity: DiagnosticSeverity.Warning,
 										source: "hudanimations",
-										message: `Cannot find sound file '${detail}'.`,
+										message: `Cannot find sound file '${value.text}'.`,
 									}
 								}
 								break
 							}
 							case EntryType.File: {
-								for (const { index, range: _range, detail: _detail } of values) {
+								for (const { index } of values) {
 									diagnostics[index] = null
 								}
 								break
 							}
 							case EntryType.Directory: {
-								for (const { index, range, detail } of values) {
+								for (const { index, value } of values) {
 									diagnostics[index] = {
-										range: range,
+										range: value.range,
 										severity: DiagnosticSeverity.Warning,
 										source: "hudanimations",
-										message: `Sound file '${detail}' references a directory.`,
+										message: `Sound file '${value.text}' references a directory.`,
 									}
 								}
 								break

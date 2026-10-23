@@ -255,7 +255,7 @@ export class BaseDocument {
 				}
 				else if (!documentSymbol.value!.text.trim().length) {
 					diagnostics.push({
-						range: documentSymbol.value!.range,
+						range: documentSymbol.range,
 						severity: DiagnosticSeverity.Hint,
 						message: "Unreachable code detected.",
 						tags: [
@@ -296,7 +296,7 @@ export class BaseDocument {
 						})
 					}
 
-					base.getOrInsertComputed(detail, () => []).push({ index: diagnostics.length, range: documentSymbol.value!.range, name: "#base", detail: documentSymbol.value!.text })
+					base.getOrInsertComputed(detail, () => []).push({ index: diagnostics.length, name: "#base", documentSymbolRange: documentSymbol.range, value: documentSymbol.value! })
 					diagnostics.push(undefined)
 				}
 			}
@@ -309,9 +309,9 @@ export class BaseDocument {
 					observable$.subscribe((result) => {
 						switch (result.type) {
 							case BaseResultType.None: {
-								for (const { index, range, detail: _detail } of values) {
+								for (const { index, documentSymbolRange } of values) {
 									diagnostics[index] = {
-										range: range,
+										range: documentSymbolRange,
 										severity: DiagnosticSeverity.Hint,
 										source: "vdf",
 										message: "Unreachable code detected.",
@@ -324,9 +324,9 @@ export class BaseDocument {
 							}
 							case BaseResultType.Success: {
 								if (result.ambient) {
-									for (const { index, range, detail: _detail } of values) {
+									for (const { index, value } of values) {
 										diagnostics[index] = {
-											range: range,
+											range: value.range,
 											severity: DiagnosticSeverity.Hint,
 											source: "vdf",
 											message: "#base directive is ambient.",
@@ -334,7 +334,7 @@ export class BaseDocument {
 									}
 								}
 								else {
-									for (const { index, range: _range, detail: _detail } of values) {
+									for (const { index } of values) {
 										diagnostics[index] = null
 									}
 								}
@@ -342,9 +342,9 @@ export class BaseDocument {
 							}
 							case BaseResultType.Error: {
 								const diagnostic = result.errors.flatMap((error) => this.getBaseErrorDiagnostics(error))
-								for (const { index, range, name: _name, detail: _detail } of values) {
+								for (const { index, value } of values) {
 									diagnostics[index] = diagnostic.map((rest) => ({
-										range: range,
+										range: value.range,
 										...rest
 									}))
 								}
@@ -357,7 +357,7 @@ export class BaseDocument {
 				)
 			}
 			else {
-				for (const { index, range: _range, detail: _detail } of values) {
+				for (const { index } of values) {
 					diagnostics[index] = null
 				}
 			}
@@ -445,10 +445,9 @@ export class BaseDocument {
 				const path = error.path
 				return error.errors.flatMap((error) => {
 					return this.getBaseErrorDiagnostics(error).map((diagnostic) => {
-						const { message: _message, data: _data, ...rest } = diagnostic
 						return {
+							...diagnostic,
 							message: `#base error in "${path}": ${<string>diagnostic.message}`,
-							...rest
 						}
 					})
 				})

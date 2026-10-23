@@ -437,7 +437,7 @@ export function DiagnosticFactory<
 				}
 
 				const filePath = resolvePath(`${folder != null ? `${folder}/` : ""}${value}`, extension)
-				context[id].getOrInsertComputed(filePath, () => []).push({ index: diagnostics.length, range: detail.range, name: name, detail: detail.text })
+				context[id].getOrInsertComputed(filePath, () => []).push({ index: diagnostics.length, name: name, documentSymbolRange: documentSymbol.range, value: detail })
 				diagnostics.push(undefined)
 			}
 
@@ -453,27 +453,27 @@ export function DiagnosticFactory<
 						).subscribe((entry) => {
 							switch (entry.type) {
 								case EntryType.None: {
-									for (const { index, detail, name, range } of values) {
+									for (const { index, name, value } of values) {
 										diagnostics[index] = {
-											range: range,
+											range: value.range,
 											severity: DiagnosticSeverity.Warning,
 											code: "file-not-found",
 											source: document.languageId,
-											message: `Cannot find ${name} '${detail}'. (Resolved to "${path}")`,
+											message: `Cannot find ${name} '${value.text}'. (Resolved to "${path}")`,
 										}
 									}
 									break
 								}
 								case EntryType.File: {
-									for (const { index, detail: _detail, name: _name, range: _range } of values) {
+									for (const { index } of values) {
 										diagnostics[index] = null
 									}
 									break
 								}
 								case EntryType.Directory: {
-									for (const { index, detail: _detail, name, range } of values) {
+									for (const { index, name, value } of values) {
 										diagnostics[index] = {
-											range: range,
+											range: value.range,
 											severity: DiagnosticSeverity.Warning,
 											code: "file-is-directory",
 											source: document.languageId,
