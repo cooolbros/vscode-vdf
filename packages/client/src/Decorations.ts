@@ -43,6 +43,14 @@ export class Decorations {
 		}
 	}
 
+	public removeDecorations(uri: Uri) {
+		this.decorations.delete(uri.toString())
+		const editor = vscode.window.visibleTextEditors.find((editor) => editor.document.uri.toString() == uri.toString())
+		if (editor) {
+			editor.setDecorations(this.decorationType, [])
+		}
+	}
+
 	public dispose() {
 		this.stack.dispose()
 	}

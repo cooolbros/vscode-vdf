@@ -194,25 +194,33 @@ export function TRPCClientRouter(
 				return VTFToPNGBase64(vtf, 256)
 			}),
 		textDocument: {
-			decoration: t
-				.procedure
-				.input(
-					URISchema.extend({
-						decorations: z.array(
-							z.object({
-								range: VSCodeRangeSchema,
-								renderOptions: z.object({
-									after: z.object({
-										contentText: z.string()
+			decoration: {
+				setDecorations: t
+					.procedure
+					.input(
+						URISchema.extend({
+							decorations: z.array(
+								z.object({
+									range: VSCodeRangeSchema,
+									renderOptions: z.object({
+										after: z.object({
+											contentText: z.string()
+										})
 									})
 								})
-							})
-						)
+							)
+						})
+					)
+					.mutation(async ({ input }) => {
+						decorations.setDecorations(input.uri, input.decorations)
+					}),
+				removeDecorations: t
+					.procedure
+					.input(URISchema)
+					.mutation(async ({ input }) => {
+						decorations.removeDecorations(input.uri)
 					})
-				)
-				.mutation(async ({ input }) => {
-					decorations.setDecorations(input.uri, input.decorations)
-				})
+			}
 		},
 		popfile: lazy(async () => TRPCPopfileRouter.TRPCPopfileRouter(t, fileSystemWatcherFactory, bspFactory)),
 	})

@@ -437,12 +437,15 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 			stack.adopt(
 				document.decorations$.subscribe(async (decorations) => {
-					await this.trpc.textDocument.decoration.mutate({
+					await this.trpc.textDocument.decoration.setDecorations.mutate({
 						uri: uri,
 						decorations: decorations
 					})
 				}),
-				(subscription) => subscription.unsubscribe()
+				async (subscription) => {
+					subscription.unsubscribe()
+					await this.trpc.textDocument.decoration.removeDecorations.mutate({ uri: uri })
+				}
 			)
 
 			resolve(stack.move())
