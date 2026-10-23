@@ -1,7 +1,9 @@
 {
     "extends": "tsconfig",
     "compilerOptions": {
-        "allowJs": true,
+        "types": [
+            "node"
+        ],
         "noEmit": true
     }
 }
