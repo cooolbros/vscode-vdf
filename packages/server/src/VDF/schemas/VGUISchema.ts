@@ -413,7 +413,7 @@ export const VGUISchema = (document: VDFTextDocument) => {
 				key = transform(key)
 
 				// Static
-				const data = Object.entries((values)).find(([key, _values]) => key.toLowerCase() == key)?.[1]
+				const data = Object.entries((values)).find(([k, _values]) => k.toLowerCase() == key)?.[1]
 				if (data != undefined) {
 					return {
 						token: token,
