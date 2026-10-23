@@ -48,6 +48,8 @@ export class BaseDocument {
 	 */
 	public readonly base$: Observable<string[]>
 
+	private readonly baseReferences: Map<string, { remove: { remove(): void } }>
+
 	public constructor(document: VDFTextDocumentLike) {
 		this.document = document
 		this.context = new Map()
@@ -57,6 +59,8 @@ export class BaseDocument {
 			distinctUntilChanged((previous, current) => previous.length == current.length && previous.every((detail, index) => detail == current[index])),
 			shareReplayUntilDisposed(document.dispose$),
 		)
+
+		this.baseReferences = new Map()
 	}
 
 	public combineLatestBaseDefinitions(getDefinitionReferences: (rest: VDFDocumentSymbol[]) => DefinitionReferences): OperatorFunction<VDFDocumentSymbols, TextDocumentContent<VDFDocumentSymbols>> {
@@ -165,6 +169,16 @@ export class BaseDocument {
 						definitionReferences: getDefinitionReferences(rest)
 					}
 				}),
+				map((value) => {
+					for (const [base, baseReferences] of this.baseReferences) {
+						if (!value.base.includes(base)) {
+							baseReferences.remove.remove()
+							this.baseReferences.delete(base)
+						}
+					}
+
+					return value
+				}),
 				combineLatestBaseFiles({
 					stack: [],
 					open: ({ stack, detail }) => {
@@ -176,11 +190,18 @@ export class BaseDocument {
 						}).pipe(
 							switchMap((result) => {
 								if (result.type != BaseResultType.Success) {
+									this.baseReferences.get(detail)?.remove.remove()
+									this.baseReferences.delete(detail)
 									return of(result)
 								}
 
 								const document = result.value
-								document.setReferences(this.document.uri, this.document.references)
+
+								if (this.baseReferences.has(detail)) {
+									throw new Error(`this.baseReferences.has("${detail}")`)
+								}
+
+								this.baseReferences.set(detail, { remove: document.setReferences(this.document.uri, this.document.references) })
 
 								return document.definitions$.pipe(
 									map((definitions) => {
