@@ -517,21 +517,13 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 				.diagnostics
 				.values()
 				.map((diagnostic) => {
-					const result = diagnosticDataSchema.safeParse(diagnostic.data)
-					if (!result.success) {
+					const data = diagnosticDataSchema.parse(diagnostic.data)
+					const fix = diagnostics.get(data.id)?.data?.fix
+					if (!fix) {
 						return null
 					}
 
-					const diagnosticCodeAction = diagnostics.get(result.data.id)
-					if (!diagnosticCodeAction) {
-						return null
-					}
-
-					if (!diagnosticCodeAction.data) {
-						return null
-					}
-
-					const codeAction = diagnosticCodeAction.data.fix(utils)
+					const codeAction = fix(utils)
 					if (!codeAction) {
 						return null
 					}
@@ -557,9 +549,25 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 			return [
 				...codeActions,
 				...codes
-					.values()
-					.filter((codeActions) => codeActions.length > 1)
-					.map((codeActions) => {
+					.keys()
+					.map((code) => {
+						const codeDiagnostics = diagnostics
+							.values()
+							.filter((diagnostic) => diagnostic.code == code)
+							.toArray()
+
+						return {
+							code: code,
+							codeDiagnostics: codeDiagnostics,
+							codeActions: codeDiagnostics
+								.values()
+								.map((diagnostic) => diagnostic.data?.fix(utils) ?? null)
+								.filter((codeAction) => codeAction != null)
+								.toArray()
+						}
+					})
+					.filter((result) => result.codeActions.length > 1)
+					.map(({ code, codeActions, codeDiagnostics }) => {
 						const changes: { [key: string]: TextEdit[] } = {}
 						const commands: { command: string, rest?: any[] }[] = []
 
@@ -575,8 +583,9 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 						}
 
 						return {
-							title: `Fix all issues of kind '${<string>codeActions[0].diagnostics[0].message}' (${<string>codeActions[0].diagnostics[0].code})`,
-							diagnostics: codeActions.map((codeAction) => codeAction.diagnostics[0]),
+							title: `Fix all issues of kind '${<string>codeDiagnostics[0].message}' (${code})`,
+							kind: CodeActionKind.QuickFix,
+							diagnostics: codeDiagnostics,
 							...(Object.keys(changes).length && {
 								edit: {
 									changes
