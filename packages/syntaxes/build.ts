@@ -33,13 +33,13 @@ for (const file of readdirSync(SRC).filter((value) => posix.extname(value) == ".
 	let text = readFileSync(`${SRC}/${file}`, "utf-8")
 
 	const name = file.split(".")[0]
-	if (((file): file is keyof typeof preprocessors => file in preprocessors)(file)) {
-		for (const [key, keys] of Object.entries(preprocessors[file])) {
+	if (((_name): _name is keyof typeof preprocessors => file in preprocessors)(name)) {
+		for (const [key, keys] of Object.entries(preprocessors[name])) {
 			text = text.replace(`{${key}}`, [...new Set(keys)].toSorted().join("|"))
 		}
 	}
 
-	map.set(posix.parse(name).name, yaml.load(text))
+	map.set(posix.parse(file).name, yaml.load(text))
 }
 
 if (!existsSync(DIST)) {
