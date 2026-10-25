@@ -400,7 +400,10 @@ export const VGUISchema = (document: VDFTextDocument) => {
 				return {
 					field: {
 						one: one,
-						values: values,
+						values: {
+							...values,
+							fieldName: [path.at(-1)!.key.text]
+						},
 					}
 				}
 			},
