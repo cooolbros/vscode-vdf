@@ -8,10 +8,11 @@
 
 <script lang="ts">
 	import "@vscode/codicons/dist/codicon.ttf"
-	import type { HUDEnemyData, showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
+	import type { HUDEnemyData, PNG, showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPreviewToSide"
+	import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 	import { fromTRPCSubscription } from "common/operators/fromTRPCSubscription"
 	import { createTRPCClient } from "common/web/TRPCClient"
-	import { combineLatest, concatMap, map, Observable, of, share, shareReplay, switchMap } from "rxjs"
+	import { combineLatest, concatMap, map, Observable, share } from "rxjs"
 	import { toStore } from "svelte/store"
 
 	type AppRouter = NonNullable<Awaited<ReturnType<ReturnType<typeof showWaveStatusPreviewToSide>>>>
@@ -27,25 +28,23 @@
 
 	const vscode = acquireVsCodeApi()
 	const { trpc, contextMenu$ } = createTRPCClient<AppRouter>({ name: "wavestatus-preview", vscode: vscode })
-	const images = new Map<string, Observable<ImageBitmap | null>>()
 
 	let canvas: HTMLCanvasElement = $state()!
 
-	const image = (path: string) => {
-		return fromTRPCSubscription(trpc.png, { path }).pipe(
-			concatMap(async (png) => {
-				if (!png) {
-					return null
-				}
+	const imageBitmap = async (png: PNG | null) => {
+		if (!png) {
+			return null
+		}
 
-				return {
-					width: png.width,
-					height: png.height,
-					image: await createImageBitmap(new Blob([png.buf], { type: "image/png" })),
-				}
-			}),
-			shareReplay(1),
-		)
+		return {
+			width: png.width,
+			height: png.height,
+			image: await createImageBitmap(new Blob([png.buf], { type: "image/png" })),
+		}
+	}
+
+	const image = (path: string) => {
+		return fromTRPCSubscription(trpc.png, { path }).pipe(concatMap(async (png) => await imageBitmap(png)))
 	}
 
 	const font = (path: string, name: string) => {
@@ -60,19 +59,7 @@
 
 	const data$ = combineLatest({
 		canvas: fromReadable(toStore(() => canvas)),
-		skyname: fromTRPCSubscription(trpc.skyname, undefined).pipe(
-			concatMap(async (png) => {
-				if (!png) {
-					return null
-				}
-
-				return {
-					width: png.width,
-					height: png.height,
-					image: await createImageBitmap(new Blob([png.buf], { type: "image/png" })),
-				}
-			}),
-		),
+		skyname: fromTRPCSubscription(trpc.skyname, undefined).pipe(concatMap(async (png) => await imageBitmap(png))),
 		leaderboard_class_critical: image("materials/hud/leaderboard_class_critical.vmt"),
 		tournament_panel_blu: image("materials/hud/tournament_panel_blu.vmt"),
 		tournament_panel_brown: image("materials/hud/tournament_panel_brown.vmt"),
@@ -84,26 +71,30 @@
 		tokens: fromTRPCSubscription(trpc.tokens, undefined),
 		configuration: fromTRPCSubscription(trpc.configuration, undefined),
 		data: fromTRPCSubscription(trpc.waveStatus, undefined).pipe(
-			switchMap((waveStatus) => {
-				const icons = new Set(
-					waveStatus.waves
+			combineLatestPersistent({
+				entries: (waveStatus) => {
+					const set = new Set(
+						waveStatus.waves
+							.values()
+							.flatMap((wave) => [...wave.icons.miniboss, ...wave.icons.normal, ...wave.icons.support])
+							.map((icon) => icon.classIconName)
+							.filter((path) => path != null),
+					)
+
+					return set
 						.values()
-						.flatMap((wave) => [...wave.icons.miniboss, ...wave.icons.normal, ...wave.icons.support])
-						.map((icon) => icon.classIconName)
-						.filter((path) => path != null),
-				)
-
-				if (!icons.size) {
-					return of({ waveStatus: waveStatus, icons: <{ [key: string]: ImageBitmap | null }>{} })
-				}
-
-				for (const path of icons.values().filter((path) => !images.has(path))) {
-					images.set(path, image(path).pipe(map((png) => png?.image ?? null)))
-				}
-
-				return combineLatest(Object.fromEntries(icons.values().map((path) => [path, images.get(path)!]))).pipe(
-					map((icons) => ({ waveStatus, icons })),
-				)
+						.map((path) => ({ key: path }))
+						.toArray()
+				},
+				observableSelector: (entry) => {
+					return image(entry.key).pipe(map((image) => ({ path: entry.key, image: image })))
+				},
+				resultSelector: (value, results) => {
+					return {
+						waveStatus: value,
+						icons: new Map(results.values().map((image) => [image.path, image.image?.image ?? null])),
+					}
+				},
 			}),
 		),
 	}).pipe(share())
@@ -429,7 +420,7 @@
 					context.restore()
 
 					// EnemyCountImage
-					const image = icons[icon.classIconName ?? ""]
+					const image = icon.classIconName != null && icons.get(icon.classIconName)
 					if (image) {
 						context.drawImage(image, x + 3 * SCALE, y + 2 * SCALE, 14 * SCALE, 14 * SCALE)
 					} else {

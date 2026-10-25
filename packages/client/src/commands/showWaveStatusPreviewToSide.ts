@@ -67,6 +67,12 @@ export interface HUDEnemyData {
 	alwayscrit: boolean
 }
 
+export interface PNG {
+	readonly width: number
+	readonly height: number
+	readonly buf: Uint8Array<ArrayBufferLike>
+}
+
 const enum Type {
 	Normal,
 	Support,
@@ -699,7 +705,7 @@ export function showWaveStatusPreviewToSide(
 			})
 		)
 
-		function vtf(fileSystem: FileSystemMountPoint, path: string) {
+		function vtf(fileSystem: FileSystemMountPoint, path: string): Observable<PNG | null> {
 			return fileSystem.resolve(path).pipe(
 				switchMap((entry) => {
 					if (entry.type != EntryType.File) {

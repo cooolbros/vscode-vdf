@@ -1,6 +1,9 @@
 {
     "extends": "@tsconfig/svelte/tsconfig.json",
     "compilerOptions": {
-        "target": "ESNext"
+        "target": "ESNext",
+        "types": [
+            "vscode-webview"
+        ]
     }
 }
