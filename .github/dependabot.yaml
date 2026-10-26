@@ -13,8 +13,7 @@ updates:
           - react-dom
       trpc:
         patterns:
-          - '@trpc/client'
-          - '@trpc/server'
+          - '@trpc/*'
       vscode-languageserver-node:
         patterns:
           - vscode-languageclient
