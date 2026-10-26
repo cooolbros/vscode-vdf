@@ -6,6 +6,7 @@ import { fileURLToPath } from "url"
 export default defineConfig({
 	entry: {
 		server: [
+			import.meta.resolve("zod/compile"),
 			import.meta.resolve("common/stackTraceLimit"),
 			import.meta.resolve("common/getOrInsert"),
 			"./src/server.ts"

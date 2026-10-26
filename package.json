@@ -585,7 +585,7 @@
         "turbo": "^2.10.0",
         "typescript": "^6.0.3",
         "vscode-languageserver-textdocument": "^1.0.15",
-        "zod": "^4.3.6"
+        "zod": "^4.6.7"
     },
     "vsce": {
         "dependencies": false

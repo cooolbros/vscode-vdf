@@ -5,6 +5,7 @@ import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 export default defineConfig({
 	entry: {
 		extension: [
+			import.meta.resolve("zod/compile"),
 			import.meta.resolve("common/stackTraceLimit"),
 			import.meta.resolve("common/getOrInsert"),
 			"./src/extension.ts"
