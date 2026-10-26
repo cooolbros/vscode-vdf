@@ -3,16 +3,20 @@ import type { BSP } from "bsp"
 import { AsyncDisposableBase } from "common/AsyncDisposableBase"
 import { devalueTransformer } from "common/devalueTransformer"
 import type { FileSystemKey } from "common/FileSystemKey"
-import type { FileSystemMountPoint } from "common/FileSystemMountPoint"
+import { EntryType, type FileSystemMountPoint } from "common/FileSystemMountPoint"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { TRPCRequestHandler } from "common/TRPCRequestHandler"
 import { Uri } from "common/Uri"
+import { posix } from "path"
+import { firstValueFrom } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
+import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import vscode from "vscode"
 import { type BaseLanguageClient } from "vscode-languageclient"
 import { z } from "zod"
 import type { Decorations } from "./Decorations"
 import type { FileSystemWatcherFactory } from "./FileSystemWatcherFactory"
+import { searchForHUDRoot } from "./searchForHUDRoot"
 import { TRPCClientRouter } from "./TRPCClientRouter"
 
 export * from "common/VSCodeVDFLanguageID"
@@ -25,6 +29,36 @@ export class Client<T extends BaseLanguageClient> extends AsyncDisposableBase {
 		{ language: "vdf" },
 		{ language: "vmt" },
 	]
+
+	public static async onDidOpenPlainTextTextDocument(document: vscode.TextDocument, fileSystemMountPointFactory: RefCountAsyncDisposableFactory<FileSystemKey, FileSystemMountPoint>) {
+		const uri = new Uri(document.uri)
+		const hudRoot = await searchForHUDRoot(uri)
+		if (hudRoot == null) {
+			return
+		}
+
+		await using fileSystem = await fileSystemMountPointFactory.get({ type: "folder", folder: hudRoot })
+		const entry = await firstValueFrom(fileSystem.resolve("scripts/hudanimations_manifest.txt"))
+		if (entry.type != EntryType.File) {
+			return
+		}
+
+		try {
+			const buf = await vscode.workspace.fs.readFile(entry.uri)
+			const text = new TextDecoder("utf-8").decode(buf)
+			const documentSymbols = getVDFDocumentSymbols(text, { multilineStrings: false })
+			const manifest = (documentSymbols.find((documentSymbol) => documentSymbol.children != undefined)?.children ?? [])
+				.values()
+				.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "file" && documentSymbol.value?.text.trim().length)
+				.map((documentSymbol) => posix.resolve(`/${documentSymbol.value!.text}`).substring(1).toLowerCase())
+				.toArray()
+
+			if (manifest.includes(hudRoot.relative(uri).toLowerCase())) {
+				vscode.languages.setTextDocumentLanguage(document, "hudanimations")
+			}
+		}
+		catch { }
+	}
 
 	public readonly client: T
 

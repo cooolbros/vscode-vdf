@@ -126,6 +126,9 @@ export function activate(context: vscode.ExtensionContext): void {
 				return client
 			})
 		}
+		else if (e.languageId == "plaintext") {
+			void Client.onDidOpenPlainTextTextDocument(e, fileSystemMountPointFactory)
+		}
 	}
 
 	vscode.workspace.textDocuments.forEach(onDidOpenTextDocument)

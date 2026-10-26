@@ -34,7 +34,8 @@
         "vscode": "^1.110.0"
     },
     "activationEvents": [
-        "onFileSystem:vpk"
+        "onFileSystem:vpk",
+        "onLanguage:plaintext"
     ],
     "main": "./apps/extension/desktop/client/dist/extension.js",
     "browser": "./apps/extension/browser/client/dist/extension.js",
