@@ -11,6 +11,9 @@ updates:
         patterns:
           - react
           - react-dom
+      rspack:
+        patterns:
+          - '@rspack/*'
       trpc:
         patterns:
           - '@trpc/*'
