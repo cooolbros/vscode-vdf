@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[wasm_bindgen]
-#[derive(Debug, Decode)]
+#[derive(Debug)]
 pub struct BSP {
     buf: Vec<u8>,
     pub header: BSPHeader,
