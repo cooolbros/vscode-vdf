@@ -2,7 +2,7 @@ import { defineConfig } from "@rspack/cli"
 import type { SwcLoaderOptions } from "@rspack/core"
 import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 
-export default defineConfig((env, argv) => ({
+export default defineConfig(async (env, argv) => ({
 	entry: {
 		server: [
 			import.meta.resolve("zod/compile"),
@@ -23,7 +23,8 @@ export default defineConfig((env, argv) => ({
 	devtool: "source-map",
 	resolve: {
 		alias: {
-			"path": new URL(import.meta.resolve("path-browserify")).pathname.substring(1)
+			// @ts-ignore
+			"path": (await import("node:url")).fileURLToPath(import.meta.resolve("path-browserify"))
 		},
 		extensions: [".js", ".ts"]
 	},
