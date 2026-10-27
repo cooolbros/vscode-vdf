@@ -22,6 +22,9 @@ catalog:
   vscode-languageclient: ^10.1.2
   vscode-languageserver: ^10.1.2
 
+overrides:
+  zod: 4.3.6
+
 allowBuilds:
   '@playwright/browser-chromium': true
   '@vscode/vsce-sign': true
