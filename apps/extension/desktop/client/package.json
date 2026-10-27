@@ -5,7 +5,7 @@
         "build": "rspack build"
     },
     "devDependencies": {
-        "@types/node": "^22.9.0",
+        "@types/node": "catalog:",
         "bsp": "workspace:*",
         "client": "workspace:*",
         "common": "workspace:*",

@@ -5,6 +5,7 @@
         "build": "rspack build"
     },
     "devDependencies": {
+        "@types/node": "catalog:",
         "common": "workspace:*",
         "server": "workspace:*",
         "tsconfig": "workspace:*",
