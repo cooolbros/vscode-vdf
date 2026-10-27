@@ -2,7 +2,7 @@ import { defineConfig } from "@rspack/cli"
 import type { SwcLoaderOptions } from "@rspack/core"
 import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin"
 
-export default defineConfig({
+export default defineConfig((env, argv) => ({
 	entry: {
 		extension: [
 			import.meta.resolve("zod/compile"),
@@ -25,7 +25,7 @@ export default defineConfig({
 		extensions: [".js", ".json", ".wasm", ".ts"]
 	},
 	plugins: [
-		process.env["npm_lifecycle_event"] == "build" ? new TsCheckerRspackPlugin() : null
+		env.RSPACK_BUILD ? new TsCheckerRspackPlugin() : null
 	],
 	module: {
 		rules: [
@@ -49,4 +49,4 @@ export default defineConfig({
 	performance: {
 		hints: false
 	}
-})
+}))
