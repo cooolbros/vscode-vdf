@@ -6,8 +6,8 @@ use std::{
 
 use serde::Serialize;
 use thiserror::Error;
-use tsify::Tsify;
-use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
+use tsify::{Ts, Tsify};
+use wasm_bindgen::{JsError, prelude::wasm_bindgen};
 use zip::{ZipArchive, result::ZipError};
 
 #[wasm_bindgen]
@@ -16,11 +16,9 @@ pub struct Pakfile {
 }
 
 #[derive(Debug, Serialize, Tsify)]
-#[tsify(into_wasm_abi)]
 pub struct Files(HashMap<String, BSPEntry>);
 
 #[derive(Debug, Serialize, Tsify)]
-#[tsify(into_wasm_abi)]
 #[serde(tag = "type", content = "value")]
 pub enum BSPEntry {
     File { index: usize, len: usize },
@@ -36,12 +34,6 @@ pub enum PakError {
     InvalidName,
 }
 
-impl From<PakError> for JsValue {
-    fn from(value: PakError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
-    }
-}
-
 impl Pakfile {
     pub fn new(buf: Vec<u8>) -> Result<Pakfile, PakError> {
         let archive = ZipArchive::new(Cursor::new(buf))?;
@@ -52,7 +44,7 @@ impl Pakfile {
 #[wasm_bindgen]
 impl Pakfile {
     #[wasm_bindgen]
-    pub fn files(&mut self) -> Result<Files, PakError> {
+    pub fn files(&mut self) -> Result<Ts<Files>, JsError> {
         let mut map: HashMap<String, BSPEntry> = HashMap::new();
 
         for i in 0..self.archive.len() {
@@ -79,14 +71,10 @@ impl Pakfile {
                         _ => unreachable!("enclosed_name"),
                     };
 
-                    match dir.entry(folder).or_insert_with(|| BSPEntry::Directory(HashMap::new())) {
-                        BSPEntry::File { .. } => {
-                            return Err(PakError::InvalidName);
-                        }
-                        BSPEntry::Directory(map) => {
-                            dir = map;
-                        }
-                    }
+                    dir = match dir.entry(folder).or_insert_with(|| BSPEntry::Directory(HashMap::new())) {
+                        BSPEntry::File { .. } => Err(PakError::InvalidName)?,
+                        BSPEntry::Directory(map) => map,
+                    };
                 }
 
                 dir.insert(file_name, BSPEntry::File { index: i, len });
@@ -95,11 +83,11 @@ impl Pakfile {
             }
         }
 
-        Ok(Files(map))
+        Ok(Files(map).into_ts()?)
     }
 
     #[wasm_bindgen]
-    pub fn read(&mut self, i: usize) -> Result<Vec<u8>, PakError> {
+    pub fn read(&mut self, i: usize) -> Result<Vec<u8>, JsError> {
         let mut file = self.archive.by_index(i)?;
         let mut buf = vec![0; file.size() as usize];
         file.read_exact(&mut buf)?;

@@ -7,7 +7,7 @@ use bincode::{
 };
 use derive_more::Display;
 use thiserror::Error;
-use wasm_bindgen::{prelude::wasm_bindgen, JsError, JsValue};
+use wasm_bindgen::{prelude::wasm_bindgen, JsError};
 
 #[wasm_bindgen]
 extern "C" {
@@ -208,12 +208,6 @@ pub struct VTFFrame {
 #[error("{:#?}", self)]
 pub struct VTFError(#[from] DecodeError);
 
-impl From<VTFError> for JsValue {
-    fn from(value: VTFError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
-    }
-}
-
 #[derive(Debug)]
 pub struct VTFData {
     pub width: u16,
@@ -242,16 +236,10 @@ impl From<VTFImageFormat> for VTFExtractError {
     }
 }
 
-impl From<VTFExtractError> for JsValue {
-    fn from(value: VTFExtractError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
-    }
-}
-
 #[wasm_bindgen]
 impl VTF {
     #[wasm_bindgen(constructor)]
-    pub fn new(buf: Vec<u8>) -> Result<VTF, VTFError> {
+    pub fn new(buf: Vec<u8>) -> Result<VTF, JsError> {
         let mut reader = BufReader::new(Cursor::new(&buf));
         let config = bincode::config::standard().with_fixed_int_encoding();
 

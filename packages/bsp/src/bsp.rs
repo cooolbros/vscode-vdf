@@ -11,12 +11,10 @@ use bincode::{
 };
 use derive_more::Display;
 use thiserror::Error;
-use wasm_bindgen::{JsError, JsValue, prelude::wasm_bindgen};
+use tsify::{Ts, Tsify};
+use wasm_bindgen::{JsError, prelude::wasm_bindgen};
 
-use crate::{
-    entities::{Entities, SyntaxError},
-    pakfile::{PakError, Pakfile},
-};
+use crate::{entities::Entities, pakfile::Pakfile};
 
 #[wasm_bindgen]
 #[derive(Debug)]
@@ -104,48 +102,10 @@ pub enum BSPError {
     Lzma(#[from] lzma_rs::error::Error),
 }
 
-impl From<BSPError> for JsValue {
-    fn from(value: BSPError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
-    }
-}
-
-#[derive(Debug, Error)]
-#[error(transparent)]
-pub enum EntitiesError {
-    #[error(transparent)]
-    BSPError(#[from] BSPError),
-
-    #[error(transparent)]
-    SyntaxError(#[from] SyntaxError),
-}
-
-impl From<EntitiesError> for JsValue {
-    fn from(value: EntitiesError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
-    }
-}
-
-#[derive(Debug, Error)]
-#[error(transparent)]
-pub enum PakfileError {
-    #[error(transparent)]
-    BSPError(#[from] BSPError),
-
-    #[error(transparent)]
-    PakError(#[from] PakError),
-}
-
-impl From<PakfileError> for JsValue {
-    fn from(value: PakfileError) -> Self {
-        JsValue::from(JsError::new(&format!("{:?}", value)))
-    }
-}
-
 #[wasm_bindgen]
 impl BSP {
     #[wasm_bindgen(constructor)]
-    pub fn new(buf: Vec<u8>) -> Result<BSP, BSPError> {
+    pub fn new(buf: Vec<u8>) -> Result<BSP, JsError> {
         let mut reader = BufReader::new(Cursor::new(&buf));
         let config = bincode::config::standard().with_fixed_int_encoding();
         let header: BSPHeader = bincode::decode_from_reader(&mut reader, config)?;
@@ -187,16 +147,16 @@ impl BSP {
     }
 
     #[wasm_bindgen]
-    pub fn entities(&self) -> Result<Entities, EntitiesError> {
+    pub fn entities(&self) -> Result<Ts<Entities>, JsError> {
         let buf = self.lump(0)?;
         let text = String::from_utf8_lossy_owned(buf);
         let entities = Entities::new(text)?;
 
-        Ok(entities)
+        Ok(entities.into_ts()?)
     }
 
     #[wasm_bindgen]
-    pub fn pakfile(&self) -> Result<Pakfile, PakfileError> {
+    pub fn pakfile(&self) -> Result<Pakfile, JsError> {
         let buf = self.lump(40)?;
         let pakfile = Pakfile::new(buf)?;
 

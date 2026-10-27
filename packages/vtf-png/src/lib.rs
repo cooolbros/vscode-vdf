@@ -2,11 +2,11 @@ use std::{cmp, io::Cursor};
 
 use base64::{Engine, engine::general_purpose};
 use image::{ColorType, DynamicImage, ImageFormat, RgbaImage};
-use vtf::{VTF, VTFData, VTFExtractError};
-use wasm_bindgen::prelude::wasm_bindgen;
+use vtf::{VTF, VTFData};
+use wasm_bindgen::{JsError, prelude::wasm_bindgen};
 
 #[wasm_bindgen(js_name = "VTFToPNG")]
-pub fn vtf_to_png(vtf: &VTF, size: u16) -> Result<Vec<u8>, VTFExtractError> {
+pub fn vtf_to_png(vtf: &VTF, size: u16) -> Result<Vec<u8>, JsError> {
     let mipmap_index = match vtf.header.mipmap_count {
         1 => 0,
         _ => vtf
@@ -43,6 +43,6 @@ pub fn vtf_to_png(vtf: &VTF, size: u16) -> Result<Vec<u8>, VTFExtractError> {
 }
 
 #[wasm_bindgen(js_name = "VTFToPNGBase64")]
-pub fn vtf_to_png_base64(vtf: &VTF, size: u16) -> Result<String, VTFExtractError> {
+pub fn vtf_to_png_base64(vtf: &VTF, size: u16) -> Result<String, JsError> {
     vtf_to_png(vtf, size).map(|out| format!("![](data:image/png;base64,{})", general_purpose::STANDARD.encode(out)))
 }
