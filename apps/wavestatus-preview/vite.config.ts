@@ -2,7 +2,13 @@ import { svelte } from "@sveltejs/vite-plugin-svelte"
 import { defineConfig } from "vite"
 
 export default defineConfig({
-	plugins: [svelte()],
+	plugins: [
+		svelte({
+			compilerOptions: {
+				warningFilter: (warning) => !(warning.code == "css_unused_selector" && warning.message.includes(".codicon"))
+			}
+		})
+	],
 	base: "",
 	resolve: {
 		alias: {
