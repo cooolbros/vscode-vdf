@@ -51,6 +51,7 @@ impl Pakfile {
 
 #[wasm_bindgen]
 impl Pakfile {
+    #[wasm_bindgen]
     pub fn files(&mut self) -> Result<Files, PakError> {
         let mut map: HashMap<String, BSPEntry> = HashMap::new();
 
@@ -97,6 +98,7 @@ impl Pakfile {
         Ok(Files(map))
     }
 
+    #[wasm_bindgen]
     pub fn read(&mut self, i: usize) -> Result<Vec<u8>, PakError> {
         let mut file = self.archive.by_index(i)?;
         let mut buf = vec![0; file.size() as usize];

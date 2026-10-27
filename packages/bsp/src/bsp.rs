@@ -53,14 +53,11 @@ impl<Context> Decode<Context> for BSPSignature {
 
 impl_borrow_decode!(BSPSignature);
 
-#[wasm_bindgen]
 #[derive(Debug, Decode, Clone, Copy)]
 pub struct Lump {
     pub offset: i32,
     pub len: i32,
     pub version: i32,
-
-    #[wasm_bindgen(skip)]
     pub four_cc: [u8; 4],
 }
 
@@ -155,7 +152,7 @@ impl BSP {
         Ok(BSP { buf, header })
     }
 
-    pub fn lump(&self, i: usize) -> Result<Vec<u8>, BSPError> {
+    fn lump(&self, i: usize) -> Result<Vec<u8>, BSPError> {
         let lump = &self.header.lumps[i];
         let buf = self
             .buf
