@@ -562,6 +562,7 @@
         "dev": "turbo dev --concurrency=12",
         "dev:docs": "turbo dev --filter=docs",
         "build": "turbo build",
+        "build:extension": "turbo build --filter=desktop-client --filter=desktop-server --filter=browser-client --filter=browser-server",
         "build:docs": "turbo build --filter=docs",
         "lint": "oxlint",
         "browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
