@@ -576,7 +576,7 @@
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.110.0",
         "@vscode/test-web": "^0.0.81",
-        "@vscode/vsce": "^3.7.1",
+        "@vscode/vsce": "^4.0.0",
         "minimatch": "^10.2.6",
         "oxlint": "^1.89.0",
         "oxlint-tsgolint": "^7.0.2004",
