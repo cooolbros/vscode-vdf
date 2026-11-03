@@ -16,7 +16,7 @@ thiserror = { workspace = true }
 tsify = { version = "0.5.8", features = ["js"] }
 wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = "0.4.77"
-zip = { version = "8.6.0", default-features = false, features = [
+zip = { version = "9.1.2", default-features = false, features = [
 	"aes-crypto",
 	"bzip2",
 	"deflate",
