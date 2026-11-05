@@ -569,8 +569,8 @@
         "package": "vsce package --no-dependencies"
     },
     "devDependencies": {
-        "@rspack/cli": "^2.2.9",
-        "@rspack/core": "^2.2.9",
+        "@rspack/cli": "^2.3.0",
+        "@rspack/core": "^2.3.0",
         "@trpc/client": "^11.19.0",
         "@trpc/server": "^11.19.0",
         "@types/path-browserify": "^1.0.2",
