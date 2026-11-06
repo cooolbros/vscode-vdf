@@ -316,6 +316,10 @@ const MissionSchema: PopfileSchema = {
 							],
 							data: {
 								fix: ({ params: _params, createDocumentWorkspaceEdit }) => {
+									// Not using a findBestMatch codeAction here because it's more likely that users
+									// are using custom events rather than making typos.
+									// and currently each diagnostic only has 1 fix to allow a "Fix all issues of kind" code action
+
 									const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
 									if (!conditional) {
 										return null
