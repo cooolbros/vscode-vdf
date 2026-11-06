@@ -15,7 +15,7 @@ import { Minimatch } from "minimatch"
 import { BehaviorSubject, buffer, combineLatest, concatMap, defer, distinctUntilChanged, distinctUntilKeyChanged, EMPTY, finalize, firstValueFrom, shareReplay, skip, Subject, switchMap, type Observable } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import type vscode from "vscode"
-import { CodeActionKind, CodeLensRefreshRequest, DidChangeConfigurationNotification, InlayHintRequest, Range, TextDocumentSyncKind, TextEdit, type CodeAction, type Connection, type Diagnostic, type DocumentSymbol, type InlayHint, type InlayHintParams } from "vscode-languageserver"
+import { BulkRegistration, CodeActionKind, CodeLensRefreshRequest, DidChangeConfigurationNotification, InlayHintRequest, Range, TextDocumentContentRequest, TextDocumentSyncKind, TextEdit, type CodeAction, type Connection, type Diagnostic, type DocumentSymbol, type HandlerResult, type InlayHint, type InlayHintParams, type ProtocolRequestType, type TextDocumentContentParams, type TextDocumentContentResult, type TextDocumentIdentifier } from "vscode-languageserver"
 import { z } from "zod"
 import { contributes, version } from "../../../package.json"
 import { HUDAnimationsTextDocument } from "./HUDAnimations/HUDAnimationsTextDocument"
@@ -32,12 +32,19 @@ export type TextDocument = (
 	| VMTTextDocument
 )
 
+export interface RegisterTextDocumentCapabilitiesParams<T> {
+	registerTextDocumentCapability<P extends { textDocument: TextDocumentIdentifier }, R, PR, E, RO>(this: void, type: ProtocolRequestType<P, R, PR, E, RO>, params: { registerParams: NoInfer<Omit<RO, "documentSelector">>, onRequest(this: void, document: T, params: P): HandlerResult<R, E> }): void
+	registerTextDocumentContentProvider(this: void, scheme: string, on: (this: void, params: TextDocumentContentParams) => TextDocumentContentResult | null): void
+}
+
 export class VDFLanguageServer extends AsyncDisposableBase {
 
 	private readonly trpc: TRPCClient<ClientRouter>
 	private readonly fileSystems: RefCountAsyncDisposableFactory<FileSystemKey[], FileSystemMountPoint>
 	private readonly workspaces: { get(uri: Uri): Promise<VDFWorkspace> }
 	private readonly documents: RefCountAsyncDisposableFactory<Uri, TextDocument>
+	private readonly documentCapabilities: { [P in TextDocument as P["languageId"]]?: { registerTextDocumentCapabilities(params: RegisterTextDocumentCapabilitiesParams<P>): void } }
+	private readonly documentRequestHandlers: Map<string /* method */, Map<TextDocument["languageId"], { onRequest(document: TextDocument, params: any): any }>>
 
 	private readonly diagnostic = { id: 0 }
 	private readonly documentsDiagnostics: Map<string, Map<number, DiagnosticCodeAction>>
@@ -300,6 +307,14 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 			}
 		)
 
+		this.documentCapabilities = {
+			hudanimations: HUDAnimationsTextDocument,
+			popfile: PopfileTextDocument,
+			// vdf: VDFTextDocument,
+			// vmt: VMTTextDocument,
+		}
+
+		this.documentRequestHandlers = new Map()
 		this.documentsDiagnostics = new Map()
 
 		connection.onInitialize(async (params) => {
@@ -403,6 +418,44 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 			const stack = new AsyncDisposableStack()
 
 			const document = stack.use(await this.documents.get(uri, async (uri) => await createDocument({ ...params.textDocument, uri: uri })))
+
+			const languageId = document.languageId
+			if (languageId in this.documentCapabilities) {
+				const register = this.documentCapabilities[languageId]!
+				delete this.documentCapabilities[languageId]
+
+				let registration: BulkRegistration | undefined = undefined
+
+				register.registerTextDocumentCapabilities({
+					registerTextDocumentCapability: (...[type, { registerParams, onRequest }]: Parameters<RegisterTextDocumentCapabilitiesParams<TextDocument>["registerTextDocumentCapability"]>) => {
+						registration ??= BulkRegistration.create()
+						registration.add(type, { documentSelector: [{ language: languageId }], ...registerParams })
+
+						this.documentRequestHandlers
+							.getOrInsertComputed(type.method, () => {
+								console.log(`connection.onRequest ${type.method}`)
+								connection.onRequest(type, async (params) => {
+									await using document = await this.documents.get(new Uri(params.textDocument.uri))
+									return await this.documentRequestHandlers.get(type.method)?.get(document.languageId)!.onRequest(document, params)
+								})
+
+								return new Map()
+							})
+							.set(languageId, { onRequest })
+					},
+					registerTextDocumentContentProvider: (scheme, on) => {
+						registration ??= BulkRegistration.create()
+						registration.add(TextDocumentContentRequest.type, { schemes: [scheme] })
+
+						connection.workspace.textDocumentContent.on((params) => on(params))
+					},
+				})
+
+				if (registration != undefined) {
+					await connection.client.register(registration)
+				}
+			}
+
 			stack.use(await document.onDidOpenTextDocument(this, connection))
 
 			stack.defer(async () => {

@@ -17,7 +17,7 @@ import { VDFIndentation, VDFNewLine, VDFRange } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol, type VDFText } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { formatVDF, quote, type VDFFormatStringifyOptions } from "vdf-format"
-import { BulkRegistration, CompletionItemKind, DiagnosticSeverity, FoldingRange, FoldingRangeKind, FoldingRangeRequest, InlayHintKind, InsertTextFormat, MarkupKind, SignatureHelpRequest, TextDocumentContentRequest, TextEdit, type CodeLens, type CodeLensParams, type CompletionItem, type CompletionList, type CompletionParams, type Connection, type DefinitionLink, type DefinitionParams, type DocumentFormattingParams, type FoldingRangeParams, type Hover, type HoverParams, type InlayHint, type Location, type PrepareRenameParams, type PrepareRenamePlaceholder, type ReferenceParams, type RenameParams, type SignatureHelp, type SignatureHelpParams, type WorkspaceEdit } from "vscode-languageserver"
+import { CompletionItemKind, DiagnosticSeverity, FoldingRange, FoldingRangeKind, FoldingRangeRequest, InlayHintKind, InsertTextFormat, MarkupKind, SignatureHelpRequest, TextEdit, type CodeLens, type CodeLensParams, type CompletionItem, type CompletionList, type CompletionParams, type Connection, type DefinitionLink, type DefinitionParams, type DocumentFormattingParams, type FoldingRangeParams, type Hover, type HoverParams, type InlayHint, type Location, type PrepareRenameParams, type PrepareRenamePlaceholder, type ReferenceParams, type RenameParams, type SignatureHelp, type SignatureHelpParams, type WorkspaceEdit } from "vscode-languageserver"
 import { BaseDocument } from "../BaseDocument"
 import { Collection, type Definition, type Definitions } from "../DefinitionReferences"
 import { types, type DefinitionType } from "../DefinitionTypes"
@@ -25,7 +25,7 @@ import { DiagnosticFactory, KeyDistinct, unknown, type DiagnosticsContext, type 
 import type { ColourInformationStringify, Decoration, DiagnosticCodeAction, DocumentLinkResolve, PartialDiagnosticCodeActionReference, TextDocumentDiagnosticsParams, TextDocumentInit, VDFCompletionItem, VDFCompletionList, VDFCompletionParams } from "../TextDocumentBase"
 import { TextDocumentBase } from "../TextDocumentBase"
 import { VDFTextDocument } from "../VDF/VDFTextDocument"
-import type { TextDocument, VDFLanguageServer } from "../VDFLanguageServer"
+import type { RegisterTextDocumentCapabilitiesParams, TextDocument, VDFLanguageServer } from "../VDFLanguageServer"
 import type { BSP, GlobalDefinitionReferences, VDFWorkspace } from "../VDFWorkspace"
 import keys from "./keys.json"
 import values from "./values.json"
@@ -391,6 +391,31 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 	public static readonly events = new Map([["default", "Default"]])
 	private static readonly virtualTextDocumentContents = new Map<string, { uri: Uri, text: string }>()
 	private static open = false
+
+	public static registerTextDocumentCapabilities(this: void, { registerTextDocumentCapability, registerTextDocumentContentProvider }: RegisterTextDocumentCapabilitiesParams<PopfileTextDocument>) {
+		registerTextDocumentCapability(SignatureHelpRequest.type, {
+			registerParams: {
+				// Squirrel
+				triggerCharacters: ["(", ","]
+			},
+			onRequest: async (document, params) => {
+				return await document.onSignatureHelp(params)
+			},
+		})
+
+		registerTextDocumentCapability(FoldingRangeRequest.type, {
+			registerParams: {},
+			onRequest: async (document, params) => {
+				return await document.onFoldingRanges(params)
+			},
+		})
+
+		registerTextDocumentContentProvider("embedded-squirrel", (params) => {
+			// Returning { text: undefined } causes "Unable to resolve text model content for resource embedded-squirrel:/... Code: -32603"
+			const content = PopfileTextDocument.virtualTextDocumentContents.get(params.uri)
+			return content != undefined ? { text: content.text } : null
+		})
+	}
 
 	public readonly languageId = <const>"popfile"
 
@@ -1357,48 +1382,6 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 		if (PopfileTextDocument.open == false) {
 			PopfileTextDocument.open = true
 
-			const registration = BulkRegistration.create()
-
-			registration.add(SignatureHelpRequest.type, {
-				documentSelector: [{ language: this.languageId }],
-				// Squirrel
-				triggerCharacters: ["(", ","]
-			})
-
-			registration.add(FoldingRangeRequest.type, {
-				documentSelector: [{ language: this.languageId }],
-			})
-
-			registration.add(TextDocumentContentRequest.type, {
-				schemes: ["embedded-squirrel"]
-			})
-
-			await connection.client.register(registration)
-
-			connection.workspace.textDocumentContent.on((params) => {
-				// Returning { text: undefined } causes "Unable to resolve text model content for resource embedded-squirrel:/... Code: -32603"
-				const content = PopfileTextDocument.virtualTextDocumentContents.get(params.uri)
-				return content != undefined ? { text: content.text } : null
-			})
-
-			connection.onSignatureHelp(async (params) => {
-				await using document = await this.documents.get(new Uri(params.textDocument.uri))
-				if (document.languageId != "popfile") {
-					throw new Error(document.languageId)
-				}
-
-				return await document.onSignatureHelp(params)
-			})
-
-			connection.onFoldingRanges(async (params) => {
-				await using document = await this.documents.get(new Uri(params.textDocument.uri))
-				if (document.languageId != "popfile") {
-					throw new Error(document.languageId)
-				}
-
-				return await document.onFoldingRanges(params)
-			})
-
 			const documentSymbols = await firstValueFrom(this.documentSymbols$)
 			if (documentSymbols.findRecursive((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Action".toLowerCase() && (documentSymbol.value?.text.toLowerCase() == "RunScriptCode".toLowerCase() || documentSymbol.value?.text.toLowerCase() == "RunScriptFile".toLowerCase()))) {
 				void this.trpc.popfile.vscript.install.query({ name: this.uri.basename() })
@@ -1624,14 +1607,16 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 		)
 	}
 
-	private async onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | undefined> {
+	public async onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
 		const ranges = await firstValueFrom(this.virtualDocumentRanges$)
 		if (ranges.some((range) => range.contains(params.position))) {
-			return await this.trpc.popfile.embedded.commands.executeSignatureHelpProvider.query({ uri: this.virtualUri, position: params.position, triggerCharacter: params.context?.triggerCharacter })
+			return await this.trpc.popfile.embedded.commands.executeSignatureHelpProvider.query({ uri: this.virtualUri, position: params.position, triggerCharacter: params.context?.triggerCharacter }) ?? null
 		}
+
+		return null
 	}
 
-	private async onFoldingRanges(_params: FoldingRangeParams): Promise<FoldingRange[] | undefined> {
+	public async onFoldingRanges(_params: FoldingRangeParams): Promise<FoldingRange[] | undefined> {
 		const ranges = await firstValueFrom(this.virtualDocumentRanges$)
 		return ranges.map((range) => FoldingRange.create(range.start.line, range.end.line, range.start.character, range.end.character, FoldingRangeKind.Region))
 	}

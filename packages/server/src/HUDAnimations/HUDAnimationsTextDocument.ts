@@ -1,7 +1,7 @@
 import type { TRPCClient } from "@trpc/client"
 import type { ClientRouter } from "client/TRPCClientRouter"
 import { EntryType, type Entry, type FileSystemMountPoint } from "common/FileSystemMountPoint"
-import { type CompletionToken } from "common/generateTokens"
+import { generateTokens, type CompletionToken } from "common/generateTokens"
 import { combineLatestPersistent } from "common/operators/combineLatestPersistent"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { resolvePath } from "common/resolvePath"
@@ -14,12 +14,12 @@ import { findBestMatch } from "string-similarity"
 import { VDFPosition, VDFRange } from "vdf"
 import type { VDFText } from "vdf-documentsymbols"
 import { quote } from "vdf-format"
-import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InsertTextFormat, MarkupKind, TextEdit, type CodeLens, type CodeLensParams, type Connection, type DocumentFormattingParams, type InlayHint, type WorkspaceEdit } from "vscode-languageserver"
+import { CodeActionKind, CompletionItemKind, DiagnosticSeverity, DiagnosticTag, InsertTextFormat, MarkupKind, SignatureHelpRequest, TextEdit, type CodeLens, type CodeLensParams, type Connection, type DocumentFormattingParams, type InlayHint, type ParameterInformation, type SignatureHelp, type SignatureHelpParams, type SignatureInformation, type WorkspaceEdit } from "vscode-languageserver"
 import { Collection, Definitions, References, type Definition } from "../DefinitionReferences"
 import { types, type DefinitionType } from "../DefinitionTypes"
 import { TextDocumentBase, type ColourInformationStringify, type Decoration, type DocumentLinkResolve, type PartialDiagnosticCodeActionReference, type TextDocumentData, type TextDocumentDiagnosticsParams, type TextDocumentInit, type VDFCompletionItem, type VDFCompletionList, type VDFCompletionParams, type VDFRenameParams } from "../TextDocumentBase"
 import clientscheme from "../VDF/clientscheme.json"
-import type { TextDocument, VDFLanguageServer } from "../VDFLanguageServer"
+import type { RegisterTextDocumentCapabilitiesParams, TextDocument, VDFLanguageServer } from "../VDFLanguageServer"
 import type { GlobalDefinitionReferences, VDFWorkspace } from "../VDFWorkspace"
 import eventFiles from "./eventFiles.json"
 
@@ -91,6 +91,83 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 		"ItemColor",
 		"MenuColor",
 	].map((i) => i.toLowerCase()))
+
+	private static readonly animationType = Symbol()
+	private static readonly interpolatorType = Symbol()
+
+	private static readonly signatures = (() => {
+		const createSignature = (tokens: { label: string, type: string }[]) => {
+			const labels: string[] = []
+			const parameters: ParameterInformation[] = []
+			let i = 0
+
+			for (const token of [...tokens, { label: `conditional?`, type: `Conditional` }]) {
+				labels.push(token.label)
+				parameters.push({ label: [i, i += token.label.length + 1], documentation: { kind: MarkupKind.Markdown, value: `${token.label}: \`${token.type}\`` } })
+			}
+
+			return {
+				[HUDAnimationsTextDocument.animationType]: tokens[0].label.toLocaleLowerCase(),
+				label: labels.join(" "),
+				parameters: parameters,
+			}
+		}
+
+		const createAnimateSignature = (interpolator: { label: string, type: string }[]) => {
+			return {
+				...createSignature([
+					{ label: `Animate`, type: `"Animate"` },
+					element,
+					property,
+					{ label: `value`, type: `String` },
+					...interpolator,
+					delay,
+					{ label: `duration`, type: `Float` },
+				]),
+				[HUDAnimationsTextDocument.interpolatorType]: interpolator[0].label.toLowerCase(),
+			}
+		}
+
+		const delay = { label: `delay`, type: `Float` }
+		const element = { label: `element`, type: `String` }
+		const event = { label: `event`, type: `Event` }
+		const property = { label: `property`, type: `String` }
+
+		const signatures: (SignatureInformation & { [HUDAnimationsTextDocument.animationType]: string, [HUDAnimationsTextDocument.interpolatorType]?: string })[] = [
+			createAnimateSignature([{ label: "Linear", type: `Linear` }]),
+			createAnimateSignature([{ label: "Accel", type: `Accel` }]),
+			createAnimateSignature([{ label: "DeAccel", type: `DeAccel` }]),
+			createAnimateSignature([{ label: "Spline", type: `Spline` }]),
+			createAnimateSignature([{ label: "Bounce", type: `Bounce` }]),
+			createAnimateSignature([{ label: "Pulse", type: `Pulse` }, { label: "frequency", type: "Float" }]),
+			createAnimateSignature([{ label: "Flicker", type: `Flicker` }, { label: "randomness", type: "Float" }]),
+			createAnimateSignature([{ label: "Gain", type: `Gain` }, { label: "bias", type: "Float" }]),
+			createAnimateSignature([{ label: "Bias", type: `Bias` }, { label: "bias", type: "Float" }]),
+			createSignature([{ label: `RunEvent`, type: `"RunEvent"` }, event, delay]),
+			createSignature([{ label: `StopEvent`, type: `"StopEvent"` }, event, delay]),
+			createSignature([{ label: `SetVisible`, type: `"SetVisible"` }, element, { label: `visible`, type: `0 | 1` }, delay]),
+			createSignature([{ label: `FireCommand`, type: `"FireCommand"` }, delay, { label: `command`, type: `String` }]),
+			createSignature([{ label: `RunEventChild`, type: `"RunEventChild"` }, element, event, delay]),
+			createSignature([{ label: `SetInputEnabled`, type: `"SetInputEnabled"` }, element, { label: `enabled`, type: `0 | 1` }, delay]),
+			createSignature([{ label: `PlaySound`, type: `"PlaySound"` }, delay, { label: `sound`, type: `String` }]),
+			createSignature([{ label: `StopPanelAnimations`, type: `"StopPanelAnimations"` }, element, delay]),
+			createSignature([{ label: `StopAnimation`, type: `"StopAnimation"` }, element, property, delay]),
+			createSignature([{ label: `SetFont`, type: `"SetFont"` }, element, property, { label: `font`, type: `String` }, delay]),
+			createSignature([{ label: `SetTexture`, type: `"SetTexture"` }, element, property, { label: `texture`, type: `String` }, delay]),
+			createSignature([{ label: `SetString`, type: `"SetString"` }, element, property, { label: `string`, type: `String` }, delay]),
+		]
+
+		return signatures
+	})()
+
+	public static registerTextDocumentCapabilities(this: void, { registerTextDocumentCapability }: RegisterTextDocumentCapabilitiesParams<HUDAnimationsTextDocument>) {
+		registerTextDocumentCapability(SignatureHelpRequest.type, {
+			registerParams: { triggerCharacters: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("") },
+			onRequest: async (document, params) => {
+				return await document.onSignatureHelp(params)
+			},
+		})
+	}
 
 	public static definitionReferences(document: HUDAnimationsTextDocument, documentSymbols: HUDAnimationsDocumentSymbols) {
 		const scopes = new Map<DefinitionType, Map<number, VDFRange[]>>()
@@ -693,6 +770,47 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 		return []
 	}
 
+	public async onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
+
+		const position = new VDFPosition(params.position.line, params.position.character)
+		const line = this.getText(new VDFRange(position.with({ character: 0 }), position.with({ character: Infinity })))
+		const tokens = generateTokens(line, position)
+		if (!tokens) {
+			return null
+		}
+
+		const signatures = HUDAnimationsTextDocument.signatures
+		const filters: ((signature: (typeof signatures)[number]) => boolean)[] = []
+
+		if (tokens.length > 0) {
+			const type = tokens[0].value.toLowerCase()
+			filters.push(
+				tokens[0].current
+					? (signature) => signature[HUDAnimationsTextDocument.animationType].startsWith(type)
+					: (signature) => signature[HUDAnimationsTextDocument.animationType] == type
+			)
+
+			if (type == "Animate".toLowerCase() && tokens.length >= 5) {
+				const interpolator = tokens[4].value.toLowerCase()
+
+				filters.push(
+					tokens[4].current
+						? (signature) => signature[HUDAnimationsTextDocument.interpolatorType]!.startsWith(interpolator)
+						: (signature) => signature[HUDAnimationsTextDocument.interpolatorType] == interpolator
+				)
+			}
+		}
+
+		const filteredSignatures = signatures.filter((signature) => filters.every((filter) => filter(signature)))
+		const activeParameterIndex = tokens.findIndex((token) => token.current)
+
+		return {
+			signatures: filteredSignatures,
+			activeSignature: params.context?.activeSignatureHelp?.activeSignature ?? 0,
+			activeParameter: activeParameterIndex != -1 ? activeParameterIndex : tokens.length,
+		}
+	}
+
 	protected async getRename(params: VDFRenameParams): Promise<WorkspaceEdit> {
 		if (params.type == types.event) {
 			await this.workspace.HUDAnimationsReferences()
@@ -836,7 +954,7 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 		if (params.tokens.length == 0) {
 			return keywords()
 		}
-		else if (params.tokens.length == 1 && params.includes(params.tokens[0])) {
+		else if (params.tokens.length == 1 && params.tokens[0].current) {
 			return keywords(params.tokens[0])
 		}
 
@@ -844,11 +962,11 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 			case "event": {
 				switch (params.tokens.length) {
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? null
 							: params.conditionals()
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? params.conditionals(params.tokens[2])
 							: null
 					default:
@@ -860,35 +978,213 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: properties()
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? properties(params.tokens[2])
 							: HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? await colours() : null
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? HUDAnimationsTextDocument.colourProperties.has(params.tokens[2].value.toLowerCase()) ? await colours(params.tokens[3]) : null
 							: interpolators()
-					case 5:
-						return params.includes(params.tokens[4])
-							? interpolators(params.tokens[4])
-							: numbers() /* delay */
-					case 6:
-						return params.includes(params.tokens[5])
-							? numbers(params.tokens[5]) /* delay */
-							: numbers() /* duration */
-					case 7:
-						return params.includes(params.tokens[6])
-							? numbers(params.tokens[6]) /* duration */
-							: params.conditionals()
-					case 8:
-						return params.includes(params.tokens[7])
-							? params.conditionals(params.tokens[7])
-							: null
 					default:
-						return null
+						const interpolator = params.tokens[4].value.toLowerCase()
+						const delay = numbers
+						const duration = numbers
+						const frequency = numbers
+						const randomness = numbers
+						const bias = numbers
+
+						switch (params.tokens.length) {
+							case 5: {
+								if (params.tokens[4].current) {
+									return interpolators(params.tokens[4])
+								}
+								else {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return delay()
+										case "pulse":
+											return frequency()
+										case "flicker":
+											return randomness()
+										case "gain":
+										case "bias":
+											return bias()
+										default:
+											return delay() /* Linear */
+									}
+								}
+							}
+							case 6: {
+								if (params.tokens[5].current) {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return delay(params.tokens[4])
+										case "pulse":
+											return frequency(params.tokens[4])
+										case "flicker":
+											return randomness(params.tokens[4])
+										case "gain":
+										case "bias":
+											return bias(params.tokens[4])
+										default:
+											return delay(params.tokens[4]) /* Linear */
+									}
+								}
+								else {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return duration()
+										case "pulse":
+											return delay()
+										case "flicker":
+											return delay()
+										case "gain":
+										case "bias":
+											return delay()
+										default:
+											return duration() /* Linear */
+									}
+								}
+							}
+							case 7: {
+								if (params.tokens[6].current) {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return duration(params.tokens[6])
+										case "pulse":
+											return delay(params.tokens[6])
+										case "flicker":
+											return delay(params.tokens[6])
+										case "gain":
+										case "bias":
+											return delay(params.tokens[6])
+										default:
+											return duration(params.tokens[6]) /* Linear */
+									}
+								}
+								else {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return params.conditionals()
+										case "pulse":
+											return duration()
+										case "flicker":
+											return duration()
+										case "gain":
+										case "bias":
+											return duration()
+										default:
+											return params.conditionals() /* Linear */
+									}
+								}
+							}
+							case 8: {
+								if (params.tokens[7].current) {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return params.conditionals(params.tokens[7])
+										case "pulse":
+											return duration(params.tokens[7])
+										case "flicker":
+											return duration(params.tokens[7])
+										case "gain":
+										case "bias":
+											return duration(params.tokens[7])
+										default:
+											return params.conditionals(params.tokens[7]) /* Linear */
+									}
+								}
+								else {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return null
+										case "pulse":
+											return params.conditionals()
+										case "flicker":
+											return params.conditionals()
+										case "gain":
+										case "bias":
+											return params.conditionals()
+										default:
+											return null /* Linear */
+									}
+								}
+							}
+							case 9: {
+								if (params.tokens[8].current) {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return null
+										case "pulse":
+											return params.conditionals(params.tokens[8])
+										case "flicker":
+											return params.conditionals(params.tokens[8])
+										case "gain":
+										case "bias":
+											return params.conditionals(params.tokens[8])
+										default:
+											return null /* Linear */
+									}
+								}
+								else {
+									switch (interpolator) {
+										case "linear":
+										case "accel":
+										case "deaccel":
+										case "spline":
+										case "bounce":
+											return null
+										case "pulse":
+											return null
+										case "flicker":
+											return null
+										case "gain":
+										case "bias":
+											return null
+										default:
+											return null /* Linear */
+									}
+								}
+							}
+							default:
+								return null
+						}
 				}
 			}
 			case "runevent":
@@ -897,15 +1193,15 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await events()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await events(params.tokens[1])
 							: numbers() /* delay */
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? numbers(params.tokens[2]) /* delay */
 							: params.conditionals()
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? params.conditionals(params.tokens[3])
 							: null
 					default:
@@ -917,19 +1213,19 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: params.bits() /* visible */
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? params.bits() /* visible */
 							: numbers() /* delay */
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? numbers(params.tokens[3]) /* delay */
 							: params.conditionals()
 					case 5:
-						return params.includes(params.tokens[4])
+						return params.tokens[4].current
 							? params.conditionals(params.tokens[4])
 							: null
 					default:
@@ -940,15 +1236,15 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return numbers() /* delay */
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? numbers(params.tokens[1]) /* delay */
 							: null /* command */
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? null /* command */
 							: params.conditionals() /* delay */
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? params.conditionals(params.tokens[3]) /* conditionals */
 							: null
 					default:
@@ -959,19 +1255,19 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: await events()
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? await events(params.tokens[2])
 							: numbers() /* delay */
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? numbers(params.tokens[3]) /* delay */
 							: params.conditionals()
 					case 5:
-						return params.includes(params.tokens[4])
+						return params.tokens[4].current
 							? params.conditionals(params.tokens[4])
 							: null
 					default:
@@ -982,19 +1278,19 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: params.bits() /* enabled */
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? params.bits() /* enabled */
 							: numbers() /* delay */
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? numbers(params.tokens[3]) /* delay */
 							: params.conditionals()
 					case 5:
-						return params.includes(params.tokens[4])
+						return params.tokens[4].current
 							? params.conditionals(params.tokens[4])
 							: null
 					default:
@@ -1005,15 +1301,15 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return numbers() /* delay */
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? numbers(params.tokens[1]) /* delay */
 							: await sounds()
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? await sounds(params.tokens[2])
 							: params.conditionals()
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? params.conditionals(params.tokens[3])
 							: null
 					default:
@@ -1024,15 +1320,15 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: numbers() /* delay */
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? numbers(params.tokens[2]) /* delay */
 							: params.conditionals()
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? params.conditionals(params.tokens[3])
 							: null
 					default:
@@ -1043,23 +1339,23 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: fontProperties()
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? fontProperties(params.tokens[2])
 							: await fonts()
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? await fonts(params.tokens[3])
 							: numbers() /* delay */
 					case 5:
-						return params.includes(params.tokens[4])
+						return params.tokens[4].current
 							? numbers(params.tokens[4]) /* delay */
 							: params.conditionals()
 					case 6:
-						return params.includes(params.tokens[5])
+						return params.tokens[5].current
 							? params.conditionals(params.tokens[5])
 							: null
 					default:
@@ -1071,23 +1367,23 @@ export class HUDAnimationsTextDocument extends TextDocumentBase<Dependencies, Gl
 					case 1:
 						return await elements()
 					case 2:
-						return params.includes(params.tokens[1])
+						return params.tokens[1].current
 							? await elements(params.tokens[1])
 							: null /* property */
 					case 3:
-						return params.includes(params.tokens[2])
+						return params.tokens[2].current
 							? null /* property */
 							: null /* value */
 					case 4:
-						return params.includes(params.tokens[3])
+						return params.tokens[3].current
 							? null /* value */
 							: numbers() /* delay */
 					case 5:
-						return params.includes(params.tokens[4])
+						return params.tokens[4].current
 							? numbers(params.tokens[4]) /* delay */
 							: params.conditionals()
 					case 6:
-						return params.includes(params.tokens[5])
+						return params.tokens[5].current
 							? params.conditionals(params.tokens[5])
 							: null
 					default:

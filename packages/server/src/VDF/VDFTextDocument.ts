@@ -212,7 +212,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 			}
 			case 1: {
 				const [key] = params.tokens
-				if (params.includes(key)) {
+				if (key.current) {
 					return await _keys(key)
 				}
 				else {
@@ -221,7 +221,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 			}
 			case 2: {
 				const [key, value] = params.tokens
-				if (params.includes(value)) {
+				if (value.current) {
 					return await _values(key.value, value)
 				}
 				else {
@@ -230,7 +230,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 			}
 			case 3: {
 				const [_key, _value, conditional] = params.tokens
-				if (params.includes(conditional)) {
+				if (conditional.current) {
 					return params.conditionals(conditional)
 				}
 				else {
