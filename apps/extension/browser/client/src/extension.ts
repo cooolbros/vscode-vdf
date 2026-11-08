@@ -1,4 +1,4 @@
-import { Client, VSCodeVDFLanguageIDSchema } from "client"
+import { Client, VSCodeVDFLanguageIDSchema, type TeamFortress2FolderResult } from "client"
 import { copyKeyValuePath } from "client/commands/copyKeyValuePath"
 import { executeCommands } from "client/commands/executeCommands"
 import { importPopfileTemplates } from "client/commands/importPopfileTemplates"
@@ -88,22 +88,13 @@ export function activate(context: vscode.ExtensionContext): void {
 				return
 			}
 
-			const languageStatusItem = vscode.languages.createLanguageStatusItem("vscode-vdf.languageStatusItem", Client.documentSelector)
-			subscriptions.push(languageStatusItem)
-
-			languageStatusItem.text = "$(cloud)"
-			languageStatusItem.command = {
-				title: RemoteResourceFileSystemProvider.base,
-				command: "vscode.open",
-				arguments: [RemoteResourceFileSystemProvider.base]
-			}
-
 			client = Promise.try(async () => {
 				const serverModule = new Uri(context.extensionUri).joinPath("apps/extension/browser/server/dist/server.js").toString(true)
 				const teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
 
 				const client = new Client<LanguageClient>(
 					context,
+					of<TeamFortress2FolderResult>({ type: "empty" }),
 					decorations,
 					fileSystemMountPointFactory,
 					fileSystemWatcherFactory,
@@ -118,10 +109,16 @@ export function activate(context: vscode.ExtensionContext): void {
 								teamFortress2Folder: teamFortress2Folder.toJSON()
 							}),
 						} satisfies LanguageClientOptions,
-					)
+					),
+					{
+						restart: async (client) => {
+							await client.stop()
+							await client.start()
+						}
+					}
 				)
 
-				subscriptions.push(new vscode.Disposable(async () => await client[Symbol.asyncDispose]()))
+				subscriptions.push(client)
 				await client.start()
 				return client
 			})

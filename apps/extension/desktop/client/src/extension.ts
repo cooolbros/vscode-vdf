@@ -1,5 +1,5 @@
 import { execSync } from "child_process"
-import { Client, VSCodeVDFLanguageIDSchema } from "client"
+import { Client, VSCodeVDFLanguageIDSchema, type TeamFortress2FolderResult } from "client"
 import { Decorations } from "client/Decorations"
 import { FileSystemWatcherFactory } from "client/FileSystemWatcherFactory"
 import { RemoteResourceFileSystemProvider } from "client/RemoteResourceFileSystemProvider"
@@ -18,7 +18,7 @@ import { showWaveStatusPreviewToSide } from "client/commands/showWaveStatusPrevi
 import { Uri } from "common/Uri"
 import { homedir } from "os"
 import { posix, win32 } from "path"
-import { concat, concatMap, defer, distinctUntilChanged, filter, firstValueFrom, map, Observable, shareReplay, skip } from "rxjs"
+import { combineLatest, concat, concatMap, defer, distinctUntilChanged, filter, firstValueFrom, map, Observable, shareReplay, skip, takeUntil, tap } from "rxjs"
 import { VDF } from "vdf"
 import vscode from "vscode"
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from "vscode-languageclient/node"
@@ -31,12 +31,6 @@ import { VPKFileSystemProvider } from "./VPK/VPKFileSystemProvider"
 export function activate(context: vscode.ExtensionContext): void {
 
 	const subscriptions = context.subscriptions
-
-	type TeamFortress2FolderResult = (
-		| { type: "success", uri: Uri }
-		| { type: "empty" }
-		| { type: "error", setting: string }
-	)
 
 	const teamFortress2FolderSchema = z.string().transform(async (arg): Promise<TeamFortress2FolderResult> => {
 		const value = arg.trim()
@@ -287,35 +281,6 @@ export function activate(context: vscode.ExtensionContext): void {
 				return
 			}
 
-			const languageStatusItem = vscode.languages.createLanguageStatusItem("vscode-vdf.languageStatusItem", Client.documentSelector)
-			subscriptions.push(languageStatusItem)
-
-			languageStatusItem.busy = true
-
-			const languageStatusItemSubscription = teamFortress2FolderConfiguration$.subscribe((result) => {
-				switch (result.type) {
-					case "success":
-						languageStatusItem.text = `$(folder-active) ${result.uri.fsPath.replace(/[a-z]{1}:/i, (substring) => substring.toUpperCase())}`
-						languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
-						languageStatusItem.command = undefined
-						break
-					case "empty":
-						languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
-						languageStatusItem.severity = vscode.LanguageStatusSeverity.Information
-						languageStatusItem.command = undefined
-						break
-					case "error":
-						languageStatusItem.text = `$(cloud) ${RemoteResourceFileSystemProvider.base}`
-						languageStatusItem.severity = vscode.LanguageStatusSeverity.Warning
-						languageStatusItem.command = { title: "Select Team Fortress 2 folder", command: "vscode-vdf.selectTeamFortress2Folder" }
-						break
-				}
-
-				languageStatusItem.busy = false
-			})
-
-			subscriptions.push(new vscode.Disposable(() => languageStatusItemSubscription.unsubscribe()))
-
 			client = Promise.try(async () => {
 				const serverModule = context.asAbsolutePath("apps/extension/desktop/server/dist/server.js")
 				let teamFortress2Folder = await firstValueFrom(teamFortress2Folder$)
@@ -333,6 +298,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 				const client = new Client<LanguageClient>(
 					context,
+					teamFortress2FolderConfiguration$,
 					decorations,
 					fileSystemMountPointFactory,
 					fileSystemWatcherFactory,
@@ -356,31 +322,31 @@ export function activate(context: vscode.ExtensionContext): void {
 								}
 							})
 						} satisfies LanguageClientOptions,
-					)
+					),
+					{
+						restart: async (client) => await client.restart()
+					}
 				)
 
-				subscriptions.push(new vscode.Disposable(async () => await client[Symbol.asyncDispose]()))
-				await client.start()
-
-				subscriptions.push(
-					vscode.commands.registerCommand("vscode-vdf.restartVDFLanguageServer", async () => {
-						await client.client.restart()
+				combineLatest([
+					teamFortress2Folder$.pipe(
+						skip(1),
+						tap((value) => {
+							teamFortress2Folder = value
+						})
+					),
+					new Observable<void>((subscriber) => {
+						const disposable = vscode.workspace.onDidChangeWorkspaceFolders(() => subscriber.next())
+						return () => disposable.dispose()
 					})
-				)
-
-				const teamFortress2FolderSubscription = teamFortress2Folder$.pipe(
-					skip(1)
-				).subscribe(async (value) => {
-					teamFortress2Folder = value
-					await client.client.restart()
+				]).pipe(
+					takeUntil(client.dispose$)
+				).subscribe(() => {
+					void client.client.restart()
 				})
 
-				subscriptions.push(new vscode.Disposable(() => teamFortress2FolderSubscription.unsubscribe()))
-
-				subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-					await client.client.restart()
-				}))
-
+				subscriptions.push(client)
+				await client.start()
 				return client
 			})
 		}
