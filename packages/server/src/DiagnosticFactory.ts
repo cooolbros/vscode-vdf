@@ -42,7 +42,7 @@ const iterate = function*<T>(values: T[]) {
 }
 
 const reverse = function*<T>(values: T[]) {
-	for (let i = values.length - 1; i > 0; i--) {
+	for (let i = values.length - 1; i >= 0; i--) {
 		yield values[i]
 	}
 }
