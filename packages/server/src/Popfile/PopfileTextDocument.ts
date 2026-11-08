@@ -281,6 +281,7 @@ const MissionSchema: PopfileSchema = {
 				}
 
 				const template: string | undefined = definition.data.template
+				const classIcon: string | undefined = definition.data.classIcon
 				const events: VDFText[] = definition.data.events
 
 				if (template != undefined && !seen.has(template.toLowerCase())) {
@@ -288,6 +289,17 @@ const MissionSchema: PopfileSchema = {
 					for (const definition of definitions) {
 						validateTemplateReference(definition, new Set([...seen, template.toLowerCase()]))
 					}
+				}
+
+				if (classIcon != undefined) {
+					context.classIcons.getOrInsertComputed(classIcon, () => []).push({
+						index: diagnostics.length,
+						name: "ClassIcon",
+						documentSymbolRange: documentSymbol.range,
+						value: detail,
+					})
+
+					diagnostics.push(undefined)
 				}
 
 				const bspEvents = context.dependencies.bsp?.events ?? PopfileTextDocument.events
@@ -520,6 +532,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 										data: {
 											template: templateTemplate?.value?.text,
 											TFClass: documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Class".toLowerCase())?.value?.text,
+											classIcon: documentSymbol.children.findLast((documentSymbol) => documentSymbol.key.text.toLowerCase() == "ClassIcon".toLowerCase())?.value?.text,
 											items: documentSymbol.children
 												.values()
 												.filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Item".toLowerCase() && documentSymbol.value != undefined)
