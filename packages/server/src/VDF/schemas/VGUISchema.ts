@@ -77,7 +77,7 @@ const sounds = new Set([
 	"sound_released"
 ])
 
-const enumIndexKeys = new Map([
+const enumIndexKeys = new Map<string, keyof typeof values>([
 	["autoresize", "autoResize"],
 	["pin_corner_to_sibling", "pin_corner_to_sibling"],
 	["pin_to_sibling_corner", "pin_to_sibling_corner"],
@@ -113,7 +113,7 @@ export const VGUISchema = (document: VDFTextDocument) => {
 	const font = d.reference(types.font, "clientScheme")
 
 	const next = d.next({
-		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, d.set(enumIndexKeys.has(key) ? [...value, ...value.map((_, index) => index.toString())] : value, ((key): key is keyof typeof fixes => key in fixes)(key) ? fixes[key] : undefined)])),
+		...Object.fromEntries(Object.entries(values).map(([key, value]) => <const>[key, d.set(enumIndexKeys.has(key.toLowerCase()) ? [...value, ...value.map((_, index) => index.toString())] : value, ((key): key is keyof typeof fixes => key in fixes)(key) ? fixes[key] : undefined)])),
 		...Object.fromEntries(elements.map((value) => <const>[value, element])),
 		...Object.fromEntries(strings.map((value) => <const>[value, token])),
 		...Object.fromEntries(images.values().map((value) => <const>[value, image.validate])),
@@ -321,6 +321,20 @@ export const VGUISchema = (document: VDFTextDocument) => {
 					}
 
 					const key = transform(documentSymbol.key.text)
+
+					const name = enumIndexKeys.get(key)
+					if (name != undefined) {
+						const data = values[name]
+						const index = parseInt(documentSymbol.value.text)
+						if (!isNaN(index) && index >= 0 && index < data.length) {
+							inlayHints.push({
+								position: documentSymbol.value.range.end,
+								label: data[index],
+								textEdits: [TextDocumentBase.replaceTokenTextEdit(documentSymbol.value, data[index])],
+								paddingLeft: true,
+							})
+						}
+					}
 
 					if (strings.some((string) => string.toLowerCase() == key) && types.string.test(documentSymbol.value.text)) {
 						const definition = definitions.get(null, types.string, types.string.toDefinition(documentSymbol.value.text))?.[0]
