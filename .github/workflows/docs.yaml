@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
-          node-version: 24.10.0
+          node-version: latest
       - uses: pnpm/action-setup@v6
       - run: pnpm install
       - run: rustup default nightly
