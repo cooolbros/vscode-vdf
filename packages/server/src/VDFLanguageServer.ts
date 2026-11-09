@@ -433,7 +433,6 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 						this.documentRequestHandlers
 							.getOrInsertComputed(type.method, () => {
-								console.log(`connection.onRequest ${type.method}`)
 								connection.onRequest(type, async (params) => {
 									await using document = await this.documents.get(new Uri(params.textDocument.uri))
 									return await this.documentRequestHandlers.get(type.method)?.get(document.languageId)!.onRequest(document, params)
