@@ -1,8 +1,6 @@
-@layer theme, base, components, utilities;
-
-@import "tailwindcss/theme.css" layer(base);
-@import "tailwindcss/preflight.css" layer(base);
-@import "tailwindcss/utilities.css" layer(base);
+/* @tailwind base; */
+@tailwind components;
+@tailwind utilities;
 
 :root {
 	--x-color-black: rgb(31, 31, 31);
