@@ -133,7 +133,8 @@ export function DiagnosticFactory<
 		diagnostics: PartialDiagnosticCodeAction[],
 		edit?: { uri?(): Uri, range?(): VDFRange, newText?(name: string): string }
 	) => {
-		if (name != key.text) {
+		// Skip check if key is transformed e.g. "tall_hidef" != "tall"
+		if (name.length == key.text.length && name != key.text) {
 			diagnostics.push({
 				range: key.range,
 				severity: DiagnosticSeverity.Information,
