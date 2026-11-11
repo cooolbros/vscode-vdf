@@ -222,6 +222,9 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 						else if (hudRoot != null) {
 							return hudRoot.relative(init.uri)
 						}
+						else if (init.languageId == "popfile") {
+							return `scripts/population/${init.uri.basename()}`
+						}
 						else {
 							const workspaceRelativePath = workspaceUris
 								.values()
@@ -231,10 +234,6 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 
 							if (workspaceRelativePath != undefined) {
 								return workspaceRelativePath
-							}
-
-							if (init.languageId == "popfile") {
-								return `scripts/population/${init.uri.basename()}`
 							}
 							else {
 								// https://github.com/microsoft/vscode/blob/main/src/vs/base/common/network.ts
