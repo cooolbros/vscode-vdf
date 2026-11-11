@@ -604,7 +604,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 													documentation: { kind: MarkupKind.Markdown, value: documentation },
 													conditional: documentSymbol.conditional ?? undefined,
 													completionItem: {
-														label: documentSymbol.key.text,
+														label: name.value.text,
 														kind: CompletionItemKind.Variable,
 														documentation: { kind: MarkupKind.Markdown, value: documentation }
 													},
