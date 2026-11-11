@@ -1,5 +1,49 @@
 # Change Log
 
+## [6.0.0]
+ - Consolidate all language servers into single VDF Language Server
+ - Update `vscode-languageclient` and `vscode-languageserver` to version 11.0.0
+ - Restart VDF Language Server on `vscode-vdf.teamFortress2Folder` folder change
+ - Restart VDF Language Server on workspace folders change
+ - Add autocompletion automatic value insertion
+ - Fix autocompletion double quotes insertion
+ - Fix document links initial load performance
+ - Fix memory leak caused by editor decorations
+ - Fix memory leak caused by language server crash
+ - Update Copy Key/Value Path To Clipboard command:
+   - Allow in VMT files
+   - Fix broken path on Windows
+   - Fix token quoting
+ - VGUI:
+   - Add support for `game_sounds_manifest.txt` and `game_sounds_*.txt` files
+   - Add readonly support for `items_game.txt`
+   - Add support for `resource/gamemenu.res`
+   - Fix error when opening `untitled:` files
+   - Fix crash when `resource/clientscheme.res` has cyclic `#base`
+   - Fix not correctly removing VGUI element references
+   - Fix HUD animations manifest files slow performance
+ - Popfile:
+   - Add BSP support for `VMF_IOPARAM_STRING_DELIMITER` to fix `unknown-event` false positive diagnostics
+   - Skip validating `Template` events in non `mvm_*.pop` files
+   - Skip validating `ClassIcon` values in non `mvm_*.pop` files
+   - Fix `ItemName` autocompletion sometimes not working
+   - Fix not loading empty Template definitions
+   - Fix Wave Status Preview codeLens sometimes being in the correct position
+   - Fix not adding template references inside Mission blocks
+   - Fix `ClassIcon` diagnostics slow performance
+   - Fix `WaveSpawn` autocompletion not suggesting multiple spawner blocks
+   - Fix TF2 VScript Support extension message link failing in VSCodium (Thanks [@ocet247](https://github.com/ocet247))
+   - VScript:
+     - Add support for Go to definition
+     - Add support for Find References
+     - Add support for document links
+ - HUD Animations:
+   - Add signature help provider
+   - Add automatic HUD Animations file detection
+   - Fix not loading workspace definitions from hudanimations_manifest.txt files
+   - Fix references not being correctly removed
+   - Fix autocompletion for Animate statements not using Linear interpolator
+
 ## [5.12.3]
  - Fix extension activation failing in VSCodium
  - Improve error logging
