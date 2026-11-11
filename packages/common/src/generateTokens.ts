@@ -81,8 +81,8 @@ export function generateTokens(line: string, position: VDFPosition): CompletionT
 	for (const token of tokens) {
 		if (includes(token)) {
 			token.current = true
+			break
 		}
-		break
 	}
 
 	return tokens
