@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.0.2]
+ - [Popfile] Fix `unknown-event` diagnostic for unknown conditionals
+ - [Popfile] Fix `wavespawn-softlock` diagnostic for `Support` `Limited` WaveSpawns
+
 ## [6.0.1]
  - Fix values autocompletion
  - [Popfile] Fix WaveSpawn autocompletion
