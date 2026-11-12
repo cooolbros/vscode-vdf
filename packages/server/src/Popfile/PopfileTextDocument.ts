@@ -1136,7 +1136,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 		const validateWaitForAll = d.string(d.reference(types.wavespawn, null, (name, detail, documentSymbol, path, diagnostics, context, definitions) => {
 			for (const definition of definitions) {
 				const support: string | undefined = definition.data.support
-				if (support != undefined && support != "Limited".toLowerCase()) {
+				if (support != undefined && support.toLowerCase() != "Limited".toLowerCase()) {
 					diagnostics.push({
 						range: detail.range,
 						severity: DiagnosticSeverity.Warning,
