@@ -1,6 +1,7 @@
 # Change Log
 
 ## [6.0.2]
+ - Use `vscode-vdf.<language>.format.tabs` configuration for autocompletion automatic value insertion whitespace
  - [Popfile] Fix `unknown-event` diagnostic for unknown conditionals
  - [Popfile] Fix `wavespawn-softlock` diagnostic for `Support` `Limited` WaveSpawns
 
