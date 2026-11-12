@@ -1922,6 +1922,8 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 							.from(completionList.items)
 							.map((item) => {
 								item.label = item.label.substring("leaderboard_class_".length)
+								item.textEditText = item.textEdit!.newText
+								item.textEdit = undefined
 								return item
 							})
 					}
