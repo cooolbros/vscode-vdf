@@ -241,6 +241,10 @@ const MissionSchema: PopfileSchema = {
 	},
 	validateEventName: (d) => {
 		return (name, value, path, diagnostics, context) => {
+			if (value.conditional != null && !TextDocumentBase.conditionals.has(value.conditional.toUpperCase())) {
+				return
+			}
+
 			const events = context.dependencies.bsp?.events ?? PopfileTextDocument.events
 			const eventName = events.get(value.key.text.toLowerCase())
 			if (eventName == undefined) {
