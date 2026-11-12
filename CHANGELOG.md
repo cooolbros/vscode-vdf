@@ -2,8 +2,8 @@
 
 ## [6.0.1]
  - Fix values autocompletion
- - Fix WaveSpawn autocompletion
- - Fix workspace popfiles relative path
+ - [Popfile] Fix WaveSpawn autocompletion
+ - [Popfile] Fix workspace popfiles relative path
 
 ## [6.0.0]
  - Consolidate all language servers into single VDF Language Server
