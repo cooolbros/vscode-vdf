@@ -6,7 +6,7 @@ import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDispo
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { defer, firstValueFrom, identity, map, Observable, of, startWith } from "rxjs"
+import { combineLatest, defer, firstValueFrom, identity, map, Observable, of, startWith } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
@@ -89,7 +89,10 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 		}
 
 		const _keys = async (token?: CompletionToken): Promise<VDFCompletionList | null> => {
-			const documentSymbols = await firstValueFrom(document.documentSymbols$)
+			const { documentSymbols, documentConfiguration } = await firstValueFrom(combineLatest({
+				documentSymbols: document.documentSymbols$,
+				documentConfiguration: document.documentConfiguration$,
+			}))
 			const path = add(documentSymbols)
 			const set = new Set((path.at(-1)?.children ?? documentSymbols).map((documentSymbol) => documentSymbol.key.text.toLowerCase()))
 
@@ -101,6 +104,9 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 			const { before = [], field, cls, after = [] } = result
 			const fieldKind = field?.kind ?? CompletionItemKind.Field
 			const fieldValues = field?.values ?? {}
+
+			const tabs = documentConfiguration[document.languageId].format.tabs
+			const space = tabs == -1 ? " " : "\t".repeat(1 + tabs)
 
 			const fieldItem = (field: string): VDFCompletionItem => {
 				const quoted = token?.quoted || quote(field)
@@ -116,19 +122,19 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 					const q = quoted ? `"` : ``
 
 					if (values.length == 1) {
-						textEditText = `${text}\t\t${q}${values[0]}${q}`
+						textEditText = `${text}${space}${q}${values[0]}${q}`
 					}
 					else if (values.length == 2 && values[0] == "1" && values[1] == "0") {
 						// Ignore values where values[0] == "0" && values[1] == "1"
-						textEditText = `${text}\t\t${q}${values[0]}${q}`
+						textEditText = `${text}${space}${q}${values[0]}${q}`
 					}
 					else if (values.length < 64) {
 						// https://code.visualstudio.com/docs/editing/userdefinedsnippets#_choice
-						textEditText = `${text}\t\t${q}$\{1|${values.join(",")}|}${q}`
+						textEditText = `${text}${space}${q}$\{1|${values.join(",")}|}${q}`
 						insertTextFormat = InsertTextFormat.Snippet
 					}
 					else {
-						textEditText = `${text}\t\t${q}$0${q}`
+						textEditText = `${text}${space}${q}$0${q}`
 						insertTextFormat = InsertTextFormat.Snippet
 						command = {
 							title: "Trigger Suggest",
