@@ -1,0 +1,36 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+
+jobs:
+  publish:
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build
+
+      # https://code.visualstudio.com/api/working-with-extensions/publishing-extension
+      # https://github.com/eclipse-openvsx/openvsx/blob/main/cli/README.md
+      # https://cli.github.com/manual/gh_release_create
+      - name: Publish
+        run: |
+          pnpm vsce package --no-dependencies
+          tag="${{ github.ref }}"
+          version="${tag:11}"
+          vsix="$(basename ${{ github.repository }})-${version}.vsix"
+          pnpm vsce publish --packagePath "$vsix" --oidc
+          pnpm ovsx publish --packagePath "$vsix" --trusted-publishing
+          title=$(jq -r "\"\(.displayName) ${version}\"" package.json)
+          notes=$(awk "/^$/ { if (a) exit 1 - b } { if (a) { print; b = 1 } } /^## \[${version}\]$/ { a = 1; b = 0 } END { exit 1 - b }" CHANGELOG.md)
+          gh release create "v$version" "$vsix" --title "$title" --notes "$notes"
