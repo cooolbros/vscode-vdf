@@ -1015,9 +1015,7 @@ export abstract class TextDocumentBase<
 						textEdit: TextEdit.insert(params.position, newText(name)),
 						...((image && type == 1) && {
 							data: {
-								image: {
-									path: posix.join(folder, name)
-								}
+								vmt: posix.join(folder, name)
 							},
 						}),
 					}))
@@ -1089,16 +1087,15 @@ export abstract class TextDocumentBase<
 	}
 
 	public async onCompletionResolve(item: CompletionItem) {
-		const result = z.object({ path: z.string() }).safeParse(item.data)
+		const result = z.object({ vmt: z.string() }).safeParse(item.data)
 		if (result.success) {
-			const { path } = result.data
-			const entry = await firstValueFrom(this.fileSystem.resolve(path))
+			const entry = await firstValueFrom(this.fileSystem.resolve(result.data.vmt))
 			if (entry.type == EntryType.File) {
 				const value = await this.VTFToPNGBase64(entry.uri)
 				if (value != null) {
 					item.documentation = {
 						kind: MarkupKind.Markdown,
-						value: `${value}\n\n${(<MarkupContent>item.documentation).value}`
+						value: `${value}\n\n${item.documentation != undefined ? (<MarkupContent>item.documentation).value : ""}`
 					}
 				}
 			}
