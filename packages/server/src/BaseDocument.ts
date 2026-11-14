@@ -453,7 +453,7 @@ export class BaseDocument {
 					})),
 					...(documentSymbol != undefined && {
 						data: {
-							fix({ createDocumentWorkspaceEdit }) {
+							fix: ({ createDocumentWorkspaceEdit }) => {
 								return {
 									title: "Remove cyclic #base",
 									edit: createDocumentWorkspaceEdit(TextEdit.del(documentSymbol.range))
