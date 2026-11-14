@@ -213,10 +213,7 @@ export const ItemsGameSchema = (document: VDFTextDocument) => {
 							detail: undefined,
 							documentation: { kind: MarkupKind.Markdown, value: documentation },
 							conditional: documentSymbol.conditional ?? undefined,
-							completionItem: {
-								label: documentSymbol.key.text,
-								documentation: { kind: MarkupKind.Markdown, value: documentation }
-							}
+							completionItem: { label: documentSymbol.key.text, documentation: { kind: MarkupKind.Markdown, value: documentation } }
 						})
 
 						const children = documentSymbol.children ?? []
@@ -304,11 +301,7 @@ export const ItemsGameSchema = (document: VDFTextDocument) => {
 								detail: undefined,
 								documentation: { kind: MarkupKind.Markdown, value: documentation },
 								conditional: documentSymbol.conditional ?? undefined,
-								completionItem: {
-									label: name.value!.text,
-									documentation: { kind: MarkupKind.Markdown, value: documentation },
-									data: data
-								}
+								completionItem: { label: name.value!.text, documentation: { kind: MarkupKind.Markdown, value: documentation }, data: data }
 							})
 						}
 
