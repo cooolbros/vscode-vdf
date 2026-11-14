@@ -867,7 +867,9 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 					validateTFBot("TFBot", value, path, diagnostics, context)
 					break
 				default:
-					diagnostics.push(unknownAttribute(value, name, context))
+					if (value.conditional == null || TextDocumentBase.conditionals.has(value.conditional.toUpperCase())) {
+						diagnostics.push(unknownAttribute(value, name, context))
+					}
 					break
 			}
 		}
