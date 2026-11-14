@@ -579,6 +579,7 @@
         "@vscode/vsce": "^4.0.0",
         "minimatch": "^10.2.6",
         "oxlint": "^1.89.0",
+        "oxlint-config": "github:cooolbros/oxlint-config",
         "oxlint-tsgolint": "^7.0.2004",
         "path-browserify": "^1.0.1",
         "rxjs": "^7.8.2",

@@ -226,6 +226,9 @@ importers:
       oxlint:
         specifier: ^1.89.0
         version: 1.89.0(oxlint-tsgolint@7.0.2004)
+      oxlint-config:
+        specifier: github:cooolbros/oxlint-config
+        version: https://codeload.github.com/cooolbros/oxlint-config/tar.gz/f4327b1bf6c5f3576549223dbbba1d9bdfcecd7f(oxlint-tsgolint@7.0.2004)(oxlint@1.89.0(oxlint-tsgolint@7.0.2004))
       oxlint-tsgolint:
         specifier: ^7.0.2004
         version: 7.0.2004
@@ -3912,6 +3915,13 @@ packages:
   open@11.0.4:
     resolution: {integrity: sha512-++Zlftm0kVLPmzC06t6epuWmcRMDbI4z5P3NNX979WA/k23+NtSOynEGzsVfZwguKw2mi5umVgnBlJQMwRz4Pg==}
     engines: {node: '>=20'}
+
+  oxlint-config@https://codeload.github.com/cooolbros/oxlint-config/tar.gz/f4327b1bf6c5f3576549223dbbba1d9bdfcecd7f:
+    resolution: {gitHosted: true, integrity: sha512-o1GsnPCOojHtyIFt7wPqHMf5848FlbUJLEzslmWP7Xs37ViEu8mzdwFpOnxZmSVkeyer85/QbpZdF15VLo75sw==, tarball: https://codeload.github.com/cooolbros/oxlint-config/tar.gz/f4327b1bf6c5f3576549223dbbba1d9bdfcecd7f}
+    version: 0.0.0
+    peerDependencies:
+      oxlint: ^1.93.0
+      oxlint-tsgolint: ^7.0.0
 
   oxlint-tsgolint@7.0.2004:
     resolution: {integrity: sha512-vQ9WDF3fiZJvRdSDosNOflerOCOpwol6vWzVDxW76RcU19cjTh7engvkHLvmv+tzedR8fAiJUVUGr6IVZdkzXQ==}
@@ -8281,6 +8291,11 @@ snapshots:
       is-inside-container: 1.0.0
       powershell-utils: 0.2.1
       wsl-utils: 1.0.1
+
+  oxlint-config@https://codeload.github.com/cooolbros/oxlint-config/tar.gz/f4327b1bf6c5f3576549223dbbba1d9bdfcecd7f(oxlint-tsgolint@7.0.2004)(oxlint@1.89.0(oxlint-tsgolint@7.0.2004)):
+    dependencies:
+      oxlint: 1.89.0(oxlint-tsgolint@7.0.2004)
+      oxlint-tsgolint: 7.0.2004
 
   oxlint-tsgolint@7.0.2004:
     optionalDependencies:
