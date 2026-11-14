@@ -1,0 +1,43 @@
+# https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action
+name: build
+description: Build
+
+runs:
+  using: composite
+  steps:
+    - name: Install Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: latest
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v6
+
+    - name: Install wasm-pack
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      shell: bash
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Install Dependencies
+      run: pnpm install
+      shell: bash
+
+    - name: rustup default nightly
+      run: rustup default nightly
+      shell: bash
+
+    - name: rustup target add wasm32-unknown-unknown
+      run: rustup target add wasm32-unknown-unknown
+      shell: bash
+
+    - name: cargo clean
+      run: cargo clean
+      shell: bash
+
+    - name: Build
+      run: pnpm build
+      shell: bash
