@@ -1,5 +1,10 @@
 # Change Log
 
+## [6.0.3]
+ - Fix autocompletion documentation images
+ - [Popfile] Fix false positive `unknown-attribute` diagnostic for `Squad` key with unknown conditional
+ - [Popfile] Fix multiplying surrounding double quotes for `Item` autocompletion
+
 ## [6.0.2]
  - Use `vscode-vdf.<language>.format.tabs` configuration for autocompletion automatic value insertion whitespace
  - [Popfile] Fix `unknown-event` diagnostic for unknown conditionals
