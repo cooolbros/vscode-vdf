@@ -571,8 +571,8 @@
     "devDependencies": {
         "@rspack/cli": "^2.3.0",
         "@rspack/core": "^2.3.0",
-        "@trpc/client": "^11.24.0",
-        "@trpc/server": "^11.24.0",
+        "@trpc/client": "^11.25.2",
+        "@trpc/server": "^11.25.2",
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.110.0",
         "@vscode/test-web": "^0.0.81",
