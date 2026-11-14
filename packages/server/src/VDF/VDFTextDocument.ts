@@ -200,7 +200,7 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 				: (item: VDFCompletionItem) => {
 					const text = item.textEditText ?? item.label
 					if (token?.quoted || quote(text)) {
-						item.textEditText = `"${text}"`
+						item.textEditText ??= `"${text}"`
 					}
 					return item
 				}
