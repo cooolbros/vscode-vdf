@@ -292,7 +292,7 @@ export const ItemsGameSchema = (document: VDFTextDocument) => {
 
 							const image_inventory = documentSymbol.children.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "image_inventory")?.value?.text
 							const data = image_inventory != undefined
-								? { image: { uri: document.uri, path: posix.join("materials", `${image_inventory}.vmt`) } }
+								? { image: { uri: document.uri, vmt: posix.join("materials", `${image_inventory}.vmt`) } }
 								: undefined
 
 							definitions.set(null, types.item, name.value!.text, {
