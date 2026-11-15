@@ -1,22 +1,52 @@
 {
-    "totalcurrency": {
-        "documentation": "Total amount of currency dropped by this wave. Should be cleanly divisible by TotalCount, so bots all drop the same amount."
-    },
+    "action": {},
+    "addsentrybusterwhendamagedealtexceeds": {},
+    "addsentrybusterwhenkillcountexceeds": {},
+    "advanced": {},
+    "attributes": {},
+    "autojumpmax": {},
+    "autojumpmin": {},
+    "beginatwave": {},
+    "behaviormodifiers": {},
+    "canbotsattackwhileinspawnroom": {},
+    "characterattributes": {},
+    "checkpoint": {},
+    "class": {},
+    "classicon": {},
+    "cooldowntime": {},
+    "delay": {},
+    "description": {},
+    "desiredcount": {},
     "doneoutput": {
         "reference": "startwaveoutput"
     },
+    "donewarningsound": {},
+    "eventchangeattributes": {},
+    "eventpopfile": {},
     "firstspawnoutput": {
         "reference": "startwaveoutput"
     },
+    "firstspawnwarningsound": {},
+    "fixedrespawnwavetime": {},
+    "formationsize": {},
+    "health": {},
+    "initialcooldown": {},
     "initwaveoutput": {
         "reference": "startwaveoutput"
     },
+    "isendless": {},
+    "item": {},
+    "itemattributes": {},
+    "itemname": {},
     "lastspawnoutput": {
         "reference": "startwaveoutput"
     },
+    "lastspawnwarningsound": {},
+    "level": {},
     "maxactive": {
         "documentation": "Defines the maximum number of entities from this WaveSpawn that can be alive at the same time"
     },
+    "maxvisionrange": {},
     "mission": {
         "documentation": "A \"mission\" defines a set of TFBots that the \"AI Director\" can send in to accomplish certain context-specific goals",
         "value": {
@@ -49,6 +79,9 @@
     "objective": {
         "documentation": ""
     },
+    "onbombdroppedoutput": {},
+    "onkilledoutput": {},
+    "param": {},
     "periodicspawn": {
         "documentation": "A PeriodicSpawn Populator invokes its Spawner periodically. For example, a PeriodicSpawn might spawn a TFBot every 30 seconds."
     },
@@ -61,6 +94,10 @@
     "randomplacement": {
         "documentation": "A RandomPlacement Populator is invoked once at the start of each round, and spawns entities at random locations throughout the map. For example, a RandomPlacement might place random Sentry guns throughout a map."
     },
+    "randomspawn": {},
+    "respawnwavetime": {},
+    "runforthismanywaves": {},
+    "scale": {},
     "sentrygun": {
         "documentation": "Spawns unowned Sentry guns at a specified upgrade level.",
         "value": {
@@ -71,9 +108,14 @@
             }
         }
     },
+    "shouldpreservesquad": {},
+    "skill": {},
+    "skin": {},
+    "sound": {},
     "spawncount": {
         "documentation": "Defines the number of entities to spawn at a time as a group. Default is 1."
     },
+    "speed": {},
     "squad": {
         "documentation": "Contains a set of spawners, all are invoked and collected into a \"squad\".",
         "value": {
@@ -98,6 +140,7 @@
     "startingcurrency": {
         "documentation": "Specifies the amount of currency that players should start with"
     },
+    "startingpathtracknode": {},
     "startwaveoutput": {
         "value": {
             "field": {
@@ -110,6 +153,9 @@
             }
         }
     },
+    "startwavewarningsound": {},
+    "support": {},
+    "tag": {},
     "tank": {
         "value": {
             "field": {
@@ -129,6 +175,9 @@
             }
         }
     },
+    "target": {},
+    "teleportwhere": {},
+    "template": {},
     "templates": {
         "reference": "tfbot"
     },
@@ -183,6 +232,15 @@
     "totalcount": {
         "documentation": "Defines the total number of times the Spawner will be invoked in this wave"
     },
+    "totalcurrency": {
+        "documentation": "Total amount of currency dropped by this wave. Should be cleanly divisible by TotalCount, so bots all drop the same amount."
+    },
+    "waitbeforestarting": {},
+    "waitbetweenspawns": {},
+    "waitbetweenspawnsafterdeath": {},
+    "waitforalldead": {},
+    "waitforallspawned": {},
+    "waitwhendone": {},
     "wave": {
         "value": {
             "field": {
@@ -274,5 +332,7 @@
                 ]
             }
         }
-    }
+    },
+    "weaponrestrictions": {},
+    "where": {}
 }

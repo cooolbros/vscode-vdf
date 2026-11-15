@@ -22,7 +22,7 @@ const PopfileValueSchema = z.object({
 const preprocessors = {
 	popfile: {
 		entity_name_type_enum: [...Object.keys(values).map((value) => value.toLowerCase()), "where"],
-		keyword: [...Object.entries(keys).flatMap(([k, v]) => [k, ...PopfileValueSchema.parse(v)]).map((value) => value.toLowerCase()), "Default".toLowerCase(), "ItemName".toLowerCase()],
+		keyword: [...Object.entries(keys).flatMap(([k, v]) => [k, ...PopfileValueSchema.parse(v)]).map((value) => value.toLowerCase()), "Default".toLowerCase()],
 		variable_other_enummember: Object.values(values).flat().map((value) => value.toLowerCase())
 	}
 }
