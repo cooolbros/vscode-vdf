@@ -1,5 +1,9 @@
 # Change Log
 
+## [6.0.4]
+ - [Popfile] Fix syntax highlighting
+ - [Popfile] Fix `StartWaveWarningSound` false positive `unknown-attribute` diagnostic
+
 ## [6.0.3]
  - Fix autocompletion documentation images
  - [Popfile] Fix false positive `unknown-attribute` diagnostic for `Squad` key with unknown conditional
