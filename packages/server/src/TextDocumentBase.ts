@@ -542,9 +542,9 @@ export abstract class TextDocumentBase<
 	public setReferences(uri: Uri, references: References): { remove(): void } {
 		const key = uri.toString()
 
-		if (this.referenceSubscriptions.has(key)) {
-			throw new Error(`[TextDocumentBase] Already set ${uri.toString()} references for ${this.uri.toString()}`)
-		}
+		// if (this.referenceSubscriptions.has(key)) {
+		// 	throw new Error(`[TextDocumentBase] Already set ${uri.toString()} references for ${this.uri.toString()}`)
+		// }
 
 		this.references.references$.value.set(key, references)
 
