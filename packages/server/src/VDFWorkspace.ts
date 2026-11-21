@@ -798,7 +798,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 							// https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/server/cbase.cpp#L117
 							// VMF_IOPARAM_STRING_DELIMITER
 							const [target, input, parameter, _delay, _once] = trigger.split(trigger.includes("\x1B") ? "\x1B" : ",")
-							if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes" || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
+							if (target != undefined && input != undefined && parameter != undefined && target == populator && (input.toLowerCase() == "ChangeBotAttributes".toLowerCase() || input.toLowerCase() == "ChangeDefaultEventAttributes".toLowerCase())) {
 								events.getOrInsert(parameter.toLowerCase(), parameter)
 							}
 						}
