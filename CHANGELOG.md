@@ -1,5 +1,11 @@
 # Change Log
 
+## [6.0.5]
+ - Fix error when sometimes closing and opening a non-workspace file
+ - [Popfile] Enable `ClassIcon` diagnostics in `robot_*.pop` files
+ - [Popfile] Fix diagnostic message for `ClassIcon` diagnostics inside `Template` references
+ - [Popfile] Allow suppressing `Where` `invalid-value` diagnostic with unknown conditional
+
 ## [6.0.4]
  - [Popfile] Fix syntax highlighting
  - [Popfile] Fix `StartWaveWarningSound` false positive `unknown-attribute` diagnostic
