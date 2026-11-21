@@ -50,6 +50,10 @@ const sounds = new Set([
 	"StartWaveWarningSound".toLowerCase(),
 ])
 
+function hasUnknownConditional(documentSymbol: VDFDocumentSymbol) {
+	return documentSymbol.conditional != null && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase())
+}
+
 function collectTFBotItems(path: VDFDocumentSymbol[], definitions: Definitions) {
 	const collectTemplateAttributes = (detail: string, definitions: Definitions, seen: Set<string>): { TFClass?: string, items: string[] } => {
 		const definition = definitions.get(null, types.template, detail)
@@ -230,7 +234,7 @@ const MissionSchema: PopfileSchema = {
 	},
 	validateEventName: (d) => {
 		return (name, value, path, diagnostics, context) => {
-			if (value.conditional != null && !TextDocumentBase.conditionals.has(value.conditional.toUpperCase())) {
+			if (hasUnknownConditional(value)) {
 				return
 			}
 
@@ -245,7 +249,7 @@ const MissionSchema: PopfileSchema = {
 					message: `Unknown event '${value.key.text}'. Expected '${[...events.values()].join("' | '")}'`,
 					data: {
 						fix: ({ params: _params, createDocumentWorkspaceEdit }) => {
-							const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
+							const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => hasUnknownConditional(documentSymbol))?.documentSymbol.conditional
 							if (!conditional) {
 								return null
 							}
@@ -326,7 +330,7 @@ const MissionSchema: PopfileSchema = {
 									// are using custom events rather than making typos.
 									// and currently each diagnostic only has 1 fix to allow a "Fix all issues of kind" code action
 
-									const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
+									const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => hasUnknownConditional(documentSymbol))?.documentSymbol.conditional
 									if (!conditional) {
 										return null
 									}
@@ -795,7 +799,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			message: `Unknown attribute '${value.key.text}' in ${parent} definition.`,
 			data: {
 				fix: ({ params: _params, createDocumentWorkspaceEdit }) => {
-					const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => documentSymbol.conditional != undefined && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))?.documentSymbol.conditional
+					const conditional = context.conditional ??= context.content.documentSymbols.findRecursive((documentSymbol) => hasUnknownConditional(documentSymbol))?.documentSymbol.conditional
 					if (!conditional) {
 						return null
 					}
@@ -814,7 +818,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			(key) => key.toLowerCase(),
 			(name, value, path, diagnostics, context) => {
 				if (context.dependencies.configuration.popfile.diagnostics.strict) {
-					if (value.conditional == null || TextDocumentBase.conditionals.has(value.conditional.toUpperCase())) {
+					if (!hasUnknownConditional(value)) {
 						diagnostics.push(unknownAttribute(value, name, context))
 					}
 				}
@@ -853,7 +857,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 					validateTFBot("TFBot", value, path, diagnostics, context)
 					break
 				default:
-					if (value.conditional == null || TextDocumentBase.conditionals.has(value.conditional.toUpperCase())) {
+					if (!hasUnknownConditional(value)) {
 						diagnostics.push(unknownAttribute(value, name, context))
 					}
 					break
@@ -1010,6 +1014,10 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 		})
 
 		const validateWhere = d.string((name, detail, documentSymbol, path, diagnostics, context) => {
+			if (hasUnknownConditional(documentSymbol)) {
+				return
+			}
+
 			const bsp = context.dependencies.bsp
 			if (bsp != null) {
 				if (!bsp.teamSpawns.some((teamSpawn) => teamSpawn.toLowerCase() == detail.text.toLowerCase())) {
