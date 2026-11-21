@@ -197,7 +197,7 @@ function collectTFBotItems(path: VDFDocumentSymbol[], definitions: Definitions) 
 
 // Popfile Diagnostics
 interface PopfileTextDocumentDiagnosticsContext extends DiagnosticsContext<Dependencies, Globals, VDFDocumentSymbols> {
-	classIcons: Map<string, PartialDiagnosticCodeActionReference[]>
+	classIcons: Map<string, (PartialDiagnosticCodeActionReference & { template: string | null })[]>
 	sound: Map<string, PartialDiagnosticCodeActionReference[]>
 	conditional?: string | null
 }
@@ -206,14 +206,15 @@ type D = ReturnType<typeof DiagnosticFactory<PopfileTextDocumentDiagnosticsConte
 
 interface PopfileSchema {
 	TemplatesDistinct: KeyDistinct
+	MissingClassIconSeverity: DiagnosticSeverity
 	getTemplates(documentSymbols: VDFDocumentSymbols): IteratorObject<VDFDocumentSymbol>
-	validateClassIcon(d: D): RefineString<PopfileTextDocumentDiagnosticsContext>
 	validateEventName(d: D): Validate<VDFDocumentSymbol, PopfileTextDocumentDiagnosticsContext>
 	validateTemplateReference(d: D): RefineReference<PopfileTextDocumentDiagnosticsContext>
 }
 
 const MissionSchema: PopfileSchema = {
 	TemplatesDistinct: KeyDistinct.First,
+	MissingClassIconSeverity: DiagnosticSeverity.Warning,
 	getTemplates: function*(documentSymbols: VDFDocumentSymbols) {
 		const templatesBlock = documentSymbols.find((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Templates".toLowerCase())
 		const seen = new Set<string>()
@@ -225,18 +226,6 @@ const MissionSchema: PopfileSchema = {
 			seen.add(key)
 
 			yield template
-		}
-	},
-	validateClassIcon: (_d) => {
-		return (name, detail, documentSymbol, path, diagnostics, context) => {
-			context.classIcons.getOrInsertComputed(detail.text, () => []).push({
-				index: diagnostics.length,
-				name: "ClassIcon",
-				documentSymbolRange: documentSymbol.range,
-				value: detail,
-			})
-
-			diagnostics.push(undefined)
 		}
 	},
 	validateEventName: (d) => {
@@ -301,6 +290,7 @@ const MissionSchema: PopfileSchema = {
 						name: "ClassIcon",
 						documentSymbolRange: documentSymbol.range,
 						value: detail,
+						template: definition.key,
 					})
 
 					diagnostics.push(undefined)
@@ -361,6 +351,7 @@ const MissionSchema: PopfileSchema = {
 
 const BaseSchema: PopfileSchema = {
 	TemplatesDistinct: KeyDistinct.None,
+	MissingClassIconSeverity: DiagnosticSeverity.Hint,
 	getTemplates: function*(documentSymbols: VDFDocumentSymbols) {
 		const templatesBlocks = documentSymbols.values().filter((documentSymbol) => documentSymbol.key.text.toLowerCase() == "Templates".toLowerCase())
 		for (const templatesBlock of templatesBlocks) {
@@ -376,11 +367,6 @@ const BaseSchema: PopfileSchema = {
 			}
 		}
 	},
-	validateClassIcon: (_d) => {
-		return (_name, _detail, _documentSymbol, _path, _diagnostics, _context) => {
-			// Don't push diagnostics for ClassIcon references in files with no .bsp because the BSP packed ClassIcons are not yet known
-		}
-	},
 	validateEventName: (_d) => {
 		return (_name, _value, _path, _diagnostics, _context) => {
 			// Don't push diagnostics for event references in files with no .bsp because the valid events are not yet known
@@ -388,7 +374,7 @@ const BaseSchema: PopfileSchema = {
 	},
 	validateTemplateReference: (_d) => {
 		return (_name, _detail, _path, _diagnostics, _context) => {
-			// Don't push diagnostics for template references in files with no .bsp because the valid events are not yet known
+			// Don't push diagnostics for template references in files with no .bsp because the valid ClassIcons and events are not yet known
 		}
 	},
 }
@@ -1002,6 +988,18 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			"WeaponRestrictions": d.string(d.set(values.weaponrestrictions))
 		}
 
+		const validateClassIcon: RefineString<PopfileTextDocumentDiagnosticsContext> = (name, detail, documentSymbol, path, diagnostics, context) => {
+			context.classIcons.getOrInsertComputed(detail.text, () => []).push({
+				index: diagnostics.length,
+				name: "ClassIcon",
+				documentSymbolRange: documentSymbol.range,
+				value: detail,
+				template: null,
+			})
+
+			diagnostics.push(undefined)
+		}
+
 		const validateEventChangeAttributes = d.documentSymbols({
 			"Default": d.documentSymbols(dynamicAttributes),
 			[unknown]: d.sequence(
@@ -1030,7 +1028,7 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 			"AutoJumpMax": d.string(d.float()),
 			"AutoJumpMin": d.string(d.float()),
 			"Class": d.string(d.set(values.class)),
-			"ClassIcon": d.string(this.schema.validateClassIcon(d)),
+			"ClassIcon": d.string(validateClassIcon),
 			"EventChangeAttributes": validateEventChangeAttributes,
 			"Health": d.string(d.integer()),
 			"Name": d.string(),
@@ -1293,13 +1291,13 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 						)
 					).subscribe((vtf) => {
 						if (!vtf) {
-							for (const { index, value } of values) {
+							for (const { index, value, template } of values) {
 								diagnostics[index] = {
 									range: value.range,
-									severity: DiagnosticSeverity.Warning,
-									code: "missing-file",
+									severity: this.schema.MissingClassIconSeverity,
+									code: "missing-icon",
 									source: "popfile",
-									message: `Cannot find class icon '${classIcon}'. (materials/hud/leaderboard_class_${classIcon}.vmt)`,
+									message: `Cannot find class icon '${classIcon}'${template != null ? ` in template '${template}'` : ``}. (materials/hud/leaderboard_class_${classIcon}.vmt)`,
 								}
 							}
 						}
@@ -1308,16 +1306,16 @@ export class PopfileTextDocument extends TextDocumentBase<Dependencies, Globals,
 							const noMip = (vtf.flags & 256) == 256
 							const noLod = (vtf.flags & 512) == 512
 
-							const message = `flag${!noMip && !noLod ? "s" : ""} ${!noMip ? `"No Mipmap"` : ""}${!noMip && !noLod ? " and " : ""}${!noLod ? `"No Level Of Detail"` : ""}`
+							const message = `flag${!noMip && !noLod ? "s" : ""} ${!noMip ? `'No Mipmap'` : ""}${!noMip && !noLod ? " and " : ""}${!noLod ? `'No Level Of Detail'` : ""}`
 
 							if (!noMip || !noLod) {
-								for (const { index, value } of values) {
+								for (const { index, value, template } of values) {
 									diagnostics[index] = {
 										range: value.range,
 										severity: DiagnosticSeverity.Warning,
 										code: "missing-vtf-flags",
 										source: "popfile",
-										message: `ClassIcon '${classIcon}' does not set VTF ${message}.`,
+										message: `ClassIcon '${classIcon}'${template != null ? ` in template '${template}'` : ``} does not set VTF ${message}.`,
 										data: {
 											fix: () => {
 												return {
