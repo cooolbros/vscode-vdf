@@ -9,6 +9,7 @@ import { usingAsync } from "common/operators/usingAsync"
 import { findMap } from "common/popfile/findMap"
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
+import type { VSCodeVDFLanguageID } from "common/VSCodeVDFLanguageID"
 import { HUDAnimationsDocumentSymbols } from "hudanimations-documentsymbols"
 import { posix } from "path"
 import { catchError, combineLatest, concatMap, distinctUntilChanged, finalize, first, firstValueFrom, map, of, pairwise, shareReplay, startWith, switchMap, tap, type Observable, type Subscription } from "rxjs"
@@ -272,7 +273,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 		}
 
 		const definitions = (path: string, encoding = "utf-8"): Observable<Definitions> => {
-			return this.getDocument(path, encoding).pipe(
+			return this.getDocument(path, { encoding }).pipe(
 				switchMap((document) => document.definitions$),
 				distinctUntilChanged((previous, current) => {
 					return previous.version.length == current.version.length
@@ -407,8 +408,8 @@ export class VDFWorkspace extends AsyncDisposableBase {
 				shareReplayUntilDisposed(this.dispose$),
 			),
 			setReferences: (uri, references) => {
-				const chat_english = this.setFileReferences("resource/chat_english.txt", uri, references)
-				const tf_english = this.setFileReferences("resource/tf_english.txt", uri, references)
+				const chat_english = this.setFileReferences("resource/chat_english.txt", uri, references, { encoding: "utf-16le" })
+				const tf_english = this.setFileReferences("resource/tf_english.txt", uri, references, { encoding: "utf-16le" })
 				return {
 					remove: () => {
 						chat_english.remove()
@@ -596,7 +597,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 			["resource/chat_english.txt", "resource/tf_english.txt"].map((path) => <const>[
 				path,
 				{
-					document$: this.getDocument(path, "utf-16le").pipe(
+					document$: this.getDocument(path, { encoding: "utf-16le" }).pipe(
 						startWith(null),
 						pairwise(),
 						map(([previous, current]) => ({ previous, current }))
@@ -616,7 +617,7 @@ export class VDFWorkspace extends AsyncDisposableBase {
 		})
 	}
 
-	private getDocument(path: string, encoding = "utf-8") {
+	private getDocument(path: string, options?: { encoding?: string, language?: VSCodeVDFLanguageID }) {
 		return this.workspaceDocuments.getOrInsertComputed(path, () => {
 			return this.fileSystem.resolve(path).pipe(
 				switchMap((entry) => {
@@ -625,7 +626,10 @@ export class VDFWorkspace extends AsyncDisposableBase {
 					}
 
 					const query = new URLSearchParams(entry.uri.query)
-					query.set("encoding", encoding)
+					query.set("encoding", options?.encoding ?? "utf-8")
+					if (options?.language != undefined) {
+						query.set("language", options.language)
+					}
 					query.sort()
 
 					const uri = entry.uri.with({ query: query.toString() })
@@ -816,10 +820,10 @@ export class VDFWorkspace extends AsyncDisposableBase {
 		)
 	}
 
-	public setFileReferences(path: string, uri: Uri, references: References): { remove(): void } {
+	public setFileReferences(path: string, uri: Uri, references: References, options?: { encoding?: string, language?: VSCodeVDFLanguageID }): { remove(): void } {
 		const pathReferences = this.filesReferences.getOrInsertComputed(path, () => {
 			return {
-				document$: this.getDocument(path).pipe(
+				document$: this.getDocument(path, options).pipe(
 					catchError(() => of(null)),
 					startWith(null),
 					pairwise(),

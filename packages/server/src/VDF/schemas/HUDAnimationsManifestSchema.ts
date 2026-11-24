@@ -44,7 +44,7 @@ export const HUDAnimationsManifestSchema = (document: VDFTextDocument) => {
 			combineLatestPersistent({
 				entries: (value) => value.manifest.map((path) => ({ key: path })),
 				observableSelector: (entry) => {
-					const remove = document.workspace.setFileReferences(entry.key, document.uri, document.references)
+					const remove = document.workspace.setFileReferences(entry.key, document.uri, document.references, { language: "hudanimations" })
 					return concat(of(null), NEVER).pipe(
 						finalize(() => remove.remove())
 					)
@@ -89,7 +89,10 @@ export const HUDAnimationsManifestSchema = (document: VDFTextDocument) => {
 					data: {
 						resolve: async () => {
 							const path = resolvePath(documentSymbol.value!.text)
-							return (await firstValueFrom(document.fileSystem.resolve(path))).uri ?? document.workspace.uri.joinPath(path)
+							const uri = (await firstValueFrom(document.fileSystem.resolve(path))).uri ?? document.workspace.uri.joinPath(path)
+							const query = new URLSearchParams(uri.query)
+							query.set("language", "hudanimations")
+							return uri.with({ query: query.toString() })
 						}
 					}
 				}))
