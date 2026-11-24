@@ -345,7 +345,7 @@ export function DiagnosticFactory<
 				: (context: TContext) => context.content.definitionReferences.definitions
 
 			return (name, detail, documentSymbol, path, diagnostics, context) => {
-				if (!detail.text.length || !type.test(detail.text)) {
+				if (!detail.text.length || !type.test(detail.text) || (documentSymbol.conditional != null && !TextDocumentBase.conditionals.has(documentSymbol.conditional.toUpperCase()))) {
 					return
 				}
 
