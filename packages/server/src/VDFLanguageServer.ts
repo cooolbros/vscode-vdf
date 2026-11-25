@@ -294,7 +294,11 @@ export class VDFLanguageServer extends AsyncDisposableBase {
 			async (uri) => {
 				const result = createDocumentInit(uri)
 				if (!result.language) {
-					throw new Error("unreachable")
+					/**
+					 * This is unreachable unless `this.documents.get` is called with a uri that does not match any {@link languages} and without a "language" query parameter
+					 * TODO automatically report this error but currently there is no telemetry
+					 */
+					throw new Error(`Cannot determine language for file ${uri.toString()}! This is a bug in vscode-vdf and should be reported`)
 				}
 
 				return await createDocument({
