@@ -6,14 +6,13 @@ import { shareReplayUntilDisposed } from "common/operators/shareReplayUntilDispo
 import type { RefCountAsyncDisposableFactory } from "common/RefCountAsyncDisposableFactory"
 import { Uri } from "common/Uri"
 import type { VSCodeVDFConfiguration } from "common/VSCodeVDFConfiguration"
-import { combineLatest, defer, firstValueFrom, identity, map, Observable, of, startWith } from "rxjs"
+import { combineLatest, defer, firstValueFrom, identity, map, Observable, of } from "rxjs"
 import { VDFIndentation, VDFNewLine, VDFRange, type VDFParserOptions } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol } from "vdf-documentsymbols"
 import { getVDFDocumentSymbols } from "vdf-documentsymbols/getVDFDocumentSymbols"
 import { formatVDF, quote, type VDFFormatStringifyOptions } from "vdf-format"
 import { CompletionItemKind, InsertTextFormat, type CodeLens, type CodeLensParams, type Connection, type DocumentFormattingParams, type InlayHint, type WorkspaceEdit } from "vscode-languageserver"
 import type { VDFTextDocumentLike } from "../BaseDocument"
-import { Collection, Definitions, type Definition } from "../DefinitionReferences"
 import type { DefinitionType } from "../DefinitionTypes"
 import type { DiagnosticsContext } from "../DiagnosticFactory"
 import type { ColourInformationStringify, Decoration, DocumentLinkResolve, PartialDiagnosticCodeAction, TextDocumentContent, TextDocumentDiagnosticsParams, TextDocumentInit, VDFCompletionItem, VDFCompletionList, VDFCompletionParams, VDFRenameParams } from "../TextDocumentBase"
@@ -317,43 +316,19 @@ export class VDFTextDocument extends TextDocumentBase<Dependencies, Globals, VDF
 						globals = { languageTokens: workspace.languageTokens, clientScheme: workspace.clientScheme }
 						break
 					case VDFFileType.ClientScheme:
-						schema = ClientSchemeSchema(this)
-						if (path?.toLowerCase() != "resource/clientscheme.res") {
-							globals = {
-								clientScheme: {
-									definitions$: workspace.clientScheme.definitions$.pipe(
-										map((definitions) => {
-											// Don't add clientscheme definitions already declared in current .res file
-											const collection = new Collection<Definition>()
-											for (const { scope, type, key, value } of definitions) {
-												const rest = value.filter((definition) => !Uri.equals(definition.uri, this.uri))
-												if (rest.length > 0) {
-													collection.set(scope, type, key, ...rest)
-												}
-											}
-
-											return new Definitions(definitions.version, collection)
-										}),
-										startWith(new Definitions([], new Collection<Definition>())),
-										shareReplayUntilDisposed(this.dispose$),
-									),
-									setReferences: (uri, references) => {
-										return workspace.clientScheme.setReferences!(uri, references)
-									}
-								}
-							}
-						}
-						else {
-							globals = {}
-						}
+						const clientScheme = "clientScheme"
+						schema = ClientSchemeSchema("resource/clientscheme.res", clientScheme, this)
+						globals = workspace.schemeDefinitions(workspace.clientScheme, clientScheme)
 						break
 					case VDFFileType.SourceScheme:
-						schema = ClientSchemeSchema(this)
-						globals = {}
+						const sourceScheme = "sourceScheme"
+						schema = ClientSchemeSchema("resource/sourcescheme.res", sourceScheme, this)
+						globals = workspace.schemeDefinitions(workspace.sourceScheme, sourceScheme)
 						break
 					case VDFFileType.ChatScheme:
-						schema = ClientSchemeSchema(this)
-						globals = {}
+						const chatScheme = "chatScheme"
+						schema = ClientSchemeSchema("resource/chatscheme.res", chatScheme, this)
+						globals = workspace.schemeDefinitions(workspace.chatScheme, chatScheme)
 						break
 					case VDFFileType.LanguageTokens:
 						schema = LanguageTokensSchema(this)

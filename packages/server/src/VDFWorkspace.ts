@@ -171,9 +171,11 @@ export class VDFWorkspace extends AsyncDisposableBase {
 
 	// Source Scheme
 	public readonly sourceSchemeFiles$: Observable<Set<string>>
+	public readonly sourceScheme: GlobalDefinitionReferences
 
 	// Chat Scheme
 	public readonly chatSchemeFiles$: Observable<Set<string>>
+	public readonly chatScheme: GlobalDefinitionReferences
 
 	// Language Tokens
 	public readonly languageTokensFiles$: Observable<Set<string>>
@@ -374,12 +376,25 @@ export class VDFWorkspace extends AsyncDisposableBase {
 			map((paths) => new Set(paths.map((path) => path.toLowerCase()))),
 			shareReplayUntilDisposed(this.dispose$),
 		)
+		this.sourceScheme = {
+			definitions$: definitions(sourcescheme),
+			setReferences: (uri, references) => {
+				return this.setFileReferences(sourcescheme, uri, references)
+			},
+		}
 
 		// Chat Scheme
-		this.chatSchemeFiles$ = files("resource/chatscheme.res").pipe(
+		const chatscheme = "resource/sourcescheme.res"
+		this.chatSchemeFiles$ = files(chatscheme).pipe(
 			map((paths) => new Set(paths.map((path) => path.toLowerCase()))),
 			shareReplayUntilDisposed(this.dispose$),
 		)
+		this.chatScheme = {
+			definitions$: definitions(chatscheme),
+			setReferences: (uri, references) => {
+				return this.setFileReferences(chatscheme, uri, references)
+			},
+		}
 
 		// Language Tokens
 		this.languageTokensFiles$ = of(VDFWorkspace.files.languageTokens).pipe(
@@ -641,6 +656,32 @@ export class VDFWorkspace extends AsyncDisposableBase {
 				shareReplay({ bufferSize: 1, refCount: true })
 			)
 		})
+	}
+
+	public schemeDefinitions<T extends string>(scheme: GlobalDefinitionReferences, global: T) {
+		return {
+			[global]: {
+				definitions$: scheme.definitions$.pipe(
+					map((definitions) => {
+						// Don't add clientscheme definitions already declared in current .res file
+						const collection = new Collection<Definition>()
+						for (const { scope, type, key, value } of definitions) {
+							const rest = value.filter((definition) => !Uri.equals(definition.uri, this.uri))
+							if (rest.length > 0) {
+								collection.set(scope, type, key, ...rest)
+							}
+						}
+
+						return new Definitions(definitions.version, collection)
+					}),
+					startWith(new Definitions([], new Collection<Definition>())),
+					shareReplayUntilDisposed(this.dispose$),
+				),
+				setReferences: (uri, references) => {
+					return scheme.setReferences!(uri, references)
+				}
+			} satisfies GlobalDefinitionReferences
+		}
 	}
 
 	public async HUDAnimationsReferences() {

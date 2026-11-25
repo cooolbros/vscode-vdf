@@ -1,5 +1,6 @@
 import { resolvePath } from "common/resolvePath"
 import { VSCodeVDFConfigurationSchema } from "common/VSCodeVDFConfiguration"
+import { posix } from "path"
 import { firstValueFrom, switchMap } from "rxjs"
 import { VDFPosition, VDFRange } from "vdf"
 import { VDFDocumentSymbols, type VDFDocumentSymbol, type VDFText } from "vdf-documentsymbols"
@@ -81,13 +82,13 @@ function getBorderType(documentSymbols: VDFDocumentSymbols) {
 	}
 }
 
-export const ClientSchemeSchema = (document: VDFTextDocument) => {
+export const ClientSchemeSchema = <T extends string>(entry: `resource/${T}scheme.res`, globalName: string, document: VDFTextDocument) => {
 
 	const base = new BaseDocument(document)
 
-	const [global, distinct] = document.uri.basename().toLowerCase() == "clientscheme.res"
+	const [global, distinct] = document.relativePath?.path.toLowerCase() == entry.toLowerCase()
 		? [null, KeyDistinct.First]
-		: ["clientScheme", KeyDistinct.None]
+		: [globalName, KeyDistinct.None]
 
 	const d = DiagnosticFactory<ClientSchemeDiagnosticsContext, Dependencies, Globals>(document, distinct, transform)
 	const bool = d.string(d.set(["0", "1"]))
@@ -197,9 +198,12 @@ export const ClientSchemeSchema = (document: VDFTextDocument) => {
 		})
 	)
 
+	const id = posix.parse(entry).name.toLowerCase()
+	const name = id.replace(/scheme$/, "")
+
 	return {
-		id: <const>"clientscheme",
-		name: <const>"Client Scheme",
+		id: id,
+		name: <const>`${name[0].toUpperCase() + name.substring(1)} Scheme`,
 		definitionTypes: [
 			{
 				type: types.colour,
@@ -699,7 +703,7 @@ export const ClientSchemeSchema = (document: VDFTextDocument) => {
 					const definitions = (await firstValueFrom(
 						global == null
 							? document.definitions$
-							: document.data$.pipe(switchMap((data) => data.globals.get("clientScheme").definitions$))
+							: document.data$.pipe(switchMap((data) => data.globals.get(globalName).definitions$))
 					)).ofType(null, type)
 
 					return {
