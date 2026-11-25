@@ -500,8 +500,8 @@ importers:
         specifier: workspace:*
         version: link:../vdf-documentsymbols
       vscode-uri:
-        specifier: ^3.1.0
-        version: 3.1.0
+        specifier: ^3.2.0
+        version: 3.2.0
 
   packages/hudanimations-documentsymbols:
     devDependencies:
@@ -5190,8 +5190,8 @@ packages:
   vscode-uri@3.0.8:
     resolution: {integrity: sha512-AyFQ0EVmsOZOlAnxoFOGOq1SQDWAB7C6aqMGS23svWAllfOaxbuFvcT8D1i8z3Gyn8fraVeZNNmN6e9bxxXkKw==}
 
-  vscode-uri@3.1.0:
-    resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
+  vscode-uri@3.2.0:
+    resolution: {integrity: sha512-m2gXo3bn0G1kT9InzMf07fTbqMbGtyckj3bH5ktLO+1Ssv+yiATZ4dhwaQv9UZWxJh6E9IFGnQyjgWVDWVBDrg==}
 
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
@@ -6853,7 +6853,7 @@ snapshots:
       playwright: 1.61.1
       tar-fs: 3.1.2
       tinyglobby: 0.2.17
-      vscode-uri: 3.1.0
+      vscode-uri: 3.2.0
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer
@@ -10123,7 +10123,7 @@ snapshots:
 
   vscode-uri@3.0.8: {}
 
-  vscode-uri@3.1.0: {}
+  vscode-uri@3.2.0: {}
 
   web-namespaces@2.0.1: {}
 
