@@ -165,8 +165,8 @@ settings:
 catalogs:
   default:
     '@sveltejs/vite-plugin-svelte':
-      specifier: ^6.2.1
-      version: 6.2.1
+      specifier: ^7.3.1
+      version: 7.3.1
     '@tsconfig/svelte':
       specifier: ^5.0.8
       version: 5.0.8
@@ -402,7 +402,7 @@ importers:
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: 'catalog:'
-        version: 6.2.1(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
+        version: 7.3.1(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
       '@tsconfig/svelte':
         specifier: 'catalog:'
         version: 5.0.8
@@ -429,7 +429,7 @@ importers:
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: 'catalog:'
-        version: 6.2.1(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
+        version: 7.3.1(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
       '@tsconfig/svelte':
         specifier: 'catalog:'
         version: 5.0.8
@@ -2071,20 +2071,12 @@ packages:
     peerDependencies:
       acorn: ^8.9.0
 
-  '@sveltejs/vite-plugin-svelte-inspector@5.0.1':
-    resolution: {integrity: sha512-ubWshlMk4bc8mkwWbg6vNvCeT7lGQojE3ijDh3QTR6Zr/R+GXxsGbyH4PExEPpiFmqPhYiVSVmHBjUcVc1JIrA==}
+  '@sveltejs/vite-plugin-svelte@7.3.1':
+    resolution: {integrity: sha512-ZPsLN8B1e/En+Ak5s4V7srFDT532oS0qieLsQwu63NGKsS+iAjoO2Js1BochlHlglcU+Pt7WAO3C5Ee+4f6gVA==}
     engines: {node: ^20.19 || ^22.12 || >=24}
     peerDependencies:
-      '@sveltejs/vite-plugin-svelte': ^6.0.0-next.0
-      svelte: ^5.0.0
-      vite: ^6.3.0 || ^7.0.0
-
-  '@sveltejs/vite-plugin-svelte@6.2.1':
-    resolution: {integrity: sha512-YZs/OSKOQAQCnJvM/P+F1URotNnYNeU3P2s4oIpzm1uFaqUEqRxUB0g5ejMjEb5Gjb9/PiBI5Ktrq4rUUF8UVQ==}
-    engines: {node: ^20.19 || ^22.12 || >=24}
-    peerDependencies:
-      svelte: ^5.0.0
-      vite: ^6.3.0 || ^7.0.0
+      svelte: ^5.46.4
+      vite: ^8.0.0-beta.7 || ^8.0.0
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -3920,6 +3912,9 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
+  magic-string@1.4.5:
+    resolution: {integrity: sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w==}
+
   markdown-extensions@2.0.0:
     resolution: {integrity: sha512-o5vL7aDWatOTX8LzaS1WMoaoxIiLRQJuIKKe2wAw6IeULDHaqbiqiggmx+pKvZDb1Sj+pE46Sn1T7lCqfFtg1Q==}
     engines: {node: '>=16'}
@@ -4287,6 +4282,10 @@ packages:
   object-keys@1.1.1:
     resolution: {integrity: sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==}
     engines: {node: '>= 0.4'}
+
+  obug@2.2.1:
+    resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
+    engines: {node: '>=12.20.0'}
 
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -5144,10 +5143,10 @@ packages:
       yaml:
         optional: true
 
-  vitefu@1.1.1:
-    resolution: {integrity: sha512-B/Fegf3i8zh0yFbpzZ21amWzHmuNlLlmJT6n7bu5e+pCHUKQIfXSYokrqOBGEMMe9UG2sostKQF9mml/vYaWJQ==}
+  vitefu@1.1.4:
+    resolution: {integrity: sha512-qbEIDswfXH3x3IYRMScl/bf1AVW0dn7Z8qkr7g7nohkusfuC7tcFa7t5EoTOz60AunosLM9sDrDjHxsX+Up+CQ==}
     peerDependencies:
-      vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0-beta.0
+      vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       vite:
         optional: true
@@ -6487,26 +6486,14 @@ snapshots:
     dependencies:
       acorn: 8.19.0
 
-  '@sveltejs/vite-plugin-svelte-inspector@5.0.1(@sveltejs/vite-plugin-svelte@6.2.1(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)))(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))':
+  '@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte': 6.2.1(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
-      debug: 4.4.3(supports-color@7.2.0)
-      svelte: 5.59.1
-      vite: 8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@sveltejs/vite-plugin-svelte@6.2.1(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))':
-    dependencies:
-      '@sveltejs/vite-plugin-svelte-inspector': 5.0.1(@sveltejs/vite-plugin-svelte@6.2.1(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)))(supports-color@7.2.0)(svelte@5.59.1)(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
-      debug: 4.4.3(supports-color@7.2.0)
       deepmerge: 4.3.1
-      magic-string: 0.30.21
+      magic-string: 1.4.5
+      obug: 2.2.1
       svelte: 5.59.1
       vite: 8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)
-      vitefu: 1.1.1(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
-    transitivePeerDependencies:
-      - supports-color
+      vitefu: 1.1.4(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2))
 
   '@swc/helpers@0.5.15':
     dependencies:
@@ -8288,6 +8275,10 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
+  magic-string@1.4.5:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
+
   markdown-extensions@2.0.0: {}
 
   markdown-table@3.0.4: {}
@@ -9003,6 +8994,8 @@ snapshots:
   object-inspect@1.13.4: {}
 
   object-keys@1.1.1: {}
+
+  obug@2.2.1: {}
 
   on-finished@2.4.1:
     dependencies:
@@ -10082,7 +10075,7 @@ snapshots:
       jiti: 2.7.0
       yaml: 2.8.2
 
-  vitefu@1.1.1(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)):
+  vitefu@1.1.4(vite@8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)):
     optionalDependencies:
       vite: 8.3.8(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.8.2)
 
