@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs"
-import yaml from "js-yaml"
+import * as yaml from "js-yaml"
 import { posix } from "path"
 import keys from "server/Popfile/keys.json" with { type: "json" }
 import values from "server/Popfile/values.json" with { type: "json" }
