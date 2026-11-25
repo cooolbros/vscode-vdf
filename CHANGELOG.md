@@ -1,5 +1,11 @@
 # Change Log
 
+## [6.0.6]
+ - [VGUI] Fix crash caused by `scripts/hudanimations_manifest.txt`
+ - [VGUI] Fix crash caused by `resource/sourcescheme.res` or `resource/chatscheme.res`
+ - [Popfile] Suppress `invalid-reference` diagnostics for unknown conditionals
+ - [Popfile] Fix not reading BSP `ChangeBotAttributes`
+
 ## [6.0.5]
  - Fix error when sometimes closing and opening a non-workspace file
  - [Popfile] Enable `ClassIcon` diagnostics in `robot_*.pop` files
