@@ -9,7 +9,7 @@
         "start:linux-x64": "./bin/Release/net9.0/linux-x64/publish/API"
     },
     "devDependencies": {
-        "dotenv-cli": "^11.0.0",
+        "dotenv-cli": "^11.1.0",
         "drizzle-orm": "^0.45.1",
         "vdf": "workspace:*",
         "vpk": "workspace:*"
