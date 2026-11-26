@@ -577,7 +577,7 @@
         "@types/vscode": "^1.110.0",
         "@vscode/test-web": "^0.0.81",
         "@vscode/vsce": "^4.1.0",
-        "minimatch": "^10.2.6",
+        "minimatch": "^11.0.9",
         "ovsx": "^1.4.0",
         "oxlint": "^1.89.0",
         "oxlint-config": "github:cooolbros/oxlint-config",
