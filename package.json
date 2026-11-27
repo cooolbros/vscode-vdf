@@ -575,6 +575,7 @@
         "@trpc/server": "^11.29.7",
         "@types/path-browserify": "^1.0.2",
         "@types/vscode": "^1.110.0",
+        "@vscode/test-web": "^0.0.81",
         "@vscode/vsce": "^4.1.0",
         "minimatch": "^11.0.9",
         "ovsx": "^1.4.0",
@@ -589,9 +590,6 @@
         "vscode-languageserver-textdocument": "^1.0.15",
         "wasm-pack": "^0.15.1",
         "zod": "^4.6.7"
-    },
-    "optionalDependencies": {
-        "@vscode/test-web": "^0.0.81"
     },
     "vsce": {
         "dependencies": false
