@@ -203,11 +203,11 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
       '@trpc/client':
-        specifier: ^11.29.7
-        version: 11.29.7(@trpc/server@11.29.7(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3))(typescript@6.0.3)
+        specifier: ^11.31.0
+        version: 11.31.0(@trpc/server@11.31.0(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3))(typescript@6.0.3)
       '@trpc/server':
-        specifier: ^11.29.7
-        version: 11.29.7(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3)
+        specifier: ^11.31.0
+        version: 11.31.0(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3)
       '@types/path-browserify':
         specifier: ^1.0.2
         version: 1.0.3
@@ -2203,14 +2203,14 @@ packages:
   '@theguild/remark-npm2yarn@0.3.3':
     resolution: {integrity: sha512-ma6DvR03gdbvwqfKx1omqhg9May/VYGdMHvTzB4VuxkyS7KzfZ/lzrj43hmcsggpMje0x7SADA/pcMph0ejRnA==}
 
-  '@trpc/client@11.29.7':
-    resolution: {integrity: sha512-cW/8uDPDBEzSBdEoV0fLb6JL5U/YTOZRktLI7/bJJVsb9dz+qhYJST6YJEaI8yM6oz4MfnpCKf7Sk609zvjNxA==}
+  '@trpc/client@11.31.0':
+    resolution: {integrity: sha512-XFV6hZtl3ZyiewQvEy2/i29uDw4e3f+EdLa2XFe9cKJTmzyALjEw0QqBkIp4vchMW2quSD8X25fK7+1K/SrVNw==}
     peerDependencies:
-      '@trpc/server': 11.29.7
+      '@trpc/server': 11.31.0
       typescript: '>=5.7.2'
 
-  '@trpc/server@11.29.7':
-    resolution: {integrity: sha512-9chUuB0abOfVkCm87lFQ3PTUJzPlErlf5HOBzvwtiGl7B0YdPBul1O597NTzjUcF1XDTsRqdnQfrz7BeptzSXQ==}
+  '@trpc/server@11.31.0':
+    resolution: {integrity: sha512-mxX3wVxHSc5kO22yuHb4CvYdVcnE8rROhdqxRR5by72kHtpoOxy2mUCS8N8rtNWgI6WEXxFOFDgX1XeTVa4CdA==}
     peerDependencies:
       '@types/aws-lambda': '*'
       '@types/express': '*'
@@ -6636,12 +6636,12 @@ snapshots:
       npm-to-yarn: 3.0.1
       unist-util-visit: 5.0.0
 
-  '@trpc/client@11.29.7(@trpc/server@11.29.7(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3))(typescript@6.0.3)':
+  '@trpc/client@11.31.0(@trpc/server@11.31.0(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
-      '@trpc/server': 11.29.7(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3)
+      '@trpc/server': 11.31.0(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3)
       typescript: 6.0.3
 
-  '@trpc/server@11.29.7(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3)':
+  '@trpc/server@11.31.0(next@15.5.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(typescript@6.0.3)':
     dependencies:
       typescript: 6.0.3
     optionalDependencies:
