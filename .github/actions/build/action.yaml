@@ -19,7 +19,7 @@ runs:
         dotnet-version: 9.0.x
 
     - name: Install dependencies
-      run: pnpm install
+      run: pnpm clean-install --no-optional
       shell: bash
 
     - name: rustup default nightly

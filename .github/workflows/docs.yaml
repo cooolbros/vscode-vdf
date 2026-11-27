@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: latest
       - uses: pnpm/action-setup@v6
-      - run: pnpm install
+      - run: pnpm clean-install --no-optional
       - run: rustup default nightly
       - run: rustup target add wasm32-unknown-unknown
       - run: pnpm build:docs
