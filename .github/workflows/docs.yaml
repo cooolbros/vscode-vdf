@@ -26,7 +26,6 @@ jobs:
       - run: pnpm install
       - run: rustup default nightly
       - run: rustup target add wasm32-unknown-unknown
-      - run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - run: pnpm build:docs
       - uses: peaceiris/actions-gh-pages@v4
         with:
